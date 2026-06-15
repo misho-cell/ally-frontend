@@ -1,0 +1,64 @@
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api";
+
+type RequestOptions = {
+  method?: string;
+  body?: unknown;
+};
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export async function apiFetch<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method: options.method ?? "GET",
+      headers,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    });
+  } catch {
+    throw new ApiError("Network error. Please check your connection.");
+  }
+
+  if (response.status === 401) {
+    if (typeof window !== "undefined" && token) {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+    throw new ApiError("Invalid email or password.", 401);
+  }
+
+  if (!response.ok) {
+    const data = await response
+      .json()
+      .catch(() => ({})) as { message?: string; error?: string };
+    throw new ApiError(
+      data.error ?? data.message ?? `Request failed with status ${response.status}`,
+      response.status,
+    );
+  }
+
+  return response.json() as Promise<T>;
+}
