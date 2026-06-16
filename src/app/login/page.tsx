@@ -27,11 +27,16 @@ export default function LoginPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.message ?? data.error ?? `Request failed with status ${res.status}`);
+    const json = await res.json().catch(() => ({})) as {
+      success?: boolean;
+      error?: string;
+      message?: string;
+      data?: T;
+    } & T;
+    if (!res.ok || json.success === false) {
+      throw new Error(json.error ?? json.message ?? `Request failed with status ${res.status}`);
     }
-    return data as T;
+    return (json.data ?? json) as T;
   }
 
   async function handlePhoneSubmit(e: React.FormEvent) {
@@ -54,14 +59,14 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await post("/auth/verify-otp", { phone, code: otp, actionType: "AUTH" });
-      const res = await post<{ success: boolean; data: { token: string; isNewUser: boolean } }>(
+      const res = await post<{ token: string; isNewUser: boolean }>(
         "/auth/complete-login",
         { phone }
       );
-      if (res.data.isNewUser) {
+      if (res.isNewUser) {
         setStep("name");
       } else {
-        saveToken(res.data.token);
+        saveToken(res.token);
         router.replace("/chat");
       }
     } catch (err) {
@@ -76,12 +81,9 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await post<{ success: boolean; data: { token: string } }>(
-        "/auth/register",
-        { phone, name }
-      );
-      saveToken(res.data.token);
-      router.replace("/chat");
+      const res = await post<{ token: string }>("/auth/register", { phone, name });
+      saveToken(res.token);
+      router.replace("/onboarding/contacts");
     } catch (err) {
       setError(err instanceof Error ? err.message : "შეცდომა");
     } finally {
