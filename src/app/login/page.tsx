@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch, ApiError } from "@/lib/api";
 
-type Step = "phone" | "otp" | "register-name" | "register-otp";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+
+type Step = "phone" | "otp" | "name";
 
 export default function LoginPage() {
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
   const [otp, setOtp] = useState("");
+  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -20,17 +21,17 @@ export default function LoginPage() {
     document.cookie = `token=${token}; path=/; SameSite=Lax`;
   }
 
-  async function handleRequestOTP(actionType: "AUTH" | "REGISTER") {
-    setError("");
-    setLoading(true);
-    try {
-      await apiFetch("/auth/request-otp", {
-        method: "POST",
-        body: { phone, actionType },
-      });
-    } finally {
-      setLoading(false);
+  async function post<T>(path: string, body: unknown): Promise<T> {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.message ?? data.error ?? `Request failed with status ${res.status}`);
     }
+    return data as T;
   }
 
   async function handlePhoneSubmit(e: React.FormEvent) {
@@ -38,75 +39,51 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await apiFetch("/auth/request-otp", {
-        method: "POST",
-        body: { phone, actionType: "AUTH" },
-      });
+      await post("/auth/request-otp", { phone, actionType: "AUTH" });
       setStep("otp");
     } catch (err) {
-      if (err instanceof ApiError && err.message.toLowerCase().includes("not found")) {
-        setStep("register-name");
+      setError(err instanceof Error ? err.message : "შეცდომა");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleOtpSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      await post("/auth/verify-otp", { phone, code: otp, actionType: "AUTH" });
+      const res = await post<{ success: boolean; data: { token: string; isNewUser: boolean } }>(
+        "/auth/complete-login",
+        { phone }
+      );
+      if (res.data.isNewUser) {
+        setStep("name");
       } else {
-        setError(err instanceof ApiError ? err.message : "შეცდომა");
+        saveToken(res.data.token);
+        router.replace("/chat");
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "კოდი არასწორია");
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleOTPSubmit(e: React.FormEvent) {
+  async function handleNameSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      await apiFetch("/auth/verify-otp", {
-        method: "POST",
-        body: { phone, code: otp, actionType: "AUTH" },
-      });
-      const res = await apiFetch<{ success: boolean; data: { token: string } }>(
+      const res = await post<{ success: boolean; data: { token: string } }>(
         "/auth/register",
-        { method: "POST", body: { phone, name: "" } }
+        { phone, name }
       );
       saveToken(res.data.token);
       router.replace("/chat");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "კოდი არასწორია");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleRegisterNameSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      await handleRequestOTP("REGISTER");
-      setStep("register-otp");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "შეცდომა");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleRegisterOTPSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      await apiFetch("/auth/verify-otp", {
-        method: "POST",
-        body: { phone, code: otp, actionType: "REGISTER" },
-      });
-      const res = await apiFetch<{ success: boolean; data: { token: string } }>(
-        "/auth/register",
-        { method: "POST", body: { phone, name } }
-      );
-      saveToken(res.data.token);
-      router.replace("/chat");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "კოდი არასწორია");
+      setError(err instanceof Error ? err.message : "შეცდომა");
     } finally {
       setLoading(false);
     }
@@ -126,7 +103,6 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Step 1: Phone */}
           {step === "phone" && (
             <form onSubmit={handlePhoneSubmit} className="flex flex-col gap-4">
               <p className="text-sm text-gray-500">შეიყვანე ტელეფონის ნომერი</p>
@@ -143,18 +119,13 @@ export default function LoginPage() {
                 disabled={loading}
                 className="flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
               >
-                {loading ? (
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                ) : (
-                  "კოდის მიღება"
-                )}
+                {loading ? <Spinner /> : "კოდის მიღება"}
               </button>
             </form>
           )}
 
-          {/* Step 2: OTP (login) */}
           {step === "otp" && (
-            <form onSubmit={handleOTPSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleOtpSubmit} className="flex flex-col gap-4">
               <p className="text-sm text-gray-500">
                 WhatsApp-ზე გამოგზავნილი 6-ნიშნა კოდი
               </p>
@@ -163,6 +134,7 @@ export default function LoginPage() {
                 inputMode="numeric"
                 maxLength={6}
                 required
+                autoFocus
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                 placeholder="000000"
@@ -173,11 +145,7 @@ export default function LoginPage() {
                 disabled={loading || otp.length !== 6}
                 className="flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
               >
-                {loading ? (
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                ) : (
-                  "შესვლა"
-                )}
+                {loading ? <Spinner /> : "დადასტურება"}
               </button>
               <button
                 type="button"
@@ -189,15 +157,15 @@ export default function LoginPage() {
             </form>
           )}
 
-          {/* Step 3a: Registration — name */}
-          {step === "register-name" && (
-            <form onSubmit={handleRegisterNameSubmit} className="flex flex-col gap-4">
+          {step === "name" && (
+            <form onSubmit={handleNameSubmit} className="flex flex-col gap-4">
               <p className="text-sm text-gray-500">
-                ეს ნომერი არ არის რეგისტრირებული. შეიყვანე სახელი.
+                პირველად გამოიყენებ — შეიყვანე შენი სახელი
               </p>
               <input
                 type="text"
                 required
+                autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="სახელი გვარი"
@@ -208,53 +176,18 @@ export default function LoginPage() {
                 disabled={loading || !name.trim()}
                 className="flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
               >
-                {loading ? (
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                ) : (
-                  "კოდის მიღება"
-                )}
-              </button>
-            </form>
-          )}
-
-          {/* Step 3b: Registration — OTP */}
-          {step === "register-otp" && (
-            <form onSubmit={handleRegisterOTPSubmit} className="flex flex-col gap-4">
-              <p className="text-sm text-gray-500">
-                WhatsApp-ზე გამოგზავნილი 6-ნიშნა კოდი
-              </p>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                required
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                placeholder="000000"
-                className="rounded-xl border border-gray-200 px-4 py-3 text-center text-2xl tracking-widest outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
-              />
-              <button
-                type="submit"
-                disabled={loading || otp.length !== 6}
-                className="flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-              >
-                {loading ? (
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                ) : (
-                  "რეგისტრაცია"
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setStep("register-name"); setOtp(""); setError(""); }}
-                className="text-xs text-gray-400 hover:text-gray-600"
-              >
-                ← უკან
+                {loading ? <Spinner /> : "რეგისტრაცია"}
               </button>
             </form>
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
   );
 }
