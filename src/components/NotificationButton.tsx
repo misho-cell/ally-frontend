@@ -11,7 +11,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
-type Status = "idle" | "unsupported" | "needs-pwa" | "granted" | "denied" | "loading";
+type Status = "idle" | "loading" | "granted" | "denied" | "needs-pwa" | "unsupported";
 
 export default function NotificationButton() {
   const [status, setStatus] = useState<Status>("idle");
@@ -23,7 +23,7 @@ export default function NotificationButton() {
 
     const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
-    if (!"Notification" in window || !("serviceWorker" in navigator)) {
+    if (!( "Notification" in window) || !("serviceWorker" in navigator)) {
       setStatus("unsupported");
       return;
     }
@@ -31,12 +31,12 @@ export default function NotificationButton() {
       setStatus("needs-pwa");
       return;
     }
-    if (Notification.permission === "granted" && localStorage.getItem("push_endpoint")) {
-      setStatus("granted");
-      return;
-    }
     if (Notification.permission === "denied") {
       setStatus("denied");
+      return;
+    }
+    if (Notification.permission === "granted" && localStorage.getItem("push_endpoint")) {
+      setStatus("granted");
       return;
     }
   }, []);
@@ -49,20 +49,17 @@ export default function NotificationButton() {
         setStatus("denied");
         return;
       }
-
       const token = localStorage.getItem("token");
       const keyRes = await fetch(`${BASE_URL}/notifications/vapid-public-key`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const keyJson = await keyRes.json();
       const vapidKey = keyJson.data?.key ?? keyJson.key;
-
       const reg = await navigator.serviceWorker.ready;
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidKey),
       });
-
       const sub = subscription.toJSON();
       await fetch(`${BASE_URL}/notifications/subscribe`, {
         method: "POST",
@@ -72,7 +69,6 @@ export default function NotificationButton() {
         },
         body: JSON.stringify(sub),
       });
-
       localStorage.setItem("push_endpoint", sub.endpoint ?? "");
       setStatus("granted");
     } catch {
@@ -80,22 +76,14 @@ export default function NotificationButton() {
     }
   }
 
-  if (status === "unsupported" || status === "granted") return null;
+  if (status === "granted" || status === "unsupported") return null;
 
   if (status === "needs-pwa") {
-    return (
-      <span className="text-xs text-gray-400">
-        ნოტიფიკაციებისთვის გადმოწერე აპლი
-      </span>
-    );
+    return <span className="text-xs text-gray-400">აპი გადმოწერე ნოტიფ-ებისთვის</span>;
   }
 
   if (status === "denied") {
-    return (
-      <span className="text-xs text-gray-400">
-        ნოტიფ. გადართვაა
-      </span>
-    );
+    return <span className="text-xs text-gray-400">ნოტიფ. დაბლოკილია</span>;
   }
 
   return (
@@ -103,9 +91,9 @@ export default function NotificationButton() {
       type="button"
       onClick={enable}
       disabled={status === "loading"}
-      className="rounded-lg px-3 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+      className="rounded-lg px-3 py-1.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50 disabled:opacity-50"
     >
-      {status === "loading" ? "..." : "🔔 ნოტიფიკაციები"}
+      {status === "loading" ? "..." : "🔔 ნოტიფ."}
     </button>
   );
 }
