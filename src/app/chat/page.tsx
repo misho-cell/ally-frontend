@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 import { apiFetch } from "@/lib/api";
 import NotificationButton from "@/components/NotificationButton";
 
@@ -65,7 +66,7 @@ export default function ChatPage() {
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: data.reply ?? "შეცდომა მოხდა. სცადეთ თავიდან.",
+          content: data.reply ?? "შეცდომა მოხდა.",
         },
       ]);
 
@@ -141,30 +142,51 @@ export default function ChatPage() {
           {messages.map((msg, i) => {
             const isLast = i === messages.length - 1;
             const showOptions = isLast && msg.role === "assistant" && options.length > 0 && !loading;
+
             return (
               <div key={msg.id} className="flex flex-col gap-2">
                 <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user"
-                        ? "rounded-br-sm bg-[#1a1a2e] text-white"
+                        ? "rounded-br-sm bg-[#1a1a2e] text-white whitespace-pre-wrap"
                         : "rounded-bl-sm bg-white text-gray-800 shadow-sm"
                     }`}
                   >
-                    {msg.content}
+                    {msg.role === "assistant" ? (
+                      <ReactMarkdown
+                        components={{
+                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                          ol: ({ children }) => <ol className="mb-2 ml-4 list-decimal space-y-1 last:mb-0">{children}</ol>,
+                          ul: ({ children }) => <ul className="mb-2 ml-4 list-disc space-y-1 last:mb-0">{children}</ul>,
+                          li: ({ children }) => <li>{children}</li>,
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                 </div>
 
                 {showOptions && (
-                  <div className="flex flex-wrap gap-2 pl-1">
+                  <div className="flex flex-col gap-2 pl-1">
                     {options.map((opt) => (
                       <button
                         key={opt.phone}
                         type="button"
                         onClick={() => sendMessage(`${opt.name} (${opt.phone})`)}
-                        className="rounded-full border border-[#1a1a2e] px-4 py-1.5 text-sm font-medium text-[#1a1a2e] transition-colors hover:bg-[#1a1a2e] hover:text-white active:scale-95"
+                        className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-left text-sm shadow-sm transition-colors hover:border-[#1a1a2e] hover:bg-gray-50 active:scale-[0.98]"
                       >
-                        {opt.name}
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1a1a2e]/10 text-xs font-semibold text-[#1a1a2e]">
+                          {opt.name.charAt(0).toUpperCase()}
+                        </span>
+                        <span className="flex flex-col">
+                          <span className="font-medium text-[#1a1a2e]">{opt.name}</span>
+                          <span className="text-xs text-gray-400">{opt.phone}</span>
+                        </span>
                       </button>
                     ))}
                   </div>
