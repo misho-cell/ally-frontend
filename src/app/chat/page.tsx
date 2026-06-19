@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
+import NotificationButton from "@/components/NotificationButton";
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 type Message = {
   id: string;
@@ -57,30 +60,18 @@ export default function ChatPage() {
       if (data.success === false) {
         setMessages((prev) => [
           ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: "შეცდომა მოხდა. სცადეთ თავიდან.",
-          },
+          { id: crypto.randomUUID(), role: "assistant", content: "შეცდომა მოხდა. სცადეთ თავიდან." },
         ]);
       } else {
         setMessages((prev) => [
           ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: data.reply,
-          },
+          { id: crypto.randomUUID(), role: "assistant", content: data.reply },
         ]);
       }
     } catch {
       setMessages((prev) => [
         ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: "შეცდომა მოხდა. სცადეთ თავიდან.",
-        },
+        { id: crypto.randomUUID(), role: "assistant", content: "შეცდომა მოხდა. სცადეთ თავიდან." },
       ]);
     } finally {
       setLoading(false);
@@ -95,7 +86,24 @@ export default function ChatPage() {
     }
   }
 
-  function handleSignOut() {
+  async function handleSignOut() {
+    const token = localStorage.getItem("token");
+    const endpoint = localStorage.getItem("push_endpoint");
+    if (token && endpoint) {
+      try {
+        await fetch(`${BASE_URL}/notifications/subscribe`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ endpoint }),
+        });
+      } catch {
+        // best-effort
+      }
+      localStorage.removeItem("push_endpoint");
+    }
     localStorage.removeItem("token");
     document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
     router.replace("/login");
@@ -103,19 +111,20 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full flex-col bg-gray-50">
-      {/* Header */}
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
         <h1 className="text-lg font-bold text-[#1a1a2e]">Ally</h1>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="rounded-lg px-3 py-1.5 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationButton />
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="rounded-lg px-3 py-1.5 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+          >
+            Sign out
+          </button>
+        </div>
       </header>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
@@ -132,7 +141,9 @@ export default function ChatPage() {
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`flex ${
+                msg.role === "user" ? "justify-end" : "justify-start"
+              }`}
             >
               <div
                 className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
@@ -162,7 +173,6 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Input bar */}
       <div className="border-t border-gray-200 bg-white px-4 py-3 pb-[env(safe-area-inset-bottom,12px)]">
         <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 focus-within:border-[#1a1a2e] focus-within:ring-2 focus-within:ring-[#1a1a2e]/10">
           <textarea
