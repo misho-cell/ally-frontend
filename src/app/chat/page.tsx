@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch, ApiError } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import NotificationButton from "@/components/NotificationButton";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -13,13 +13,20 @@ type Message = {
   content: string;
 };
 
+type Option = {
+  phone: string;
+  name: string;
+};
+
 type ChatResponse = {
   success: boolean;
   reply: string;
+  options?: Option[];
 };
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [options, setOptions] = useState<Option[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -28,45 +35,42 @@ export default function ChatPage() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.replace("/login");
-    }
+    if (!token) router.replace("/login");
   }, [router]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  const sendMessage = useCallback(async () => {
-    const text = input.trim();
-    if (!text || loading) return;
+  const sendMessage = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
 
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: text,
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    setOptions([]);
+    setMessages((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), role: "user", content: trimmed },
+    ]);
     setInput("");
     setLoading(true);
 
     try {
       const data = await apiFetch<ChatResponse>("/chat/message", {
         method: "POST",
-        body: { message: text },
+        body: { message: trimmed },
       });
 
-      if (data.success === false) {
-        setMessages((prev) => [
-          ...prev,
-          { id: crypto.randomUUID(), role: "assistant", content: "შეცდომა მოხდა. სცადეთ თავიდან." },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          { id: crypto.randomUUID(), role: "assistant", content: data.reply },
-        ]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: data.reply ?? "შეცდომა მოხდა. სცადეთ თავიდან.",
+        },
+      ]);
+
+      if (data.options && data.options.length > 0) {
+        setOptions(data.options);
       }
     } catch {
       setMessages((prev) => [
@@ -77,12 +81,12 @@ export default function ChatPage() {
       setLoading(false);
       inputRef.current?.focus();
     }
-  }, [input, loading]);
+  }, [loading]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      sendMessage(input);
     }
   }
 
@@ -128,34 +132,46 @@ export default function ChatPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-            <p className="text-2xl font-semibold text-[#1a1a2e]">
-              Hi, I&apos;m Ally
-            </p>
-            <p className="text-sm text-gray-400">
-              Ask me anything to get started.
-            </p>
+            <p className="text-2xl font-semibold text-[#1a1a2e]">Hi, I&apos;m Ally</p>
+            <p className="text-sm text-gray-400">Ask me anything to get started.</p>
           </div>
         )}
 
         <div className="flex flex-col gap-3">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${
-                msg.role === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                  msg.role === "user"
-                    ? "rounded-br-sm bg-[#1a1a2e] text-white"
-                    : "rounded-bl-sm bg-white text-gray-800 shadow-sm"
-                }`}
-              >
-                {msg.content}
+          {messages.map((msg, i) => {
+            const isLast = i === messages.length - 1;
+            const showOptions = isLast && msg.role === "assistant" && options.length > 0 && !loading;
+            return (
+              <div key={msg.id} className="flex flex-col gap-2">
+                <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                      msg.role === "user"
+                        ? "rounded-br-sm bg-[#1a1a2e] text-white"
+                        : "rounded-bl-sm bg-white text-gray-800 shadow-sm"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+
+                {showOptions && (
+                  <div className="flex flex-wrap gap-2 pl-1">
+                    {options.map((opt) => (
+                      <button
+                        key={opt.phone}
+                        type="button"
+                        onClick={() => sendMessage(`${opt.name} (${opt.phone})`)}
+                        className="rounded-full border border-[#1a1a2e] px-4 py-1.5 text-sm font-medium text-[#1a1a2e] transition-colors hover:bg-[#1a1a2e] hover:text-white active:scale-95"
+                      >
+                        {opt.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {loading && (
             <div className="flex justify-start">
@@ -187,17 +203,12 @@ export default function ChatPage() {
           />
           <button
             type="button"
-            onClick={sendMessage}
+            onClick={() => sendMessage(input)}
             disabled={!input.trim() || loading}
             className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1a1a2e] transition-opacity disabled:opacity-30"
             aria-label="Send message"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="white"
-              className="h-4 w-4"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white" className="h-4 w-4">
               <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 005.135 9.25h6.115a.75.75 0 010 1.5H5.135a1.5 1.5 0 00-1.442 1.086l-1.414 4.926a.75.75 0 00.826.95 28.896 28.896 0 0015.293-7.154.75.75 0 000-1.115A28.897 28.897 0 003.105 2.289z" />
             </svg>
           </button>
