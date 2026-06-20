@@ -3,24 +3,31 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
+import { ThreadsContext, type Thread } from "@/contexts/ThreadsContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-
-type Thread = {
-  id: number;
-  type: "regular" | "incoming_request" | "outgoing_request";
-  title: string;
-  last_message?: string;
-  updated_at: string;
-};
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
 }
 
+function getUserInfo(): { name: string; initial: string } {
+  try {
+    const token = getToken();
+    if (!token) return { name: "Me", initial: "M" };
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const name: string = payload.name || payload.phone || "Me";
+    return { name, initial: name.charAt(0).toUpperCase() };
+  } catch {
+    return { name: "Me", initial: "M" };
+  }
+}
+
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -81,68 +88,198 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       const thread: Thread = json.data ?? json;
       setThreads((prev) => [thread, ...prev]);
       router.push(`/chat/${thread.id}`);
-    } catch {} finally {
+    } catch {}
+    finally {
       setCreating(false);
     }
   }
 
-  const incoming = threads.filter((t) => t.type === "incoming_request");
-  const mine = threads.filter((t) => t.type !== "incoming_request");
+  async function handleSignOut() {
+    const token = getToken();
+    const endpoint = localStorage.getItem("push_endpoint");
+    if (token && endpoint) {
+      try {
+        await fetch(`${BASE_URL}/notifications/subscribe`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ endpoint }),
+        });
+      } catch {}
+      localStorage.removeItem("push_endpoint");
+    }
+    localStorage.removeItem("token");
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+    router.replace("/login");
+  }
+
+  const filtered = threads.filter((t) =>
+    t.title.toLowerCase().includes(search.toLowerCase())
+  );
+  const incoming = filtered.filter((t) => t.type === "incoming_request");
+  const mine = filtered.filter((t) => t.type !== "incoming_request");
+
+  const user = getUserInfo();
 
   const sidebarClass = isOnThread
-    ? "hidden md:flex md:w-80 md:shrink-0"
-    : "flex w-full md:w-80 md:shrink-0";
+    ? "hidden md:flex"
+    : "flex w-full md:flex";
 
-  const mainClass = isOnThread ? "flex flex-1 flex-col min-w-0" : "hidden md:flex md:flex-1 md:flex-col";
+  const mainClass = isOnThread
+    ? "flex flex-1 flex-col min-w-0"
+    : "hidden md:flex md:flex-1 md:flex-col";
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar */}
-      <aside className={`${sidebarClass} flex-col border-r border-gray-200 bg-white`}>
-        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-          <h1 className="text-lg font-bold text-[#1a1a2e]">Ally</h1>
-          <button
-            onClick={createThread}
-            disabled={creating}
-            className="rounded-lg border border-[#1a1a2e] px-3 py-1.5 text-xs font-medium text-[#1a1a2e] transition-colors hover:bg-[#1a1a2e] hover:text-white disabled:opacity-50"
-          >
-            {creating ? "..." : "+ ახალი"}
-          </button>
-        </div>
+    <ThreadsContext.Provider value={{ threads, setThreads }}>
+      <div className="flex h-full" style={{ background: "var(--bg)" }}>
+        {/* Sidebar */}
+        <aside
+          className={`${sidebarClass} flex-col shrink-0`}
+          style={{
+            width: "268px",
+            background: "var(--sidebar-bg)",
+            borderRight: "1px solid var(--sidebar-border)",
+          }}
+        >
+          {/* Wordmark */}
+          <div className="flex items-center gap-2.5 px-5 pt-5 pb-4">
+            <Image
+              src="/ally-logo.svg"
+              alt="Ally"
+              width={24}
+              height={24}
+              style={{ borderRadius: "26%" }}
+            />
+            <span
+              style={{
+                fontFamily: "var(--font-bricolage), serif",
+                fontSize: "22px",
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+                color: "var(--ink-strong)",
+              }}
+            >
+              Ally
+            </span>
+          </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {incoming.length > 0 && (
+          {/* New chat button */}
+          <div className="px-4 pb-3">
+            <button
+              onClick={createThread}
+              disabled={creating}
+              className="flex w-full items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-medium transition-colors hover:bg-gray-50 disabled:opacity-50"
+              style={{
+                borderColor: "var(--sidebar-border)",
+                color: "var(--ink-2)",
+                fontSize: "14.5px",
+                fontWeight: 500,
+              }}
+            >
+              <span style={{ color: "var(--accent)", fontWeight: 600, fontSize: "16px" }}>+</span>
+              {creating ? "..." : "New chat"}
+            </button>
+          </div>
+
+          {/* Search */}
+          <div className="px-4 pb-3">
+            <div
+              className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+              style={{ background: "#e8e2d8", border: "1px solid var(--sidebar-border)" }}
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ flexShrink: 0 }}
+              >
+                <circle cx="8.5" cy="8.5" r="5.75" stroke="var(--placeholder)" strokeWidth="1.75" />
+                <path d="M13 13l3.5 3.5" stroke="var(--placeholder)" strokeWidth="1.75" strokeLinecap="round" />
+              </svg>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search chats"
+                className="flex-1 bg-transparent text-sm outline-none"
+                style={{ color: "var(--ink)", fontSize: "13.5px" }}
+              />
+            </div>
+          </div>
+
+          {/* Thread list */}
+          <div className="flex-1 overflow-y-auto px-2">
+            {incoming.length > 0 && (
+              <section className="mb-1">
+                <p
+                  className="px-3 pb-1 pt-2"
+                  style={{
+                    fontFamily: "var(--font-ibm-mono), monospace",
+                    fontSize: "10.5px",
+                    fontWeight: 500,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--meta)",
+                  }}
+                >
+                  Incoming
+                </p>
+                {incoming.map((t) => (
+                  <ThreadRow key={t.id} thread={t} active={pathname === `/chat/${t.id}`} />
+                ))}
+              </section>
+            )}
+
             <section>
-              <p className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                შემოსული მოთხოვნები
-              </p>
-              {incoming.map((t) => (
+              {mine.map((t) => (
                 <ThreadRow key={t.id} thread={t} active={pathname === `/chat/${t.id}`} />
               ))}
+              {threads.length === 0 && (
+                <p className="px-3 py-6 text-center" style={{ color: "var(--placeholder)", fontSize: "13px" }}>
+                  No threads yet
+                </p>
+              )}
             </section>
-          )}
+          </div>
 
-          <section>
-            {incoming.length > 0 && (
-              <p className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                ჩემი სრედები
-              </p>
-            )}
-            {mine.map((t) => (
-              <ThreadRow key={t.id} thread={t} active={pathname === `/chat/${t.id}`} />
-            ))}
-            {threads.length === 0 && (
-              <p className="px-4 py-6 text-center text-sm text-gray-400">
-                სრედები არ არის
-              </p>
-            )}
-          </section>
-        </div>
-      </aside>
+          {/* Account row */}
+          <div
+            className="flex items-center gap-3 px-4 py-3.5"
+            style={{ borderTop: "1px solid var(--sidebar-border)" }}
+          >
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+              style={{ background: "var(--thread-active-bg)", color: "var(--ink-2)" }}
+            >
+              {user.initial}
+            </div>
+            <span className="flex-1 truncate text-sm" style={{ color: "var(--ink-2)", fontWeight: 500, fontSize: "13.5px" }}>
+              {user.name}
+            </span>
+            <button
+              onClick={handleSignOut}
+              className="text-xs transition-colors hover:opacity-70"
+              style={{
+                fontFamily: "var(--font-ibm-mono), monospace",
+                fontSize: "11px",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "var(--meta)",
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        </aside>
 
-      {/* Main */}
-      <main className={mainClass}>{children}</main>
-    </div>
+        {/* Main */}
+        <main className={mainClass}>{children}</main>
+      </div>
+    </ThreadsContext.Provider>
   );
 }
 
@@ -150,22 +287,34 @@ function ThreadRow({ thread, active }: { thread: Thread; active: boolean }) {
   return (
     <Link
       href={`/chat/${thread.id}`}
-      className={`flex flex-col gap-0.5 border-b border-gray-100 px-4 py-3 transition-colors ${
-        active ? "bg-[#1a1a2e]/5" : "hover:bg-gray-50"
-      }`}
+      className="flex items-center rounded-xl px-3 py-2.5 transition-colors"
+      style={{
+        background: active ? "var(--thread-active-bg)" : "transparent",
+        marginBottom: "1px",
+      }}
+      onMouseEnter={(e) => {
+        if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)";
+      }}
+      onMouseLeave={(e) => {
+        if (!active) (e.currentTarget as HTMLElement).style.background = "transparent";
+      }}
     >
-      <div className="flex items-center gap-2">
+      <span
+        className="truncate"
+        style={{
+          fontSize: "14px",
+          fontWeight: active ? 600 : 400,
+          color: active ? "var(--ink-strong)" : "var(--ink-muted)",
+        }}
+      >
         {thread.type === "incoming_request" && (
-          <span className="shrink-0 rounded-full bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700">↓</span>
+          <span style={{ color: "var(--accent)", marginRight: "4px" }}>↓</span>
         )}
         {thread.type === "outgoing_request" && (
-          <span className="shrink-0 rounded-full bg-purple-100 px-1.5 py-0.5 text-xs text-purple-700">↑</span>
+          <span style={{ color: "var(--meta)", marginRight: "4px" }}>↑</span>
         )}
-        <span className="truncate text-sm font-medium text-[#1a1a2e]">{thread.title}</span>
-      </div>
-      {thread.last_message && (
-        <p className="truncate text-xs text-gray-400">{thread.last_message}</p>
-      )}
+        {thread.title}
+      </span>
     </Link>
   );
 }

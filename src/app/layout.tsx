@@ -1,11 +1,27 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Hanken_Grotesk, Bricolage_Grotesque, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import InstallPrompt from "@/components/InstallPrompt";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const hanken = Hanken_Grotesk({
+  variable: "--font-hanken",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin"],
+  weight: ["700"],
+  display: "swap",
+});
+
+const ibmMono = IBM_Plex_Mono({
+  variable: "--font-ibm-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -20,7 +36,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1a1a2e",
+  themeColor: "#faf9f6",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -30,12 +46,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} h-full`}>
-      <body className="h-full antialiased">
+    <html
+      lang="en"
+      className={`${hanken.variable} ${bricolage.variable} ${ibmMono.variable} h-full`}
+    >
+      <body className="h-full antialiased" style={{ WebkitFontSmoothing: "antialiased" }}>
         {children}
         <InstallPrompt />
       </body>
