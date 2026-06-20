@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext } from "react";
+import { createContext, useContext, type Dispatch, type SetStateAction } from "react";
 
 export type Thread = {
   id: number;
@@ -11,7 +11,7 @@ export type Thread = {
 
 type Ctx = {
   threads: Thread[];
-  setThreads: React.Dispatch<React.SetStateAction<Thread[]>>;
+  setThreads: Dispatch<SetStateAction<Thread[]>>;
 };
 
 export const ThreadsContext = createContext<Ctx>({

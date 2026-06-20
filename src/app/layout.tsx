@@ -52,7 +52,7 @@ export default function RootLayout({
       lang="en"
       className={`${hanken.variable} ${bricolage.variable} ${ibmMono.variable} h-full`}
     >
-      <body className="h-full antialiased" style={{ WebkitFontSmoothing: "antialiased" }}>
+      <body className="h-full antialiased">
         {children}
         <InstallPrompt />
       </body>
