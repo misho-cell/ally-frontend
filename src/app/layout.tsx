@@ -1,28 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Hanken_Grotesk, Bricolage_Grotesque, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import InstallPrompt from "@/components/InstallPrompt";
-
-const hanken = Hanken_Grotesk({
-  variable: "--font-hanken",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-const bricolage = Bricolage_Grotesque({
-  variable: "--font-bricolage",
-  subsets: ["latin"],
-  weight: ["700"],
-  display: "swap",
-});
-
-const ibmMono = IBM_Plex_Mono({
-  variable: "--font-ibm-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Ally",
@@ -48,10 +26,15 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${hanken.variable} ${bricolage.variable} ${ibmMono.variable} h-full`}
-    >
+    <html lang="en" className="h-full">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className="h-full antialiased">
         {children}
         <InstallPrompt />

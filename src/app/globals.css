@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
 :root {
+  /* Font families */
+  --font-hanken: 'Hanken Grotesk', system-ui, sans-serif;
+  --font-bricolage: 'Bricolage Grotesque', serif;
+  --font-ibm-mono: 'IBM Plex Mono', monospace;
+
   /* Accent */
   --accent: #1f8fde;
   --accent-strong: #1567a8;
@@ -30,6 +35,6 @@
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-hanken), system-ui, sans-serif;
+  font-family: var(--font-hanken);
   -webkit-font-smoothing: antialiased;
 }
