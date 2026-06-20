@@ -24,6 +24,16 @@ function getUserInfo(): { name: string; initial: string } {
   }
 }
 
+function dedup(arr: Thread[]): Thread[] {
+  const seen = new Set<string>();
+  return arr.filter((t) => {
+    const key = String(t.id);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [search, setSearch] = useState("");
@@ -40,7 +50,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       const json = await res.json();
-      setThreads(json.data ?? json);
+      const fetched: Thread[] = json.data ?? json;
+      setThreads(dedup(fetched));
     } catch {}
   }, []);
 
@@ -58,10 +69,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         try {
           const data = JSON.parse(ev.data);
           if (data.event === "thread_created" && data.thread) {
-            setThreads((prev) => [
-              data.thread,
-              ...prev.filter((t) => t.id !== data.thread.id),
-            ]);
+            setThreads((prev) =>
+              dedup([data.thread, ...prev.filter((t) => String(t.id) !== String(data.thread.id))])
+            );
           }
         } catch {}
       },
@@ -85,7 +95,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       });
       const json = await res.json();
       const thread: Thread = json.data ?? json;
-      setThreads((prev) => [thread, ...prev]);
+      setThreads((prev) => dedup([thread, ...prev.filter((t) => String(t.id) !== String(thread.id))]));
       router.push(`/chat/${thread.id}`);
     } catch {}
     finally {
