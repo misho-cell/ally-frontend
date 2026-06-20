@@ -12,20 +12,16 @@ export default withPWA({
   disable: process.env.NODE_ENV === "development",
   workboxOptions: {
     disableDevLogs: true,
-    // Exclude SSE endpoint and all API calls from service worker caching
     navigateFallbackDenylist: [/\/threads\/stream/],
     runtimeCaching: [
       {
         // SSE stream — never intercept
-        urlPattern: /\/threads\/stream/,
+        urlPattern: /^https:\/\/ally-backend-production\.up\.railway\.app\/threads\/stream/,
         handler: "NetworkOnly",
       },
       {
         // All backend API calls — NetworkOnly (no caching)
-        urlPattern: ({ url }: { url: URL }) => {
-          const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-          return url.href.startsWith(apiBase);
-        },
+        urlPattern: /^https:\/\/ally-backend-production\.up\.railway\.app\/.*/,
         handler: "NetworkOnly",
       },
     ],
