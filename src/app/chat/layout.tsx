@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { ThreadsContext, type Thread } from "@/contexts/ThreadsContext";
 
@@ -145,12 +144,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         >
           {/* Wordmark */}
           <div className="flex items-center gap-2.5 px-5 pt-5 pb-4">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/ally-logo.svg"
               alt="Ally"
               width={24}
               height={24}
-              style={{ borderRadius: "26%" }}
+              style={{ borderRadius: "26%", width: 24, height: 24 }}
             />
             <span
               style={{
@@ -170,7 +170,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             <button
               onClick={createThread}
               disabled={creating}
-              className="flex w-full items-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-medium transition-colors hover:bg-gray-50 disabled:opacity-50"
+              className="flex w-full items-center gap-2 rounded-xl border bg-white px-4 py-2.5 transition-colors hover:bg-gray-50 disabled:opacity-50"
               style={{
                 borderColor: "var(--sidebar-border)",
                 color: "var(--ink-2)",
@@ -189,14 +189,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               className="flex items-center gap-2 rounded-xl px-3 py-2.5"
               style={{ background: "#e8e2d8", border: "1px solid var(--sidebar-border)" }}
             >
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 20 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                style={{ flexShrink: 0 }}
-              >
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
                 <circle cx="8.5" cy="8.5" r="5.75" stroke="var(--placeholder)" strokeWidth="1.75" />
                 <path d="M13 13l3.5 3.5" stroke="var(--placeholder)" strokeWidth="1.75" strokeLinecap="round" />
               </svg>
@@ -205,7 +198,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search chats"
-                className="flex-1 bg-transparent text-sm outline-none"
+                className="flex-1 bg-transparent outline-none"
                 style={{ color: "var(--ink)", fontSize: "13.5px" }}
               />
             </div>
@@ -257,12 +250,15 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             >
               {user.initial}
             </div>
-            <span className="flex-1 truncate text-sm" style={{ color: "var(--ink-2)", fontWeight: 500, fontSize: "13.5px" }}>
+            <span
+              className="flex-1 truncate"
+              style={{ color: "var(--ink-2)", fontWeight: 500, fontSize: "13.5px" }}
+            >
               {user.name}
             </span>
             <button
               onClick={handleSignOut}
-              className="text-xs transition-colors hover:opacity-70"
+              className="transition-opacity hover:opacity-60"
               style={{
                 fontFamily: "var(--font-ibm-mono), monospace",
                 fontSize: "11px",

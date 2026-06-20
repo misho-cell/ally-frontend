@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
 import { useThreads } from "@/contexts/ThreadsContext";
@@ -152,7 +151,6 @@ export default function ThreadPage() {
           flexShrink: 0,
         }}
       >
-        {/* Mobile back */}
         <button
           onClick={() => router.push("/chat")}
           className="md:hidden mr-1 rounded-lg p-1.5 transition-colors hover:bg-black/5"
@@ -164,7 +162,6 @@ export default function ThreadPage() {
           </svg>
         </button>
 
-        {/* Thread title */}
         <span
           className="flex-1 truncate"
           style={{ fontSize: "15.5px", fontWeight: 600, color: "var(--ink-2)" }}
@@ -172,8 +169,7 @@ export default function ThreadPage() {
           {thread?.title ?? "Chat"}
         </span>
 
-        {/* Right side */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <NotificationButton />
           <button
             style={{
@@ -196,7 +192,7 @@ export default function ThreadPage() {
         </div>
       </header>
 
-      {/* Message list */}
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto">
         {initialLoading ? (
           <div className="flex h-full items-center justify-center">
@@ -211,8 +207,13 @@ export default function ThreadPage() {
             style={{ maxWidth: "760px", gap: "26px" }}
           >
             {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-24 gap-2 text-center">
-                <Image src="/ally-logo.svg" alt="Ally" width={44} height={44} style={{ borderRadius: "26%", marginBottom: "8px" }} />
+              <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/ally-logo.svg"
+                  alt="Ally"
+                  style={{ width: 44, height: 44, borderRadius: "26%", marginBottom: "4px" }}
+                />
                 <p style={{ fontSize: "22px", fontWeight: 600, color: "var(--ink-strong)" }}>Hi, I&apos;m Ally</p>
                 <p style={{ fontSize: "14px", color: "var(--placeholder)" }}>Ask me anything to get started.</p>
               </div>
@@ -227,7 +228,7 @@ export default function ThreadPage() {
                   {msg.role === "user" ? (
                     <div className="flex justify-end">
                       <div
-                        className="max-w-[72%] px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap"
+                        className="max-w-[72%] px-4 py-3 whitespace-pre-wrap"
                         style={{
                           background: "var(--user-bubble-bg)",
                           color: "var(--ink)",
@@ -241,21 +242,13 @@ export default function ThreadPage() {
                     </div>
                   ) : (
                     <div className="flex items-start gap-3">
-                      <Image
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
                         src="/ally-logo.svg"
-                        alt="Ally"
-                        width={22}
-                        height={22}
-                        style={{ borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
+                        alt=""
+                        style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
                       />
-                      <div
-                        style={{
-                          color: "var(--ink)",
-                          fontSize: "15.5px",
-                          lineHeight: "1.65",
-                          flex: 1,
-                        }}
-                      >
+                      <div style={{ color: "var(--ink)", fontSize: "15.5px", lineHeight: "1.65", flex: 1 }}>
                         <ReactMarkdown
                           components={{
                             p: ({ children }) => <p style={{ marginBottom: "10px" }} className="last:mb-0">{children}</p>,
@@ -279,7 +272,7 @@ export default function ThreadPage() {
                           key={opt.phone}
                           type="button"
                           onClick={() => sendMessage(`${opt.name} (${opt.phone})`)}
-                          className="flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-left text-sm transition-colors hover:bg-gray-50"
+                          className="flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-left transition-colors hover:bg-gray-50"
                           style={{ borderColor: "var(--header-border)", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}
                         >
                           <span
@@ -302,12 +295,10 @@ export default function ThreadPage() {
 
             {loading && (
               <div className="flex items-start gap-3">
-                <Image
+                <img
                   src="/ally-logo.svg"
-                  alt="Ally"
-                  width={22}
-                  height={22}
-                  style={{ borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
+                  alt=""
+                  style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
                 />
                 <div className="flex gap-1 items-center" style={{ paddingTop: "4px" }}>
                   <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]" style={{ background: "var(--placeholder)" }} />
@@ -331,10 +322,7 @@ export default function ThreadPage() {
           borderTop: "1px solid var(--header-border)",
         }}
       >
-        <div
-          className="mx-auto flex items-end gap-2"
-          style={{ maxWidth: "760px" }}
-        >
+        <div className="mx-auto flex items-end gap-2" style={{ maxWidth: "760px" }}>
           <div
             className="flex flex-1 items-end gap-2 px-4 py-3"
             style={{
@@ -365,10 +353,10 @@ export default function ThreadPage() {
               disabled={!input.trim() || loading}
               className="flex shrink-0 h-8 w-8 items-center justify-center rounded-full transition-opacity disabled:opacity-30"
               style={{ background: "var(--accent)" }}
-              aria-label="Send message"
+              aria-label="Send"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="white" className="h-4 w-4">
-                <path d="M10 3L10 17M10 3L4 9M10 3L16 9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           </div>
