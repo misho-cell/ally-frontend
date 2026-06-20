@@ -6,6 +6,13 @@ export const metadata: Metadata = {
   title: "Ally",
   description: "Your AI companion",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/ally-logo.svg", type: "image/svg+xml" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -14,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#faf9f6",
+  themeColor: "#29a9e1",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
