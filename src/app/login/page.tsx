@@ -17,7 +17,9 @@ export default function LoginPage() {
 
   function saveToken(token: string) {
     localStorage.setItem("token", token);
-    document.cookie = `token=${token}; path=/; SameSite=Lax`;
+    // max-age=2592000 = 30 days; without this the cookie is session-only and
+    // disappears when the browser closes, forcing OTP on every restart
+    document.cookie = `token=${token}; path=/; max-age=2592000; SameSite=Lax`;
   }
 
   async function handleRequestOTP(actionType: "AUTH" | "REGISTER") {
