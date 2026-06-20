@@ -115,7 +115,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   }
 
   const filtered = threads.filter((t) =>
-    t.title.toLowerCase().includes(search.toLowerCase())
+    (t.title ?? "").toLowerCase().includes(search.toLowerCase())
   );
   const incoming = filtered.filter((t) => t.type === "incoming_request");
   const mine = filtered.filter((t) => t.type !== "incoming_request");
@@ -148,13 +148,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             <img
               src="/ally-logo.svg"
               alt="Ally"
-              width={24}
-              height={24}
               style={{ borderRadius: "26%", width: 24, height: 24 }}
             />
             <span
               style={{
-                fontFamily: "var(--font-bricolage), serif",
+                fontFamily: "var(--font-bricolage)",
                 fontSize: "22px",
                 fontWeight: 700,
                 letterSpacing: "-0.02em",
@@ -219,7 +217,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     color: "var(--meta)",
                   }}
                 >
-                  Incoming
+                  შემოსული მოთხოვნები
                 </p>
                 {incoming.map((t) => (
                   <ThreadRow key={t.id} thread={t} active={pathname === `/chat/${t.id}`} />
@@ -228,12 +226,27 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             )}
 
             <section>
+              {incoming.length > 0 && mine.length > 0 && (
+                <p
+                  className="px-3 pb-1 pt-2"
+                  style={{
+                    fontFamily: "var(--font-ibm-mono), monospace",
+                    fontSize: "10.5px",
+                    fontWeight: 500,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "var(--meta)",
+                  }}
+                >
+                  ჩემი სრედები
+                </p>
+              )}
               {mine.map((t) => (
                 <ThreadRow key={t.id} thread={t} active={pathname === `/chat/${t.id}`} />
               ))}
               {threads.length === 0 && (
                 <p className="px-3 py-6 text-center" style={{ color: "var(--placeholder)", fontSize: "13px" }}>
-                  No threads yet
+                  სრედები არ არის
                 </p>
               )}
             </section>
@@ -309,7 +322,7 @@ function ThreadRow({ thread, active }: { thread: Thread; active: boolean }) {
         {thread.type === "outgoing_request" && (
           <span style={{ color: "var(--meta)", marginRight: "4px" }}>↑</span>
         )}
-        {thread.title}
+        {thread.title ?? "ახალი სრედი"}
       </span>
     </Link>
   );
