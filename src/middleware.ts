@@ -17,4 +17,5 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: ['/chat', '/chat/:path*', '/admin/:path*', '/onboarding/:path*'],
+  // Exclude login pages to prevent redirect loops
 }
