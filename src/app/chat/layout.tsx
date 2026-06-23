@@ -267,18 +267,20 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             className="flex items-center gap-3 px-4 py-3.5"
             style={{ borderTop: "1px solid var(--sidebar-border)" }}
           >
-            <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+            <Link
+              href="/profile"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-opacity hover:opacity-70"
               style={{ background: "var(--thread-active-bg)", color: "var(--ink-2)" }}
             >
               {user.initial}
-            </div>
-            <span
-              className="flex-1 truncate"
+            </Link>
+            <Link
+              href="/profile"
+              className="flex-1 truncate transition-opacity hover:opacity-70"
               style={{ color: "var(--ink-2)", fontWeight: 500, fontSize: "13.5px" }}
             >
               {user.name}
-            </span>
+            </Link>
             <button
               onClick={handleSignOut}
               className="transition-opacity hover:opacity-60"

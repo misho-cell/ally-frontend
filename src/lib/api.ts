@@ -53,12 +53,29 @@ export async function apiFetch<T>(
   if (!response.ok) {
     const data = await response
       .json()
-      .catch(() => ({})) as { message?: string; error?: string };
+      .catch(() => ({})) as { message?: string; error?: string; success?: boolean };
+
+    if (data.error === "subscription_required") {
+      if (typeof window !== "undefined") {
+        window.location.href = "/pricing";
+      }
+      throw new ApiError("subscription_required", response.status);
+    }
+
     throw new ApiError(
       data.error ?? data.message ?? `Request failed with status ${response.status}`,
       response.status,
     );
   }
 
-  return response.json() as Promise<T>;
+  const json = await response.json() as { success?: boolean; error?: string };
+
+  if (json.success === false && json.error === "subscription_required") {
+    if (typeof window !== "undefined") {
+      window.location.href = "/pricing";
+    }
+    throw new ApiError("subscription_required", 402);
+  }
+
+  return json as T;
 }
