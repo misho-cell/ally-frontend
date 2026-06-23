@@ -34,6 +34,10 @@ function dedup(arr: Thread[]): Thread[] {
   });
 }
 
+function isSubscriptionError(status: number, body: { error?: string; success?: boolean }): boolean {
+  return status === 403 || body?.error === "subscription_required" || (body?.success === false && body?.error === "subscription_required");
+}
+
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [search, setSearch] = useState("");
@@ -49,11 +53,19 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       const res = await fetch(`${BASE_URL}/threads`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (isSubscriptionError(res.status, body)) {
+          router.replace("/pricing");
+          return;
+        }
+        return;
+      }
       const json = await res.json();
       const fetched: Thread[] = json.data ?? json;
       setThreads(dedup(fetched));
     } catch {}
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     loadThreads();
@@ -93,6 +105,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           Authorization: `Bearer ${getToken()}`,
         },
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (isSubscriptionError(res.status, body)) {
+          router.replace("/pricing");
+        }
+        return;
+      }
       const json = await res.json();
       const thread: Thread = json.data ?? json;
       setThreads((prev) => dedup([thread, ...prev.filter((t) => String(t.id) !== String(thread.id))]));
@@ -143,7 +162,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   return (
     <ThreadsContext.Provider value={{ threads, setThreads }}>
       <div className="flex h-full" style={{ background: "var(--bg)" }}>
-        {/* Sidebar */}
         <aside
           className={`${sidebarClass} flex-col shrink-0`}
           style={{
@@ -152,14 +170,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             borderRight: "1px solid var(--sidebar-border)",
           }}
         >
-          {/* Wordmark */}
           <div className="flex items-center gap-2.5 px-5 pt-5 pb-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/ally-logo.svg"
-              alt="Ally"
-              style={{ borderRadius: "26%", width: 24, height: 24 }}
-            />
+            <img src="/ally-logo.svg" alt="Ally" style={{ borderRadius: "26%", width: 24, height: 24 }} />
             <span
               style={{
                 fontFamily: "var(--font-bricolage)",
@@ -173,7 +186,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </span>
           </div>
 
-          {/* New chat button */}
           <div className="px-4 pb-3">
             <button
               onClick={createThread}
@@ -191,7 +203,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </button>
           </div>
 
-          {/* Search */}
           <div className="px-4 pb-3">
             <div
               className="flex items-center gap-2 rounded-xl px-3 py-2.5"
@@ -212,21 +223,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
 
-          {/* Thread list */}
           <div className="flex-1 overflow-y-auto px-2">
             {incoming.length > 0 && (
               <section className="mb-1">
-                <p
-                  className="px-3 pb-1 pt-2"
-                  style={{
-                    fontFamily: "var(--font-ibm-mono), monospace",
-                    fontSize: "10.5px",
-                    fontWeight: 500,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    color: "var(--meta)",
-                  }}
-                >
+                <p className="px-3 pb-1 pt-2" style={{ fontFamily: "var(--font-ibm-mono), monospace", fontSize: "10.5px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--meta)" }}>
                   შემოსული მოთხოვნები
                 </p>
                 {incoming.map((t) => (
@@ -234,20 +234,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 ))}
               </section>
             )}
-
             <section>
               {incoming.length > 0 && mine.length > 0 && (
-                <p
-                  className="px-3 pb-1 pt-2"
-                  style={{
-                    fontFamily: "var(--font-ibm-mono), monospace",
-                    fontSize: "10.5px",
-                    fontWeight: 500,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    color: "var(--meta)",
-                  }}
-                >
+                <p className="px-3 pb-1 pt-2" style={{ fontFamily: "var(--font-ibm-mono), monospace", fontSize: "10.5px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--meta)" }}>
                   ჩემი სრედები
                 </p>
               )}
@@ -262,11 +251,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </section>
           </div>
 
-          {/* Account row */}
-          <div
-            className="flex items-center gap-3 px-4 py-3.5"
-            style={{ borderTop: "1px solid var(--sidebar-border)" }}
-          >
+          <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderTop: "1px solid var(--sidebar-border)" }}>
             <Link
               href="/profile"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-opacity hover:opacity-70"
@@ -284,20 +269,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             <button
               onClick={handleSignOut}
               className="transition-opacity hover:opacity-60"
-              style={{
-                fontFamily: "var(--font-ibm-mono), monospace",
-                fontSize: "11px",
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "var(--meta)",
-              }}
+              style={{ fontFamily: "var(--font-ibm-mono), monospace", fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--meta)" }}
             >
               Sign out
             </button>
           </div>
         </aside>
 
-        {/* Main */}
         <main className={mainClass}>{children}</main>
       </div>
     </ThreadsContext.Provider>
@@ -309,31 +287,16 @@ function ThreadRow({ thread, active }: { thread: Thread; active: boolean }) {
     <Link
       href={`/chat/${thread.id}`}
       className="flex items-center rounded-xl px-3 py-2.5 transition-colors"
-      style={{
-        background: active ? "var(--thread-active-bg)" : "transparent",
-        marginBottom: "1px",
-      }}
-      onMouseEnter={(e) => {
-        if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)";
-      }}
-      onMouseLeave={(e) => {
-        if (!active) (e.currentTarget as HTMLElement).style.background = "transparent";
-      }}
+      style={{ background: active ? "var(--thread-active-bg)" : "transparent", marginBottom: "1px" }}
+      onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)"; }}
+      onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
     >
       <span
         className="truncate"
-        style={{
-          fontSize: "14px",
-          fontWeight: active ? 600 : 400,
-          color: active ? "var(--ink-strong)" : "var(--ink-muted)",
-        }}
+        style={{ fontSize: "14px", fontWeight: active ? 600 : 400, color: active ? "var(--ink-strong)" : "var(--ink-muted)" }}
       >
-        {thread.type === "incoming_request" && (
-          <span style={{ color: "var(--accent)", marginRight: "4px" }}>↓</span>
-        )}
-        {thread.type === "outgoing_request" && (
-          <span style={{ color: "var(--meta)", marginRight: "4px" }}>↑</span>
-        )}
+        {thread.type === "incoming_request" && <span style={{ color: "var(--accent)", marginRight: "4px" }}>↓</span>}
+        {thread.type === "outgoing_request" && <span style={{ color: "var(--meta)", marginRight: "4px" }}>↑</span>}
         {thread.title ?? "ახალი სრედი"}
       </span>
     </Link>
