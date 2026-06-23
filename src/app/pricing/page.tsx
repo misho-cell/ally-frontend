@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -46,7 +46,6 @@ const PLANS = [
     price: "$2.99",
     period: "/თვე",
     hasTrial: true,
-    trialLabel: "5-day free trial",
     features: ["AI ასისტენტი", "კონტაქტების ანალიზი", "ძირითადი ფუნქციები"],
     highlight: false,
     cta: "5 დღე უფასოდ სცადე",
@@ -57,7 +56,6 @@ const PLANS = [
     price: "$19.99",
     period: "/თვე",
     hasTrial: false,
-    trialLabel: null,
     features: ["Premium-ის ყველაფერი", "პრიორიტეტული მხარდაჭერა", "Advanced analytics"],
     highlight: true,
     cta: "Pro-ს არჩევა",
@@ -68,7 +66,6 @@ const PLANS = [
     price: "$79",
     period: "/თვე",
     hasTrial: false,
-    trialLabel: null,
     features: ["Pro-ის ყველაფერი", "Dedicated support", "Custom integrations"],
     highlight: false,
     cta: "Enterprise-ის არჩევა",
@@ -106,10 +103,9 @@ export default function PricingPage() {
   function openCheckout(planKey: string) {
     if (!paddleReady || !window.Paddle) return;
     setLoading(planKey);
-    const userId = getUserId();
     window.Paddle.Checkout.open({
       items: [{ priceId: PRICE_IDS[planKey], quantity: 1 }],
-      customData: { user_id: userId },
+      customData: { user_id: getUserId() },
     });
     setLoading(null);
   }
@@ -117,8 +113,18 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-[#1a1a2e] px-4 py-12 flex flex-col items-center">
       <div className="w-full max-w-3xl">
-        {/* Logo + header */}
-        <div className="text-center mb-10">
+        {/* Header with close button */}
+        <div className="relative text-center mb-10">
+          <Link
+            href="/chat"
+            className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/60 transition-colors hover:bg-white/20 hover:text-white"
+            aria-label="დახურვა"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </Link>
+
           <div className="flex items-center justify-center gap-2.5 mb-6">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/ally-logo.svg" alt="Ally" width={32} height={32} />
@@ -136,9 +142,7 @@ export default function PricingPage() {
             <div
               key={plan.key}
               className={`rounded-2xl p-6 flex flex-col gap-4 relative ${
-                plan.highlight
-                  ? "bg-[#29a9e1] ring-2 ring-[#29a9e1]"
-                  : "bg-white/10"
+                plan.highlight ? "bg-[#29a9e1] ring-2 ring-[#29a9e1]" : "bg-white/10"
               }`}
             >
               {plan.highlight && (
@@ -170,13 +174,7 @@ export default function PricingPage() {
               <ul className="flex flex-col gap-2 flex-1">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-center gap-2 text-sm text-white">
-                    <svg
-                      className="h-4 w-4 shrink-0 text-white/80"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2.5}
-                    >
+                    <svg className="h-4 w-4 shrink-0 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     {f}
@@ -208,10 +206,7 @@ export default function PricingPage() {
 
         {/* Skip */}
         <div className="text-center">
-          <Link
-            href="/chat"
-            className="text-sm text-gray-500 hover:text-gray-400 transition-colors"
-          >
+          <Link href="/chat" className="text-sm text-gray-500 hover:text-gray-400 transition-colors">
             გამოტოვება — უფასო ვერსიის გამოყენება
           </Link>
         </div>
