@@ -15,6 +15,11 @@ type AdminChatResponse = {
   reply: string;
 };
 
+type SystemPromptResponse = {
+  success: boolean;
+  system_prompt: string;
+};
+
 const INITIAL_MESSAGE: Message = {
   id: "init",
   role: "assistant",
@@ -27,12 +32,58 @@ export default function AdminChatPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // System prompt state
+  const [promptText, setPromptText] = useState("");
+  const [promptLoading, setPromptLoading] = useState(true);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [savingPrompt, setSavingPrompt] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [promptError, setPromptError] = useState<string | null>(null);
+  const [promptOpen, setPromptOpen] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    async function loadPrompt() {
+      try {
+        const data = await apiFetch<SystemPromptResponse>("/admin/system-prompt");
+        setPromptText(data.system_prompt ?? "");
+      } catch {
+        // ignore — prompt section just stays empty
+      } finally {
+        setPromptLoading(false);
+      }
+    }
+    loadPrompt();
+  }, []);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }
+
+  async function handleSavePrompt() {
+    setSavingPrompt(true);
+    setPromptError(null);
+    try {
+      await apiFetch("/admin/system-prompt", {
+        method: "PUT",
+        body: { system_prompt: promptText },
+      });
+      setShowConfirm(false);
+      showToast("შენახულია");
+    } catch {
+      setPromptError("შეცდომა მოხდა. სცადეთ თავიდან.");
+    } finally {
+      setSavingPrompt(false);
+    }
+  }
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
@@ -104,6 +155,59 @@ export default function AdminChatPage() {
         </h1>
         <span className="text-xs text-gray-400">admin</span>
       </header>
+
+      {/* System Prompt Panel */}
+      <div className="border-b border-gray-200 bg-white">
+        <button
+          type="button"
+          onClick={() => setPromptOpen((v) => !v)}
+          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <span>System Prompt</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className={`h-4 w-4 text-gray-400 transition-transform ${promptOpen ? "rotate-180" : ""}`}
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+
+        {promptOpen && (
+          <div className="px-4 pb-4 flex flex-col gap-3">
+            {promptLoading ? (
+              <div className="flex justify-center py-4">
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-[#1a1a2e]" />
+              </div>
+            ) : (
+              <>
+                <textarea
+                  value={promptText}
+                  onChange={(e) => setPromptText(e.target.value)}
+                  rows={8}
+                  className="w-full resize-y rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-800 outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10 font-mono"
+                  placeholder="System prompt..."
+                />
+                {promptError && (
+                  <p className="text-sm text-red-600">{promptError}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setPromptError(null); setShowConfirm(true); }}
+                  className="self-end rounded-xl bg-[#1a1a2e] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                >
+                  შეინახე prompt-ად
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       {error && (
         <div className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-600">
@@ -178,6 +282,46 @@ export default function AdminChatPage() {
           </button>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl flex flex-col gap-4">
+            <p className="text-sm text-gray-800 leading-relaxed">
+              დარწმუნებული ხარ? ეს მოქმედება მთლიანად შეცვლის არსებულ prompt-ს.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                disabled={savingPrompt}
+                className="rounded-xl border border-gray-200 px-5 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+              >
+                გაუქმება
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePrompt}
+                disabled={savingPrompt}
+                className="flex items-center justify-center rounded-xl bg-[#1a1a2e] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              >
+                {savingPrompt ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : (
+                  "დადასტურება"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-[#1a1a2e] px-5 py-3 text-sm font-semibold text-white shadow-lg">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
