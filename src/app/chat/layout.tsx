@@ -40,6 +40,7 @@ function isSubscriptionError(status: number, body: { error?: string; success?: b
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [toolProgress, setToolProgress] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
   const router = useRouter();
@@ -84,6 +85,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             setThreads((prev) =>
               dedup([data.thread, ...prev.filter((t) => String(t.id) !== String(data.thread.id))])
             );
+          } else if (data.event === "tool_progress" && data.message) {
+            setToolProgress(data.message);
           }
         } catch {}
       },
@@ -160,7 +163,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     : "hidden md:flex md:flex-1 md:flex-col";
 
   return (
-    <ThreadsContext.Provider value={{ threads, setThreads }}>
+    <ThreadsContext.Provider value={{ threads, setThreads, toolProgress, setToolProgress }}>
       <div className="flex h-full" style={{ background: "var(--bg)" }}>
         <aside
           className={`${sidebarClass} flex-col shrink-0`}

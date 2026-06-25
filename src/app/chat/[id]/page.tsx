@@ -42,7 +42,7 @@ export default function ThreadPage() {
   const params = useParams();
   const threadId = params.id as string;
   const router = useRouter();
-  const { threads } = useThreads();
+  const { threads, toolProgress, setToolProgress } = useThreads();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [options, setOptions] = useState<Option[]>([]);
@@ -81,7 +81,7 @@ export default function ThreadPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, toolProgress]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -126,10 +126,11 @@ export default function ThreadPage() {
         ]);
       } finally {
         setLoading(false);
+        setToolProgress(null);
         inputRef.current?.focus();
       }
     },
-    [loading, threadId]
+    [loading, threadId, setToolProgress]
   );
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -295,16 +296,21 @@ export default function ThreadPage() {
 
             {loading && (
               <div className="flex items-start gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/ally-logo.svg"
                   alt=""
                   style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
                 />
-                <div className="flex gap-1 items-center" style={{ paddingTop: "4px" }}>
-                  <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]" style={{ background: "var(--placeholder)" }} />
-                  <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.15s]" style={{ background: "var(--placeholder)" }} />
-                  <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "var(--placeholder)" }} />
-                </div>
+                {toolProgress ? (
+                  <ToolProgressText key={toolProgress} text={toolProgress} />
+                ) : (
+                  <div className="flex gap-1 items-center" style={{ paddingTop: "4px" }}>
+                    <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]" style={{ background: "var(--placeholder)" }} />
+                    <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.15s]" style={{ background: "var(--placeholder)" }} />
+                    <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "var(--placeholder)" }} />
+                  </div>
+                )}
               </div>
             )}
 
@@ -363,5 +369,26 @@ export default function ThreadPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ToolProgressText({ text }: { text: string }) {
+  return (
+    <span
+      style={{
+        fontSize: "14px",
+        color: "var(--placeholder)",
+        paddingTop: "3px",
+        animation: "fadeInUp 0.2s ease-out",
+      }}
+    >
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      {text}
+    </span>
   );
 }

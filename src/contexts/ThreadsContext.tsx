@@ -12,11 +12,15 @@ export type Thread = {
 type Ctx = {
   threads: Thread[];
   setThreads: Dispatch<SetStateAction<Thread[]>>;
+  toolProgress: string | null;
+  setToolProgress: Dispatch<SetStateAction<string | null>>;
 };
 
 export const ThreadsContext = createContext<Ctx>({
   threads: [],
   setThreads: () => {},
+  toolProgress: null,
+  setToolProgress: () => {},
 });
 
 export const useThreads = () => useContext(ThreadsContext);
