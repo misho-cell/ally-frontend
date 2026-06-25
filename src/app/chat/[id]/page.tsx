@@ -22,6 +22,14 @@ function detectLang(): string {
   return SUPPORTED_LANGS.find((l) => l.startsWith(base)) ?? "en-US";
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getSpeechRecognition(): any {
+  if (typeof window === "undefined") return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const w = window as any;
+  return w.SpeechRecognition || w.webkitSpeechRecognition || null;
+}
+
 type Message = {
   id: string;
   role: "user" | "assistant";
@@ -71,7 +79,8 @@ export default function ThreadPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
   const inputBeforeRecordingRef = useRef("");
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -79,9 +88,7 @@ export default function ThreadPage() {
   const userInitial = getUserInitial();
 
   useEffect(() => {
-    const SR = (window as Window & typeof globalThis & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ||
-      (window as Window & typeof globalThis & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition;
-    setSpeechSupported(!!SR);
+    setSpeechSupported(!!getSpeechRecognition());
   }, []);
 
   function showToast(msg: string) {
@@ -110,8 +117,7 @@ export default function ThreadPage() {
   }
 
   function startRecognition() {
-    const SR = (window as Window & typeof globalThis & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ||
-      (window as Window & typeof globalThis & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition;
+    const SR = getSpeechRecognition();
     if (!SR) return;
 
     const recognition = new SR();
@@ -123,7 +129,8 @@ export default function ThreadPage() {
     recognitionRef.current = recognition;
     setVoiceState("recording");
 
-    recognition.onresult = (e: SpeechRecognitionEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (e: any) => {
       let interim = "";
       let final = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -147,7 +154,8 @@ export default function ThreadPage() {
       setTimeout(() => inputRef.current?.focus(), 50);
     };
 
-    recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onerror = (e: any) => {
       recognitionRef.current = null;
       setVoiceState("idle");
       if (e.error === "not-allowed") {
@@ -157,7 +165,6 @@ export default function ThreadPage() {
         showToast("ინტერნეტ კავშირი საჭიროა");
         setInput(inputBeforeRecordingRef.current);
       }
-      // no-speech: leave input as-is, just go idle
     };
 
     recognition.start();
@@ -169,7 +176,6 @@ export default function ThreadPage() {
     } else if (voiceState === "idle") {
       startRecognition();
     }
-    // processing: ignore double-click
   }
 
   useEffect(() => {
@@ -525,12 +531,10 @@ export default function ThreadPage() {
                     style={{ borderColor: "var(--placeholder)", borderTopColor: "transparent" }}
                   />
                 ) : voiceState === "recording" ? (
-                  // Stop icon
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
                     <rect x="5" y="5" width="10" height="10" rx="1.5" />
                   </svg>
                 ) : (
-                  // Mic icon
                   <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
                     <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.6" />
                     <path d="M4 10a6 6 0 0012 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -541,7 +545,7 @@ export default function ThreadPage() {
               </button>
             )}
 
-            {/* Send button — hidden while recording, shown otherwise */}
+            {/* Send button — hidden while recording */}
             {voiceState !== "recording" && (
               <button
                 type="button"
