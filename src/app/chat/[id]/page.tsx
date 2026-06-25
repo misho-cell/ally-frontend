@@ -82,6 +82,7 @@ export default function ThreadPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const inputBeforeRecordingRef = useRef("");
+  const confirmedTranscriptRef = useRef(""); // accumulates final results during continuous session
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const thread = threads.find((t) => String(t.id) === threadId);
@@ -122,30 +123,32 @@ export default function ThreadPage() {
 
     const recognition = new SR();
     recognition.lang = detectLang();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
 
     inputBeforeRecordingRef.current = input;
+    confirmedTranscriptRef.current = "";
     recognitionRef.current = recognition;
     setVoiceState("recording");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (e: any) => {
       let interim = "";
-      let final = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) final += t;
-        else interim += t;
+        if (e.results[i].isFinal) {
+          confirmedTranscriptRef.current += (confirmedTranscriptRef.current ? " " : "") + t.trim();
+        } else {
+          interim += t;
+        }
       }
       const base = inputBeforeRecordingRef.current;
-      const appended = (final || interim).trim();
-      const joined = base ? base + " " + appended : appended;
+      const combined = [
+        confirmedTranscriptRef.current,
+        interim.trim(),
+      ].filter(Boolean).join(" ");
+      const joined = base ? base + " " + combined : combined;
       setInput(joined);
-    };
-
-    recognition.onspeechend = () => {
-      setVoiceState("processing");
     };
 
     recognition.onend = () => {
