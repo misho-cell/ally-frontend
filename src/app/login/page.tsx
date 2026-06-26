@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+
+const SMS_COOLDOWN = 30;
 
 type Step = "phone" | "otp" | "name";
 
@@ -15,7 +17,39 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [smsLoading, setSmsLoading] = useState(false);
+  const [smsToast, setSmsToast] = useState<string | null>(null);
+  const [smsCooldown, setSmsCooldown] = useState(SMS_COOLDOWN);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
+
+  // Start countdown when OTP step begins
+  useEffect(() => {
+    if (step === "otp") {
+      setSmsCooldown(SMS_COOLDOWN);
+      cooldownRef.current = setInterval(() => {
+        setSmsCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(cooldownRef.current!);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    }
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, [step]);
+
+  function showSmsToast(msg: string) {
+    setSmsToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setSmsToast(null), 3500);
+  }
 
   function saveToken(token: string) {
     localStorage.setItem("token", token);
@@ -77,6 +111,30 @@ export default function LoginPage() {
     }
   }
 
+  async function handleSmsResend() {
+    setSmsLoading(true);
+    try {
+      await post("/auth/resend-otp", { phone, actionType: "AUTH" });
+      showSmsToast("კოდი SMS-ით გაიგზავნა");
+      // restart cooldown
+      setSmsCooldown(SMS_COOLDOWN);
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+      cooldownRef.current = setInterval(() => {
+        setSmsCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(cooldownRef.current!);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      showSmsToast(err instanceof Error ? err.message : "შეცდომა");
+    } finally {
+      setSmsLoading(false);
+    }
+  }
+
   async function handleNameSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -94,6 +152,28 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-full flex-col items-center justify-between bg-[#1a1a2e] px-4 py-12">
+      {/* SMS toast */}
+      {smsToast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "80px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(0,0,0,0.82)",
+            color: "white",
+            borderRadius: "12px",
+            padding: "10px 18px",
+            fontSize: "13.5px",
+            zIndex: 9999,
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+          }}
+        >
+          {smsToast}
+        </div>
+      )}
+
       <div className="flex-1 flex flex-col items-center justify-center w-full">
         <div className="w-full max-w-sm">
           <h1 className="mb-8 text-center text-3xl font-bold tracking-tight text-white">
@@ -151,6 +231,23 @@ export default function LoginPage() {
                 >
                   {loading ? <Spinner /> : "დადასტურება"}
                 </button>
+
+                {/* SMS resend */}
+                <button
+                  type="button"
+                  onClick={handleSmsResend}
+                  disabled={smsCooldown > 0 || smsLoading}
+                  className="flex h-10 items-center justify-center rounded-xl border border-gray-200 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {smsLoading ? (
+                    <Spinner />
+                  ) : smsCooldown > 0 ? (
+                    `SMS-ით გაგზავნა (${smsCooldown} წმ)`
+                  ) : (
+                    "კოდი არ მივიღე — SMS-ით გამოგზავნა"
+                  )}
+                </button>
+
                 <button
                   type="button"
                   onClick={() => { setStep("phone"); setOtp(""); setError(""); }}
