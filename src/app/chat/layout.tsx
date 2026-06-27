@@ -46,11 +46,13 @@ function isSubscriptionError(status: number, body: { error?: string; success?: b
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadStates, setThreadStates] = useState<Record<string, ThreadState>>({});
+  const [reconnectNonce, setReconnectNonce] = useState(0);
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const abortRef = useRef<AbortController | null>(null);
+  const sawFirstOpenRef = useRef(false);
 
   const isOnThread = pathname !== "/chat";
 
@@ -87,6 +89,16 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       headers: { Authorization: `Bearer ${getToken()}` },
       signal: ctrl.signal,
       openWhenHidden: true,
+      onopen: async () => {
+        // Skip the first open (page mount already fetches). On every reconnect
+        // after that, bump the nonce so the open thread re-fetches /messages for
+        // catch-up before resuming live events.
+        if (sawFirstOpenRef.current) {
+          setReconnectNonce((n) => n + 1);
+        } else {
+          sawFirstOpenRef.current = true;
+        }
+      },
       onmessage(ev) {
         if (!ev.data) return;
         try {
@@ -102,15 +114,28 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
             case "tool_progress":
             case "step_summary": {
-              // Accumulate every intermediate update as a durable log line so
-              // none get lost. tool_progress carries `message`, step_summary
-              // carries `text`. Skip consecutive duplicates.
+              // Append every intermediate update as a durable step item so none
+              // get lost. tool_progress carries `message`, step_summary carries
+              // `text`. Skip a consecutive duplicate of the same line.
               const line: string | undefined = data.text ?? data.message;
               if (data.threadId != null && line) {
                 setThreadStates((prev) =>
                   updateThreadState(prev, data.threadId, (ts) => {
-                    if (ts.steps[ts.steps.length - 1] === line) return ts;
-                    return { ...ts, steps: [...ts.steps, line] };
+                    const last = ts.messages[ts.messages.length - 1];
+                    if (last && last.kind === "step" && last.content === line) return ts;
+                    return {
+                      ...ts,
+                      messages: [
+                        ...ts.messages,
+                        {
+                          id: crypto.randomUUID(),
+                          role: "assistant",
+                          content: line,
+                          kind: "step",
+                          runId: data.runId ?? null,
+                        },
+                      ],
+                    };
                   })
                 );
               }
@@ -128,14 +153,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         id: crypto.randomUUID(),
                         role: "assistant",
                         content: data.reply ?? "",
+                        kind: "message",
+                        runId: data.runId ?? null,
                       },
                     ],
                     options: Array.isArray(data.options) ? data.options : [],
                     choices: Array.isArray(data.choices) ? data.choices : [],
                     loading: false,
                     runId: null,
-                    toolProgress: null,
-                    steps: [],
                     error: null,
                   }))
                 );
@@ -151,8 +176,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     ...ts,
                     loading: false,
                     runId: null,
-                    toolProgress: null,
-                    steps: [],
                     error: data.message ?? "Something went wrong.",
                   }))
                 );
@@ -235,7 +258,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     : "hidden md:flex md:flex-1 md:flex-col";
 
   return (
-    <ThreadsContext.Provider value={{ threads, setThreads, threadStates, setThreadStates }}>
+    <ThreadsContext.Provider value={{ threads, setThreads, threadStates, setThreadStates, reconnectNonce }}>
       <div className="flex h-full" style={{ background: "var(--bg)" }}>
         <aside
           className={`${sidebarClass} flex-col shrink-0`}
