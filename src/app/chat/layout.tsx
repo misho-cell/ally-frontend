@@ -101,28 +101,21 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               break;
 
             case "tool_progress":
-              // transient — replace, do not accumulate
-              if (data.threadId != null && data.message) {
+            case "step_summary": {
+              // Accumulate every intermediate update as a durable log line so
+              // none get lost. tool_progress carries `message`, step_summary
+              // carries `text`. Skip consecutive duplicates.
+              const line: string | undefined = data.text ?? data.message;
+              if (data.threadId != null && line) {
                 setThreadStates((prev) =>
-                  updateThreadState(prev, data.threadId, (ts) => ({
-                    ...ts,
-                    toolProgress: data.message,
-                  }))
+                  updateThreadState(prev, data.threadId, (ts) => {
+                    if (ts.steps[ts.steps.length - 1] === line) return ts;
+                    return { ...ts, steps: [...ts.steps, line] };
+                  })
                 );
               }
               break;
-
-            case "step_summary":
-              // durable narrative — accumulate
-              if (data.threadId != null && data.text) {
-                setThreadStates((prev) =>
-                  updateThreadState(prev, data.threadId, (ts) => ({
-                    ...ts,
-                    steps: [...ts.steps, data.text],
-                  }))
-                );
-              }
-              break;
+            }
 
             case "run_complete":
               if (data.threadId != null) {
