@@ -4,7 +4,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
-import { ThreadsContext, type Thread } from "@/contexts/ThreadsContext";
+import {
+  ThreadsContext,
+  updateThreadState,
+  type Thread,
+  type ThreadState,
+} from "@/contexts/ThreadsContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -40,7 +45,7 @@ function isSubscriptionError(status: number, body: { error?: string; success?: b
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const [threads, setThreads] = useState<Thread[]>([]);
-  const [toolProgress, setToolProgress] = useState<string | null>(null);
+  const [threadStates, setThreadStates] = useState<Record<string, ThreadState>>({});
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
   const router = useRouter();
@@ -68,6 +73,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     } catch {}
   }, [router]);
 
+  // One persistent SSE connection for the whole chat session. It lives above the
+  // page so navigation between threads never tears it down — events are never
+  // buffered server-side, so a closed socket means a lost run_complete. Auto-
+  // reconnects on drop (onerror returns a retry delay).
   useEffect(() => {
     loadThreads();
 
@@ -77,20 +86,90 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     fetchEventSource(`${BASE_URL}/threads/stream`, {
       headers: { Authorization: `Bearer ${getToken()}` },
       signal: ctrl.signal,
+      openWhenHidden: true,
       onmessage(ev) {
         if (!ev.data) return;
         try {
           const data = JSON.parse(ev.data);
-          if (data.event === "thread_created" && data.thread) {
-            setThreads((prev) =>
-              dedup([data.thread, ...prev.filter((t) => String(t.id) !== String(data.thread.id))])
-            );
-          } else if (data.event === "tool_progress" && data.message) {
-            setToolProgress(data.message);
+          switch (data.event) {
+            case "thread_created":
+              if (data.thread) {
+                setThreads((prev) =>
+                  dedup([data.thread, ...prev.filter((t) => String(t.id) !== String(data.thread.id))])
+                );
+              }
+              break;
+
+            case "tool_progress":
+              // transient — replace, do not accumulate
+              if (data.threadId != null && data.message) {
+                setThreadStates((prev) =>
+                  updateThreadState(prev, data.threadId, (ts) => ({
+                    ...ts,
+                    toolProgress: data.message,
+                  }))
+                );
+              }
+              break;
+
+            case "step_summary":
+              // durable narrative — accumulate
+              if (data.threadId != null && data.text) {
+                setThreadStates((prev) =>
+                  updateThreadState(prev, data.threadId, (ts) => ({
+                    ...ts,
+                    steps: [...ts.steps, data.text],
+                  }))
+                );
+              }
+              break;
+
+            case "run_complete":
+              if (data.threadId != null) {
+                setThreadStates((prev) =>
+                  updateThreadState(prev, data.threadId, (ts) => ({
+                    ...ts,
+                    messages: [
+                      ...ts.messages,
+                      {
+                        id: crypto.randomUUID(),
+                        role: "assistant",
+                        content: data.reply ?? "",
+                      },
+                    ],
+                    options: Array.isArray(data.options) ? data.options : [],
+                    choices: Array.isArray(data.choices) ? data.choices : [],
+                    loading: false,
+                    runId: null,
+                    toolProgress: null,
+                    steps: [],
+                    error: null,
+                  }))
+                );
+                // bump thread to top of sidebar
+                loadThreads();
+              }
+              break;
+
+            case "run_error":
+              if (data.threadId != null) {
+                setThreadStates((prev) =>
+                  updateThreadState(prev, data.threadId, (ts) => ({
+                    ...ts,
+                    loading: false,
+                    runId: null,
+                    toolProgress: null,
+                    steps: [],
+                    error: data.message ?? "Something went wrong.",
+                  }))
+                );
+              }
+              break;
           }
         } catch {}
       },
       onerror() {
+        // reconnect after 4s; throwing here would stop retries
         return 4000;
       },
     });
@@ -163,7 +242,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     : "hidden md:flex md:flex-1 md:flex-col";
 
   return (
-    <ThreadsContext.Provider value={{ threads, setThreads, toolProgress, setToolProgress }}>
+    <ThreadsContext.Provider value={{ threads, setThreads, threadStates, setThreadStates }}>
       <div className="flex h-full" style={{ background: "var(--bg)" }}>
         <aside
           className={`${sidebarClass} flex-col shrink-0`}
@@ -230,7 +309,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             {incoming.length > 0 && (
               <section className="mb-1">
                 <p className="px-3 pb-1 pt-2" style={{ fontFamily: "var(--font-ibm-mono), monospace", fontSize: "10.5px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--meta)" }}>
-                  შემოსული მოთხოვნები
+                  Incoming requests
                 </p>
                 {incoming.map((t) => (
                   <ThreadRow key={t.id} thread={t} active={pathname === `/chat/${t.id}`} />
@@ -240,7 +319,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             <section>
               {incoming.length > 0 && mine.length > 0 && (
                 <p className="px-3 pb-1 pt-2" style={{ fontFamily: "var(--font-ibm-mono), monospace", fontSize: "10.5px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--meta)" }}>
-                  ჩემი სრედები
+                  My threads
                 </p>
               )}
               {mine.map((t) => (
@@ -248,7 +327,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               ))}
               {threads.length === 0 && (
                 <p className="px-3 py-6 text-center" style={{ color: "var(--placeholder)", fontSize: "13px" }}>
-                  სრედები არ არის
+                  No threads yet
                 </p>
               )}
             </section>
@@ -300,7 +379,7 @@ function ThreadRow({ thread, active }: { thread: Thread; active: boolean }) {
       >
         {thread.type === "incoming_request" && <span style={{ color: "var(--accent)", marginRight: "4px" }}>↓</span>}
         {thread.type === "outgoing_request" && <span style={{ color: "var(--meta)", marginRight: "4px" }}>↑</span>}
-        {thread.title ?? "ახალი სრედი"}
+        {thread.title ?? "New thread"}
       </span>
     </Link>
   );
