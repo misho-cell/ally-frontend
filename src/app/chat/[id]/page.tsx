@@ -8,6 +8,7 @@ import {
   useThreads,
   updateThreadState,
   DEFAULT_THREAD_STATE,
+  type ChatMessage,
 } from "@/contexts/ThreadsContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -52,14 +53,40 @@ function getUserInitial(): string {
   }
 }
 
+// Walk the chronological list and fold runs of consecutive `step` items into a
+// single group, leaving `message` items standalone. Order is preserved, so a
+// run reads as: user message → step group → final answer.
+type RenderBlock =
+  | { type: "message"; msg: ChatMessage }
+  | { type: "steps"; steps: ChatMessage[]; trailing: boolean };
+
+function toBlocks(messages: ChatMessage[]): RenderBlock[] {
+  const blocks: RenderBlock[] = [];
+  let i = 0;
+  while (i < messages.length) {
+    if (messages[i].kind === "step") {
+      const steps: ChatMessage[] = [];
+      while (i < messages.length && messages[i].kind === "step") {
+        steps.push(messages[i]);
+        i++;
+      }
+      blocks.push({ type: "steps", steps, trailing: i === messages.length });
+    } else {
+      blocks.push({ type: "message", msg: messages[i] });
+      i++;
+    }
+  }
+  return blocks;
+}
+
 export default function ThreadPage() {
   const params = useParams();
   const threadId = params.id as string;
   const router = useRouter();
-  const { threads, threadStates, setThreadStates } = useThreads();
+  const { threads, threadStates, setThreadStates, reconnectNonce } = useThreads();
 
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
-  const { messages, options, choices, steps, toolProgress, loading, error } = st;
+  const { messages, options, choices, loading, error } = st;
 
   const [input, setInput] = useState("");
   const [initialLoading, setInitialLoading] = useState(!st.loaded);
@@ -171,10 +198,10 @@ export default function ThreadPage() {
     }
   }
 
-  // Hydrate message history from the server. The final reply is persisted in the
-  // DB on run_complete, so refetching here is what restores a run that finished
-  // while we were elsewhere (or across a reconnect). Live run state (loading/
-  // steps) is preserved — only messages are replaced.
+  // Hydrate message history from the server. Backend now persists steps too
+  // (kind='step', run_id), so refetching restores prior runs' steps + final
+  // replies. Runs on thread change and on SSE reconnect (catch-up). Live run
+  // fields (loading/runId) are preserved — only the message list is replaced.
   useEffect(() => {
     if (!threadId) return;
     let cancelled = false;
@@ -186,11 +213,18 @@ export default function ThreadPage() {
       .then((r) => r.json())
       .then((json) => {
         if (cancelled) return;
-        const raw: Array<{ role: string; content: string }> = json.data ?? json;
-        const hydrated = (Array.isArray(raw) ? raw : []).map((m) => ({
+        const raw: Array<{
+          role: string;
+          content: string;
+          kind?: string;
+          run_id?: string | null;
+        }> = json.data ?? json;
+        const hydrated: ChatMessage[] = (Array.isArray(raw) ? raw : []).map((m) => ({
           id: crypto.randomUUID(),
           role: m.role as "user" | "assistant",
           content: m.content,
+          kind: m.kind === "step" ? "step" : "message",
+          runId: m.run_id ?? null,
         }));
         setThreadStates((prev) =>
           updateThreadState(prev, threadId, (ts) => ({
@@ -209,11 +243,11 @@ export default function ThreadPage() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadId]);
+  }, [threadId, reconnectNonce]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, steps, toolProgress, error]);
+  }, [messages, loading, error]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -229,12 +263,16 @@ export default function ThreadPage() {
           ...ts,
           messages: [
             ...ts.messages,
-            { id: crypto.randomUUID(), role: "user", content: trimmed },
+            {
+              id: crypto.randomUUID(),
+              role: "user",
+              content: trimmed,
+              kind: "message",
+              runId: null,
+            },
           ],
           options: [],
           choices: [],
-          steps: [],
-          toolProgress: null,
           error: null,
           loading: true,
           runId: null,
@@ -282,6 +320,12 @@ export default function ThreadPage() {
       sendMessage(input);
     }
   }
+
+  const blocks = toBlocks(messages);
+  const lastMsg = messages[messages.length - 1];
+  const lastIsAssistantMessage = lastMsg?.kind === "message" && lastMsg.role === "assistant";
+  const showOptions = !loading && lastIsAssistantMessage && options.length > 0;
+  const showChoices = !loading && lastIsAssistantMessage && choices.length > 0;
 
   return (
     <div className="flex h-full flex-col" style={{ background: "var(--bg)" }}>
@@ -385,124 +429,117 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {messages.map((msg, i) => {
-              const isLast = i === messages.length - 1;
-              const showOptions = isLast && msg.role === "assistant" && options.length > 0 && !loading;
-              const showChoices = isLast && msg.role === "assistant" && choices.length > 0 && !loading;
-
+            {blocks.map((block, bi) => {
+              if (block.type === "steps") {
+                const live = loading && block.trailing;
+                return (
+                  <StepGroup
+                    key={`steps-${bi}`}
+                    steps={block.steps}
+                    live={live}
+                  />
+                );
+              }
+              const msg = block.msg;
+              if (msg.role === "user") {
+                return (
+                  <div key={msg.id} className="flex justify-end">
+                    <div
+                      className="max-w-[72%] px-4 py-3 whitespace-pre-wrap"
+                      style={{
+                        background: "var(--user-bubble-bg)",
+                        color: "var(--ink)",
+                        borderRadius: "18px 18px 6px 18px",
+                        fontSize: "15.5px",
+                        lineHeight: "1.6",
+                      }}
+                    >
+                      {msg.content}
+                    </div>
+                  </div>
+                );
+              }
               return (
-                <div key={msg.id} className="flex flex-col gap-3">
-                  {msg.role === "user" ? (
-                    <div className="flex justify-end">
-                      <div
-                        className="max-w-[72%] px-4 py-3 whitespace-pre-wrap"
-                        style={{
-                          background: "var(--user-bubble-bg)",
-                          color: "var(--ink)",
-                          borderRadius: "18px 18px 6px 18px",
-                          fontSize: "15.5px",
-                          lineHeight: "1.6",
-                        }}
-                      >
-                        {msg.content}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start gap-3">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src="/ally-logo.svg"
-                        alt=""
-                        style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
-                      />
-                      <div style={{ color: "var(--ink)", fontSize: "15.5px", lineHeight: "1.65", flex: 1 }}>
-                        <ReactMarkdown
-                          components={{
-                            p: ({ children }) => <p style={{ marginBottom: "10px" }} className="last:mb-0">{children}</p>,
-                            strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
-                            em: ({ children }) => <em style={{ fontStyle: "italic" }}>{children}</em>,
-                            ol: ({ children }) => <ol style={{ paddingLeft: "20px", marginBottom: "10px", listStyleType: "decimal" }} className="space-y-1 last:mb-0">{children}</ol>,
-                            ul: ({ children }) => <ul style={{ paddingLeft: "20px", marginBottom: "10px", listStyleType: "disc" }} className="space-y-1 last:mb-0">{children}</ul>,
-                            li: ({ children }) => <li>{children}</li>,
-                          }}
-                        >
-                          {msg.content}
-                        </ReactMarkdown>
-                      </div>
-                    </div>
-                  )}
-
-                  {showOptions && (
-                    <div className="flex flex-col gap-2 pl-9">
-                      {options.map((opt) => (
-                        <button
-                          key={opt.phone}
-                          type="button"
-                          onClick={() => sendMessage(`${opt.name} (${opt.phone})`)}
-                          className="flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-left transition-colors hover:bg-gray-50"
-                          style={{ borderColor: "var(--header-border)", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}
-                        >
-                          <span
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-                            style={{ background: "var(--thread-active-bg)", color: "var(--ink-2)" }}
-                          >
-                            {opt.name.charAt(0).toUpperCase()}
-                          </span>
-                          <span className="flex flex-col">
-                            <span style={{ fontWeight: 500, color: "var(--ink)", fontSize: "14px" }}>{opt.name}</span>
-                            <span style={{ color: "var(--placeholder)", fontSize: "12.5px" }}>{opt.phone}</span>
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {showChoices && (
-                    <div className="flex flex-wrap gap-2 pl-9">
-                      {choices.map((choice, ci) => (
-                        <button
-                          key={`${ci}-${choice}`}
-                          type="button"
-                          onClick={() => sendMessage(choice)}
-                          className="rounded-full border bg-white px-4 py-2 text-left transition-colors hover:bg-gray-50"
-                          style={{
-                            borderColor: "var(--accent)",
-                            color: "var(--accent)",
-                            fontSize: "14px",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {choice}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                <div key={msg.id} className="flex items-start gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/ally-logo.svg"
+                    alt=""
+                    style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
+                  />
+                  <div style={{ color: "var(--ink)", fontSize: "15.5px", lineHeight: "1.65", flex: 1 }}>
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <p style={{ marginBottom: "10px" }} className="last:mb-0">{children}</p>,
+                        strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+                        em: ({ children }) => <em style={{ fontStyle: "italic" }}>{children}</em>,
+                        ol: ({ children }) => <ol style={{ paddingLeft: "20px", marginBottom: "10px", listStyleType: "decimal" }} className="space-y-1 last:mb-0">{children}</ol>,
+                        ul: ({ children }) => <ul style={{ paddingLeft: "20px", marginBottom: "10px", listStyleType: "disc" }} className="space-y-1 last:mb-0">{children}</ul>,
+                        li: ({ children }) => <li>{children}</li>,
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               );
             })}
 
-            {/* Live run: accumulated steps + transient progress / dots */}
+            {/* Disambiguation options (attach to final answer) */}
+            {showOptions && (
+              <div className="flex flex-col gap-2 pl-9">
+                {options.map((opt) => (
+                  <button
+                    key={opt.phone}
+                    type="button"
+                    onClick={() => sendMessage(`${opt.name} (${opt.phone})`)}
+                    className="flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-left transition-colors hover:bg-gray-50"
+                    style={{ borderColor: "var(--header-border)", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}
+                  >
+                    <span
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                      style={{ background: "var(--thread-active-bg)", color: "var(--ink-2)" }}
+                    >
+                      {opt.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="flex flex-col">
+                      <span style={{ fontWeight: 500, color: "var(--ink)", fontSize: "14px" }}>{opt.name}</span>
+                      <span style={{ color: "var(--placeholder)", fontSize: "12.5px" }}>{opt.phone}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Quick-reply choices */}
+            {showChoices && (
+              <div className="flex flex-wrap gap-2 pl-9">
+                {choices.map((choice, ci) => (
+                  <button
+                    key={`${ci}-${choice}`}
+                    type="button"
+                    onClick={() => sendMessage(choice)}
+                    className="rounded-full border bg-white px-4 py-2 text-left transition-colors hover:bg-gray-50"
+                    style={{
+                      borderColor: "var(--accent)",
+                      color: "var(--accent)",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {choice}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Live spinner while a run is in flight (steps render above) */}
             {loading && (
-              <div className="flex items-start gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/ally-logo.svg"
-                  alt=""
-                  style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
-                />
-                <div className="flex flex-col gap-2" style={{ flex: 1 }}>
-                  {steps.map((step, si) => (
-                    <StepLine key={si} text={step} />
-                  ))}
-                  {toolProgress ? (
-                    <ToolProgressText key={toolProgress} text={toolProgress} />
-                  ) : (
-                    <div className="flex gap-1 items-center" style={{ paddingTop: "4px" }}>
-                      <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]" style={{ background: "var(--placeholder)" }} />
-                      <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.15s]" style={{ background: "var(--placeholder)" }} />
-                      <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "var(--placeholder)" }} />
-                    </div>
-                  )}
+              <div className="flex items-center gap-3 pl-9">
+                <div className="flex gap-1 items-center">
+                  <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]" style={{ background: "var(--placeholder)" }} />
+                  <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.15s]" style={{ background: "var(--placeholder)" }} />
+                  <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "var(--placeholder)" }} />
                 </div>
               </div>
             )}
@@ -630,6 +667,40 @@ export default function ThreadPage() {
   );
 }
 
+// One renderer for both live and stored steps. Expanded while the run is live,
+// collapsed once it completes (toggleable by the user).
+function StepGroup({ steps, live }: { steps: ChatMessage[]; live: boolean }) {
+  const [open, setOpen] = useState(live);
+
+  useEffect(() => {
+    setOpen(live);
+  }, [live]);
+
+  return (
+    <div className="flex items-start gap-3">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/ally-logo.svg"
+        alt=""
+        style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
+      />
+      <div className="flex flex-col gap-2" style={{ flex: 1 }}>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-1 self-start transition-opacity hover:opacity-70"
+          style={{ fontSize: "12.5px", color: "var(--meta)", fontWeight: 500 }}
+        >
+          <span style={{ fontSize: "10px" }}>{open ? "▾" : "▸"}</span>
+          {open ? "Hide steps" : `Show steps (${steps.length})`}
+        </button>
+        {open &&
+          steps.map((s) => <StepLine key={s.id} text={s.content} />)}
+      </div>
+    </div>
+  );
+}
+
 function StepLine({ text }: { text: string }) {
   return (
     <div
@@ -645,26 +716,5 @@ function StepLine({ text }: { text: string }) {
       <span style={{ color: "var(--accent)", lineHeight: "1.5" }}>✓</span>
       <span style={{ lineHeight: "1.5" }}>{text}</span>
     </div>
-  );
-}
-
-function ToolProgressText({ text }: { text: string }) {
-  return (
-    <span
-      style={{
-        fontSize: "14px",
-        color: "var(--placeholder)",
-        paddingTop: "3px",
-        animation: "fadeInUp 0.2s ease-out",
-      }}
-    >
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-      {text}
-    </span>
   );
 }
