@@ -9,34 +9,36 @@ export type Thread = {
   updated_at: string;
 };
 
+// A single rendered item in a thread. Both final replies and intermediate
+// agent steps share this shape — `kind` distinguishes them, `runId` groups a
+// run's steps with its answer. Live (SSE) and stored (GET /messages) items are
+// identical, so they render through the same component.
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  kind: "message" | "step";
+  runId: string | null;
 };
 
 export type Option = { phone: string; name: string };
 
-// Per-thread live state. Message history is (re)hydrated from GET /messages;
-// the live run fields (loading/runId/steps/toolProgress/error) are driven by SSE.
+// Per-thread state. `messages` is the chronological list (messages + steps).
+// The live-run fields (loading/runId/error) are driven by SSE this session.
 export type ThreadState = {
   messages: ChatMessage[];
   options: Option[];
   choices: string[];
-  steps: string[];          // accumulated step_summary narrative
-  toolProgress: string | null; // latest transient tool_progress line
   loading: boolean;
   runId: string | null;
   error: string | null;
-  loaded: boolean;          // whether GET /messages has hydrated this thread
+  loaded: boolean;
 };
 
 export const DEFAULT_THREAD_STATE: ThreadState = {
   messages: [],
   options: [],
   choices: [],
-  steps: [],
-  toolProgress: null,
   loading: false,
   runId: null,
   error: null,
@@ -59,6 +61,9 @@ type Ctx = {
   setThreads: Dispatch<SetStateAction<Thread[]>>;
   threadStates: Record<string, ThreadState>;
   setThreadStates: Dispatch<SetStateAction<Record<string, ThreadState>>>;
+  // Bumped when the SSE stream (re)connects, so open threads re-fetch history
+  // for catch-up. Not bumped on the very first connect.
+  reconnectNonce: number;
 };
 
 export const ThreadsContext = createContext<Ctx>({
@@ -66,6 +71,7 @@ export const ThreadsContext = createContext<Ctx>({
   setThreads: () => {},
   threadStates: {},
   setThreadStates: () => {},
+  reconnectNonce: 0,
 });
 
 export const useThreads = () => useContext(ThreadsContext);
