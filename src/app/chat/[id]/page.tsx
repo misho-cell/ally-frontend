@@ -4,7 +4,11 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
-import { useThreads } from "@/contexts/ThreadsContext";
+import {
+  useThreads,
+  updateThreadState,
+  DEFAULT_THREAD_STATE,
+} from "@/contexts/ThreadsContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -30,20 +34,6 @@ function getSpeechRecognition(): any {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
 
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-};
-
-type Option = { phone: string; name: string };
-
-type ChatResponse = {
-  success: boolean;
-  reply: string;
-  options?: Option[];
-};
-
 type VoiceState = "idle" | "recording" | "processing";
 
 function getToken() {
@@ -66,13 +56,13 @@ export default function ThreadPage() {
   const params = useParams();
   const threadId = params.id as string;
   const router = useRouter();
-  const { threads, toolProgress, setToolProgress } = useThreads();
+  const { threads, threadStates, setThreadStates } = useThreads();
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [options, setOptions] = useState<Option[]>([]);
+  const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
+  const { messages, options, choices, steps, toolProgress, loading, error } = st;
+
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(!st.loaded);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [speechSupported, setSpeechSupported] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -82,7 +72,7 @@ export default function ThreadPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const inputBeforeRecordingRef = useRef("");
-  const confirmedTranscriptRef = useRef(""); // accumulates final results during continuous session
+  const confirmedTranscriptRef = useRef("");
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const thread = threads.find((t) => String(t.id) === threadId);
@@ -162,10 +152,10 @@ export default function ThreadPage() {
       recognitionRef.current = null;
       setVoiceState("idle");
       if (e.error === "not-allowed") {
-        showToast("მიკროფონის წვდომა არ არის დაშვებული");
+        showToast("Microphone access is not allowed");
         setInput(inputBeforeRecordingRef.current);
       } else if (e.error === "network") {
-        showToast("ინტერნეტ კავშირი საჭიროა");
+        showToast("Internet connection required");
         setInput(inputBeforeRecordingRef.current);
       }
     };
@@ -181,33 +171,49 @@ export default function ThreadPage() {
     }
   }
 
+  // Hydrate message history from the server. The final reply is persisted in the
+  // DB on run_complete, so refetching here is what restores a run that finished
+  // while we were elsewhere (or across a reconnect). Live run state (loading/
+  // steps) is preserved — only messages are replaced.
   useEffect(() => {
     if (!threadId) return;
+    let cancelled = false;
     setInitialLoading(true);
-    setMessages([]);
-    setOptions([]);
 
     fetch(`${BASE_URL}/threads/${threadId}/messages`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
       .then((r) => r.json())
       .then((json) => {
+        if (cancelled) return;
         const raw: Array<{ role: string; content: string }> = json.data ?? json;
-        setMessages(
-          raw.map((m) => ({
-            id: crypto.randomUUID(),
-            role: m.role as "user" | "assistant",
-            content: m.content,
+        const hydrated = (Array.isArray(raw) ? raw : []).map((m) => ({
+          id: crypto.randomUUID(),
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        }));
+        setThreadStates((prev) =>
+          updateThreadState(prev, threadId, (ts) => ({
+            ...ts,
+            messages: hydrated,
+            loaded: true,
           }))
         );
       })
       .catch(() => {})
-      .finally(() => setInitialLoading(false));
+      .finally(() => {
+        if (!cancelled) setInitialLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, toolProgress]);
+  }, [messages, loading, steps, toolProgress, error]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -217,13 +223,24 @@ export default function ThreadPage() {
       const trimmed = text.trim();
       if (!trimmed || loading) return;
 
-      setOptions([]);
-      setMessages((prev) => [
-        ...prev,
-        { id: crypto.randomUUID(), role: "user", content: trimmed },
-      ]);
+      // Optimistic: show the user's message and the working state immediately.
+      setThreadStates((prev) =>
+        updateThreadState(prev, threadId, (ts) => ({
+          ...ts,
+          messages: [
+            ...ts.messages,
+            { id: crypto.randomUUID(), role: "user", content: trimmed },
+          ],
+          options: [],
+          choices: [],
+          steps: [],
+          toolProgress: null,
+          error: null,
+          loading: true,
+          runId: null,
+        }))
+      );
       setInput("");
-      setLoading(true);
 
       try {
         const res = await fetch(`${BASE_URL}/threads/${threadId}/message`, {
@@ -234,32 +251,29 @@ export default function ThreadPage() {
           },
           body: JSON.stringify({ message: trimmed }),
         });
-        const data: ChatResponse = await res.json();
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: data.reply ?? "Error.",
-          },
-        ]);
-        if (data.options?.length) setOptions(data.options);
-      } catch {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: "Something went wrong. Please try again.",
-          },
-        ]);
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json.success === false) {
+          throw new Error(json.error ?? `Request failed with status ${res.status}`);
+        }
+        // 202 Accepted — remember runId; reply + steps arrive over SSE.
+        const runId: string | null = json.runId ?? json.data?.runId ?? null;
+        setThreadStates((prev) =>
+          updateThreadState(prev, threadId, (ts) => ({ ...ts, runId }))
+        );
+      } catch (err) {
+        setThreadStates((prev) =>
+          updateThreadState(prev, threadId, (ts) => ({
+            ...ts,
+            loading: false,
+            runId: null,
+            error: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+          }))
+        );
       } finally {
-        setLoading(false);
-        setToolProgress(null);
         inputRef.current?.focus();
       }
     },
-    [loading, threadId, setToolProgress, voiceState]
+    [loading, threadId, voiceState, setThreadStates]
   );
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -346,7 +360,7 @@ export default function ThreadPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
-        {initialLoading ? (
+        {initialLoading && messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <span
               className="h-5 w-5 animate-spin rounded-full border-2"
@@ -358,7 +372,7 @@ export default function ThreadPage() {
             className="mx-auto flex flex-col py-8 px-5"
             style={{ maxWidth: "760px", gap: "26px" }}
           >
-            {messages.length === 0 && (
+            {messages.length === 0 && !loading && (
               <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -374,6 +388,7 @@ export default function ThreadPage() {
             {messages.map((msg, i) => {
               const isLast = i === messages.length - 1;
               const showOptions = isLast && msg.role === "assistant" && options.length > 0 && !loading;
+              const showChoices = isLast && msg.role === "assistant" && choices.length > 0 && !loading;
 
               return (
                 <div key={msg.id} className="flex flex-col gap-3">
@@ -441,10 +456,32 @@ export default function ThreadPage() {
                       ))}
                     </div>
                   )}
+
+                  {showChoices && (
+                    <div className="flex flex-wrap gap-2 pl-9">
+                      {choices.map((choice, ci) => (
+                        <button
+                          key={`${ci}-${choice}`}
+                          type="button"
+                          onClick={() => sendMessage(choice)}
+                          className="rounded-full border bg-white px-4 py-2 text-left transition-colors hover:bg-gray-50"
+                          style={{
+                            borderColor: "var(--accent)",
+                            color: "var(--accent)",
+                            fontSize: "14px",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {choice}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
 
+            {/* Live run: accumulated steps + transient progress / dots */}
             {loading && (
               <div className="flex items-start gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -453,15 +490,38 @@ export default function ThreadPage() {
                   alt=""
                   style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
                 />
-                {toolProgress ? (
-                  <ToolProgressText key={toolProgress} text={toolProgress} />
-                ) : (
-                  <div className="flex gap-1 items-center" style={{ paddingTop: "4px" }}>
-                    <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]" style={{ background: "var(--placeholder)" }} />
-                    <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.15s]" style={{ background: "var(--placeholder)" }} />
-                    <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "var(--placeholder)" }} />
-                  </div>
-                )}
+                <div className="flex flex-col gap-2" style={{ flex: 1 }}>
+                  {steps.map((step, si) => (
+                    <StepLine key={si} text={step} />
+                  ))}
+                  {toolProgress ? (
+                    <ToolProgressText key={toolProgress} text={toolProgress} />
+                  ) : (
+                    <div className="flex gap-1 items-center" style={{ paddingTop: "4px" }}>
+                      <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]" style={{ background: "var(--placeholder)" }} />
+                      <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.15s]" style={{ background: "var(--placeholder)" }} />
+                      <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "var(--placeholder)" }} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Run error */}
+            {!loading && error && (
+              <div className="flex items-start gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/ally-logo.svg"
+                  alt=""
+                  style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
+                />
+                <div
+                  className="rounded-lg px-4 py-3"
+                  style={{ background: "#fef2f2", color: "#dc2626", fontSize: "14px", flex: 1 }}
+                >
+                  {error}
+                </div>
               </div>
             )}
 
@@ -501,7 +561,7 @@ export default function ThreadPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={voiceState === "recording" ? "ვუსმენ..." : "Message Ally…"}
+              placeholder={voiceState === "recording" ? "Listening..." : "Message Ally…"}
               rows={1}
               className="flex-1 resize-none bg-transparent outline-none"
               style={{
@@ -566,6 +626,24 @@ export default function ThreadPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function StepLine({ text }: { text: string }) {
+  return (
+    <div
+      className="flex items-start gap-2"
+      style={{ fontSize: "13.5px", color: "var(--ink-muted)", animation: "fadeInUp 0.2s ease-out" }}
+    >
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      <span style={{ color: "var(--accent)", lineHeight: "1.5" }}>✓</span>
+      <span style={{ lineHeight: "1.5" }}>{text}</span>
     </div>
   );
 }
