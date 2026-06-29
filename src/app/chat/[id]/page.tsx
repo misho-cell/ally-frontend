@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
+import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import {
   useThreads,
   updateThreadState,
@@ -93,6 +94,9 @@ export default function ThreadPage() {
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [speechSupported, setSpeechSupported] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // ms timestamp until which sending is blocked due to a 429 rate limit.
+  const [rateLimitedUntil, setRateLimitedUntil] = useState(0);
+  const rateLimited = rateLimitedUntil > Date.now();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -108,6 +112,18 @@ export default function ThreadPage() {
   useEffect(() => {
     setSpeechSupported(!!getSpeechRecognition());
   }, []);
+
+  // Auto-clear the rate-limit block when Retry-After elapses.
+  useEffect(() => {
+    if (rateLimitedUntil <= 0) return;
+    const ms = rateLimitedUntil - Date.now();
+    if (ms <= 0) {
+      setRateLimitedUntil(0);
+      return;
+    }
+    const t = setTimeout(() => setRateLimitedUntil(0), ms);
+    return () => clearTimeout(t);
+  }, [rateLimitedUntil]);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -208,7 +224,7 @@ export default function ThreadPage() {
     setInitialLoading(true);
 
     fetch(`${BASE_URL}/threads/${threadId}/messages`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
+      headers: authHeaders(),
     })
       .then((r) => r.json())
       .then((json) => {
@@ -255,7 +271,7 @@ export default function ThreadPage() {
         stopRecognition();
       }
       const trimmed = text.trim();
-      if (!trimmed || loading) return;
+      if (!trimmed || loading || rateLimitedUntil > Date.now()) return;
 
       // Optimistic: show the user's message and the working state immediately.
       setThreadStates((prev) =>
@@ -283,12 +299,22 @@ export default function ThreadPage() {
       try {
         const res = await fetch(`${BASE_URL}/threads/${threadId}/message`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
-          },
+          headers: authHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ message: trimmed }),
         });
+
+        // 429: friendly message + block sending until Retry-After elapses.
+        if (res.status === 429) {
+          const body = await res.json().catch(() => ({}));
+          const secs = parseRetryAfter(res);
+          showToast(body.error ?? "Too many requests. Please try again later.");
+          setRateLimitedUntil(Date.now() + secs * 1000);
+          setThreadStates((prev) =>
+            updateThreadState(prev, threadId, (ts) => ({ ...ts, loading: false, runId: null }))
+          );
+          return;
+        }
+
         const json = await res.json().catch(() => ({}));
         if (!res.ok || json.success === false) {
           throw new Error(json.error ?? `Request failed with status ${res.status}`);
@@ -311,7 +337,7 @@ export default function ThreadPage() {
         inputRef.current?.focus();
       }
     },
-    [loading, threadId, voiceState, setThreadStates]
+    [loading, threadId, voiceState, setThreadStates, rateLimitedUntil]
   );
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -343,7 +369,8 @@ export default function ThreadPage() {
             padding: "10px 18px",
             fontSize: "13.5px",
             zIndex: 9999,
-            whiteSpace: "nowrap",
+            maxWidth: "90%",
+            textAlign: "center",
             pointerEvents: "none",
           }}
         >
@@ -598,9 +625,10 @@ export default function ThreadPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={voiceState === "recording" ? "Listening..." : "Message Ally…"}
+              placeholder={voiceState === "recording" ? "Listening..." : rateLimited ? "Too many requests — please wait…" : "Message Ally…"}
               rows={1}
-              className="flex-1 resize-none bg-transparent outline-none"
+              disabled={rateLimited}
+              className="flex-1 resize-none bg-transparent outline-none disabled:opacity-60"
               style={{
                 color: voiceState === "recording" ? "var(--placeholder)" : "var(--ink)",
                 fontStyle: voiceState === "recording" ? "italic" : "normal",
@@ -615,13 +643,13 @@ export default function ThreadPage() {
               <button
                 type="button"
                 onClick={handleMicClick}
-                disabled={voiceState === "processing"}
+                disabled={voiceState === "processing" || rateLimited}
                 aria-label={voiceState === "recording" ? "Stop recording" : "Start voice input"}
                 className="flex shrink-0 h-8 w-8 items-center justify-center rounded-full transition-all"
                 style={{
                   background: voiceState === "recording" ? "#ef4444" : "transparent",
                   color: voiceState === "recording" ? "white" : "var(--placeholder)",
-                  opacity: voiceState === "processing" ? 0.4 : 1,
+                  opacity: voiceState === "processing" || rateLimited ? 0.4 : 1,
                   animation: voiceState === "recording" ? "micPulse 1.2s ease-in-out infinite" : "none",
                 }}
               >
@@ -650,7 +678,7 @@ export default function ThreadPage() {
               <button
                 type="button"
                 onClick={() => sendMessage(input)}
-                disabled={!input.trim() || loading}
+                disabled={!input.trim() || loading || rateLimited}
                 className="flex shrink-0 h-8 w-8 items-center justify-center rounded-full transition-opacity disabled:opacity-30"
                 style={{ background: "var(--accent)" }}
                 aria-label="Send"
