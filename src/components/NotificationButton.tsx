@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authHeaders } from "@/lib/deviceId";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -51,9 +52,8 @@ export default function NotificationButton() {
         setStatus("denied");
         return;
       }
-      const token = localStorage.getItem("token");
       const keyRes = await fetch(`${BASE_URL}/notifications/vapid-public-key`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders(),
       });
       const keyJson = await keyRes.json();
       const vapidKey = keyJson.data?.key ?? keyJson.key;
@@ -65,10 +65,7 @@ export default function NotificationButton() {
       const sub = subscription.toJSON();
       await fetch(`${BASE_URL}/notifications/subscribe`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(sub),
       });
       localStorage.setItem("push_endpoint", sub.endpoint ?? "");

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { authHeaders } from "@/lib/deviceId";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -19,10 +20,6 @@ export default function OnboardingContactsPage() {
       typeof navigator !== "undefined" && "contacts" in navigator
     );
   }, []);
-
-  function getToken() {
-    return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
-  }
 
   async function importAndroid() {
     setError("");
@@ -44,16 +41,13 @@ export default function OnboardingContactsPage() {
 
       const res = await fetch(`${BASE_URL}/contacts/import`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ contacts }),
       });
       const json = await res.json();
       setResult(json.data ?? json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "კონტაქტების იმპორტი ვერ მოხერხდა");
+      setError(err instanceof Error ? err.message : "კონტაქტების იმპორტი ვერ მოხერხდა";
     } finally {
       setLoading(false);
     }
@@ -66,16 +60,13 @@ export default function OnboardingContactsPage() {
       const vcfContent = await file.text();
       const res = await fetch(`${BASE_URL}/contacts/import-vcf`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ vcfContent }),
       });
       const json = await res.json();
       setResult(json.data ?? json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "კონტაქტების იმპორტი ვერ მოხერხდა");
+      setError(err instanceof Error ? err.message : "კონტაქტების იმპორტი ვერ მოხერხდა";
     } finally {
       setLoading(false);
     }

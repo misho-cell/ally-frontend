@@ -1,3 +1,5 @@
+import { authHeaders, parseRetryAfter } from "./deviceId";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 type RequestOptions = {
@@ -9,6 +11,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status?: number,
+    public retryAfter?: number,
   ) {
     super(message);
     this.name = "ApiError";
@@ -22,13 +25,8 @@ export async function apiFetch<T>(
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
+  // Bearer + X-Device-Id from the single source.
+  const headers = authHeaders({ "Content-Type": "application/json" });
 
   let response: Response;
 
@@ -48,6 +46,17 @@ export async function apiFetch<T>(
       window.location.href = "/login";
     }
     throw new ApiError("Invalid email or password.", 401);
+  }
+
+  if (response.status === 429) {
+    const data = await response
+      .json()
+      .catch(() => ({})) as { message?: string; error?: string };
+    throw new ApiError(
+      data.error ?? data.message ?? "Too many requests. Please try again later.",
+      429,
+      parseRetryAfter(response),
+    );
   }
 
   if (!response.ok) {
