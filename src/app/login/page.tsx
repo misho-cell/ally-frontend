@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -22,7 +21,6 @@ export default function LoginPage() {
   const [smsCooldown, setSmsCooldown] = useState(SMS_COOLDOWN);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const router = useRouter();
 
   // Start countdown when OTP step begins
   useEffect(() => {
@@ -53,7 +51,18 @@ export default function LoginPage() {
 
   function saveToken(token: string) {
     localStorage.setItem("token", token);
-    document.cookie = `token=${token}; path=/; SameSite=Lax`;
+    // 30-day persistent cookie. Secure on HTTPS so it survives mobile browsers /
+    // standalone PWA. The middleware gates routes on this cookie.
+    const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secure}`;
+  }
+
+  // Hard navigation (not router.replace): a full request guarantees the freshly
+  // written cookie is sent so middleware sees the token, and it bypasses the
+  // App Router cache which may hold a pre-login redirect to /login. This is what
+  // fixes the Android "OTP entered but stays on login" bounce.
+  function redirectTo(path: string) {
+    window.location.href = path;
   }
 
   async function post<T>(path: string, body: unknown): Promise<T> {
@@ -100,13 +109,13 @@ export default function LoginPage() {
       );
       if (res.isNewUser) {
         setStep("name");
+        setLoading(false);
       } else {
         saveToken(res.token);
-        router.replace("/chat");
+        redirectTo("/chat");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "კოდი არასწორია");
-    } finally {
       setLoading(false);
     }
   }
@@ -142,10 +151,9 @@ export default function LoginPage() {
     try {
       const res = await post<{ token: string }>("/auth/register", { phone, name });
       saveToken(res.token);
-      router.replace("/onboarding/contacts");
+      redirectTo("/onboarding/contacts");
     } catch (err) {
       setError(err instanceof Error ? err.message : "შეცდომა");
-    } finally {
       setLoading(false);
     }
   }
