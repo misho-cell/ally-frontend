@@ -9,6 +9,8 @@ const SMS_COOLDOWN = 30;
 
 type Step = "phone" | "otp" | "name";
 
+type PostError = Error & { retryAfter?: number };
+
 export default function LoginPage() {
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
@@ -19,7 +21,10 @@ export default function LoginPage() {
   const [smsLoading, setSmsLoading] = useState(false);
   const [smsToast, setSmsToast] = useState<string | null>(null);
   const [smsCooldown, setSmsCooldown] = useState(SMS_COOLDOWN);
+  // 429 rate-limit countdown. While > 0, both submit and resend are blocked.
+  const [rlSecs, setRlSecs] = useState(0);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const rlRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Start countdown when OTP step begins
@@ -43,6 +48,29 @@ export default function LoginPage() {
     };
   }, [step]);
 
+  useEffect(() => {
+    return () => {
+      if (rlRef.current) clearInterval(rlRef.current);
+    };
+  }, []);
+
+  // Block submit + resend for `secs` seconds (429 Retry-After).
+  function startRateLimit(secs: number) {
+    setRlSecs(secs);
+    if (rlRef.current) clearInterval(rlRef.current);
+    rlRef.current = setInterval(() => {
+      setRlSecs((prev) => {
+        if (prev <= 1) {
+          clearInterval(rlRef.current!);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    // also hold the resend button at least this long
+    setSmsCooldown((c) => Math.max(c, secs));
+  }
+
   function showSmsToast(msg: string) {
     setSmsToast(msg);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -51,16 +79,10 @@ export default function LoginPage() {
 
   function saveToken(token: string) {
     localStorage.setItem("token", token);
-    // 30-day persistent cookie. Secure on HTTPS so it survives mobile browsers /
-    // standalone PWA. The middleware gates routes on this cookie.
     const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
     document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secure}`;
   }
 
-  // Hard navigation (not router.replace): a full request guarantees the freshly
-  // written cookie is sent so middleware sees the token, and it bypasses the
-  // App Router cache which may hold a pre-login redirect to /login. This is what
-  // fixes the Android "OTP entered but stays on login" bounce.
   function redirectTo(path: string) {
     window.location.href = path;
   }
@@ -77,10 +99,27 @@ export default function LoginPage() {
       message?: string;
       data?: T;
     } & T;
+    if (res.status === 429) {
+      const raw = res.headers.get("Retry-After");
+      const secs = raw ? parseInt(raw, 10) : NaN;
+      const err = new Error(
+        json.error ?? json.message ?? "ძალიან ბევრი მოთხოვნა. გთხოვთ, სცადოთ მოგვიანებით."
+      ) as PostError;
+      err.retryAfter = Number.isFinite(secs) && secs > 0 ? secs : 30;
+      throw err;
+    }
     if (!res.ok || json.success === false) {
       throw new Error(json.error ?? json.message ?? `Request failed with status ${res.status}`);
     }
     return (json.data ?? json) as T;
+  }
+
+  function handleError(err: unknown, fallback: string) {
+    const e = err as PostError;
+    if (e?.retryAfter) {
+      startRateLimit(e.retryAfter);
+    }
+    setError(e instanceof Error ? e.message : fallback);
   }
 
   async function handlePhoneSubmit(e: React.FormEvent) {
@@ -91,7 +130,7 @@ export default function LoginPage() {
       await post("/auth/request-otp", { phone, actionType: "AUTH" });
       setStep("otp");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "შეცდომა");
+      handleError(err, "შეცდომა");
     } finally {
       setLoading(false);
     }
@@ -115,7 +154,7 @@ export default function LoginPage() {
         redirectTo("/chat");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "კოდი არასწორია");
+      handleError(err, "კოდი არასწორია");
       setLoading(false);
     }
   }
@@ -138,7 +177,9 @@ export default function LoginPage() {
         });
       }, 1000);
     } catch (err) {
-      showSmsToast(err instanceof Error ? err.message : "შეცდომა");
+      const e = err as PostError;
+      if (e?.retryAfter) startRateLimit(e.retryAfter);
+      showSmsToast(e instanceof Error ? e.message : "შეცდომა");
     } finally {
       setSmsLoading(false);
     }
@@ -153,10 +194,12 @@ export default function LoginPage() {
       saveToken(res.token);
       redirectTo("/onboarding/contacts");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "შეცდომა");
+      handleError(err, "შეცდომა");
       setLoading(false);
     }
   }
+
+  const rateLimited = rlSecs > 0;
 
   return (
     <div className="flex min-h-full flex-col items-center justify-between bg-[#1a1a2e] px-4 py-12">
@@ -174,7 +217,8 @@ export default function LoginPage() {
             padding: "10px 18px",
             fontSize: "13.5px",
             zIndex: 9999,
-            whiteSpace: "nowrap",
+            maxWidth: "90%",
+            textAlign: "center",
             pointerEvents: "none",
           }}
         >
@@ -192,6 +236,7 @@ export default function LoginPage() {
             {error && (
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
                 {error}
+                {rateLimited && ` (${rlSecs} წმ)`}
               </div>
             )}
 
@@ -208,10 +253,10 @@ export default function LoginPage() {
                 />
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || rateLimited}
                   className="flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                 >
-                  {loading ? <Spinner /> : "კოდის მიღება"}
+                  {loading ? <Spinner /> : rateLimited ? `დაელით (${rlSecs} წმ)` : "კოდის მიღება"}
                 </button>
               </form>
             )}
@@ -234,17 +279,17 @@ export default function LoginPage() {
                 />
                 <button
                   type="submit"
-                  disabled={loading || otp.length !== 6}
+                  disabled={loading || otp.length !== 6 || rateLimited}
                   className="flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                 >
-                  {loading ? <Spinner /> : "დადასტურება"}
+                  {loading ? <Spinner /> : rateLimited ? `დაელით (${rlSecs} წმ)` : "დადასტურება"}
                 </button>
 
                 {/* SMS resend */}
                 <button
                   type="button"
                   onClick={handleSmsResend}
-                  disabled={smsCooldown > 0 || smsLoading}
+                  disabled={smsCooldown > 0 || smsLoading || rateLimited}
                   className="flex h-10 items-center justify-center rounded-xl border border-gray-200 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {smsLoading ? (
@@ -282,10 +327,10 @@ export default function LoginPage() {
                 />
                 <button
                   type="submit"
-                  disabled={loading || !name.trim()}
+                  disabled={loading || !name.trim() || rateLimited}
                   className="flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                 >
-                  {loading ? <Spinner /> : "რეგისტრაცია"}
+                  {loading ? <Spinner /> : rateLimited ? `დაელით (${rlSecs} წმ)` : "რეგისტრაცია"}
                 </button>
               </form>
             )}
