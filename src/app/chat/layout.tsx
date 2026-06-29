@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
+import { authHeaders } from "@/lib/deviceId";
 import {
   ThreadsContext,
   updateThreadState,
@@ -59,7 +60,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const loadThreads = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/threads`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
+        headers: authHeaders(),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -78,7 +79,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // One persistent SSE connection for the whole chat session. It lives above the
   // page so navigation between threads never tears it down — events are never
   // buffered server-side, so a closed socket means a lost run_complete. Auto-
-  // reconnects on drop (onerror returns a retry delay).
+  // reconnects on drop (onerror returns a retry delay). NOTE: device-id is not
+  // sent here — best-effort fingerprinting lives on POSTs; SSE keeps Bearer only.
   useEffect(() => {
     loadThreads();
 
@@ -198,10 +200,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     try {
       const res = await fetch(`${BASE_URL}/threads`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`,
-        },
+        headers: authHeaders({ "Content-Type": "application/json" }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -227,10 +226,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       try {
         await fetch(`${BASE_URL}/notifications/subscribe`, {
           method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: authHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ endpoint }),
         });
       } catch {}
