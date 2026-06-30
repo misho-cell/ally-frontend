@@ -112,12 +112,20 @@ export default function AdminPage() {
     <div className="min-h-full bg-gray-50">
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
         <h1 className="text-lg font-bold text-[#1a1a2e]">Admin — Insight Fields</h1>
-        <a
-          href="/admin/chat"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1a1a2e] text-white text-sm hover:opacity-80 transition"
-        >
-          ასისტენტის კონფიგურატორი →
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href="/admin/analytics"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#1a1a2e] text-sm hover:bg-gray-50 transition"
+          >
+            რეპორტინგი →
+          </a>
+          <a
+            href="/admin/chat"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1a1a2e] text-white text-sm hover:opacity-80 transition"
+          >
+            ასისტენტის კონფიგურატორი →
+          </a>
+        </div>
       </header>
 
       <div className="mx-auto max-w-2xl px-4 py-8 flex flex-col gap-8">
