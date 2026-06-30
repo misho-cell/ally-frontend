@@ -264,7 +264,7 @@ function SearchesBlock({ s }: { s: UserProfile["searches"] }) {
           {s.recent.map((r, i) => (
             <div key={i} className="flex items-center justify-between gap-3 py-2 text-sm">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-gray-700">{r.query || "—"}</p>
+                <p className="break-words text-gray-700">{r.query || "—"}</p>
                 <p className="text-xs text-gray-400">{SEARCH_LABELS[r.tool] ?? r.tool} · {fmtRelative(r.createdAt)}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
@@ -316,7 +316,7 @@ function MemoryBlock({ m }: { m: UserProfile["memory"] }) {
       {m.profile.length === 0 ? (
         <Empty />
       ) : (
-        <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
           {m.profile.map((p) => <KV key={p.key} k={p.key} v={p.value} />)}
         </div>
       )}
@@ -341,7 +341,7 @@ function MemoryBlock({ m }: { m: UserProfile["memory"] }) {
           ) : (
             <ul className="mt-2 flex flex-col gap-1">
               {m.privateContext.map((c, i) => (
-                <li key={i} className="text-xs text-gray-700">
+                <li key={i} className="break-words text-xs text-gray-700">
                   {typeof c === "string" ? c : `${c.key ?? ""}: ${c.value ?? ""}`}
                 </li>
               ))}
@@ -364,7 +364,7 @@ function DevicesBlock({ d }: { d: UserProfile["devices"] }) {
         <div className="flex flex-col gap-2">
           {d.devices.map((dev) => (
             <div key={dev.deviceId} className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-xs">
-              <p className="truncate font-medium text-gray-700">{dev.userAgent || "—"}</p>
+              <p className="break-words font-medium text-gray-700">{dev.userAgent || "—"}</p>
               <p className="mt-1 text-gray-400">IP: {dev.ip || "—"} · {dev.requestCount} მოთხ.</p>
               <p className="text-gray-400">{fmtRelative(dev.firstSeen)} → {fmtRelative(dev.lastSeen)}</p>
             </div>
@@ -420,9 +420,9 @@ function Kpi({ value, label, small }: { value: string; label: string; small?: bo
 }
 function KV({ k, v }: { k: string; v: string }) {
   return (
-    <div className="flex justify-between gap-3 border-b border-gray-50 py-1 text-sm">
-      <span className="text-gray-400">{k}</span>
-      <span className="truncate text-right font-medium text-gray-700">{v}</span>
+    <div className="flex flex-col gap-0.5 border-b border-gray-50 py-1.5 text-sm sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <span className="shrink-0 text-gray-400">{k}</span>
+      <span className="break-words font-medium text-gray-700 sm:text-right">{v}</span>
     </div>
   );
 }
