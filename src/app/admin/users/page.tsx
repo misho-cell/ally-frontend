@@ -36,20 +36,22 @@ function SubBadge({ status }: { status: string | null }) {
 export default function AdminUsersPage() {
   const router = useRouter();
   const [q, setQ] = useState("");
+  const [subscribed, setSubscribed] = useState(true); // default: subscribers only
   const [users, setUsers] = useState<UserListItem[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(
-    async (query: string) => {
+    async (query: string, subsOnly: boolean) => {
       setLoading(true);
       setError(false);
       try {
-        const res = await fetch(
-          `${BASE_URL}/admin/users?q=${encodeURIComponent(query)}&limit=50`,
-          { headers: authHeaders() }
-        );
+        const params = new URLSearchParams({ q: query, limit: "50" });
+        if (subsOnly) params.set("subscribed", "true");
+        const res = await fetch(`${BASE_URL}/admin/users?${params.toString()}`, {
+          headers: authHeaders(),
+        });
         if (res.status === 401 || res.status === 403) {
           router.replace("/admin/login");
           return;
@@ -69,14 +71,14 @@ export default function AdminUsersPage() {
     [router]
   );
 
-  // Debounced search on q change (and initial load).
+  // Debounced fetch on q / toggle change (and initial load).
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => load(q), 300);
+    debounceRef.current = setTimeout(() => load(q, subscribed), 300);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [q, load]);
+  }, [q, subscribed, load]);
 
   return (
     <div className="min-h-full bg-gray-50">
@@ -87,7 +89,7 @@ export default function AdminUsersPage() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-4xl px-4 py-8 flex flex-col gap-5">
+      <div className="mx-auto max-w-4xl px-4 py-8 flex flex-col gap-4">
         <input
           type="text"
           value={q}
@@ -95,6 +97,28 @@ export default function AdminUsersPage() {
           placeholder="ძებნა სახელით ან ნომრით..."
           className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
         />
+
+        {/* Subscribed / all toggle */}
+        <div className="inline-flex self-start rounded-xl border border-gray-200 bg-white p-1">
+          <button
+            type="button"
+            onClick={() => setSubscribed(true)}
+            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+              subscribed ? "bg-[#1a1a2e] text-white" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            გამომწერები
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubscribed(false)}
+            className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
+              !subscribed ? "bg-[#1a1a2e] text-white" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            ყველა
+          </button>
+        </div>
 
         {loading ? (
           <div className="flex flex-col gap-2">
@@ -107,14 +131,16 @@ export default function AdminUsersPage() {
             <p className="text-sm text-gray-500">მონაცემების ჩატვირთვა ვერ მოხერხდა</p>
             <button
               type="button"
-              onClick={() => load(q)}
+              onClick={() => load(q, subscribed)}
               className="rounded-xl bg-[#1a1a2e] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
               ხელახლა ცდა
             </button>
           </div>
         ) : !users || users.length === 0 ? (
-          <p className="py-12 text-center text-sm text-gray-400">მომხმარებელი ვერ მოიძებნა</p>
+          <p className="py-12 text-center text-sm text-gray-400">
+            {subscribed ? "გამომწერი ჯერ არ არის" : "მომხმარებელი ვერ მოიძებნა"}
+          </p>
         ) : (
           <div className="flex flex-col gap-2">
             {users.map((u) => (
