@@ -11,6 +11,11 @@ type Step = "phone" | "otp" | "name";
 
 type PostError = Error & { retryAfter?: number };
 
+function clearToken() {
+  localStorage.removeItem("token");
+  document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+}
+
 export default function LoginPage() {
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
@@ -78,6 +83,9 @@ export default function LoginPage() {
   }
 
   function saveToken(token: string) {
+    // Always wipe any prior token first so a stale admin/other-account JWT can
+    // never resurface — a fresh login fully overwrites.
+    clearToken();
     localStorage.setItem("token", token);
     const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
     document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secure}`;
@@ -126,6 +134,9 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    // Login start: drop any leftover token (e.g. a stale admin session) before
+    // we begin authenticating this phone.
+    clearToken();
     try {
       await post("/auth/request-otp", { phone, actionType: "AUTH" });
       setStep("otp");
