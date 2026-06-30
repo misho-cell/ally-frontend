@@ -47,7 +47,7 @@ export default function OnboardingContactsPage() {
       const json = await res.json();
       setResult(json.data ?? json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "კონტაქტების იმპორტი ვერ მოხერხდა";
+      setError(err instanceof Error ? err.message : "კონტაქტების იმპორტი ვერ მოხერხდა");
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,7 @@ export default function OnboardingContactsPage() {
       const json = await res.json();
       setResult(json.data ?? json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "კონტაქტების იმპორტი ვერ მოხერხდა";
+      setError(err instanceof Error ? err.message : "კონტაქტების იმპორტი ვერ მოხერხდა");
     } finally {
       setLoading(false);
     }
