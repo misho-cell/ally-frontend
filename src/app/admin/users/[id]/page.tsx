@@ -70,6 +70,7 @@ type UserProfile = {
     pushSubscriptionsCount: number;
   };
   timeline: { type: string; at: string }[];
+  diagnostics?: { block: string; message: string }[];
 };
 
 function fillDays(data: DayCount[], days = 30): DayCount[] {
@@ -152,6 +153,11 @@ export default function AdminUserDetailPage() {
           </div>
         ) : data ? (
           <>
+            {data.diagnostics && data.diagnostics.length > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                ⚠ ნაწილი მონაცემი ვერ ჩაიტვირთა
+              </div>
+            )}
             <AccountBlock a={data.account} />
             <NetworkBlock n={data.network} />
             <ActivityBlock a={data.activity} />
