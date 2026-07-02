@@ -7,9 +7,15 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 const SMS_COOLDOWN = 30;
 
-type Step = "phone" | "otp" | "name";
+type Step = "phone" | "otp" | "referral" | "name";
 
 type PostError = Error & { retryAfter?: number };
+
+type Eligibility = {
+  eligible: boolean;
+  mode?: string;
+  reason?: string;
+};
 
 function clearToken() {
   localStorage.removeItem("token");
@@ -26,6 +32,15 @@ export default function LoginPage() {
   const [smsLoading, setSmsLoading] = useState(false);
   const [smsToast, setSmsToast] = useState<string | null>(null);
   const [smsCooldown, setSmsCooldown] = useState(SMS_COOLDOWN);
+  // Invite gate: referral screen state. confirmedReferralRef holds the referral
+  // phone that passed eligibility — it MUST be sent with /auth/register (the
+  // server re-checks it there).
+  const [referralInput, setReferralInput] = useState("");
+  const [referralError, setReferralError] = useState("");
+  const confirmedReferralRef = useRef<string | null>(null);
+  // OTP is single-use: once verify-otp + complete-login succeed we must not
+  // re-run them on retry (e.g. when the eligibility call itself failed).
+  const otpPassedRef = useRef(false);
   // 429 rate-limit countdown. While > 0, both submit and resend are blocked.
   const [rlSecs, setRlSecs] = useState(0);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -137,6 +152,8 @@ export default function LoginPage() {
     // Login start: drop any leftover token (e.g. a stale admin session) before
     // we begin authenticating this phone.
     clearToken();
+    otpPassedRef.current = false;
+    confirmedReferralRef.current = null;
     try {
       await post("/auth/request-otp", { phone, actionType: "AUTH" });
       setStep("otp");
@@ -147,52 +164,86 @@ export default function LoginPage() {
     }
   }
 
+  // After a new user's OTP passes, ask the backend whether registration may
+  // proceed. The gate is fully server-driven: eligible → name step; a
+  // referral_required reason → referral screen. No client-side rules.
+  async function routeNewUser() {
+    const elig = await post<Eligibility>("/auth/eligibility", { phone });
+    if (elig.eligible) {
+      confirmedReferralRef.current = null;
+      setStep("name");
+    } else if (elig.reason === "referral_required") {
+      setReferralInput("");
+      setReferralError("");
+      setStep("referral");
+    } else {
+      // Unknown ineligible reason — fail closed with a generic message.
+      setError("რეგისტრაცია ვერ გაგრძელდა. სცადე მოგვიანებით.");
+    }
+  }
+
   async function handleOtpSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      await post("/auth/verify-otp", { phone, code: otp, actionType: "AUTH" });
-      const res = await post<{ token: string; isNewUser: boolean }>(
-        "/auth/complete-login",
-        { phone }
-      );
-      if (res.isNewUser) {
-        setStep("name");
-        setLoading(false);
-      } else {
-        saveToken(res.token);
-        redirectTo("/chat");
+      // Skip verify/complete-login on retry if OTP already passed and only the
+      // eligibility call failed (OTP codes are single-use).
+      if (!otpPassedRef.current) {
+        await post("/auth/verify-otp", { phone, code: otp, actionType: "AUTH" });
+        const res = await post<{ token: string; isNewUser: boolean }>(
+          "/auth/complete-login",
+          { phone }
+        );
+        if (!res.isNewUser) {
+          saveToken(res.token);
+          redirectTo("/chat");
+          return;
+        }
+        otpPassedRef.current = true;
       }
+      try {
+        await routeNewUser();
+      } catch (eligErr) {
+        const ee = eligErr as PostError;
+        if (ee?.retryAfter) startRateLimit(ee.retryAfter);
+        // Do NOT fail open — stay here with a retry message.
+        setError("ვერ შემოწმდა, სცადე ხელახლა");
+      }
+      setLoading(false);
     } catch (err) {
       handleError(err, "კოდი არასწორია");
       setLoading(false);
     }
   }
 
-  async function handleSmsResend() {
-    setSmsLoading(true);
+  async function handleReferralSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setReferralError("");
+    setError("");
+    setLoading(true);
     try {
-      await post("/auth/resend-otp", { phone, actionType: "AUTH" });
-      showSmsToast("კოდი SMS-ით გაიგზავნა");
-      // restart cooldown
-      setSmsCooldown(SMS_COOLDOWN);
-      if (cooldownRef.current) clearInterval(cooldownRef.current);
-      cooldownRef.current = setInterval(() => {
-        setSmsCooldown((prev) => {
-          if (prev <= 1) {
-            clearInterval(cooldownRef.current!);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      const elig = await post<Eligibility>("/auth/eligibility", {
+        phone,
+        referralPhone: referralInput,
+      });
+      if (elig.eligible) {
+        // Remember the validated referral — register re-checks it server-side.
+        confirmedReferralRef.current = referralInput;
+        setStep("name");
+      } else {
+        setReferralError("ეს ნომერი ვერ მოიძებნა ან გამოწერა არ აქვს. სცადე სხვა ნომერი");
+      }
     } catch (err) {
-      const e = err as PostError;
-      if (e?.retryAfter) startRateLimit(e.retryAfter);
-      showSmsToast(e instanceof Error ? e.message : "შეცდომა");
+      const ee = err as PostError;
+      if (ee?.retryAfter) {
+        startRateLimit(ee.retryAfter);
+        setReferralError(ee.message);
+      } else {
+        setReferralError("ვერ შემოწმდა, სცადე ხელახლა");
+      }
     } finally {
-      setSmsLoading(false);
+      setLoading(false);
     }
   }
 
@@ -201,11 +252,28 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await post<{ token: string }>("/auth/register", { phone, name });
+      const body: { phone: string; name: string; referralPhone?: string } = { phone, name };
+      if (confirmedReferralRef.current) {
+        body.referralPhone = confirmedReferralRef.current;
+      }
+      const res = await post<{ token: string }>("/auth/register", body);
       saveToken(res.token);
       redirectTo("/onboarding/contacts");
     } catch (err) {
-      handleError(err, "შეცდომა");
+      const e2 = err as PostError;
+      if (e2?.retryAfter) {
+        handleError(err, "შეცდომა");
+      } else {
+        // Server re-checks the gate at register time (e.g. the referrer's
+        // subscription lapsed between eligibility and register). Show the
+        // server's Georgian error and send the user back to the referral screen.
+        setLoading(false);
+        setReferralError(e2 instanceof Error ? e2.message : "შეცდომა");
+        confirmedReferralRef.current = null;
+        setReferralInput("");
+        setStep("referral");
+        return;
+      }
       setLoading(false);
     }
   }
@@ -314,10 +382,40 @@ export default function LoginPage() {
 
                 <button
                   type="button"
-                  onClick={() => { setStep("phone"); setOtp(""); setError(""); }}
+                  onClick={() => { setStep("phone"); setOtp(""); setError(""); otpPassedRef.current = false; }}
                   className="text-xs text-gray-400 hover:text-gray-600"
                 >
                   ← უკან
+                </button>
+              </form>
+            )}
+
+            {step === "referral" && (
+              <form onSubmit={handleReferralSubmit} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                  <p className="text-base font-semibold text-[#1a1a2e]">Ally მოწვევით მუშაობს</p>
+                  <p className="text-sm text-gray-500">
+                    ჩაწერე მეგობრის ნომერი, ვინც მოგიწვია — ის Ally-ს გამომწერი უნდა იყოს
+                  </p>
+                </div>
+                <input
+                  type="tel"
+                  required
+                  autoFocus
+                  value={referralInput}
+                  onChange={(e) => { setReferralInput(e.target.value); setReferralError(""); }}
+                  placeholder="მაგ. 5XX XX XX XX"
+                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+                />
+                {referralError && (
+                  <p className="text-sm text-red-600">{referralError}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading || !referralInput.trim() || rateLimited}
+                  className="flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                >
+                  {loading ? <Spinner /> : rateLimited ? `დაელით (${rlSecs} წმ)` : "გაგრძელება"}
                 </button>
               </form>
             )}
@@ -358,6 +456,32 @@ export default function LoginPage() {
       </div>
     </div>
   );
+
+  async function handleSmsResend() {
+    setSmsLoading(true);
+    try {
+      await post("/auth/resend-otp", { phone, actionType: "AUTH" });
+      showSmsToast("კოდი SMS-ით გაიგზავნა");
+      // restart cooldown
+      setSmsCooldown(SMS_COOLDOWN);
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+      cooldownRef.current = setInterval(() => {
+        setSmsCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(cooldownRef.current!);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      const e = err as PostError;
+      if (e?.retryAfter) startRateLimit(e.retryAfter);
+      showSmsToast(e instanceof Error ? e.message : "შეცდომა");
+    } finally {
+      setSmsLoading(false);
+    }
+  }
 }
 
 function Spinner() {
