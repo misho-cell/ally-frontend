@@ -10,6 +10,7 @@ import {
   updateThreadState,
   type Thread,
   type ThreadState,
+  type TokenBalance,
 } from "@/contexts/ThreadsContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -48,6 +49,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadStates, setThreadStates] = useState<Record<string, ThreadState>>({});
   const [reconnectNonce, setReconnectNonce] = useState(0);
+  const [tokens, setTokens] = useState<TokenBalance | null>(null);
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
   const router = useRouter();
@@ -76,6 +78,19 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     } catch {}
   }, [router]);
 
+  // Token wallet balance. First call of the month also triggers the backend's
+  // automatic grant. On failure keep the last known value (do not block chat).
+  const refreshTokens = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/billing/tokens`, { headers: authHeaders() });
+      if (!res.ok) return;
+      const json = await res.json().catch(() => ({}));
+      if (json?.data && typeof json.data.enabled === "boolean") {
+        setTokens(json.data as TokenBalance);
+      }
+    } catch {}
+  }, []);
+
   // One persistent SSE connection for the whole chat session. It lives above the
   // page so navigation between threads never tears it down — events are never
   // buffered server-side, so a closed socket means a lost run_complete. Auto-
@@ -83,6 +98,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // sent here — best-effort fingerprinting lives on POSTs; SSE keeps Bearer only.
   useEffect(() => {
     loadThreads();
+    refreshTokens();
 
     abortRef.current = new AbortController();
     const ctrl = abortRef.current;
@@ -112,6 +128,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   dedup([data.thread, ...prev.filter((t) => String(t.id) !== String(data.thread.id))])
                 );
               }
+              break;
+
+            case "tokens_debited":
+              // Refetch instead of local subtraction — authoritative and simple.
+              refreshTokens();
               break;
 
             case "tool_progress":
@@ -193,7 +214,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     });
 
     return () => ctrl.abort();
-  }, [loadThreads]);
+  }, [loadThreads, refreshTokens]);
 
   async function createThread() {
     setCreating(true);
@@ -254,7 +275,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     : "hidden md:flex md:flex-1 md:flex-col";
 
   return (
-    <ThreadsContext.Provider value={{ threads, setThreads, threadStates, setThreadStates, reconnectNonce }}>
+    <ThreadsContext.Provider value={{ threads, setThreads, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens }}>
       <div className="flex h-full" style={{ background: "var(--bg)" }}>
         <aside
           className={`${sidebarClass} flex-col shrink-0 w-full md:w-[268px]`}
