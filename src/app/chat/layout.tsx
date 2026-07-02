@@ -263,44 +263,56 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             borderRight: "1px solid var(--sidebar-border)",
           }}
         >
-          <div className="flex items-center gap-2.5 px-5 pt-5 pb-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/ally-logo.svg" alt="Ally" style={{ borderRadius: "26%", width: 24, height: 24 }} />
-            <span
-              style={{
-                fontSize: "18px",
-                fontWeight: 600,
-                letterSpacing: "-0.01em",
-                color: "var(--ink)",
-              }}
-            >
-              Ally
-            </span>
-          </div>
-
-          <div className="px-4 pb-3">
+          {/* Header: wordmark left, quick new-chat right (mockup) */}
+          <div className="flex items-center justify-between pl-4 pr-2 pt-4 pb-2">
+            <div className="flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/ally-logo.svg" alt="Ally" style={{ borderRadius: "26%", width: 22, height: 22 }} />
+              <span
+                style={{
+                  fontSize: "17px",
+                  fontWeight: 600,
+                  letterSpacing: "-0.01em",
+                  color: "var(--ink)",
+                }}
+              >
+                Ally
+              </span>
+            </div>
             <button
               onClick={createThread}
               disabled={creating}
-              className="flex w-full items-center gap-2 rounded-xl border bg-white px-4 py-2.5 transition-colors hover:bg-gray-50 disabled:opacity-50"
+              aria-label="New chat"
+              className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[#F1F0EA] disabled:opacity-50"
+              style={{ color: "var(--accent)", fontSize: "20px", fontWeight: 500 }}
+            >
+              +
+            </button>
+          </div>
+
+          <div className="px-4 pb-2">
+            <button
+              onClick={createThread}
+              disabled={creating}
+              className="flex w-full items-center gap-2 rounded-xl border bg-white px-3.5 py-2.5 transition-colors hover:bg-[#F7F9F7] disabled:opacity-50"
               style={{
                 borderColor: "var(--cta-border)",
                 color: "var(--ink)",
-                fontSize: "14px",
+                fontSize: "13.5px",
                 fontWeight: 500,
               }}
             >
-              <span style={{ color: "var(--accent)", fontWeight: 600, fontSize: "16px" }}>+</span>
+              <span style={{ color: "var(--accent)", fontWeight: 600, fontSize: "15px" }}>+</span>
               {creating ? "..." : "New chat"}
             </button>
           </div>
 
-          <div className="px-4 pb-3">
+          <div className="px-4 pb-2">
             <div
-              className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+              className="flex items-center gap-2 rounded-[10px] px-3 py-2"
               style={{ background: "var(--bg)", border: "1px solid var(--sidebar-border)" }}
             >
-              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+              <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
                 <circle cx="8.5" cy="8.5" r="5.75" stroke="var(--placeholder)" strokeWidth="1.75" />
                 <path d="M13 13l3.5 3.5" stroke="var(--placeholder)" strokeWidth="1.75" strokeLinecap="round" />
               </svg>
@@ -310,15 +322,16 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search chats"
                 className="flex-1 bg-transparent outline-none"
-                style={{ color: "var(--ink)", fontSize: "13.5px" }}
+                style={{ color: "var(--ink)", fontSize: "13px" }}
               />
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-2">
+          {/* Thread list — rows bleed close to the edges like the mockup */}
+          <div className="flex-1 overflow-y-auto pl-0 pr-2.5 pt-1 flex flex-col gap-[2px]">
             {incoming.length > 0 && (
-              <section className="mb-1">
-                <p className="px-3 pb-1 pt-2" style={{ fontSize: "10.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--meta)" }}>
+              <section className="mb-1 flex flex-col gap-[2px]">
+                <p className="pl-4 pb-1 pt-1" style={{ fontSize: "10.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--meta)" }}>
                   Incoming requests
                 </p>
                 {incoming.map((t) => (
@@ -326,9 +339,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 ))}
               </section>
             )}
-            <section>
+            <section className="flex flex-col gap-[2px]">
               {incoming.length > 0 && mine.length > 0 && (
-                <p className="px-3 pb-1 pt-2" style={{ fontSize: "10.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--meta)" }}>
+                <p className="pl-4 pb-1 pt-1" style={{ fontSize: "10.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--meta)" }}>
                   My threads
                 </p>
               )}
@@ -343,10 +356,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </section>
           </div>
 
-          <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderTop: "1px solid var(--sidebar-border)" }}>
+          <div className="flex items-center gap-2.5 px-4 py-3" style={{ borderTop: "1px solid var(--sidebar-border)" }}>
             <Link
               href="/profile"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-opacity hover:opacity-70"
+              className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-[11px] font-semibold transition-opacity hover:opacity-70"
               style={{ background: "var(--thread-active-bg)", border: "2px solid var(--accent)", color: "var(--ink)" }}
             >
               {user.initial}
@@ -354,7 +367,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             <Link
               href="/profile"
               className="flex-1 truncate transition-opacity hover:opacity-70"
-              style={{ color: "var(--ink)", fontWeight: 500, fontSize: "13.5px" }}
+              style={{ color: "var(--ink)", fontWeight: 500, fontSize: "13px" }}
             >
               {user.name}
             </Link>
@@ -378,19 +391,19 @@ function ThreadRow({ thread, active }: { thread: Thread; active: boolean }) {
   return (
     <Link
       href={`/chat/${thread.id}`}
-      className="flex items-center px-3 py-2.5 transition-colors"
+      className={`flex items-center py-[10px] pr-3 transition-colors ${
+        active ? "" : "hover:bg-[#F1F0EA]"
+      }`}
       style={{
-        background: active ? "var(--thread-active-bg)" : "transparent",
+        background: active ? "var(--thread-active-bg)" : undefined,
         borderLeft: active ? "3px solid var(--accent)" : "3px solid transparent",
-        borderRadius: active ? "0 9px 9px 0" : "9px",
-        marginBottom: "1px",
+        borderRadius: "0 9px 9px 0",
+        paddingLeft: "13px",
       }}
-      onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)"; }}
-      onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
     >
       <span
         className="truncate"
-        style={{ fontSize: "14px", fontWeight: active ? 600 : 400, color: active ? "var(--ink)" : "var(--ink-muted)" }}
+        style={{ fontSize: "14px", fontWeight: active ? 600 : 400, color: active ? "var(--ink)" : "var(--ink-muted)", lineHeight: "1.35" }}
       >
         {thread.type === "incoming_request" && <span style={{ color: "var(--accent)", marginRight: "4px" }}>↓</span>}
         {thread.type === "outgoing_request" && <span style={{ color: "var(--meta)", marginRight: "4px" }}>↑</span>}
