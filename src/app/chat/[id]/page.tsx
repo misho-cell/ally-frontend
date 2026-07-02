@@ -54,6 +54,13 @@ function getUserInitial(): string {
   }
 }
 
+// First day of next calendar month, localized (monthly grants are calendar-based).
+function nextRenewalDate(): string {
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return d.toLocaleDateString("ka-GE", { year: "numeric", month: "long", day: "numeric" });
+}
+
 // Walk the chronological list and fold runs of consecutive `step` items into a
 // single group, leaving `message` items standalone. Order is preserved, so a
 // run reads as: user message → step group → final answer.
@@ -84,7 +91,7 @@ export default function ThreadPage() {
   const params = useParams();
   const threadId = params.id as string;
   const router = useRouter();
-  const { threads, threadStates, setThreadStates, reconnectNonce } = useThreads();
+  const { threads, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens } = useThreads();
 
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
   const { messages, options, choices, loading, error } = st;
@@ -97,6 +104,8 @@ export default function ThreadPage() {
   // ms timestamp until which sending is blocked due to a 429 rate limit.
   const [rateLimitedUntil, setRateLimitedUntil] = useState(0);
   const rateLimited = rateLimitedUntil > Date.now();
+  // 402 insufficient_tokens — blocks the composer until balance recovers.
+  const [limitHit, setLimitHit] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -109,9 +118,33 @@ export default function ThreadPage() {
   const thread = threads.find((t) => String(t.id) === threadId);
   const userInitial = getUserInitial();
 
+  const tokensEnabled = tokens?.enabled === true;
+  const isTrialWallet = tokensEnabled && tokens.grantedThisPeriod === 120;
+  const remainingPct =
+    tokensEnabled && tokens.grantedThisPeriod > 0
+      ? Math.max(0, tokens.balance) / tokens.grantedThisPeriod
+      : null;
+
   useEffect(() => {
     setSpeechSupported(!!getSpeechRecognition());
   }, []);
+
+  // Clear the limit screen once the wallet recovers (monthly grant / top-up).
+  useEffect(() => {
+    if (limitHit && tokensEnabled && tokens.balance > 0) {
+      setLimitHit(false);
+    }
+  }, [limitHit, tokensEnabled, tokens]);
+
+  // ≤20% remaining → one toast per calendar month (deduped via localStorage).
+  useEffect(() => {
+    if (remainingPct === null || remainingPct > 0.2 || remainingPct <= 0.05) return;
+    const key = `token_warn20_${new Date().getFullYear()}-${new Date().getMonth() + 1}`;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, "1");
+    showToast("ტოკენები იწურება");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remainingPct]);
 
   // Auto-clear the rate-limit block when Retry-After elapses.
   useEffect(() => {
@@ -271,7 +304,7 @@ export default function ThreadPage() {
         stopRecognition();
       }
       const trimmed = text.trim();
-      if (!trimmed || loading || rateLimitedUntil > Date.now()) return;
+      if (!trimmed || loading || rateLimitedUntil > Date.now() || limitHit) return;
 
       // Optimistic: show the user's message and the working state immediately.
       setThreadStates((prev) =>
@@ -302,6 +335,19 @@ export default function ThreadPage() {
           headers: authHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ message: trimmed }),
         });
+
+        // 402: out of tokens — dedicated limit screen, not a generic error.
+        if (res.status === 402) {
+          const body = await res.json().catch(() => ({}));
+          if (body.reason === "insufficient_tokens") {
+            setLimitHit(true);
+            refreshTokens();
+            setThreadStates((prev) =>
+              updateThreadState(prev, threadId, (ts) => ({ ...ts, loading: false, runId: null }))
+            );
+            return;
+          }
+        }
 
         // 429: friendly message + block sending until Retry-After elapses.
         if (res.status === 429) {
@@ -337,7 +383,7 @@ export default function ThreadPage() {
         inputRef.current?.focus();
       }
     },
-    [loading, threadId, voiceState, setThreadStates, rateLimitedUntil]
+    [loading, threadId, voiceState, setThreadStates, rateLimitedUntil, limitHit, refreshTokens]
   );
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -352,6 +398,7 @@ export default function ThreadPage() {
   const lastIsAssistantMessage = lastMsg?.kind === "message" && lastMsg.role === "assistant";
   const showOptions = !loading && lastIsAssistantMessage && options.length > 0;
   const showChoices = !loading && lastIsAssistantMessage && choices.length > 0;
+  const composerBlocked = rateLimited || limitHit;
 
   return (
     <div className="flex h-full flex-col" style={{ background: "var(--bg)" }}>
@@ -407,6 +454,23 @@ export default function ThreadPage() {
         </span>
 
         <div className="flex items-center gap-3">
+          {/* Token balance chip — refreshed on tokens_debited (SSE) */}
+          {tokensEnabled && (
+            <span
+              className="rounded-full px-2.5 py-1 text-xs font-semibold"
+              style={{
+                background: "var(--thread-active-bg)",
+                color:
+                  remainingPct !== null && remainingPct <= 0.05
+                    ? "#dc2626"
+                    : remainingPct !== null && remainingPct <= 0.2
+                    ? "#b45309"
+                    : "var(--accent-strong)",
+              }}
+            >
+              🪙 {Math.max(0, tokens.balance)}
+            </span>
+          )}
           <NotificationButton />
           <button
             style={{ fontSize: "12.5px", color: "var(--meta)" }}
@@ -588,6 +652,40 @@ export default function ThreadPage() {
         )}
       </div>
 
+      {/* Low balance banner (≤5% remaining) */}
+      {!limitHit && remainingPct !== null && remainingPct <= 0.05 && (
+        <div className="px-4 pt-2">
+          <div className="mx-auto rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700" style={{ maxWidth: "760px" }}>
+            ⚠ ტოკენები თითქმის ამოიწურა — დარჩენილია {Math.max(0, tokens!.balance)}
+          </div>
+        </div>
+      )}
+
+      {/* 402 limit screen */}
+      {limitHit && (
+        <div className="px-4 pt-2">
+          <div className="mx-auto rounded-2xl border border-[#E4E0D3] bg-[#F7F6F2] px-5 py-4 flex flex-col gap-2" style={{ maxWidth: "760px" }}>
+            <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>
+              {isTrialWallet ? "საცდელი ტოკენები ამოიწურა" : "თვიური ტოკენები ამოგეწურა"}
+            </p>
+            <p className="text-sm" style={{ color: "var(--meta)" }}>
+              {isTrialWallet
+                ? "განაგრძობისთვის გამოიწერე Ally."
+                : `განახლდება ${nextRenewalDate()}.`}
+            </p>
+            {isTrialWallet && (
+              <button
+                type="button"
+                onClick={() => router.push("/pricing")}
+                className="self-start rounded-xl bg-[#3E7A56] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              >
+                გამოწერა
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Composer */}
       <div
         className="px-4 py-3"
@@ -618,9 +716,17 @@ export default function ThreadPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={voiceState === "recording" ? "Listening..." : rateLimited ? "Too many requests — please wait…" : "Message Ally…"}
+              placeholder={
+                voiceState === "recording"
+                  ? "Listening..."
+                  : limitHit
+                  ? "ტოკენები ამოიწურა"
+                  : rateLimited
+                  ? "Too many requests — please wait…"
+                  : "Message Ally…"
+              }
               rows={1}
-              disabled={rateLimited}
+              disabled={composerBlocked}
               className="flex-1 resize-none bg-transparent outline-none disabled:opacity-60"
               style={{
                 color: voiceState === "recording" ? "var(--placeholder)" : "var(--ink)",
@@ -636,13 +742,13 @@ export default function ThreadPage() {
               <button
                 type="button"
                 onClick={handleMicClick}
-                disabled={voiceState === "processing" || rateLimited}
+                disabled={voiceState === "processing" || composerBlocked}
                 aria-label={voiceState === "recording" ? "Stop recording" : "Start voice input"}
                 className="flex shrink-0 h-8 w-8 items-center justify-center rounded-full transition-all"
                 style={{
                   background: voiceState === "recording" ? "#ef4444" : "transparent",
                   color: voiceState === "recording" ? "white" : "var(--placeholder)",
-                  opacity: voiceState === "processing" || rateLimited ? 0.4 : 1,
+                  opacity: voiceState === "processing" || composerBlocked ? 0.4 : 1,
                   animation: voiceState === "recording" ? "micPulse 1.2s ease-in-out infinite" : "none",
                 }}
               >
@@ -671,7 +777,7 @@ export default function ThreadPage() {
               <button
                 type="button"
                 onClick={() => sendMessage(input)}
-                disabled={!input.trim() || loading}
+                disabled={!input.trim() || loading || composerBlocked}
                 className="flex shrink-0 h-8 w-8 items-center justify-center rounded-full transition-opacity disabled:opacity-30"
                 style={{ background: "var(--accent)" }}
                 aria-label="Send"
