@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
+import { authHeaders } from "@/lib/deviceId";
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 type Profile = {
   name: string;
@@ -12,6 +15,13 @@ type Profile = {
   subscription_status: "trialing" | "active" | "past_due" | "canceled" | "inactive";
   trial_ends_at: string | null;
   current_period_ends_at: string | null;
+};
+
+type TokenBalance = {
+  enabled: boolean;
+  balance: number;
+  grantedThisPeriod: number;
+  spentThisPeriod: number;
 };
 
 const TIER_LABELS: Record<string, string> = {
@@ -31,6 +41,89 @@ function fmt(dateStr: string): string {
     month: "long",
     day: "numeric",
   });
+}
+
+function nextRenewalDate(): string {
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return d.toLocaleDateString("ka-GE", { year: "numeric", month: "long", day: "numeric" });
+}
+
+// Token wallet widget (Claude-style usage limit view). Hidden entirely when the
+// backend kill-switch is off (enabled:false) or the balance can't be loaded.
+function TokensWidget() {
+  const [tokens, setTokens] = useState<TokenBalance | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    fetch(`${BASE_URL}/billing/tokens`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.data && typeof json.data.enabled === "boolean") {
+          setTokens(json.data as TokenBalance);
+        } else {
+          setFailed(true);
+        }
+      })
+      .catch(() => setFailed(true));
+  }, []);
+
+  if (tokens && !tokens.enabled) return null;
+  if (!tokens && !failed) return null; // loading — no empty box
+
+  const balance = tokens ? Math.max(0, tokens.balance) : null;
+  const granted = tokens?.grantedThisPeriod ?? 0;
+  const isTrial = granted === 120;
+  const remainingPct = tokens && granted > 0 ? balance! / granted : null;
+  const barColor =
+    remainingPct !== null && remainingPct <= 0.05
+      ? "#dc2626"
+      : remainingPct !== null && remainingPct <= 0.2
+      ? "#d97706"
+      : "#3E7A56";
+
+  return (
+    <div
+      className="rounded-2xl p-6 flex flex-col gap-3"
+      style={{ background: "#FFFFFF", border: "1px solid var(--sidebar-border)" }}
+    >
+      <h2 className="font-semibold" style={{ color: "var(--ink)" }}>ტოკენები</h2>
+
+      {failed || !tokens ? (
+        <p className="text-sm" style={{ color: "var(--meta)" }}>—</p>
+      ) : (
+        <>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-4xl font-bold" style={{ color: "var(--ink)" }}>{balance}</span>
+            {granted > 0 && (
+              <span className="text-sm" style={{ color: "var(--meta)" }}>/ {granted}</span>
+            )}
+          </div>
+
+          {granted > 0 && (
+            <div className="h-2.5 w-full overflow-hidden rounded-full" style={{ background: "#EFEDE6" }}>
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.round((remainingPct ?? 0) * 100)}%`,
+                  background: barColor,
+                  transition: "width 0.4s",
+                }}
+              />
+            </div>
+          )}
+
+          <p className="text-xs" style={{ color: "var(--meta)" }}>
+            {isTrial
+              ? "საცდელი ბალანსი — გამოიწერე გასაგრძელებლად"
+              : granted > 0
+              ? `განახლდება ${nextRenewalDate()}`
+              : null}
+          </p>
+        </>
+      )}
+    </div>
+  );
 }
 
 function SubscriptionBadge({ profile }: { profile: Profile }) {
@@ -208,6 +301,9 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
+
+            {/* Token wallet */}
+            <TokensWidget />
 
             {/* Subscription card */}
             <div
