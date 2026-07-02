@@ -22,6 +22,9 @@ function clearToken() {
   document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
 }
 
+const inputCls = "rounded-xl border border-[#E4E0D3] px-4 py-3 text-sm outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10";
+const primaryBtnCls = "flex h-12 items-center justify-center rounded-xl bg-[#3E7A56] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60";
+
 export default function LoginPage() {
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
@@ -281,7 +284,7 @@ export default function LoginPage() {
   const rateLimited = rlSecs > 0;
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-between bg-[#1a1a2e] px-4 py-12">
+    <div className="flex min-h-full flex-col items-center justify-between bg-white px-4 py-12">
       {/* SMS toast */}
       {smsToast && (
         <div
@@ -290,7 +293,7 @@ export default function LoginPage() {
             bottom: "80px",
             left: "50%",
             transform: "translateX(-50%)",
-            background: "rgba(0,0,0,0.82)",
+            background: "rgba(23,22,19,0.88)",
             color: "white",
             borderRadius: "12px",
             padding: "10px 18px",
@@ -307,11 +310,13 @@ export default function LoginPage() {
 
       <div className="flex-1 flex flex-col items-center justify-center w-full">
         <div className="w-full max-w-sm">
-          <h1 className="mb-8 text-center text-3xl font-bold tracking-tight text-white">
-            Ally
-          </h1>
+          <div className="mb-8 flex items-center justify-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/ally-logo.svg" alt="Ally" width={30} height={30} style={{ borderRadius: "26%" }} />
+            <span className="text-2xl font-semibold tracking-tight text-[#23261F]">Ally</span>
+          </div>
 
-          <div className="overflow-hidden rounded-2xl bg-white shadow-xl p-6 flex flex-col gap-4">
+          <div className="overflow-hidden rounded-2xl border border-[#E4E0D3] bg-white p-6 flex flex-col gap-4">
             {error && (
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
                 {error}
@@ -321,20 +326,16 @@ export default function LoginPage() {
 
             {step === "phone" && (
               <form onSubmit={handlePhoneSubmit} className="flex flex-col gap-4">
-                <p className="text-sm text-gray-500">შეიყვანე ტელეფონის ნომერი</p>
+                <p className="text-sm text-[#8A8778]">შეიყვანე ტელეფონის ნომერი</p>
                 <input
                   type="tel"
                   required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+995555123456"
-                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+                  className={inputCls}
                 />
-                <button
-                  type="submit"
-                  disabled={loading || rateLimited}
-                  className="flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-                >
+                <button type="submit" disabled={loading || rateLimited} className={primaryBtnCls}>
                   {loading ? <Spinner /> : rateLimited ? `დაელით (${rlSecs} წმ)` : "კოდის მიღება"}
                 </button>
               </form>
@@ -342,7 +343,7 @@ export default function LoginPage() {
 
             {step === "otp" && (
               <form onSubmit={handleOtpSubmit} className="flex flex-col gap-4">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-[#8A8778]">
                   WhatsApp-ზე გამოგზავნილი 6-ნიშნა კოდი
                 </p>
                 <input
@@ -354,12 +355,12 @@ export default function LoginPage() {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                   placeholder="000000"
-                  className="rounded-xl border border-gray-200 px-4 py-3 text-center text-2xl tracking-widest outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+                  className={`${inputCls} text-center text-2xl tracking-widest`}
                 />
                 <button
                   type="submit"
                   disabled={loading || otp.length !== 6 || rateLimited}
-                  className="flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                  className={primaryBtnCls}
                 >
                   {loading ? <Spinner /> : rateLimited ? `დაელით (${rlSecs} წმ)` : "დადასტურება"}
                 </button>
@@ -369,10 +370,10 @@ export default function LoginPage() {
                   type="button"
                   onClick={handleSmsResend}
                   disabled={smsCooldown > 0 || smsLoading || rateLimited}
-                  className="flex h-10 items-center justify-center rounded-xl border border-gray-200 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex h-10 items-center justify-center rounded-xl border border-[#E4E0D3] text-xs font-medium text-[#8A8778] transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {smsLoading ? (
-                    <Spinner />
+                    <Spinner dark />
                   ) : smsCooldown > 0 ? (
                     `SMS-ით გაგზავნა (${smsCooldown} წმ)`
                   ) : (
@@ -383,7 +384,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => { setStep("phone"); setOtp(""); setError(""); otpPassedRef.current = false; }}
-                  className="text-xs text-gray-400 hover:text-gray-600"
+                  className="text-xs text-[#8A8778] hover:text-[#23261F]"
                 >
                   ← უკან
                 </button>
@@ -393,8 +394,8 @@ export default function LoginPage() {
             {step === "referral" && (
               <form onSubmit={handleReferralSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                  <p className="text-base font-semibold text-[#1a1a2e]">Ally მოწვევით მუშაობს</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-base font-semibold text-[#23261F]">Ally მოწვევით მუშაობს</p>
+                  <p className="text-sm text-[#8A8778]">
                     ჩაწერე მეგობრის ნომერი, ვინც მოგიწვია — ის Ally-ს გამომწერი უნდა იყოს
                   </p>
                 </div>
@@ -405,7 +406,7 @@ export default function LoginPage() {
                   value={referralInput}
                   onChange={(e) => { setReferralInput(e.target.value); setReferralError(""); }}
                   placeholder="მაგ. 5XX XX XX XX"
-                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+                  className={inputCls}
                 />
                 {referralError && (
                   <p className="text-sm text-red-600">{referralError}</p>
@@ -413,7 +414,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading || !referralInput.trim() || rateLimited}
-                  className="flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                  className={primaryBtnCls}
                 >
                   {loading ? <Spinner /> : rateLimited ? `დაელით (${rlSecs} წმ)` : "გაგრძელება"}
                 </button>
@@ -422,7 +423,7 @@ export default function LoginPage() {
 
             {step === "name" && (
               <form onSubmit={handleNameSubmit} className="flex flex-col gap-4">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-[#8A8778]">
                   პირველად გამოიყენებ — შეიყვანე შენი სახელი
                 </p>
                 <input
@@ -432,12 +433,12 @@ export default function LoginPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="სახელი გვარი"
-                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+                  className={inputCls}
                 />
                 <button
                   type="submit"
                   disabled={loading || !name.trim() || rateLimited}
-                  className="flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                  className={primaryBtnCls}
                 >
                   {loading ? <Spinner /> : rateLimited ? `დაელით (${rlSecs} წმ)` : "რეგისტრაცია"}
                 </button>
@@ -448,11 +449,11 @@ export default function LoginPage() {
       </div>
 
       {/* Legal footer */}
-      <div className="mt-8 flex flex-wrap justify-center gap-4 text-xs text-white/40">
-        <Link href="/pricing" className="hover:text-white/70 transition-colors">Pricing</Link>
-        <Link href="/terms" className="hover:text-white/70 transition-colors">Terms</Link>
-        <Link href="/privacy" className="hover:text-white/70 transition-colors">Privacy</Link>
-        <Link href="/refund" className="hover:text-white/70 transition-colors">Refund Policy</Link>
+      <div className="mt-8 flex flex-wrap justify-center gap-4 text-xs text-[#8A8778]">
+        <Link href="/pricing" className="hover:text-[#23261F] transition-colors">Pricing</Link>
+        <Link href="/terms" className="hover:text-[#23261F] transition-colors">Terms</Link>
+        <Link href="/privacy" className="hover:text-[#23261F] transition-colors">Privacy</Link>
+        <Link href="/refund" className="hover:text-[#23261F] transition-colors">Refund Policy</Link>
       </div>
     </div>
   );
@@ -484,8 +485,8 @@ export default function LoginPage() {
   }
 }
 
-function Spinner() {
+function Spinner({ dark }: { dark?: boolean }) {
   return (
-    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+    <span className={`h-5 w-5 animate-spin rounded-full border-2 ${dark ? "border-gray-300 border-t-gray-600" : "border-white/30 border-t-white"}`} />
   );
 }

@@ -74,22 +74,22 @@ export default function OnboardingContactsPage() {
 
   if (result) {
     return (
-      <div className="flex min-h-full flex-col items-center justify-center bg-[#1a1a2e] px-4">
-        <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl flex flex-col items-center gap-5 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
-            <svg className="h-7 w-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div className="flex min-h-full flex-col items-center justify-center bg-white px-4">
+        <div className="w-full max-w-sm rounded-2xl border border-[#E4E0D3] bg-white p-8 flex flex-col items-center gap-5 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#DEE8E0]">
+            <svg className="h-7 w-7 text-[#3E7A56]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <div>
-            <p className="text-lg font-semibold text-[#1a1a2e]">კონტაქტები აიტვირთები!</p>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="text-lg font-semibold text-[#23261F]">კონტაქტები აიტვირთები!</p>
+            <p className="mt-1 text-sm text-[#8A8778]">
               დაემატა: {result.imported} &nbsp;&middot;&nbsp; გამოტოვებული: {result.skipped}
             </p>
           </div>
           <button
             onClick={() => router.replace("/chat")}
-            className="w-full flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white hover:opacity-90"
+            className="w-full flex h-12 items-center justify-center rounded-xl bg-[#3E7A56] text-sm font-semibold text-white hover:opacity-90"
           >
             ჩეთის დაწყება
           </button>
@@ -99,11 +99,11 @@ export default function OnboardingContactsPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-center bg-[#1a1a2e] px-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl flex flex-col gap-6">
+    <div className="flex min-h-full flex-col items-center justify-center bg-white px-4">
+      <div className="w-full max-w-sm rounded-2xl border border-[#E4E0D3] bg-white p-8 flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-bold text-[#1a1a2e]">კონტაქტების იმპორტი</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-xl font-bold text-[#23261F]">კონტაქტების იმპორტი</h1>
+          <p className="text-sm text-[#8A8778]">
             Ally-ს დაეხმარება შენი კონტაქტების ანალიზისთვის.
           </p>
         </div>
@@ -119,7 +119,7 @@ export default function OnboardingContactsPage() {
             <button
               onClick={importAndroid}
               disabled={loading}
-              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#3E7A56] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
             >
               {loading ? (
                 <Spinner />
@@ -133,7 +133,7 @@ export default function OnboardingContactsPage() {
               )}
             </button>
           ) : (
-            <label className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90">
+            <label className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#3E7A56] text-sm font-semibold text-white transition-opacity hover:opacity-90">
               {loading ? (
                 <Spinner />
               ) : (
@@ -159,7 +159,7 @@ export default function OnboardingContactsPage() {
           <button
             type="button"
             onClick={() => router.replace("/chat")}
-            className="text-sm text-gray-400 hover:text-gray-600 py-2"
+            className="text-sm text-[#8A8778] hover:text-[#23261F] py-2"
           >
             გამოტოვება
           </button>
