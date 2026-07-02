@@ -56,24 +56,24 @@ export default function InstallPrompt() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-      <div className="mx-auto max-w-sm rounded-2xl bg-[#1a1a2e] p-4 shadow-2xl flex flex-col gap-3">
+      <div className="mx-auto max-w-sm rounded-2xl border border-[#E4E0D3] bg-white p-4 shadow-2xl flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <p className="text-sm font-semibold text-white">აპლიკაციის დაყენება</p>
+            <p className="text-sm font-semibold text-[#23261F]">აპლიკაციის დაყენება</p>
             {platform === "android" && (
-              <p className="text-xs text-white/60">
+              <p className="text-xs text-[#8A8778]">
                 დაამატე Ally მთავარ ეკრანზე
               </p>
             )}
             {platform === "ios" && (
-              <p className="text-xs text-white/60">
+              <p className="text-xs text-[#8A8778]">
                 Safari → გაზიარების ღილაკი (△) → „Add to Home Screen“
               </p>
             )}
           </div>
           <button
             onClick={dismiss}
-            className="shrink-0 text-white/40 hover:text-white/70 text-lg leading-none"
+            className="shrink-0 text-[#B9B6AC] hover:text-[#8A8778] text-lg leading-none"
             aria-label="close"
           >
             ×
@@ -83,16 +83,16 @@ export default function InstallPrompt() {
         {platform === "android" && (
           <button
             onClick={installAndroid}
-            className="w-full flex h-10 items-center justify-center rounded-xl bg-white text-sm font-semibold text-[#1a1a2e] hover:bg-white/90"
+            className="w-full flex h-10 items-center justify-center rounded-xl bg-[#3E7A56] text-sm font-semibold text-white hover:opacity-90"
           >
             დაყენა
           </button>
         )}
 
         {platform === "ios" && (
-          <div className="flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-2">
+          <div className="flex items-center justify-center gap-2 rounded-xl bg-[#DEE8E0] px-4 py-2">
             <span className="text-xl">&#9650;</span>
-            <p className="text-xs text-white/80">
+            <p className="text-xs text-[#23261F]">
               ქვემოთ დააჭირეთ გაზიარების ღილაკსა და აირჩიეთ „Add to Home Screen“
             </p>
           </div>

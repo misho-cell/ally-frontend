@@ -54,13 +54,13 @@ function SubscriptionBadge({ profile }: { profile: Profile }) {
 
   if (subscription_status === "active") {
     return (
-      <div className="rounded-xl bg-green-50 border border-green-100 p-4">
+      <div className="rounded-xl border p-4" style={{ background: "#DEE8E0", borderColor: "#C7D6C9" }}>
         <div className="flex items-center gap-2 mb-1">
-          <span className="h-2 w-2 rounded-full bg-green-500" />
-          <span className="font-semibold text-green-800">{TIER_LABELS[subscription_tier]} — აქტიური</span>
+          <span className="h-2 w-2 rounded-full" style={{ background: "#3E7A56" }} />
+          <span className="font-semibold" style={{ color: "#2E5C41" }}>{TIER_LABELS[subscription_tier]} — აქტიური</span>
         </div>
         {current_period_ends_at && (
-          <p className="text-sm text-green-700">შემდეგი გადახდა: {fmt(current_period_ends_at)}</p>
+          <p className="text-sm" style={{ color: "#3E7A56" }}>შემდეგი გადახდა: {fmt(current_period_ends_at)}</p>
         )}
       </div>
     );
@@ -152,7 +152,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg)" }}>
-        <span className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-[#1a1a2e]" />
+        <span className="h-8 w-8 animate-spin rounded-full border-2 border-[#E4E0D3] border-t-[#3E7A56]" />
       </div>
     );
   }
@@ -170,8 +170,8 @@ export default function ProfilePage() {
             ← Chat
           </Link>
           <span
-            className="text-xl font-bold"
-            style={{ color: "var(--ink-strong)", fontFamily: "var(--font-bricolage)" }}
+            className="text-xl font-semibold"
+            style={{ color: "var(--ink)" }}
           >
             პროფილი
           </span>
@@ -187,19 +187,19 @@ export default function ProfilePage() {
             <div
               className="rounded-2xl p-6"
               style={{
-                background: "var(--sidebar-bg)",
+                background: "#FFFFFF",
                 border: "1px solid var(--sidebar-border)",
               }}
             >
               <div className="flex items-center gap-4">
                 <div
-                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-bold text-white"
-                  style={{ background: "#1a1a2e" }}
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-bold"
+                  style={{ background: "#DEE8E0", border: "2px solid #3E7A56", color: "#23261F" }}
                 >
                   {profile.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-semibold text-lg" style={{ color: "var(--ink-strong)" }}>
+                  <p className="font-semibold text-lg" style={{ color: "var(--ink)" }}>
                     {profile.name}
                   </p>
                   <p className="text-sm" style={{ color: "var(--meta)" }}>
@@ -213,11 +213,11 @@ export default function ProfilePage() {
             <div
               className="rounded-2xl p-6 flex flex-col gap-4"
               style={{
-                background: "var(--sidebar-bg)",
+                background: "#FFFFFF",
                 border: "1px solid var(--sidebar-border)",
               }}
             >
-              <h2 className="font-semibold" style={{ color: "var(--ink-strong)" }}>
+              <h2 className="font-semibold" style={{ color: "var(--ink)" }}>
                 Subscription
               </h2>
 
@@ -227,7 +227,7 @@ export default function ProfilePage() {
                 <Link
                   href="/pricing"
                   className="flex h-11 items-center justify-center rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ background: "#1a1a2e" }}
+                  style={{ background: "#3E7A56" }}
                 >
                   Plan-ის არჩევა
                 </Link>
@@ -238,7 +238,7 @@ export default function ProfilePage() {
                   className="flex h-11 items-center justify-center rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
                   style={{
                     border: "1px solid var(--sidebar-border)",
-                    color: "var(--ink-2)",
+                    color: "var(--ink)",
                   }}
                 >
                   {portalLoading ? (
