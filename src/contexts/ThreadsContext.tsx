@@ -56,6 +56,15 @@ export function updateThreadState(
   return { ...map, [key]: fn(cur) };
 }
 
+// Token wallet balance (GET /billing/tokens). null = not loaded / fetch failed.
+// enabled:false is the backend kill-switch — hide every token UI element.
+export type TokenBalance = {
+  enabled: boolean;
+  balance: number;
+  grantedThisPeriod: number;
+  spentThisPeriod: number;
+};
+
 type Ctx = {
   threads: Thread[];
   setThreads: Dispatch<SetStateAction<Thread[]>>;
@@ -64,6 +73,8 @@ type Ctx = {
   // Bumped when the SSE stream (re)connects, so open threads re-fetch history
   // for catch-up. Not bumped on the very first connect.
   reconnectNonce: number;
+  tokens: TokenBalance | null;
+  refreshTokens: () => void;
 };
 
 export const ThreadsContext = createContext<Ctx>({
@@ -72,6 +83,8 @@ export const ThreadsContext = createContext<Ctx>({
   threadStates: {},
   setThreadStates: () => {},
   reconnectNonce: 0,
+  tokens: null,
+  refreshTokens: () => {},
 });
 
 export const useThreads = () => useContext(ThreadsContext);
