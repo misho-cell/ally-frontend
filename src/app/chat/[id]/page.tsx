@@ -214,7 +214,7 @@ export default function ThreadPage() {
     }
   }
 
-  // Hydrate message history from the server. Backend now persists steps too
+  // Hydrate message history from the server. Backend persists steps too
   // (kind='step', run_id), so refetching restores prior runs' steps + final
   // replies. Runs on thread change and on SSE reconnect (catch-up). Live run
   // fields (loading/runId) are preserved — only the message list is replaced.
@@ -363,7 +363,7 @@ export default function ThreadPage() {
             bottom: "80px",
             left: "50%",
             transform: "translateX(-50%)",
-            background: "rgba(0,0,0,0.82)",
+            background: "rgba(23,22,19,0.88)",
             color: "white",
             borderRadius: "12px",
             padding: "10px 18px",
@@ -401,7 +401,7 @@ export default function ThreadPage() {
 
         <span
           className="flex-1 truncate"
-          style={{ fontSize: "15.5px", fontWeight: 600, color: "var(--ink-2)" }}
+          style={{ fontSize: "15px", fontWeight: 600, color: "var(--ink)" }}
         >
           {thread?.title ?? "Chat"}
         </span>
@@ -409,20 +409,14 @@ export default function ThreadPage() {
         <div className="flex items-center gap-3">
           <NotificationButton />
           <button
-            style={{
-              fontFamily: "var(--font-ibm-mono), monospace",
-              fontSize: "12px",
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "var(--meta)",
-            }}
+            style={{ fontSize: "12.5px", color: "var(--meta)" }}
             className="hidden sm:block transition-opacity hover:opacity-60"
           >
             Share
           </button>
           <div
             className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold shrink-0"
-            style={{ background: "var(--thread-active-bg)", color: "var(--ink-2)" }}
+            style={{ background: "var(--accent)", color: "#FFFFFF" }}
           >
             {userInitial}
           </div>
@@ -451,7 +445,7 @@ export default function ThreadPage() {
                   alt="Ally"
                   style={{ width: 44, height: 44, borderRadius: "26%", marginBottom: "4px" }}
                 />
-                <p style={{ fontSize: "22px", fontWeight: 600, color: "var(--ink-strong)" }}>Hi, I&apos;m Ally</p>
+                <p style={{ fontSize: "22px", fontWeight: 600, color: "var(--ink)" }}>Hi, I&apos;m Ally</p>
                 <p style={{ fontSize: "14px", color: "var(--placeholder)" }}>Ask me anything to get started.</p>
               </div>
             )}
@@ -476,9 +470,9 @@ export default function ThreadPage() {
                       style={{
                         background: "var(--user-bubble-bg)",
                         color: "var(--ink)",
-                        borderRadius: "18px 18px 6px 18px",
-                        fontSize: "15.5px",
-                        lineHeight: "1.6",
+                        borderRadius: "12px 12px 3px 12px",
+                        fontSize: "15px",
+                        lineHeight: "1.55",
                       }}
                     >
                       {msg.content}
@@ -494,7 +488,7 @@ export default function ThreadPage() {
                     alt=""
                     style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
                   />
-                  <div style={{ color: "var(--ink)", fontSize: "15.5px", lineHeight: "1.65", flex: 1 }}>
+                  <div style={{ color: "var(--ink)", fontSize: "15px", lineHeight: "1.6", flex: 1 }}>
                     <ReactMarkdown
                       components={{
                         p: ({ children }) => <p style={{ marginBottom: "10px" }} className="last:mb-0">{children}</p>,
@@ -521,11 +515,11 @@ export default function ThreadPage() {
                     type="button"
                     onClick={() => sendMessage(`${opt.name} (${opt.phone})`)}
                     className="flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-left transition-colors hover:bg-gray-50"
-                    style={{ borderColor: "var(--header-border)", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}
+                    style={{ borderColor: "var(--header-border)", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
                   >
                     <span
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-                      style={{ background: "var(--thread-active-bg)", color: "var(--ink-2)" }}
+                      style={{ background: "var(--thread-active-bg)", color: "var(--ink)" }}
                     >
                       {opt.name.charAt(0).toUpperCase()}
                     </span>
@@ -613,10 +607,9 @@ export default function ThreadPage() {
           <div
             className="flex flex-1 items-end gap-2 px-4 py-3"
             style={{
-              background: "white",
+              background: "#FFFFFF",
               border: voiceState === "recording" ? "1px solid rgba(239,68,68,0.4)" : "1px solid var(--header-border)",
-              borderRadius: "24px",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+              borderRadius: "18px",
               transition: "border-color 0.2s",
             }}
           >
@@ -632,7 +625,7 @@ export default function ThreadPage() {
               style={{
                 color: voiceState === "recording" ? "var(--placeholder)" : "var(--ink)",
                 fontStyle: voiceState === "recording" ? "italic" : "normal",
-                fontSize: "15.5px",
+                fontSize: "15px",
                 lineHeight: "1.5",
                 maxHeight: "120px",
               }}
@@ -678,7 +671,7 @@ export default function ThreadPage() {
               <button
                 type="button"
                 onClick={() => sendMessage(input)}
-                disabled={!input.trim() || loading || rateLimited}
+                disabled={!input.trim() || loading}
                 className="flex shrink-0 h-8 w-8 items-center justify-center rounded-full transition-opacity disabled:opacity-30"
                 style={{ background: "var(--accent)" }}
                 aria-label="Send"
