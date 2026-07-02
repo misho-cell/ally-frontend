@@ -1,5 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
-  <path d="M 52 5 A 46 46 0 1 0 52 95" stroke="#29a9e1" stroke-width="11" stroke-linecap="round"/>
-  <ellipse cx="53" cy="50" rx="17" ry="45" stroke="#29a9e1" stroke-width="11"/>
-  <ellipse cx="67" cy="50" rx="9" ry="37" stroke="#29a9e1" stroke-width="11"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 280">
+  <!-- Ally mark: five interlocking rings sweeping left to right,
+       white/stone -> fern greens -> charcoal. Flat vector version of the
+       3D brand render; transparent background. -->
+  <g fill="none" stroke-linecap="round">
+    <ellipse cx="92"  cy="140" rx="76" ry="94" stroke="#EDEBE4" stroke-width="17"/>
+    <ellipse cx="118" cy="140" rx="71" ry="92" stroke="#D9D6CC" stroke-width="16"/>
+    <ellipse cx="144" cy="140" rx="66" ry="90" stroke="#4C9A6E" stroke-width="16"/>
+    <ellipse cx="168" cy="140" rx="60" ry="88" stroke="#2E5C41" stroke-width="15"/>
+    <ellipse cx="190" cy="140" rx="54" ry="86" stroke="#23261F" stroke-width="15"/>
+  </g>
 </svg>
