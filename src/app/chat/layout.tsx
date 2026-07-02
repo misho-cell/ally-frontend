@@ -269,11 +269,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             <img src="/ally-logo.svg" alt="Ally" style={{ borderRadius: "26%", width: 24, height: 24 }} />
             <span
               style={{
-                fontFamily: "var(--font-bricolage)",
-                fontSize: "22px",
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-                color: "var(--ink-strong)",
+                fontSize: "18px",
+                fontWeight: 600,
+                letterSpacing: "-0.01em",
+                color: "var(--ink)",
               }}
             >
               Ally
@@ -286,9 +285,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               disabled={creating}
               className="flex w-full items-center gap-2 rounded-xl border bg-white px-4 py-2.5 transition-colors hover:bg-gray-50 disabled:opacity-50"
               style={{
-                borderColor: "var(--sidebar-border)",
-                color: "var(--ink-2)",
-                fontSize: "14.5px",
+                borderColor: "var(--cta-border)",
+                color: "var(--ink)",
+                fontSize: "14px",
                 fontWeight: 500,
               }}
             >
@@ -300,7 +299,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           <div className="px-4 pb-3">
             <div
               className="flex items-center gap-2 rounded-xl px-3 py-2.5"
-              style={{ background: "#e8e2d8", border: "1px solid var(--sidebar-border)" }}
+              style={{ background: "var(--bg)", border: "1px solid var(--sidebar-border)" }}
             >
               <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
                 <circle cx="8.5" cy="8.5" r="5.75" stroke="var(--placeholder)" strokeWidth="1.75" />
@@ -320,7 +319,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           <div className="flex-1 overflow-y-auto px-2">
             {incoming.length > 0 && (
               <section className="mb-1">
-                <p className="px-3 pb-1 pt-2" style={{ fontFamily: "var(--font-ibm-mono), monospace", fontSize: "10.5px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--meta)" }}>
+                <p className="px-3 pb-1 pt-2" style={{ fontSize: "10.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--meta)" }}>
                   Incoming requests
                 </p>
                 {incoming.map((t) => (
@@ -330,7 +329,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             )}
             <section>
               {incoming.length > 0 && mine.length > 0 && (
-                <p className="px-3 pb-1 pt-2" style={{ fontFamily: "var(--font-ibm-mono), monospace", fontSize: "10.5px", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--meta)" }}>
+                <p className="px-3 pb-1 pt-2" style={{ fontSize: "10.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--meta)" }}>
                   My threads
                 </p>
               )}
@@ -349,21 +348,21 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             <Link
               href="/profile"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-opacity hover:opacity-70"
-              style={{ background: "var(--thread-active-bg)", color: "var(--ink-2)" }}
+              style={{ background: "var(--thread-active-bg)", border: "2px solid var(--accent)", color: "var(--ink)" }}
             >
               {user.initial}
             </Link>
             <Link
               href="/profile"
               className="flex-1 truncate transition-opacity hover:opacity-70"
-              style={{ color: "var(--ink-2)", fontWeight: 500, fontSize: "13.5px" }}
+              style={{ color: "var(--ink)", fontWeight: 500, fontSize: "13.5px" }}
             >
               {user.name}
             </Link>
             <button
               onClick={handleSignOut}
               className="transition-opacity hover:opacity-60"
-              style={{ fontFamily: "var(--font-ibm-mono), monospace", fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--meta)" }}
+              style={{ fontSize: "11.5px", color: "var(--meta)" }}
             >
               Sign out
             </button>
@@ -380,14 +379,19 @@ function ThreadRow({ thread, active }: { thread: Thread; active: boolean }) {
   return (
     <Link
       href={`/chat/${thread.id}`}
-      className="flex items-center rounded-xl px-3 py-2.5 transition-colors"
-      style={{ background: active ? "var(--thread-active-bg)" : "transparent", marginBottom: "1px" }}
+      className="flex items-center px-3 py-2.5 transition-colors"
+      style={{
+        background: active ? "var(--thread-active-bg)" : "transparent",
+        borderLeft: active ? "3px solid var(--accent)" : "3px solid transparent",
+        borderRadius: active ? "0 9px 9px 0" : "9px",
+        marginBottom: "1px",
+      }}
       onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)"; }}
       onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
     >
       <span
         className="truncate"
-        style={{ fontSize: "14px", fontWeight: active ? 600 : 400, color: active ? "var(--ink-strong)" : "var(--ink-muted)" }}
+        style={{ fontSize: "14px", fontWeight: active ? 600 : 400, color: active ? "var(--ink)" : "var(--ink-muted)" }}
       >
         {thread.type === "incoming_request" && <span style={{ color: "var(--accent)", marginRight: "4px" }}>↓</span>}
         {thread.type === "outgoing_request" && <span style={{ color: "var(--meta)", marginRight: "4px" }}>↑</span>}
