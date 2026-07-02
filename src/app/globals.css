@@ -1,32 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  /* Font families */
-  --font-hanken: 'Hanken Grotesk', system-ui, sans-serif;
-  --font-bricolage: 'Bricolage Grotesque', serif;
-  --font-ibm-mono: 'IBM Plex Mono', monospace;
+  /* Typeface: system sans only — no webfonts (design system).
+     The old font vars are kept as aliases so any leftover reference
+     resolves to the same system stack. */
+  --font-system: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-hanken: var(--font-system);
+  --font-bricolage: var(--font-system);
+  --font-ibm-mono: var(--font-system);
 
-  /* Accent */
-  --accent: #1f8fde;
-  --accent-strong: #1567a8;
-  --accent-tint: #e4f1fb;
+  /* Accent — Fern */
+  --accent: #3E7A56;
+  --accent-strong: #2E5C41;
+  --accent-tint: #DEE8E0;
+  --cta-border: #C7D6C9;
 
-  /* Ink scale */
-  --ink: #211f1c;
-  --ink-strong: #1f1d1a;
-  --ink-2: #2c2a26;
-  --ink-muted: #56514a;
-  --ink-soft: #6a655c;
-  --placeholder: #a39d92;
-  --meta: #8a857c;
+  /* Ink scale — Charcoal + derived tints */
+  --ink: #23261F;
+  --ink-strong: #171613;
+  --ink-2: #23261F;
+  --ink-muted: #3A382F;
+  --ink-soft: #56534A;
+  --placeholder: #8A8778;
+  --meta: #8A8778;
 
-  /* Canvas surfaces */
-  --bg: #faf9f6;
-  --sidebar-bg: #f2efe8;
-  --sidebar-border: #e7e2d8;
-  --header-border: #efe9df;
-  --thread-active-bg: #e6e0d4;
-  --user-bubble-bg: #efe9df;
+  /* Canvas surfaces — white with stone-derived hairlines */
+  --bg: #FFFFFF;
+  --sidebar-bg: #FFFFFF;
+  --sidebar-border: #E4E0D3;
+  --header-border: #E4E0D3;
+  --thread-active-bg: #DEE8E0;
+  --user-bubble-bg: #DEE8E0;
 
   --background: var(--bg);
   --foreground: var(--ink);
@@ -35,6 +39,6 @@
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-hanken);
+  font-family: var(--font-system);
   -webkit-font-smoothing: antialiased;
 }
