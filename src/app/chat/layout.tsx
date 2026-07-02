@@ -257,9 +257,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     <ThreadsContext.Provider value={{ threads, setThreads, threadStates, setThreadStates, reconnectNonce }}>
       <div className="flex h-full" style={{ background: "var(--bg)" }}>
         <aside
-          className={`${sidebarClass} flex-col shrink-0`}
+          className={`${sidebarClass} flex-col shrink-0 w-full md:w-[268px]`}
           style={{
-            width: "268px",
             background: "var(--sidebar-bg)",
             borderRight: "1px solid var(--sidebar-border)",
           }}
