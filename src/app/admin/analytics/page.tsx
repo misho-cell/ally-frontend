@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { authHeaders } from "@/lib/deviceId";
+import { adminAuthHeaders } from "@/lib/deviceId";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -44,7 +44,7 @@ const INTRO_LABELS: Record<string, string> = {
   declined: "უარყოფილი",
 };
 
-const ACCENT = "#1a1a2e";
+const ACCENT = "#23261F";
 
 // Fill missing days with 0 so charts show a continuous 30-day axis. Backend
 // omits zero days. Uses local date keys (YYYY-MM-DD).
@@ -77,7 +77,7 @@ export default function AdminAnalyticsPage() {
     setError(false);
     try {
       const res = await fetch(`${BASE_URL}/admin/analytics/overview`, {
-        headers: authHeaders(),
+        headers: adminAuthHeaders(),
       });
       // Valid token but not admin (403) or missing/expired (401) — back to admin login.
       if (res.status === 401 || res.status === 403) {
@@ -107,7 +107,7 @@ export default function AdminAnalyticsPage() {
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
         <div className="flex items-center gap-3">
           <a href="/admin" className="text-sm text-gray-400 hover:text-gray-600 transition">← ადმინი</a>
-          <h1 className="text-lg font-bold text-[#1a1a2e]">რეპორტინგი</h1>
+          <h1 className="text-lg font-bold text-[#23261F]">რეპორტინგი</h1>
         </div>
         <button
           type="button"
@@ -128,7 +128,7 @@ export default function AdminAnalyticsPage() {
             <button
               type="button"
               onClick={load}
-              className="rounded-xl bg-[#1a1a2e] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              className="rounded-xl bg-[#23261F] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
               ხელახლა ცდა
             </button>
@@ -221,7 +221,7 @@ function FunnelBlock({ steps }: { steps: { step: string; users: number }[] }) {
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-gray-700">{FUNNEL_LABELS[s.step] ?? s.step}</span>
                   <span className="text-gray-500">
-                    <span className="font-semibold text-[#1a1a2e]">{s.users}</span>
+                    <span className="font-semibold text-[#23261F]">{s.users}</span>
                     {i > 0 && (
                       <span className="ml-2 text-xs">
                         {convPct === null ? "—" : `${convPct}%`}
@@ -313,7 +313,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 function Kpi({ value, label, big }: { value: number; label: string; big?: boolean }) {
   return (
     <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-      <p className={`font-bold text-[#1a1a2e] ${big ? "text-4xl" : "text-2xl"}`}>{value}</p>
+      <p className={`font-bold text-[#23261F] ${big ? "text-4xl" : "text-2xl"}`}>{value}</p>
       <p className="mt-0.5 text-xs text-gray-500">{label}</p>
     </div>
   );

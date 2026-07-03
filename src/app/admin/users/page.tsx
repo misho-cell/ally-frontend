@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { authHeaders } from "@/lib/deviceId";
+import { adminAuthHeaders } from "@/lib/deviceId";
 import { fmtDate, fmtRelative } from "@/lib/date";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -50,7 +50,7 @@ export default function AdminUsersPage() {
         const params = new URLSearchParams({ q: query, limit: "50" });
         if (subsOnly) params.set("subscribed", "true");
         const res = await fetch(`${BASE_URL}/admin/users?${params.toString()}`, {
-          headers: authHeaders(),
+          headers: adminAuthHeaders(),
         });
         if (res.status === 401 || res.status === 403) {
           router.replace("/admin/login");
@@ -85,7 +85,7 @@ export default function AdminUsersPage() {
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
         <div className="flex items-center gap-3">
           <a href="/admin" className="text-sm text-gray-400 hover:text-gray-600 transition">← ადმინი</a>
-          <h1 className="text-lg font-bold text-[#1a1a2e]">მომხმარებლები</h1>
+          <h1 className="text-lg font-bold text-[#23261F]">მომხმარებლები</h1>
         </div>
       </header>
 
@@ -95,7 +95,7 @@ export default function AdminUsersPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="ძებნა სახელით ან ნომრით..."
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
         />
 
         {/* Subscribed / all toggle */}
@@ -104,7 +104,7 @@ export default function AdminUsersPage() {
             type="button"
             onClick={() => setSubscribed(true)}
             className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-              subscribed ? "bg-[#1a1a2e] text-white" : "text-gray-500 hover:text-gray-700"
+              subscribed ? "bg-[#23261F] text-white" : "text-gray-500 hover:text-gray-700"
             }`}
           >
             გამომწერები
@@ -113,7 +113,7 @@ export default function AdminUsersPage() {
             type="button"
             onClick={() => setSubscribed(false)}
             className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-              !subscribed ? "bg-[#1a1a2e] text-white" : "text-gray-500 hover:text-gray-700"
+              !subscribed ? "bg-[#23261F] text-white" : "text-gray-500 hover:text-gray-700"
             }`}
           >
             ყველა
@@ -132,7 +132,7 @@ export default function AdminUsersPage() {
             <button
               type="button"
               onClick={() => load(q, subscribed)}
-              className="rounded-xl bg-[#1a1a2e] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              className="rounded-xl bg-[#23261F] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
               ხელახლა ცდა
             </button>
@@ -151,7 +151,7 @@ export default function AdminUsersPage() {
                 className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 text-left transition-colors hover:bg-gray-50"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-[#1a1a2e]">{u.name ?? "—"}</p>
+                  <p className="truncate font-semibold text-[#23261F]">{u.name ?? "—"}</p>
                   <p className="mt-0.5 truncate text-xs text-gray-400">
                     {u.phones[0] ?? "—"}
                     {u.city ? ` · ${u.city}` : ""}
