@@ -1,10 +1,13 @@
-import { authHeaders, parseRetryAfter } from "./deviceId";
+import { authHeaders, adminAuthHeaders, handleAdminTokenMisuse } from "./deviceId";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 type RequestOptions = {
   method?: string;
   body?: unknown;
+  // Use the admin session (adminToken) instead of the user session. 401 then
+  // redirects to /admin/login instead of /login.
+  admin?: boolean;
 };
 
 export class ApiError extends Error {
@@ -22,11 +25,9 @@ export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
-  // Bearer + X-Device-Id from the single source.
-  const headers = authHeaders({ "Content-Type": "application/json" });
+  const headers = options.admin
+    ? adminAuthHeaders({ "Content-Type": "application/json" })
+    : authHeaders({ "Content-Type": "application/json" });
 
   let response: Response;
 
@@ -41,28 +42,41 @@ export async function apiFetch<T>(
   }
 
   if (response.status === 401) {
-    if (typeof window !== "undefined" && token) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+    if (typeof window !== "undefined") {
+      if (options.admin) {
+        localStorage.removeItem("adminToken");
+        document.cookie = "adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+        window.location.href = "/admin/login";
+      } else if (localStorage.getItem("token")) {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      }
     }
-    throw new ApiError("Invalid email or password.", 401);
+    throw new ApiError("Unauthorized.", 401);
   }
 
   if (response.status === 429) {
     const data = await response
       .json()
       .catch(() => ({})) as { message?: string; error?: string };
+    const raw = response.headers.get("Retry-After");
+    const secs = raw ? parseInt(raw, 10) : NaN;
     throw new ApiError(
       data.error ?? data.message ?? "Too many requests. Please try again later.",
       429,
-      parseRetryAfter(response),
+      Number.isFinite(secs) && secs > 0 ? secs : 30,
     );
   }
 
   if (!response.ok) {
     const data = await response
       .json()
-      .catch(() => ({})) as { message?: string; error?: string; success?: boolean };
+      .catch(() => ({})) as { message?: string; error?: string; success?: boolean; reason?: string };
+
+    // Leftover admin JWT hitting a user endpoint — reset to phone login.
+    if (!options.admin && handleAdminTokenMisuse(response.status, data)) {
+      throw new ApiError(data.error ?? "admin_token_on_user_endpoint", 403);
+    }
 
     if (data.error === "subscription_required") {
       if (typeof window !== "undefined") {
