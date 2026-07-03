@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
+import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import {
   useThreads,
   updateThreadState,
@@ -37,6 +38,13 @@ function getSpeechRecognition(): any {
 }
 
 type VoiceState = "idle" | "recording" | "processing";
+
+type TopupPackage = {
+  id: number;
+  paddlePriceId: string;
+  tokens: number;
+  label: string;
+};
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
@@ -106,6 +114,8 @@ export default function ThreadPage() {
   const rateLimited = rateLimitedUntil > Date.now();
   // 402 insufficient_tokens — blocks the composer until balance recovers.
   const [limitHit, setLimitHit] = useState(false);
+  const [packages, setPackages] = useState<TopupPackage[]>([]);
+  const packagesFetchedRef = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -114,6 +124,8 @@ export default function ThreadPage() {
   const inputBeforeRecordingRef = useRef("");
   const confirmedTranscriptRef = useRef("");
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const balanceRef = useRef<number | null>(null);
 
   const thread = threads.find((t) => String(t.id) === threadId);
   const userInitial = getUserInitial();
@@ -129,12 +141,65 @@ export default function ThreadPage() {
     setSpeechSupported(!!getSpeechRecognition());
   }, []);
 
+  // Track latest balance for the post-checkout poll.
+  useEffect(() => {
+    if (tokensEnabled) balanceRef.current = tokens.balance;
+  }, [tokensEnabled, tokens]);
+
   // Clear the limit screen once the wallet recovers (monthly grant / top-up).
   useEffect(() => {
     if (limitHit && tokensEnabled && tokens.balance > 0) {
       setLimitHit(false);
     }
   }, [limitHit, tokensEnabled, tokens]);
+
+  // Top-up packages: subscribers only (trial gets the subscribe CTA instead).
+  // Empty list = backend kill-switch → no buy UI at all.
+  useEffect(() => {
+    if (!tokensEnabled || isTrialWallet || packagesFetchedRef.current) return;
+    packagesFetchedRef.current = true;
+    fetch(`${BASE_URL}/billing/topup-packages`, { headers: authHeaders() })
+      .then((r) => r.json())
+      .then((json) => {
+        if (Array.isArray(json?.data)) setPackages(json.data as TopupPackage[]);
+      })
+      .catch(() => {});
+  }, [tokensEnabled, isTrialWallet]);
+
+  // After checkout completes the webhook credits tokens within seconds — poll
+  // the balance every 2s (max 30s) until it grows. The limit screen clears
+  // itself via the effect above once balance > 0.
+  useEffect(() => {
+    const off = onCheckoutCompleted(() => {
+      const startBalance = balanceRef.current ?? 0;
+      let ticks = 0;
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(() => {
+        ticks++;
+        refreshTokens();
+        if ((balanceRef.current ?? 0) > startBalance || ticks >= 15) {
+          if ((balanceRef.current ?? 0) > startBalance) {
+            showToast("ტოკენები დაემატა");
+          }
+          if (pollRef.current) clearInterval(pollRef.current);
+        }
+      }, 2000);
+    });
+    return () => {
+      off();
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTokens]);
+
+  async function buyPackage(pkg: TopupPackage) {
+    try {
+      await ensurePaddle();
+      openCheckout(pkg.paddlePriceId);
+    } catch {
+      showToast("გადახდის ფანჯრის გახსნა ვერ მოხერხდა");
+    }
+  }
 
   // ≤20% remaining → one toast per calendar month (deduped via localStorage).
   useEffect(() => {
@@ -671,9 +736,11 @@ export default function ThreadPage() {
             <p className="text-sm" style={{ color: "var(--meta)" }}>
               {isTrialWallet
                 ? "განაგრძობისთვის გამოიწერე Ally."
+                : packages.length > 0
+                ? `განახლდება ${nextRenewalDate()} — ან დაამატე ტოკენები ახლავე:`
                 : `განახლდება ${nextRenewalDate()}.`}
             </p>
-            {isTrialWallet && (
+            {isTrialWallet ? (
               <button
                 type="button"
                 onClick={() => router.push("/pricing")}
@@ -681,7 +748,20 @@ export default function ThreadPage() {
               >
                 გამოწერა
               </button>
-            )}
+            ) : packages.length > 0 ? (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {packages.map((pkg) => (
+                  <button
+                    key={pkg.id}
+                    type="button"
+                    onClick={() => buyPackage(pkg)}
+                    className="flex-1 rounded-xl border border-[#C7D6C9] bg-white px-3 py-2.5 text-sm font-medium text-[#23261F] transition-colors hover:bg-[#F7F9F7]"
+                  >
+                    {pkg.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       )}
