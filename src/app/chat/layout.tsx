@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
-import { authHeaders } from "@/lib/deviceId";
+import { authHeaders, handleAdminTokenMisuse } from "@/lib/deviceId";
 import {
   ThreadsContext,
   updateThreadState,
@@ -66,6 +66,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        // Leftover admin JWT on a user endpoint — reset to phone login.
+        if (handleAdminTokenMisuse(res.status, body)) return;
         if (isSubscriptionError(res.status, body)) {
           router.replace("/pricing");
           return;
@@ -225,6 +227,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        if (handleAdminTokenMisuse(res.status, body)) return;
         if (isSubscriptionError(res.status, body)) {
           router.replace("/pricing");
         }
