@@ -6,31 +6,20 @@ import Link from "next/link";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 
 const PRICE_IDS: Record<string, string> = {
-  premium: "pri_01kvq5da2w9fjgv7cn0eqqqk63",
   pro: "pri_01kvq5fwfdj2p8j42p663mh3yr",
   enterprise: "pri_01kvq5gjc8mb3kx2qhwp44mtkh",
 };
 
 const PLANS = [
   {
-    key: "premium",
-    name: "Premium",
-    price: "$2.99",
-    period: "/თვე",
-    hasTrial: true,
-    features: ["AI ასისტენტი", "კონტაქტების ანალიზი", "ძირითადი ფუნქციები"],
-    highlight: false,
-    cta: "5 დღე უფასოდ სცადე",
-  },
-  {
     key: "pro",
     name: "Pro",
     price: "$19.99",
     period: "/თვე",
-    hasTrial: false,
-    features: ["Premium-ის ყველაფერი", "პრიორიტეტული მხარდაჭერა", "Advanced analytics"],
+    hasTrial: true,
+    features: ["AI ასისტენტი", "კონტაქტების ანალიზი", "პრიორიტეტული მხარდაჭერა", "Advanced analytics"],
     highlight: true,
-    cta: "Pro-ს არჩევა",
+    cta: "5 დღე უფასოდ სცადე",
   },
   {
     key: "enterprise",
@@ -66,7 +55,7 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-white px-4 py-12 flex flex-col items-center">
-      <div className="w-full max-w-3xl">
+      <div className="w-full max-w-2xl">
         {/* Header with close button */}
         <div className="relative text-center mb-10">
           <Link
@@ -86,12 +75,12 @@ export default function PricingPage() {
           </div>
           <h1 className="text-3xl font-bold text-[#23261F] mb-3">აირჩიე შენი Plan</h1>
           <p className="text-[#8A8778] text-base max-w-md mx-auto">
-            Premium-ზე 5 დღე უფასოდ სცადე — ბარათი არ გეჭდება სანამ trial არ დასრულდება.
+            Pro-ზე 5 დღე უფასოდ სცადე — ბარათი არ გეჭდება სანამ trial არ დასრულდება.
           </p>
         </div>
 
         {/* Plan cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {PLANS.map((plan) => (
             <div
               key={plan.key}
@@ -111,7 +100,7 @@ export default function PricingPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`text-lg font-bold ${plan.highlight ? "text-white" : "text-[#23261F]"}`}>{plan.name}</span>
                   {plan.hasTrial && (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#DEE8E0] text-[#3E7A56]">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${plan.highlight ? "bg-white/20 text-white" : "bg-[#DEE8E0] text-[#3E7A56]"}`}>
                       5-day trial
                     </span>
                   )}
@@ -121,7 +110,7 @@ export default function PricingPage() {
                   <span className={`text-sm ${plan.highlight ? "text-white/70" : "text-[#8A8778]"}`}>{plan.period}</span>
                 </div>
                 {plan.hasTrial && (
-                  <p className="text-xs text-[#8A8778] mt-1">პირველი 5 დღე უფასოა</p>
+                  <p className={`text-xs mt-1 ${plan.highlight ? "text-white/70" : "text-[#8A8778]"}`}>პირველი 5 დღე უფასოა</p>
                 )}
               </div>
 
