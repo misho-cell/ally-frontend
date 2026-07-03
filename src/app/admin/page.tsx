@@ -40,7 +40,7 @@ export default function AdminPage() {
 
   async function fetchFields() {
     try {
-      const data = await apiFetch<FieldsResponse>("/admin/fields");
+      const data = await apiFetch<FieldsResponse>("/admin/fields", { admin: true });
       setFields(data.data);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to load fields.");
@@ -51,12 +51,14 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchFields();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleToggle(id: string) {
     try {
       await apiFetch<FieldResponse>(`/admin/fields/${id}/toggle`, {
         method: "PATCH",
+        admin: true,
       });
       await fetchFields();
     } catch (err) {
@@ -80,6 +82,7 @@ export default function AdminPage() {
       await apiFetch<FieldResponse>(`/admin/fields/${editingId}`, {
         method: "PUT",
         body: editValues,
+        admin: true,
       });
       await fetchFields();
       setEditingId(null);
@@ -98,6 +101,7 @@ export default function AdminPage() {
       await apiFetch<FieldResponse>("/admin/fields", {
         method: "POST",
         body: newField,
+        admin: true,
       });
       await fetchFields();
       setNewField({ field_key: "", field_label: "", field_description: "" });
@@ -111,23 +115,23 @@ export default function AdminPage() {
   return (
     <div className="min-h-full bg-gray-50">
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
-        <h1 className="text-lg font-bold text-[#1a1a2e]">Admin — Insight Fields</h1>
+        <h1 className="text-lg font-bold text-[#23261F]">Admin — Insight Fields</h1>
         <div className="flex items-center gap-2">
           <a
             href="/admin/users"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#1a1a2e] text-sm hover:bg-gray-50 transition"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
           >
             მომხმარებლები →
           </a>
           <a
             href="/admin/analytics"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#1a1a2e] text-sm hover:bg-gray-50 transition"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
           >
             რეპორტინგი →
           </a>
           <a
             href="/admin/chat"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1a1a2e] text-white text-sm hover:opacity-80 transition"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#23261F] text-white text-sm hover:opacity-80 transition"
           >
             ასისტენტის კონფიგურატორი →
           </a>
@@ -149,7 +153,7 @@ export default function AdminPage() {
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#1a1a2e]" />
+              <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#23261F]" />
             </div>
           ) : fields.length === 0 ? (
             <p className="text-sm text-gray-400">No fields yet.</p>
@@ -162,7 +166,7 @@ export default function AdminPage() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[#1a1a2e]">
+                      <p className="font-semibold text-[#23261F]">
                         {field.field_label}
                       </p>
                       <p className="mt-0.5 text-xs text-gray-400">
@@ -218,7 +222,7 @@ export default function AdminPage() {
                   onChange={(e) =>
                     setEditValues((v) => ({ ...v, field_label: e.target.value }))
                   }
-                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -234,7 +238,7 @@ export default function AdminPage() {
                       field_description: e.target.value,
                     }))
                   }
-                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+                  className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
                 />
               </div>
               <div className="flex gap-2">
@@ -242,7 +246,7 @@ export default function AdminPage() {
                   type="button"
                   onClick={handleSaveEdit}
                   disabled={saving}
-                  className="flex h-10 items-center justify-center rounded-xl bg-[#1a1a2e] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                  className="flex h-10 items-center justify-center rounded-xl bg-[#23261F] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                 >
                   {saving ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -279,7 +283,7 @@ export default function AdminPage() {
                   setNewField((v) => ({ ...v, field_key: e.target.value }))
                 }
                 placeholder="e.g. company_name"
-                className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+                className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -291,7 +295,7 @@ export default function AdminPage() {
                   setNewField((v) => ({ ...v, field_label: e.target.value }))
                 }
                 placeholder="e.g. Company Name"
-                className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+                className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -308,14 +312,14 @@ export default function AdminPage() {
                   }))
                 }
                 placeholder="e.g. The company the contact works at"
-                className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+                className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
               />
             </div>
             <button
               type="button"
               onClick={handleAddField}
               disabled={saving || !newField.field_key || !newField.field_label}
-              className="flex h-10 w-full items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="flex h-10 w-full items-center justify-center rounded-xl bg-[#23261F] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               {saving ? (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />

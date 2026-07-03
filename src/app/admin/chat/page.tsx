@@ -52,7 +52,7 @@ export default function AdminChatPage() {
   useEffect(() => {
     async function loadPrompt() {
       try {
-        const data = await apiFetch<SystemPromptResponse>("/admin/system-prompt");
+        const data = await apiFetch<SystemPromptResponse>("/admin/system-prompt", { admin: true });
         setPromptText(data.system_prompt ?? "");
       } catch {
         // ignore — prompt section just stays empty
@@ -75,6 +75,7 @@ export default function AdminChatPage() {
       await apiFetch("/admin/system-prompt", {
         method: "PUT",
         body: { system_prompt: promptText },
+        admin: true,
       });
       setShowConfirm(false);
       showToast("შენახულია");
@@ -101,6 +102,7 @@ export default function AdminChatPage() {
       const data = await apiFetch<AdminChatResponse>("/admin/chat", {
         method: "POST",
         body: { message: text },
+        admin: true,
       });
 
       if (data.success === false) {
@@ -150,7 +152,7 @@ export default function AdminChatPage() {
         >
           ← ადმინ პანელი
         </Link>
-        <h1 className="text-sm font-bold text-[#1a1a2e]">
+        <h1 className="text-sm font-bold text-[#23261F]">
           ასისტენტის კონფიგურატორი
         </h1>
         <span className="text-xs text-gray-400">admin</span>
@@ -182,7 +184,7 @@ export default function AdminChatPage() {
           <div className="px-4 pb-4 flex flex-col gap-3">
             {promptLoading ? (
               <div className="flex justify-center py-4">
-                <span className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-[#1a1a2e]" />
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-[#23261F]" />
               </div>
             ) : (
               <>
@@ -190,7 +192,7 @@ export default function AdminChatPage() {
                   value={promptText}
                   onChange={(e) => setPromptText(e.target.value)}
                   rows={8}
-                  className="w-full resize-y rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-800 outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10 font-mono"
+                  className="w-full resize-y rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-800 outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10 font-mono"
                   placeholder="System prompt..."
                 />
                 {promptError && (
@@ -199,7 +201,7 @@ export default function AdminChatPage() {
                 <button
                   type="button"
                   onClick={() => { setPromptError(null); setShowConfirm(true); }}
-                  className="self-end rounded-xl bg-[#1a1a2e] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  className="self-end rounded-xl bg-[#23261F] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 >
                   შეინახე prompt-ად
                 </button>
@@ -226,7 +228,7 @@ export default function AdminChatPage() {
               <div
                 className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
                   msg.role === "user"
-                    ? "rounded-br-sm bg-[#1a1a2e] text-white"
+                    ? "rounded-br-sm bg-[#23261F] text-white"
                     : "rounded-bl-sm bg-white text-gray-800 shadow-sm"
                 }`}
               >
@@ -253,7 +255,7 @@ export default function AdminChatPage() {
 
       {/* Input bar */}
       <div className="border-t border-gray-200 bg-white px-4 py-3 pb-[env(safe-area-inset-bottom,12px)]">
-        <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 focus-within:border-[#1a1a2e] focus-within:ring-2 focus-within:ring-[#1a1a2e]/10">
+        <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 focus-within:border-[#3E7A56] focus-within:ring-2 focus-within:ring-[#3E7A56]/10">
           <textarea
             ref={inputRef}
             value={input}
@@ -268,7 +270,7 @@ export default function AdminChatPage() {
             type="button"
             onClick={sendMessage}
             disabled={!input.trim() || loading}
-            className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1a1a2e] transition-opacity disabled:opacity-30"
+            className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#3E7A56] transition-opacity disabled:opacity-30"
             aria-label="Send message"
           >
             <svg
@@ -303,7 +305,7 @@ export default function AdminChatPage() {
                 type="button"
                 onClick={handleSavePrompt}
                 disabled={savingPrompt}
-                className="flex items-center justify-center rounded-xl bg-[#1a1a2e] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                className="flex items-center justify-center rounded-xl bg-[#23261F] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
               >
                 {savingPrompt ? (
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -318,7 +320,7 @@ export default function AdminChatPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-[#1a1a2e] px-5 py-3 text-sm font-semibold text-white shadow-lg">
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-[#23261F] px-5 py-3 text-sm font-semibold text-white shadow-lg">
           {toast}
         </div>
       )}
