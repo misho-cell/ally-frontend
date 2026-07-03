@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { authHeaders } from "@/lib/deviceId";
+import { adminAuthHeaders } from "@/lib/deviceId";
 import { fmtDate, fmtDateTime, fmtRelative, isFuture } from "@/lib/date";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const ACCENT = "#1a1a2e";
+const ACCENT = "#23261F";
 
 const SEARCH_LABELS: Record<string, string> = {
   name: "სახელით",
@@ -104,7 +104,7 @@ export default function AdminUserDetailPage() {
     setError(false);
     setNotFound(false);
     try {
-      const res = await fetch(`${BASE_URL}/admin/users/${id}`, { headers: authHeaders() });
+      const res = await fetch(`${BASE_URL}/admin/users/${id}`, { headers: adminAuthHeaders() });
       if (res.status === 401 || res.status === 403) {
         router.replace("/admin/login");
         return;
@@ -134,7 +134,7 @@ export default function AdminUserDetailPage() {
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
         <div className="flex items-center gap-3">
           <a href="/admin/users" className="text-sm text-gray-400 hover:text-gray-600 transition">← სია</a>
-          <h1 className="text-lg font-bold text-[#1a1a2e]">მომხმარებლის პროფილი</h1>
+          <h1 className="text-lg font-bold text-[#23261F]">მომხმარებლის პროფილი</h1>
         </div>
         {!loading && !error && !notFound && (
           <button type="button" onClick={load} className="rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50">განახლება</button>
@@ -149,7 +149,7 @@ export default function AdminUserDetailPage() {
         ) : error ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-10 flex flex-col items-center gap-4 text-center">
             <p className="text-sm text-gray-500">მონაცემების ჩატვირთვა ვერ მოხერხდა</p>
-            <button type="button" onClick={load} className="rounded-xl bg-[#1a1a2e] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90">ხელახლა ცდა</button>
+            <button type="button" onClick={load} className="rounded-xl bg-[#23261F] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90">ხელახლა ცდა</button>
           </div>
         ) : data ? (
           <>
@@ -178,7 +178,7 @@ function AccountBlock({ a }: { a: UserProfile["account"] }) {
   return (
     <Card title="ანგარიში">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-xl font-bold text-[#1a1a2e]">{a.name ?? "—"}</span>
+        <span className="text-xl font-bold text-[#23261F]">{a.name ?? "—"}</span>
         <SubBadge status={a.subscriptionStatus} tier={a.subscriptionTier} />
         {a.deletedAt && <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">წაშლილი</span>}
       </div>
@@ -245,7 +245,7 @@ function SearchesBlock({ s }: { s: UserProfile["searches"] }) {
         <Kpi value={String(s.successfulSearches)} label="წარმატებული" />
         <Kpi value={successPct === null ? "—" : `${successPct}%`} label="წარმატების %" />
         <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-          <p className={`text-2xl font-bold ${s.flaggedCount > 0 ? "text-red-600" : "text-[#1a1a2e]"}`}>{s.flaggedCount}</p>
+          <p className={`text-2xl font-bold ${s.flaggedCount > 0 ? "text-red-600" : "text-[#23261F]"}`}>{s.flaggedCount}</p>
           <p className="mt-0.5 text-xs text-gray-500">დაფლაგული</p>
         </div>
       </div>
@@ -413,7 +413,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 function Kpi({ value, label, small }: { value: string; label: string; small?: boolean }) {
   return (
     <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-      <p className={`font-bold text-[#1a1a2e] ${small ? "text-sm" : "text-2xl"}`}>{value}</p>
+      <p className={`font-bold text-[#23261F] ${small ? "text-sm" : "text-2xl"}`}>{value}</p>
       <p className="mt-0.5 text-xs text-gray-500">{label}</p>
     </div>
   );
