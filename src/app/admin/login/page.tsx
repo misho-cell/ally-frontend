@@ -20,8 +20,11 @@ export default function AdminLoginPage() {
         "/auth/admin/login",
         { method: "POST", body: { email, password } }
       );
-      localStorage.setItem("token", res.data.token);
-      document.cookie = `token=${res.data.token}; path=/; SameSite=Lax`;
+      // Admin session lives ONLY in adminToken — never touch the user `token`,
+      // so working in the admin panel can't hijack the phone-login session.
+      localStorage.setItem("adminToken", res.data.token);
+      const secure = window.location.protocol === "https:" ? "; Secure" : "";
+      document.cookie = `adminToken=${res.data.token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secure}`;
       router.replace("/admin");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "ავტორიზაცია ვერ მოხერხდა");
@@ -31,13 +34,13 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-center bg-[#1a1a2e] px-4 py-12">
+    <div className="flex min-h-full flex-col items-center justify-center bg-white px-4 py-12">
       <div className="w-full max-w-sm">
-        <h1 className="mb-8 text-center text-3xl font-bold tracking-tight text-white">
+        <h1 className="mb-8 text-center text-3xl font-bold tracking-tight text-[#23261F]">
           Ally Admin
         </h1>
 
-        <div className="overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="overflow-hidden rounded-2xl border border-[#E4E0D3] bg-white">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6">
             {error && (
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -57,7 +60,7 @@ export default function AdminLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@ally.com"
-                className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+                className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
               />
             </div>
 
@@ -73,14 +76,14 @@ export default function AdminLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#1a1a2e] focus:ring-2 focus:ring-[#1a1a2e]/10"
+                className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 flex h-12 items-center justify-center rounded-xl bg-[#1a1a2e] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="mt-2 flex h-12 items-center justify-center rounded-xl bg-[#3E7A56] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
             >
               {loading ? (
                 <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
