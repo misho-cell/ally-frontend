@@ -3,41 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 
 const PRICE_IDS: Record<string, string> = {
   premium: "pri_01kvq5da2w9fjgv7cn0eqqqk63",
   pro: "pri_01kvq5fwfdj2p8j42p663mh3yr",
   enterprise: "pri_01kvq5gjc8mb3kx2qhwp44mtkh",
 };
-
-function getUserId(): string {
-  try {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token) return "";
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return String(payload.userId ?? "");
-  } catch {
-    return "";
-  }
-}
-
-declare global {
-  interface Window {
-    Paddle?: {
-      Environment: { set: (env: string) => void };
-      Initialize: (opts: {
-        token: string;
-        eventCallback: (data: { name: string }) => void;
-      }) => void;
-      Checkout: {
-        open: (opts: {
-          items: { priceId: string; quantity: number }[];
-          customData: Record<string, string>;
-        }) => void;
-      };
-    };
-  }
-}
 
 const PLANS = [
   {
@@ -78,35 +50,17 @@ export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    if (document.querySelector('script[src*="cdn.paddle.com"]')) {
-      setPaddleReady(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://cdn.paddle.com/paddle/v2/paddle.js";
-    script.async = true;
-    script.onload = () => {
-      window.Paddle?.Environment.set("production");
-      window.Paddle?.Initialize({
-        token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
-        eventCallback(data) {
-          if (data.name === "checkout.completed") {
-            router.replace("/chat");
-          }
-        },
-      });
-      setPaddleReady(true);
-    };
-    document.head.appendChild(script);
+    ensurePaddle().then(() => setPaddleReady(true)).catch(() => {});
+    const off = onCheckoutCompleted(() => {
+      router.replace("/chat");
+    });
+    return off;
   }, [router]);
 
-  function openCheckout(planKey: string) {
-    if (!paddleReady || !window.Paddle) return;
+  function handleCheckout(planKey: string) {
+    if (!paddleReady) return;
     setLoading(planKey);
-    window.Paddle.Checkout.open({
-      items: [{ priceId: PRICE_IDS[planKey], quantity: 1 }],
-      customData: { user_id: getUserId() },
-    });
+    openCheckout(PRICE_IDS[planKey]);
     setLoading(null);
   }
 
@@ -183,7 +137,7 @@ export default function PricingPage() {
               </ul>
 
               <button
-                onClick={() => openCheckout(plan.key)}
+                onClick={() => handleCheckout(plan.key)}
                 disabled={!paddleReady || loading === plan.key}
                 className={`w-full h-11 rounded-xl text-sm font-semibold transition-all disabled:opacity-60 ${
                   plan.highlight

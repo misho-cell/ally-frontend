@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
 import { authHeaders } from "@/lib/deviceId";
+import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -22,6 +23,13 @@ type TokenBalance = {
   balance: number;
   grantedThisPeriod: number;
   spentThisPeriod: number;
+};
+
+type TopupPackage = {
+  id: number;
+  paddlePriceId: string;
+  tokens: number;
+  label: string;
 };
 
 const TIER_LABELS: Record<string, string> = {
@@ -49,23 +57,65 @@ function nextRenewalDate(): string {
   return d.toLocaleDateString("ka-GE", { year: "numeric", month: "long", day: "numeric" });
 }
 
-// Token wallet widget (Claude-style usage limit view). Hidden entirely when the
-// backend kill-switch is off (enabled:false) or the balance can't be loaded.
+// Token wallet widget (Claude-style usage limit view) + top-up packages.
+// Hidden entirely when the backend kill-switch is off (enabled:false).
 function TokensWidget() {
   const [tokens, setTokens] = useState<TokenBalance | null>(null);
   const [failed, setFailed] = useState(false);
+  const [packages, setPackages] = useState<TopupPackage[]>([]);
+  const [paddleReady, setPaddleReady] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const balanceRef = useRef<number | null>(null);
+
+  async function fetchTokens(): Promise<TokenBalance | null> {
+    try {
+      const res = await fetch(`${BASE_URL}/billing/tokens`, { headers: authHeaders() });
+      const json = await res.json().catch(() => ({}));
+      if (json?.data && typeof json.data.enabled === "boolean") {
+        setTokens(json.data as TokenBalance);
+        balanceRef.current = json.data.balance;
+        return json.data as TokenBalance;
+      }
+    } catch {}
+    return null;
+  }
 
   useEffect(() => {
-    fetch(`${BASE_URL}/billing/tokens`, { headers: authHeaders() })
+    fetchTokens().then((t) => { if (!t) setFailed(true); });
+    fetch(`${BASE_URL}/billing/topup-packages`, { headers: authHeaders() })
       .then((r) => r.json())
       .then((json) => {
-        if (json?.data && typeof json.data.enabled === "boolean") {
-          setTokens(json.data as TokenBalance);
-        } else {
-          setFailed(true);
-        }
+        if (Array.isArray(json?.data)) setPackages(json.data as TopupPackage[]);
       })
-      .catch(() => setFailed(true));
+      .catch(() => {});
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // After checkout completes the webhook credits tokens within seconds — poll
+  // the balance every 2s (max 30s) until it grows.
+  useEffect(() => {
+    const off = onCheckoutCompleted(() => {
+      const startBalance = balanceRef.current ?? 0;
+      let ticks = 0;
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        ticks++;
+        const t = await fetchTokens();
+        if ((t && t.balance > startBalance) || ticks >= 15) {
+          if (t && t.balance > startBalance) {
+            setToast("ტოკენები დაემატა");
+            setTimeout(() => setToast(null), 3500);
+          }
+          if (pollRef.current) clearInterval(pollRef.current);
+        }
+      }, 2000);
+    });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (tokens && !tokens.enabled) return null;
@@ -81,12 +131,25 @@ function TokensWidget() {
       : remainingPct !== null && remainingPct <= 0.2
       ? "#d97706"
       : "#3E7A56";
+  // Top-up is for subscribers only — trial wallets get the subscribe CTA elsewhere.
+  const showTopup = !!tokens && !isTrial && packages.length > 0;
+
+  async function buy(pkg: TopupPackage) {
+    try {
+      await ensurePaddle();
+      setPaddleReady(true);
+      openCheckout(pkg.paddlePriceId);
+    } catch {}
+  }
 
   return (
     <div
       className="rounded-2xl p-6 flex flex-col gap-3"
       style={{ background: "#FFFFFF", border: "1px solid var(--sidebar-border)" }}
     >
+      {toast && (
+        <div className="rounded-lg bg-[#DEE8E0] px-3 py-2 text-sm font-medium text-[#2E5C41]">{toast}</div>
+      )}
       <h2 className="font-semibold" style={{ color: "var(--ink)" }}>ტოკენები</h2>
 
       {failed || !tokens ? (
@@ -120,6 +183,24 @@ function TokensWidget() {
               ? `განახლდება ${nextRenewalDate()}`
               : null}
           </p>
+
+          {showTopup && (
+            <div className="mt-2 flex flex-col gap-2 border-t border-[#EFEDE6] pt-3">
+              <p className="text-xs font-semibold" style={{ color: "var(--ink)" }}>ტოკენების დამატება</p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {packages.map((pkg) => (
+                  <button
+                    key={pkg.id}
+                    type="button"
+                    onClick={() => buy(pkg)}
+                    className="flex-1 rounded-xl border border-[#C7D6C9] bg-white px-3 py-2.5 text-sm font-medium text-[#23261F] transition-colors hover:bg-[#F7F9F7]"
+                  >
+                    {pkg.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
