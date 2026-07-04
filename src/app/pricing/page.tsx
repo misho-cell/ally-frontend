@@ -15,21 +15,21 @@ const PLANS = [
     key: "pro",
     name: "Pro",
     price: "$19.99",
-    period: "/თვე",
+    period: "/mo",
     hasTrial: true,
-    features: ["AI ასისტენტი", "კონტაქტების ანალიზი", "პრიორიტეტული მხარდაჭერა", "Advanced analytics"],
+    features: ["AI assistant", "Contact analysis", "Priority support", "Advanced analytics"],
     highlight: true,
-    cta: "5 დღე უფასოდ სცადე",
+    cta: "Try 5 days free",
   },
   {
     key: "enterprise",
     name: "Enterprise",
     price: "$79",
-    period: "/თვე",
+    period: "/mo",
     hasTrial: false,
-    features: ["Pro-ის ყველაფერი", "Dedicated support", "Custom integrations"],
+    features: ["Everything in Pro", "Dedicated support", "Custom integrations"],
     highlight: false,
-    cta: "Enterprise-ის არჩევა",
+    cta: "Choose Enterprise",
   },
 ];
 
@@ -61,7 +61,7 @@ export default function PricingPage() {
           <Link
             href="/chat"
             className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-[#8A8778] transition-colors hover:bg-gray-200 hover:text-[#23261F]"
-            aria-label="დახურვა"
+            aria-label="Close"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -73,9 +73,9 @@ export default function PricingPage() {
             <img src="/ally-logo.svg" alt="Ally" width={32} height={32} style={{ borderRadius: "26%" }} />
             <span className="text-[#23261F] text-2xl font-semibold tracking-tight">Ally</span>
           </div>
-          <h1 className="text-3xl font-bold text-[#23261F] mb-3">აირჩიე შენი Plan</h1>
+          <h1 className="text-3xl font-bold text-[#23261F] mb-3">Choose your plan</h1>
           <p className="text-[#8A8778] text-base max-w-md mx-auto">
-            Pro-ზე 5 დღე უფასოდ სცადე — ბარათი არ გეჭდება სანამ trial არ დასრულდება.
+            Try Pro free for 5 days — your card won&apos;t be charged until the trial ends.
           </p>
         </div>
 
@@ -91,7 +91,7 @@ export default function PricingPage() {
               {plan.highlight && (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                   <span className="bg-[#23261F] text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
-                    ყველაზე პოპულარული
+                    Most popular
                   </span>
                 </div>
               )}
@@ -110,7 +110,7 @@ export default function PricingPage() {
                   <span className={`text-sm ${plan.highlight ? "text-white/70" : "text-[#8A8778]"}`}>{plan.period}</span>
                 </div>
                 {plan.hasTrial && (
-                  <p className={`text-xs mt-1 ${plan.highlight ? "text-white/70" : "text-[#8A8778]"}`}>პირველი 5 დღე უფასოა</p>
+                  <p className={`text-xs mt-1 ${plan.highlight ? "text-white/70" : "text-[#8A8778]"}`}>First 5 days free</p>
                 )}
               </div>
 
@@ -137,7 +137,7 @@ export default function PricingPage() {
                 {loading === plan.key ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    იტვირთება...
+                    Loading...
                   </span>
                 ) : (
                   plan.cta
@@ -150,7 +150,7 @@ export default function PricingPage() {
         {/* Skip */}
         <div className="text-center">
           <Link href="/chat" className="text-sm text-[#8A8778] hover:text-[#23261F] transition-colors">
-            გამოტოვება — უფასო ვერსიის გამოყენება
+            Skip — continue with the free version
           </Link>
         </div>
       </div>

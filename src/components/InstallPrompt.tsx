@@ -59,15 +59,15 @@ export default function InstallPrompt() {
       <div className="mx-auto max-w-sm rounded-2xl border border-[#E4E0D3] bg-white p-4 shadow-2xl flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <p className="text-sm font-semibold text-[#23261F]">აპლიკაციის დაყენება</p>
+            <p className="text-sm font-semibold text-[#23261F]">Install the app</p>
             {platform === "android" && (
               <p className="text-xs text-[#8A8778]">
-                დაამატე Ally მთავარ ეკრანზე
+                Add Ally to your home screen
               </p>
             )}
             {platform === "ios" && (
               <p className="text-xs text-[#8A8778]">
-                Safari → გაზიარების ღილაკი (△) → „Add to Home Screen“
+                Safari → Share (△) → “Add to Home Screen”
               </p>
             )}
           </div>
@@ -85,7 +85,7 @@ export default function InstallPrompt() {
             onClick={installAndroid}
             className="w-full flex h-10 items-center justify-center rounded-xl bg-[#3E7A56] text-sm font-semibold text-white hover:opacity-90"
           >
-            დაყენა
+            Install
           </button>
         )}
 
@@ -93,7 +93,7 @@ export default function InstallPrompt() {
           <div className="flex items-center justify-center gap-2 rounded-xl bg-[#DEE8E0] px-4 py-2">
             <span className="text-xl">&#9650;</span>
             <p className="text-xs text-[#23261F]">
-              ქვემოთ დააჭირეთ გაზიარების ღილაკსა და აირჩიეთ „Add to Home Screen“
+              Tap the share button below and choose “Add to Home Screen”
             </p>
           </div>
         )}

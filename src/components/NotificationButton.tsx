@@ -78,11 +78,11 @@ export default function NotificationButton() {
   if (status === "granted" || status === "unsupported") return null;
 
   if (status === "needs-pwa") {
-    return <span className="text-xs text-[#8A8778]">აპი გადმოწერე ნოტიფ-ებისთვის</span>;
+    return <span className="text-xs text-[#8A8778]">Install the app for notifications</span>;
   }
 
   if (status === "denied") {
-    return <span className="text-xs text-[#8A8778]">ნოტიფ. დაბლოკილია</span>;
+    return <span className="text-xs text-[#8A8778]">Notifications blocked</span>;
   }
 
   return (
@@ -92,7 +92,7 @@ export default function NotificationButton() {
       disabled={status === "loading"}
       className="rounded-lg px-3 py-1.5 text-xs font-medium text-[#3E7A56] transition-colors hover:bg-[#DEE8E0] disabled:opacity-50"
     >
-      {status === "loading" ? "..." : "🔔 ნოტიფ."}
+      {status === "loading" ? "..." : "🔔 Notifications"}
     </button>
   );
 }
