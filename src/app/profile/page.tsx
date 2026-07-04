@@ -8,6 +8,7 @@ import { authHeaders } from "@/lib/deviceId";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const MCP_URL = "https://api.allyapp.one/mcp";
 
 type Profile = {
   name: string;
@@ -55,6 +56,86 @@ function nextRenewalDate(): string {
   const now = new Date();
   const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+}
+
+// Static "add Ally to your Claude" guide — no API involved. Collapsible so the
+// profile stays compact.
+function AllyInClaudeCard() {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function copyUrl() {
+    try {
+      await navigator.clipboard.writeText(MCP_URL);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+
+  return (
+    <div
+      className="rounded-2xl p-6 flex flex-col gap-3"
+      style={{ background: "#FFFFFF", border: "1px solid var(--sidebar-border)" }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <h2 className="font-semibold" style={{ color: "var(--ink)" }}>Ally in Claude</h2>
+        <span style={{ color: "var(--meta)", fontSize: "12px" }}>{open ? "▾" : "▸"}</span>
+      </button>
+
+      {open && (
+        <div className="flex flex-col gap-4">
+          <p className="text-sm" style={{ color: "var(--meta)" }}>
+            Use your Ally network directly from Claude — search, intro requests and
+            replies, without leaving the chat.
+          </p>
+
+          <span className="self-start rounded-full bg-[#DEE8E0] px-3 py-1 text-xs font-semibold text-[#2E5C41]">
+            Requires a paid claude.ai plan (Pro/Team)
+          </span>
+
+          {/* Copy URL */}
+          <div className="flex items-center gap-2">
+            <code
+              className="flex-1 truncate rounded-xl border border-[#E4E0D3] bg-[#F7F6F2] px-3 py-2.5 text-xs"
+              style={{ color: "var(--ink)" }}
+            >
+              {MCP_URL}
+            </code>
+            <button
+              type="button"
+              onClick={copyUrl}
+              className="shrink-0 rounded-xl bg-[#3E7A56] px-4 py-2.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              {copied ? "Copied!" : "Copy"}
+            </button>
+          </div>
+
+          {/* Steps */}
+          <ol className="flex flex-col gap-2 pl-5 text-sm" style={{ color: "var(--ink)", listStyleType: "decimal" }}>
+            <li>Open claude.ai → Settings → Connectors</li>
+            <li>Click “Add custom connector”</li>
+            <li>Name: <b>Ally</b>, URL: paste the address you copied → Add</li>
+            <li>Click “Connect” → enter your Ally phone number → WhatsApp code</li>
+            <li>
+              <span style={{ color: "var(--meta)" }}>
+                Tip: in the connector settings, set “Read-only tools” to “Allowed” so
+                searches don’t ask for confirmation every time
+              </span>
+            </li>
+          </ol>
+
+          <p className="rounded-xl bg-[#F7F6F2] px-3 py-2.5 text-xs" style={{ color: "var(--meta)" }}>
+            Claude will always ask you before sending an intro request — nothing is
+            sent behind your back.
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Token wallet widget (Claude-style usage limit view) + top-up packages.
@@ -383,6 +464,9 @@ export default function ProfilePage() {
 
             {/* Token wallet */}
             <TokensWidget />
+
+            {/* Ally in Claude (MCP connector guide) */}
+            <AllyInClaudeCard />
 
             {/* Subscription card */}
             <div
