@@ -33,7 +33,7 @@ type TopupPackage = {
 };
 
 const TIER_LABELS: Record<string, string> = {
-  free: "უფასო",
+  free: "Free",
   premium: "Premium",
   pro: "Pro",
   enterprise: "Enterprise",
@@ -44,7 +44,7 @@ function daysUntil(dateStr: string): number {
 }
 
 function fmt(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("ka-GE", {
+  return new Date(dateStr).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -54,7 +54,7 @@ function fmt(dateStr: string): string {
 function nextRenewalDate(): string {
   const now = new Date();
   const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return d.toLocaleDateString("ka-GE", { year: "numeric", month: "long", day: "numeric" });
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
 // Token wallet widget (Claude-style usage limit view) + top-up packages.
@@ -63,7 +63,6 @@ function TokensWidget() {
   const [tokens, setTokens] = useState<TokenBalance | null>(null);
   const [failed, setFailed] = useState(false);
   const [packages, setPackages] = useState<TopupPackage[]>([]);
-  const [paddleReady, setPaddleReady] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const balanceRef = useRef<number | null>(null);
@@ -107,7 +106,7 @@ function TokensWidget() {
         const t = await fetchTokens();
         if ((t && t.balance > startBalance) || ticks >= 15) {
           if (t && t.balance > startBalance) {
-            setToast("ტოკენები დაემატა");
+            setToast("Tokens added");
             setTimeout(() => setToast(null), 3500);
           }
           if (pollRef.current) clearInterval(pollRef.current);
@@ -137,7 +136,6 @@ function TokensWidget() {
   async function buy(pkg: TopupPackage) {
     try {
       await ensurePaddle();
-      setPaddleReady(true);
       openCheckout(pkg.paddlePriceId);
     } catch {}
   }
@@ -150,7 +148,7 @@ function TokensWidget() {
       {toast && (
         <div className="rounded-lg bg-[#DEE8E0] px-3 py-2 text-sm font-medium text-[#2E5C41]">{toast}</div>
       )}
-      <h2 className="font-semibold" style={{ color: "var(--ink)" }}>ტოკენები</h2>
+      <h2 className="font-semibold" style={{ color: "var(--ink)" }}>Tokens</h2>
 
       {failed || !tokens ? (
         <p className="text-sm" style={{ color: "var(--meta)" }}>—</p>
@@ -178,15 +176,15 @@ function TokensWidget() {
 
           <p className="text-xs" style={{ color: "var(--meta)" }}>
             {isTrial
-              ? "საცდელი ბალანსი — გამოიწერე გასაგრძელებლად"
+              ? "Trial balance — subscribe to keep going"
               : granted > 0
-              ? `განახლდება ${nextRenewalDate()}`
+              ? `Renews ${nextRenewalDate()}`
               : null}
           </p>
 
           {showTopup && (
             <div className="mt-2 flex flex-col gap-2 border-t border-[#EFEDE6] pt-3">
-              <p className="text-xs font-semibold" style={{ color: "var(--ink)" }}>ტოკენების დამატება</p>
+              <p className="text-xs font-semibold" style={{ color: "var(--ink)" }}>Add tokens</p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 {packages.map((pkg) => (
                   <button
@@ -219,9 +217,9 @@ function SubscriptionBadge({ profile }: { profile: Profile }) {
           <span className="font-semibold text-blue-800">{TIER_LABELS[subscription_tier]} Trial</span>
         </div>
         <p className="text-sm text-blue-700">
-          {days > 0 ? `${days} დღე დარჩა trial-ში` : "Trial დასრულდა"}
+          {days > 0 ? `${days} days left in trial` : "Trial ended"}
         </p>
-        <p className="text-xs text-blue-500 mt-1">{fmt(trial_ends_at)} — ავტომატური გადახდა</p>
+        <p className="text-xs text-blue-500 mt-1">{fmt(trial_ends_at)} — automatic charge</p>
       </div>
     );
   }
@@ -231,10 +229,10 @@ function SubscriptionBadge({ profile }: { profile: Profile }) {
       <div className="rounded-xl border p-4" style={{ background: "#DEE8E0", borderColor: "#C7D6C9" }}>
         <div className="flex items-center gap-2 mb-1">
           <span className="h-2 w-2 rounded-full" style={{ background: "#3E7A56" }} />
-          <span className="font-semibold" style={{ color: "#2E5C41" }}>{TIER_LABELS[subscription_tier]} — აქტიური</span>
+          <span className="font-semibold" style={{ color: "#2E5C41" }}>{TIER_LABELS[subscription_tier]} — Active</span>
         </div>
         {current_period_ends_at && (
-          <p className="text-sm" style={{ color: "#3E7A56" }}>შემდეგი გადახდა: {fmt(current_period_ends_at)}</p>
+          <p className="text-sm" style={{ color: "#3E7A56" }}>Next payment: {fmt(current_period_ends_at)}</p>
         )}
       </div>
     );
@@ -245,9 +243,9 @@ function SubscriptionBadge({ profile }: { profile: Profile }) {
       <div className="rounded-xl bg-red-50 border border-red-100 p-4">
         <div className="flex items-center gap-2 mb-1">
           <span className="h-2 w-2 rounded-full bg-red-500" />
-          <span className="font-semibold text-red-800">გადახდის პრობლემა</span>
+          <span className="font-semibold text-red-800">Payment issue</span>
         </div>
-        <p className="text-sm text-red-700">გადახდა ვერ მოხდა — განაახლე გადახდის მეთოდი Paddle portal-ის გამოყენებით.</p>
+        <p className="text-sm text-red-700">The payment failed — update your payment method via the Paddle portal.</p>
       </div>
     );
   }
@@ -257,10 +255,10 @@ function SubscriptionBadge({ profile }: { profile: Profile }) {
       <div className="rounded-xl bg-orange-50 border border-orange-100 p-4">
         <div className="flex items-center gap-2 mb-1">
           <span className="h-2 w-2 rounded-full bg-orange-500" />
-          <span className="font-semibold text-orange-800">გაუქმებულია</span>
+          <span className="font-semibold text-orange-800">Canceled</span>
         </div>
         <p className="text-sm text-orange-700">
-          {TIER_LABELS[subscription_tier]} {fmt(current_period_ends_at)}-მდე გრძელდება
+          {TIER_LABELS[subscription_tier]} continues until {fmt(current_period_ends_at)}
         </p>
       </div>
     );
@@ -270,9 +268,9 @@ function SubscriptionBadge({ profile }: { profile: Profile }) {
     <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
       <div className="flex items-center gap-2 mb-1">
         <span className="h-2 w-2 rounded-full bg-gray-400" />
-        <span className="font-semibold text-gray-700">უფასო Plan</span>
+        <span className="font-semibold text-gray-700">Free plan</span>
       </div>
-      <p className="text-sm text-gray-500">Plan-ის ასარჩევად დააჭირე ქვემოთ.</p>
+      <p className="text-sm text-gray-500">Tap below to choose a plan.</p>
     </div>
   );
 }
@@ -288,7 +286,7 @@ export default function ProfilePage() {
   useEffect(() => {
     apiFetch<{ success: boolean; data: Profile }>("/profile")
       .then((res) => setProfile(res.data))
-      .catch((err) => setError(err instanceof ApiError ? err.message : "პრობლემა მოხდა"))
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Something went wrong"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -305,7 +303,7 @@ export default function ProfilePage() {
       if (err instanceof ApiError && err.status === 404) {
         setShowPortal(false);
       } else {
-        setError("Portal-ის გახსნა ვერ მოხდა. სცადეთ თავიდან.");
+        setError("Couldn't open the portal. Please try again.");
       }
     } finally {
       setPortalLoading(false);
@@ -347,7 +345,7 @@ export default function ProfilePage() {
             className="text-xl font-semibold"
             style={{ color: "var(--ink)" }}
           >
-            პროფილი
+            Profile
           </span>
         </div>
 
@@ -406,7 +404,7 @@ export default function ProfilePage() {
                   className="flex h-11 items-center justify-center rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
                   style={{ background: "#3E7A56" }}
                 >
-                  Plan-ის არჩევა
+                  Choose a plan
                 </Link>
               ) : showPortal ? (
                 <button
@@ -421,7 +419,7 @@ export default function ProfilePage() {
                   {portalLoading ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-700" />
                   ) : (
-                    "Subscription-ის მართვა"
+                    "Manage subscription"
                   )}
                 </button>
               ) : null}
@@ -433,7 +431,7 @@ export default function ProfilePage() {
               className="text-sm py-2 text-center transition-colors hover:opacity-80"
               style={{ color: "#ef4444" }}
             >
-              გამოსვლა
+              Sign out
             </button>
           </div>
         )}
