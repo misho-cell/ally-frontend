@@ -129,7 +129,7 @@ export default function LoginPage() {
       const raw = res.headers.get("Retry-After");
       const secs = raw ? parseInt(raw, 10) : NaN;
       const err = new Error(
-        json.error ?? json.message ?? "ძალიან ბევრი მოთხოვნა. გთხოვთ, სცადოთ მოგვიანებით."
+        json.error ?? json.message ?? "Too many requests. Please try again later."
       ) as PostError;
       err.retryAfter = Number.isFinite(secs) && secs > 0 ? secs : 30;
       throw err;
@@ -161,7 +161,7 @@ export default function LoginPage() {
       await post("/auth/request-otp", { phone, actionType: "AUTH" });
       setStep("otp");
     } catch (err) {
-      handleError(err, "შეცდომა");
+      handleError(err, "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -181,7 +181,7 @@ export default function LoginPage() {
       setStep("referral");
     } else {
       // Unknown ineligible reason — fail closed with a generic message.
-      setError("რეგისტრაცია ვერ გაგრძელდა. სცადე მოგვიანებით.");
+      setError("Registration couldn't proceed. Please try again later.");
     }
   }
 
@@ -211,11 +211,11 @@ export default function LoginPage() {
         const ee = eligErr as PostError;
         if (ee?.retryAfter) startRateLimit(ee.retryAfter);
         // Do NOT fail open — stay here with a retry message.
-        setError("ვერ შემოწმდა, სცადე ხელახლა");
+        setError("Couldn't verify — please try again");
       }
       setLoading(false);
     } catch (err) {
-      handleError(err, "კოდი არასწორია");
+      handleError(err, "Invalid code");
       setLoading(false);
     }
   }
@@ -235,7 +235,7 @@ export default function LoginPage() {
         confirmedReferralRef.current = referralInput;
         setStep("name");
       } else {
-        setReferralError("ეს ნომერი ვერ მოიძებნა ან გამოწერა არ აქვს. სცადე სხვა ნომერი");
+        setReferralError("This number wasn't found or has no active subscription. Try another number");
       }
     } catch (err) {
       const ee = err as PostError;
@@ -243,7 +243,7 @@ export default function LoginPage() {
         startRateLimit(ee.retryAfter);
         setReferralError(ee.message);
       } else {
-        setReferralError("ვერ შემოწმდა, სცადე ხელახლა");
+        setReferralError("Couldn't verify — please try again");
       }
     } finally {
       setLoading(false);
@@ -265,13 +265,13 @@ export default function LoginPage() {
     } catch (err) {
       const e2 = err as PostError;
       if (e2?.retryAfter) {
-        handleError(err, "შეცდომა");
+        handleError(err, "Something went wrong");
       } else {
         // Server re-checks the gate at register time (e.g. the referrer's
         // subscription lapsed between eligibility and register). Show the
-        // server's Georgian error and send the user back to the referral screen.
+        // server's error and send the user back to the referral screen.
         setLoading(false);
-        setReferralError(e2 instanceof Error ? e2.message : "შეცდომა");
+        setReferralError(e2 instanceof Error ? e2.message : "Something went wrong");
         confirmedReferralRef.current = null;
         setReferralInput("");
         setStep("referral");
@@ -320,13 +320,13 @@ export default function LoginPage() {
             {error && (
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
                 {error}
-                {rateLimited && ` (${rlSecs} წმ)`}
+                {rateLimited && ` (${rlSecs}s)`}
               </div>
             )}
 
             {step === "phone" && (
               <form onSubmit={handlePhoneSubmit} className="flex flex-col gap-4">
-                <p className="text-sm text-[#8A8778]">შეიყვანე ტელეფონის ნომერი</p>
+                <p className="text-sm text-[#8A8778]">Enter your phone number</p>
                 <input
                   type="tel"
                   required
@@ -336,7 +336,7 @@ export default function LoginPage() {
                   className={inputCls}
                 />
                 <button type="submit" disabled={loading || rateLimited} className={primaryBtnCls}>
-                  {loading ? <Spinner /> : rateLimited ? `დაელით (${rlSecs} წმ)` : "კოდის მიღება"}
+                  {loading ? <Spinner /> : rateLimited ? `Wait (${rlSecs}s)` : "Get code"}
                 </button>
               </form>
             )}
@@ -344,7 +344,7 @@ export default function LoginPage() {
             {step === "otp" && (
               <form onSubmit={handleOtpSubmit} className="flex flex-col gap-4">
                 <p className="text-sm text-[#8A8778]">
-                  WhatsApp-ზე გამოგზავნილი 6-ნიშნა კოდი
+                  6-digit code sent to you on WhatsApp
                 </p>
                 <input
                   type="text"
@@ -362,7 +362,7 @@ export default function LoginPage() {
                   disabled={loading || otp.length !== 6 || rateLimited}
                   className={primaryBtnCls}
                 >
-                  {loading ? <Spinner /> : rateLimited ? `დაელით (${rlSecs} წმ)` : "დადასტურება"}
+                  {loading ? <Spinner /> : rateLimited ? `Wait (${rlSecs}s)` : "Verify"}
                 </button>
 
                 {/* SMS resend */}
@@ -375,9 +375,9 @@ export default function LoginPage() {
                   {smsLoading ? (
                     <Spinner dark />
                   ) : smsCooldown > 0 ? (
-                    `SMS-ით გაგზავნა (${smsCooldown} წმ)`
+                    `Send via SMS (${smsCooldown}s)`
                   ) : (
-                    "კოდი არ მივიღე — SMS-ით გამოგზავნა"
+                    "Didn't get the code — send via SMS"
                   )}
                 </button>
 
@@ -386,7 +386,7 @@ export default function LoginPage() {
                   onClick={() => { setStep("phone"); setOtp(""); setError(""); otpPassedRef.current = false; }}
                   className="text-xs text-[#8A8778] hover:text-[#23261F]"
                 >
-                  ← უკან
+                  ← Back
                 </button>
               </form>
             )}
@@ -394,9 +394,9 @@ export default function LoginPage() {
             {step === "referral" && (
               <form onSubmit={handleReferralSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                  <p className="text-base font-semibold text-[#23261F]">Ally მოწვევით მუშაობს</p>
+                  <p className="text-base font-semibold text-[#23261F]">Ally is invite-only</p>
                   <p className="text-sm text-[#8A8778]">
-                    ჩაწერე მეგობრის ნომერი, ვინც მოგიწვია — ის Ally-ს გამომწერი უნდა იყოს
+                    Enter the number of the friend who invited you — they must be an Ally subscriber
                   </p>
                 </div>
                 <input
@@ -405,7 +405,7 @@ export default function LoginPage() {
                   autoFocus
                   value={referralInput}
                   onChange={(e) => { setReferralInput(e.target.value); setReferralError(""); }}
-                  placeholder="მაგ. 5XX XX XX XX"
+                  placeholder="e.g. 5XX XX XX XX"
                   className={inputCls}
                 />
                 {referralError && (
@@ -416,7 +416,7 @@ export default function LoginPage() {
                   disabled={loading || !referralInput.trim() || rateLimited}
                   className={primaryBtnCls}
                 >
-                  {loading ? <Spinner /> : rateLimited ? `დაელით (${rlSecs} წმ)` : "გაგრძელება"}
+                  {loading ? <Spinner /> : rateLimited ? `Wait (${rlSecs}s)` : "Continue"}
                 </button>
               </form>
             )}
@@ -424,7 +424,7 @@ export default function LoginPage() {
             {step === "name" && (
               <form onSubmit={handleNameSubmit} className="flex flex-col gap-4">
                 <p className="text-sm text-[#8A8778]">
-                  პირველად გამოიყენებ — შეიყვანე შენი სახელი
+                  First time here — enter your name
                 </p>
                 <input
                   type="text"
@@ -432,7 +432,7 @@ export default function LoginPage() {
                   autoFocus
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="სახელი გვარი"
+                  placeholder="Name Surname"
                   className={inputCls}
                 />
                 <button
@@ -440,7 +440,7 @@ export default function LoginPage() {
                   disabled={loading || !name.trim() || rateLimited}
                   className={primaryBtnCls}
                 >
-                  {loading ? <Spinner /> : rateLimited ? `დაელით (${rlSecs} წმ)` : "რეგისტრაცია"}
+                  {loading ? <Spinner /> : rateLimited ? `Wait (${rlSecs}s)` : "Sign up"}
                 </button>
               </form>
             )}
@@ -462,7 +462,7 @@ export default function LoginPage() {
     setSmsLoading(true);
     try {
       await post("/auth/resend-otp", { phone, actionType: "AUTH" });
-      showSmsToast("კოდი SMS-ით გაიგზავნა");
+      showSmsToast("Code sent via SMS");
       // restart cooldown
       setSmsCooldown(SMS_COOLDOWN);
       if (cooldownRef.current) clearInterval(cooldownRef.current);
@@ -478,7 +478,7 @@ export default function LoginPage() {
     } catch (err) {
       const e = err as PostError;
       if (e?.retryAfter) startRateLimit(e.retryAfter);
-      showSmsToast(e instanceof Error ? e.message : "შეცდომა");
+      showSmsToast(e instanceof Error ? e.message : "Something went wrong");
     } finally {
       setSmsLoading(false);
     }

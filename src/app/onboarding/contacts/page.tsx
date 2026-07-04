@@ -47,7 +47,7 @@ export default function OnboardingContactsPage() {
       const json = await res.json();
       setResult(json.data ?? json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "კონტაქტების იმპორტი ვერ მოხერხდა");
+      setError(err instanceof Error ? err.message : "Couldn't import contacts");
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,7 @@ export default function OnboardingContactsPage() {
       const json = await res.json();
       setResult(json.data ?? json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "კონტაქტების იმპორტი ვერ მოხერხდა");
+      setError(err instanceof Error ? err.message : "Couldn't import contacts");
     } finally {
       setLoading(false);
     }
@@ -82,16 +82,16 @@ export default function OnboardingContactsPage() {
             </svg>
           </div>
           <div>
-            <p className="text-lg font-semibold text-[#23261F]">კონტაქტები აიტვირთები!</p>
+            <p className="text-lg font-semibold text-[#23261F]">Contacts uploaded!</p>
             <p className="mt-1 text-sm text-[#8A8778]">
-              დაემატა: {result.imported} &nbsp;&middot;&nbsp; გამოტოვებული: {result.skipped}
+              Added: {result.imported} &nbsp;&middot;&nbsp; Skipped: {result.skipped}
             </p>
           </div>
           <button
             onClick={() => router.replace("/chat")}
             className="w-full flex h-12 items-center justify-center rounded-xl bg-[#3E7A56] text-sm font-semibold text-white hover:opacity-90"
           >
-            ჩეთის დაწყება
+            Start chatting
           </button>
         </div>
       </div>
@@ -102,9 +102,9 @@ export default function OnboardingContactsPage() {
     <div className="flex min-h-full flex-col items-center justify-center bg-white px-4">
       <div className="w-full max-w-sm rounded-2xl border border-[#E4E0D3] bg-white p-8 flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-bold text-[#23261F]">კონტაქტების იმპორტი</h1>
+          <h1 className="text-xl font-bold text-[#23261F]">Import your contacts</h1>
           <p className="text-sm text-[#8A8778]">
-            Ally-ს დაეხმარება შენი კონტაქტების ანალიზისთვის.
+            Ally uses your contacts to help you analyze your network.
           </p>
         </div>
 
@@ -128,7 +128,7 @@ export default function OnboardingContactsPage() {
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  კონტაქტების გაზიარება
+                  Share contacts
                 </>
               )}
             </button>
@@ -141,7 +141,7 @@ export default function OnboardingContactsPage() {
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
-                  .vcf ფაილის ატვირთვა
+                  Upload .vcf file
                 </>
               )}
               <input
@@ -161,7 +161,7 @@ export default function OnboardingContactsPage() {
             onClick={() => router.replace("/chat")}
             className="text-sm text-[#8A8778] hover:text-[#23261F] py-2"
           >
-            გამოტოვება
+            Skip
           </button>
         </div>
       </div>
