@@ -66,7 +66,7 @@ function getUserInitial(): string {
 function nextRenewalDate(): string {
   const now = new Date();
   const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return d.toLocaleDateString("ka-GE", { year: "numeric", month: "long", day: "numeric" });
+  return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
 // Walk the chronological list and fold runs of consecutive `step` items into a
@@ -179,7 +179,7 @@ export default function ThreadPage() {
         refreshTokens();
         if ((balanceRef.current ?? 0) > startBalance || ticks >= 15) {
           if ((balanceRef.current ?? 0) > startBalance) {
-            showToast("ტოკენები დაემატა");
+            showToast("Tokens added");
           }
           if (pollRef.current) clearInterval(pollRef.current);
         }
@@ -197,7 +197,7 @@ export default function ThreadPage() {
       await ensurePaddle();
       openCheckout(pkg.paddlePriceId);
     } catch {
-      showToast("გადახდის ფანჯრის გახსნა ვერ მოხერხდა");
+      showToast("Couldn't open the payment window");
     }
   }
 
@@ -207,7 +207,7 @@ export default function ThreadPage() {
     const key = `token_warn20_${new Date().getFullYear()}-${new Date().getMonth() + 1}`;
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, "1");
-    showToast("ტოკენები იწურება");
+    showToast("Tokens running low");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remainingPct]);
 
@@ -721,7 +721,7 @@ export default function ThreadPage() {
       {!limitHit && remainingPct !== null && remainingPct <= 0.05 && (
         <div className="px-4 pt-2">
           <div className="mx-auto rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700" style={{ maxWidth: "760px" }}>
-            ⚠ ტოკენები თითქმის ამოიწურა — დარჩენილია {Math.max(0, tokens!.balance)}
+            ⚠ Tokens almost gone — {Math.max(0, tokens!.balance)} left
           </div>
         </div>
       )}
@@ -731,14 +731,14 @@ export default function ThreadPage() {
         <div className="px-4 pt-2">
           <div className="mx-auto rounded-2xl border border-[#E4E0D3] bg-[#F7F6F2] px-5 py-4 flex flex-col gap-2" style={{ maxWidth: "760px" }}>
             <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>
-              {isTrialWallet ? "საცდელი ტოკენები ამოიწურა" : "თვიური ტოკენები ამოგეწურა"}
+              {isTrialWallet ? "Trial tokens used up" : "Monthly tokens used up"}
             </p>
             <p className="text-sm" style={{ color: "var(--meta)" }}>
               {isTrialWallet
-                ? "განაგრძობისთვის გამოიწერე Ally."
+                ? "Subscribe to Ally to continue."
                 : packages.length > 0
-                ? `განახლდება ${nextRenewalDate()} — ან დაამატე ტოკენები ახლავე:`
-                : `განახლდება ${nextRenewalDate()}.`}
+                ? `Renews ${nextRenewalDate()} — or add tokens now:`
+                : `Renews ${nextRenewalDate()}.`}
             </p>
             {isTrialWallet ? (
               <button
@@ -746,7 +746,7 @@ export default function ThreadPage() {
                 onClick={() => router.push("/pricing")}
                 className="self-start rounded-xl bg-[#3E7A56] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
               >
-                გამოწერა
+                Subscribe
               </button>
             ) : packages.length > 0 ? (
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -800,7 +800,7 @@ export default function ThreadPage() {
                 voiceState === "recording"
                   ? "Listening..."
                   : limitHit
-                  ? "ტოკენები ამოიწურა"
+                  ? "Out of tokens"
                   : rateLimited
                   ? "Too many requests — please wait…"
                   : "Message Ally…"
