@@ -41,6 +41,10 @@ export default function LoginPage() {
   const [referralInput, setReferralInput] = useState("");
   const [referralError, setReferralError] = useState("");
   const confirmedReferralRef = useRef<string | null>(null);
+  // Optional referrer on the name step: builds the referral chain in ALL modes
+  // (gate off included). No validation — unknown numbers register fine without
+  // a link, and the backend ignores self-referrals.
+  const [inviteInput, setInviteInput] = useState("");
   // OTP is single-use: once verify-otp + complete-login succeed we must not
   // re-run them on retry (e.g. when the eligibility call itself failed).
   const otpPassedRef = useRef(false);
@@ -157,6 +161,7 @@ export default function LoginPage() {
     clearToken();
     otpPassedRef.current = false;
     confirmedReferralRef.current = null;
+    setInviteInput("");
     try {
       await post("/auth/request-otp", { phone, actionType: "AUTH" });
       setStep("otp");
@@ -256,8 +261,11 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const body: { phone: string; name: string; referralPhone?: string } = { phone, name };
-      if (confirmedReferralRef.current) {
-        body.referralPhone = confirmedReferralRef.current;
+      // Gate flow value wins; otherwise the optional "Invited by" field. Always
+      // sent when present — this is what builds the referral chain.
+      const referral = confirmedReferralRef.current ?? (inviteInput.trim() || null);
+      if (referral) {
+        body.referralPhone = referral;
       }
       const res = await post<{ token: string }>("/auth/register", body);
       saveToken(res.token);
@@ -435,6 +443,20 @@ export default function LoginPage() {
                   placeholder="Name Surname"
                   className={inputCls}
                 />
+                {/* Optional referrer — hidden when the invite gate already captured one.
+                    Builds the referral chain in every mode; no validation needed. */}
+                {!confirmedReferralRef.current && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-[#8A8778]">Invited by (optional)</label>
+                    <input
+                      type="tel"
+                      value={inviteInput}
+                      onChange={(e) => setInviteInput(e.target.value)}
+                      placeholder="Friend's phone number"
+                      className={inputCls}
+                    />
+                  </div>
+                )}
                 <button
                   type="submit"
                   disabled={loading || !name.trim() || rateLimited}
