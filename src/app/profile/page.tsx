@@ -465,6 +465,21 @@ export default function ProfilePage() {
             {/* Token wallet */}
             <TokensWidget />
 
+            {/* Referral earnings */}
+            <Link
+              href="/profile/earnings"
+              className="flex items-center justify-between rounded-2xl p-6 transition-colors hover:bg-[#F7F9F7]"
+              style={{ background: "#FFFFFF", border: "1px solid var(--sidebar-border)" }}
+            >
+              <div>
+                <h2 className="font-semibold" style={{ color: "var(--ink)" }}>My earnings</h2>
+                <p className="mt-0.5 text-xs" style={{ color: "var(--meta)" }}>
+                  Invite friends, earn from their subscriptions
+                </p>
+              </div>
+              <span style={{ color: "var(--meta)" }}>→</span>
+            </Link>
+
             {/* Ally in Claude (MCP connector guide) */}
             <AllyInClaudeCard />
 
