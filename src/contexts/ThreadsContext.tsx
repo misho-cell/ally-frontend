@@ -24,7 +24,9 @@ export type ChatMessage = {
 export type Option = { phone: string; name: string };
 
 // Per-thread state. `messages` is the chronological list (messages + steps).
-// The live-run fields (loading/runId/error) are driven by SSE this session.
+// The live-run fields (loading/runId/error/streaming) are driven by SSE.
+// `streaming` is the in-flight assistant answer built from answer_delta
+// events; run_complete replaces it with the authoritative full reply.
 export type ThreadState = {
   messages: ChatMessage[];
   options: Option[];
@@ -33,6 +35,7 @@ export type ThreadState = {
   runId: string | null;
   error: string | null;
   loaded: boolean;
+  streaming: { runId: string | null; text: string } | null;
 };
 
 export const DEFAULT_THREAD_STATE: ThreadState = {
@@ -43,6 +46,7 @@ export const DEFAULT_THREAD_STATE: ThreadState = {
   runId: null,
   error: null,
   loaded: false,
+  streaming: null,
 };
 
 // Immutable per-thread updater. Ensures an entry exists (default) before applying fn.
