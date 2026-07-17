@@ -137,6 +137,29 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               refreshTokens();
               break;
 
+            case "answer_delta": {
+              // Token-by-token final answer. Append per runId; a new runId
+              // starts a fresh buffer. run_complete replaces the buffer with
+              // the authoritative full reply (reconcile), so a lost delta
+              // never corrupts the final message.
+              const delta: string | undefined = data.delta;
+              if (data.threadId != null && typeof delta === "string" && delta.length > 0) {
+                setThreadStates((prev) =>
+                  updateThreadState(prev, data.threadId, (ts) => {
+                    const sameRun = ts.streaming && ts.streaming.runId === (data.runId ?? null);
+                    return {
+                      ...ts,
+                      streaming: {
+                        runId: data.runId ?? null,
+                        text: sameRun ? ts.streaming!.text + delta : delta,
+                      },
+                    };
+                  })
+                );
+              }
+              break;
+            }
+
             case "tool_progress":
             case "step_summary": {
               // Append every intermediate update as a durable step item so none
@@ -187,6 +210,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     loading: false,
                     runId: null,
                     error: null,
+                    streaming: null,
                   }))
                 );
                 // bump thread to top of sidebar
@@ -202,6 +226,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     loading: false,
                     runId: null,
                     error: data.message ?? "Something went wrong.",
+                    streaming: null,
                   }))
                 );
               }
