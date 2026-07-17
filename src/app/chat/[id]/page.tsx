@@ -95,6 +95,15 @@ function toBlocks(messages: ChatMessage[]): RenderBlock[] {
   return blocks;
 }
 
+const markdownComponents = {
+  p: ({ children }: { children?: React.ReactNode }) => <p style={{ marginBottom: "10px" }} className="last:mb-0">{children}</p>,
+  strong: ({ children }: { children?: React.ReactNode }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+  em: ({ children }: { children?: React.ReactNode }) => <em style={{ fontStyle: "italic" }}>{children}</em>,
+  ol: ({ children }: { children?: React.ReactNode }) => <ol style={{ paddingLeft: "20px", marginBottom: "10px", listStyleType: "decimal" }} className="space-y-1 last:mb-0">{children}</ol>,
+  ul: ({ children }: { children?: React.ReactNode }) => <ul style={{ paddingLeft: "20px", marginBottom: "10px", listStyleType: "disc" }} className="space-y-1 last:mb-0">{children}</ul>,
+  li: ({ children }: { children?: React.ReactNode }) => <li>{children}</li>,
+};
+
 export default function ThreadPage() {
   const params = useParams();
   const threadId = params.id as string;
@@ -102,7 +111,7 @@ export default function ThreadPage() {
   const { threads, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens } = useThreads();
 
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
-  const { messages, options, choices, loading, error } = st;
+  const { messages, options, choices, loading, error, streaming } = st;
 
   const [input, setInput] = useState("");
   const [initialLoading, setInitialLoading] = useState(!st.loaded);
@@ -136,6 +145,10 @@ export default function ThreadPage() {
     tokensEnabled && tokens.grantedThisPeriod > 0
       ? Math.max(0, tokens.balance) / tokens.grantedThisPeriod
       : null;
+
+  // The final answer is streaming in — show the building bubble and collapse
+  // the live step group (the narration is over, the answer has started).
+  const streamingActive = loading && !!streaming && streaming.text.length > 0;
 
   useEffect(() => {
     setSpeechSupported(!!getSpeechRecognition());
@@ -361,7 +374,7 @@ export default function ThreadPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, error]);
+  }, [messages, loading, error, streaming]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -390,6 +403,7 @@ export default function ThreadPage() {
           error: null,
           loading: true,
           runId: null,
+          streaming: null,
         }))
       );
       setInput("");
@@ -581,7 +595,9 @@ export default function ThreadPage() {
 
             {blocks.map((block, bi) => {
               if (block.type === "steps") {
-                const live = loading && block.trailing;
+                // Expanded while the agent is narrating; collapses as soon as
+                // the answer starts streaming in (or the run completes).
+                const live = loading && block.trailing && !streamingActive;
                 return (
                   <StepGroup
                     key={`steps-${bi}`}
@@ -618,22 +634,31 @@ export default function ThreadPage() {
                     style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
                   />
                   <div style={{ color: "var(--ink)", fontSize: "15px", lineHeight: "1.6", flex: 1 }}>
-                    <ReactMarkdown
-                      components={{
-                        p: ({ children }) => <p style={{ marginBottom: "10px" }} className="last:mb-0">{children}</p>,
-                        strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
-                        em: ({ children }) => <em style={{ fontStyle: "italic" }}>{children}</em>,
-                        ol: ({ children }) => <ol style={{ paddingLeft: "20px", marginBottom: "10px", listStyleType: "decimal" }} className="space-y-1 last:mb-0">{children}</ol>,
-                        ul: ({ children }) => <ul style={{ paddingLeft: "20px", marginBottom: "10px", listStyleType: "disc" }} className="space-y-1 last:mb-0">{children}</ul>,
-                        li: ({ children }) => <li>{children}</li>,
-                      }}
-                    >
+                    <ReactMarkdown components={markdownComponents}>
                       {msg.content}
                     </ReactMarkdown>
                   </div>
                 </div>
               );
             })}
+
+            {/* Streaming answer — built from answer_delta; replaced by the
+                authoritative reply on run_complete. */}
+            {streamingActive && (
+              <div className="flex items-start gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/ally-logo.svg"
+                  alt=""
+                  style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
+                />
+                <div style={{ color: "var(--ink)", fontSize: "15px", lineHeight: "1.6", flex: 1 }}>
+                  <ReactMarkdown components={markdownComponents}>
+                    {streaming!.text}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            )}
 
             {/* Disambiguation options (attach to final answer) */}
             {showOptions && (
@@ -683,8 +708,8 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {/* Live spinner while a run is in flight (steps render above) */}
-            {loading && (
+            {/* Live spinner while a run is in flight and nothing streams yet */}
+            {loading && !streamingActive && (
               <div className="flex items-center gap-3 pl-9">
                 <div className="flex gap-1 items-center">
                   <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]" style={{ background: "var(--placeholder)" }} />
@@ -875,7 +900,7 @@ export default function ThreadPage() {
 }
 
 // One renderer for both live and stored steps. Expanded while the run is live,
-// collapsed once it completes (toggleable by the user).
+// collapsed once the answer starts streaming or the run completes (toggleable).
 function StepGroup({ steps, live }: { steps: ChatMessage[]; live: boolean }) {
   const [open, setOpen] = useState(live);
 
