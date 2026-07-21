@@ -376,33 +376,39 @@ export default function ThreadPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading, error, streaming]);
 
+  // Sending is allowed even while a run is in flight — the new message simply
+  // REPLACES the pending run in the UI. A sentinel runId makes any late events
+  // from the replaced run stale (the layout drops them), and the 202 response
+  // swaps in the real runId.
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (text: string, echo: boolean = true) => {
       if (voiceState === "recording") {
         stopRecognition();
       }
       const trimmed = text.trim();
-      if (!trimmed || loading || rateLimitedUntil > Date.now() || limitHit) return;
+      if (!trimmed || rateLimitedUntil > Date.now() || limitHit) return;
 
-      // Optimistic: show the user's message and the working state immediately.
+      const sentinel = `pending-${crypto.randomUUID()}`;
       setThreadStates((prev) =>
         updateThreadState(prev, threadId, (ts) => ({
           ...ts,
-          messages: [
-            ...ts.messages,
-            {
-              id: crypto.randomUUID(),
-              role: "user",
-              content: trimmed,
-              kind: "message",
-              runId: null,
-            },
-          ],
+          messages: echo
+            ? [
+                ...ts.messages,
+                {
+                  id: crypto.randomUUID(),
+                  role: "user",
+                  content: trimmed,
+                  kind: "message",
+                  runId: null,
+                },
+              ]
+            : ts.messages,
           options: [],
           choices: [],
           error: null,
           loading: true,
-          runId: null,
+          runId: sentinel,
           streaming: null,
         }))
       );
@@ -444,10 +450,13 @@ export default function ThreadPage() {
         if (!res.ok || json.success === false) {
           throw new Error(json.error ?? `Request failed with status ${res.status}`);
         }
-        // 202 Accepted — remember runId; reply + steps arrive over SSE.
+        // 202 Accepted — swap the sentinel for the real runId; reply + steps
+        // arrive over SSE.
         const runId: string | null = json.runId ?? json.data?.runId ?? null;
         setThreadStates((prev) =>
-          updateThreadState(prev, threadId, (ts) => ({ ...ts, runId }))
+          updateThreadState(prev, threadId, (ts) =>
+            ts.runId === sentinel ? { ...ts, runId } : ts
+          )
         );
       } catch (err) {
         setThreadStates((prev) =>
@@ -462,7 +471,7 @@ export default function ThreadPage() {
         inputRef.current?.focus();
       }
     },
-    [loading, threadId, voiceState, setThreadStates, rateLimitedUntil, limitHit, refreshTokens]
+    [threadId, voiceState, setThreadStates, rateLimitedUntil, limitHit, refreshTokens]
   );
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -478,6 +487,7 @@ export default function ThreadPage() {
   const showOptions = !loading && lastIsAssistantMessage && options.length > 0;
   const showChoices = !loading && lastIsAssistantMessage && choices.length > 0;
   const composerBlocked = rateLimited || limitHit;
+  const lastUserText = [...messages].reverse().find((m) => m.kind === "message" && m.role === "user")?.content;
 
   return (
     <div className="flex h-full flex-col" style={{ background: "var(--bg)" }}>
@@ -529,7 +539,7 @@ export default function ThreadPage() {
           className="flex-1 truncate"
           style={{ fontSize: "15px", fontWeight: 600, color: "var(--ink)" }}
         >
-          {thread?.title ?? "Chat"}
+          {thread?.title ?? "Task"}
         </span>
 
         <div className="flex items-center gap-3">
@@ -589,7 +599,9 @@ export default function ThreadPage() {
                   style={{ width: 44, height: 44, borderRadius: "26%", marginBottom: "4px" }}
                 />
                 <p style={{ fontSize: "22px", fontWeight: 600, color: "var(--ink)" }}>Hi, I&apos;m Ally</p>
-                <p style={{ fontSize: "14px", color: "var(--placeholder)" }}>Ask me anything to get started.</p>
+                <p style={{ fontSize: "14px", color: "var(--placeholder)" }}>
+                  Give me a task — I&apos;ll work your network to get it done.
+                </p>
               </div>
             )}
 
@@ -708,7 +720,7 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {/* Live spinner while a run is in flight and nothing streams yet */}
+            {/* Live indicator while a run is in flight and nothing streams yet */}
             {loading && !streamingActive && (
               <div className="flex items-center gap-3 pl-9">
                 <div className="flex gap-1 items-center">
@@ -716,10 +728,11 @@ export default function ThreadPage() {
                   <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.15s]" style={{ background: "var(--placeholder)" }} />
                   <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "var(--placeholder)" }} />
                 </div>
+                <span style={{ fontSize: "13px", color: "var(--placeholder)" }}>Working on it…</span>
               </div>
             )}
 
-            {/* Run error */}
+            {/* Run error + Retry */}
             {!loading && error && (
               <div className="flex items-start gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -728,11 +741,22 @@ export default function ThreadPage() {
                   alt=""
                   style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
                 />
-                <div
-                  className="rounded-lg px-4 py-3"
-                  style={{ background: "#fef2f2", color: "#dc2626", fontSize: "14px", flex: 1 }}
-                >
-                  {error}
+                <div className="flex flex-col gap-2" style={{ flex: 1 }}>
+                  <div
+                    className="rounded-lg px-4 py-3"
+                    style={{ background: "#fef2f2", color: "#dc2626", fontSize: "14px" }}
+                  >
+                    {error}
+                  </div>
+                  {lastUserText && (
+                    <button
+                      type="button"
+                      onClick={() => sendMessage(lastUserText, false)}
+                      className="self-start rounded-xl border border-[#C7D6C9] bg-white px-4 py-2 text-sm font-medium text-[#3E7A56] transition-colors hover:bg-[#F7F9F7]"
+                    >
+                      Retry
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -828,7 +852,7 @@ export default function ThreadPage() {
                   ? "Out of tokens"
                   : rateLimited
                   ? "Too many requests — please wait…"
-                  : "Message Ally…"
+                  : "Give Ally a task…"
               }
               rows={1}
               disabled={composerBlocked}
@@ -877,12 +901,13 @@ export default function ThreadPage() {
               </button>
             )}
 
-            {/* Send button — hidden while recording */}
+            {/* Send button — hidden while recording. NOT disabled during a run:
+                sending mid-run replaces the pending run. */}
             {voiceState !== "recording" && (
               <button
                 type="button"
                 onClick={() => sendMessage(input)}
-                disabled={!input.trim() || loading || composerBlocked}
+                disabled={!input.trim() || composerBlocked}
                 className="flex shrink-0 h-8 w-8 items-center justify-center rounded-full transition-opacity disabled:opacity-30"
                 style={{ background: "var(--accent)" }}
                 aria-label="Send"
