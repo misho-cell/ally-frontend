@@ -45,19 +45,51 @@ function isSubscriptionError(status: number, body: { error?: string; success?: b
   return status === 403 || body?.error === "subscription_required" || (body?.success === false && body?.error === "subscription_required");
 }
 
+function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const arr = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) arr[i] = rawData.charCodeAt(i);
+  return arr.buffer;
+}
+
+// Should a run event apply to this thread's CURRENT run? Events from a
+// replaced/stale run (old runId) are dropped so a new message cleanly takes
+// over the UI. ts.runId is a sentinel between send and the 202 response.
+function isStaleRun(ts: ThreadState, eventRunId: unknown): boolean {
+  return Boolean(ts.runId && eventRunId && String(eventRunId) !== String(ts.runId));
+}
+
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadStates, setThreadStates] = useState<Record<string, ThreadState>>({});
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [tokens, setTokens] = useState<TokenBalance | null>(null);
+  const [unread, setUnread] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const abortRef = useRef<AbortController | null>(null);
   const sawFirstOpenRef = useRef(false);
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
 
   const isOnThread = pathname !== "/chat";
+
+  // Opening a thread clears its unread dot.
+  useEffect(() => {
+    const m = pathname.match(/^\/chat\/(.+)$/);
+    if (!m) return;
+    const id = m[1];
+    setUnread((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, [pathname]);
 
   const loadThreads = useCallback(async () => {
     try {
@@ -91,6 +123,36 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         setTokens(json.data as TokenBalance);
       }
     } catch {}
+  }, []);
+
+  // Silent push re-subscribe: permission already granted but no stored
+  // endpoint (new device/cleared storage). No prompt is shown — the manual
+  // opt-in stays in NotificationButton.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
+    if (Notification.permission !== "granted") return;
+    if (localStorage.getItem("push_endpoint")) return;
+    (async () => {
+      try {
+        const keyRes = await fetch(`${BASE_URL}/notifications/vapid-public-key`, { headers: authHeaders() });
+        const keyJson = await keyRes.json();
+        const vapidKey = keyJson.data?.key ?? keyJson.key;
+        if (!vapidKey) return;
+        const reg = await navigator.serviceWorker.ready;
+        const subscription = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        });
+        const sub = subscription.toJSON();
+        await fetch(`${BASE_URL}/notifications/subscribe`, {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(sub),
+        });
+        localStorage.setItem("push_endpoint", sub.endpoint ?? "");
+      } catch {}
+    })();
   }, []);
 
   // One persistent SSE connection for the whole chat session. It lives above the
@@ -146,6 +208,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               if (data.threadId != null && typeof delta === "string" && delta.length > 0) {
                 setThreadStates((prev) =>
                   updateThreadState(prev, data.threadId, (ts) => {
+                    if (isStaleRun(ts, data.runId)) return ts;
                     const sameRun = ts.streaming && ts.streaming.runId === (data.runId ?? null);
                     return {
                       ...ts,
@@ -169,6 +232,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               if (data.threadId != null && line) {
                 setThreadStates((prev) =>
                   updateThreadState(prev, data.threadId, (ts) => {
+                    if (isStaleRun(ts, data.runId)) return ts;
                     const last = ts.messages[ts.messages.length - 1];
                     if (last && last.kind === "step" && last.content === line) return ts;
                     return {
@@ -193,26 +257,33 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             case "run_complete":
               if (data.threadId != null) {
                 setThreadStates((prev) =>
-                  updateThreadState(prev, data.threadId, (ts) => ({
-                    ...ts,
-                    messages: [
-                      ...ts.messages,
-                      {
-                        id: crypto.randomUUID(),
-                        role: "assistant",
-                        content: data.reply ?? "",
-                        kind: "message",
-                        runId: data.runId ?? null,
-                      },
-                    ],
-                    options: Array.isArray(data.options) ? data.options : [],
-                    choices: Array.isArray(data.choices) ? data.choices : [],
-                    loading: false,
-                    runId: null,
-                    error: null,
-                    streaming: null,
-                  }))
+                  updateThreadState(prev, data.threadId, (ts) => {
+                    if (isStaleRun(ts, data.runId)) return ts;
+                    return {
+                      ...ts,
+                      messages: [
+                        ...ts.messages,
+                        {
+                          id: crypto.randomUUID(),
+                          role: "assistant",
+                          content: data.reply ?? "",
+                          kind: "message",
+                          runId: data.runId ?? null,
+                        },
+                      ],
+                      options: Array.isArray(data.options) ? data.options : [],
+                      choices: Array.isArray(data.choices) ? data.choices : [],
+                      loading: false,
+                      runId: null,
+                      error: null,
+                      streaming: null,
+                    };
+                  })
                 );
+                // Unread dot for threads the user is not currently viewing.
+                if (pathnameRef.current !== `/chat/${data.threadId}`) {
+                  setUnread((prev) => new Set(prev).add(String(data.threadId)));
+                }
                 // bump thread to top of sidebar
                 loadThreads();
               }
@@ -221,13 +292,16 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             case "run_error":
               if (data.threadId != null) {
                 setThreadStates((prev) =>
-                  updateThreadState(prev, data.threadId, (ts) => ({
-                    ...ts,
-                    loading: false,
-                    runId: null,
-                    error: data.message ?? "Something went wrong.",
-                    streaming: null,
-                  }))
+                  updateThreadState(prev, data.threadId, (ts) => {
+                    if (isStaleRun(ts, data.runId)) return ts;
+                    return {
+                      ...ts,
+                      loading: false,
+                      runId: null,
+                      error: data.message ?? "Something went wrong.",
+                      streaming: null,
+                    };
+                  })
                 );
               }
               break;
@@ -312,7 +386,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             borderRight: "1px solid var(--sidebar-border)",
           }}
         >
-          {/* Header: wordmark left, quick new-chat right (mockup) */}
+          {/* Header: wordmark left, quick new-task right (mockup) */}
           <div className="flex items-center justify-between pl-4 pr-2 pt-4 pb-2">
             <div className="flex items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -331,7 +405,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             <button
               onClick={createThread}
               disabled={creating}
-              aria-label="New chat"
+              aria-label="New task"
               className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[#F1F0EA] disabled:opacity-50"
               style={{ color: "var(--accent)", fontSize: "20px", fontWeight: 500 }}
             >
@@ -352,7 +426,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               }}
             >
               <span style={{ color: "var(--accent)", fontWeight: 600, fontSize: "15px" }}>+</span>
-              {creating ? "..." : "New chat"}
+              {creating ? "..." : "New task"}
             </button>
           </div>
 
@@ -369,7 +443,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search chats"
+                placeholder="Search tasks"
                 className="flex-1 bg-transparent outline-none"
                 style={{ color: "var(--ink)", fontSize: "13px" }}
               />
@@ -384,22 +458,22 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   Incoming requests
                 </p>
                 {incoming.map((t) => (
-                  <ThreadRow key={t.id} thread={t} active={pathname === `/chat/${t.id}`} />
+                  <ThreadRow key={t.id} thread={t} active={pathname === `/chat/${t.id}`} unread={unread.has(String(t.id))} />
                 ))}
               </section>
             )}
             <section className="flex flex-col gap-[2px]">
               {incoming.length > 0 && mine.length > 0 && (
                 <p className="pl-4 pb-1 pt-1" style={{ fontSize: "10.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--meta)" }}>
-                  My threads
+                  My tasks
                 </p>
               )}
               {mine.map((t) => (
-                <ThreadRow key={t.id} thread={t} active={pathname === `/chat/${t.id}`} />
+                <ThreadRow key={t.id} thread={t} active={pathname === `/chat/${t.id}`} unread={unread.has(String(t.id))} />
               ))}
               {threads.length === 0 && (
                 <p className="px-3 py-6 text-center" style={{ color: "var(--placeholder)", fontSize: "13px" }}>
-                  No threads yet
+                  No tasks yet
                 </p>
               )}
             </section>
@@ -436,7 +510,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   );
 }
 
-function ThreadRow({ thread, active }: { thread: Thread; active: boolean }) {
+function ThreadRow({ thread, active, unread }: { thread: Thread; active: boolean; unread: boolean }) {
   return (
     <Link
       href={`/chat/${thread.id}`}
@@ -451,13 +525,16 @@ function ThreadRow({ thread, active }: { thread: Thread; active: boolean }) {
       }}
     >
       <span
-        className="truncate"
-        style={{ fontSize: "14px", fontWeight: active ? 600 : 400, color: active ? "var(--ink)" : "var(--ink-muted)", lineHeight: "1.35" }}
+        className="flex-1 truncate"
+        style={{ fontSize: "14px", fontWeight: active || unread ? 600 : 400, color: active ? "var(--ink)" : "var(--ink-muted)", lineHeight: "1.35" }}
       >
         {thread.type === "incoming_request" && <span style={{ color: "var(--accent)", marginRight: "4px" }}>↓</span>}
         {thread.type === "outgoing_request" && <span style={{ color: "var(--meta)", marginRight: "4px" }}>↑</span>}
-        {thread.title ?? "New thread"}
+        {thread.title ?? "New task"}
       </span>
+      {unread && !active && (
+        <span className="ml-2 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--accent)" }} />
+      )}
     </Link>
   );
 }
