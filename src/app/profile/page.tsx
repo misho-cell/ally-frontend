@@ -9,6 +9,7 @@ import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const MCP_URL = "https://api.allyapp.one/mcp";
+const SITE_URL = "https://allyapp.one";
 
 type Profile = {
   name: string;
@@ -56,6 +57,54 @@ function nextRenewalDate(): string {
   const now = new Date();
   const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+}
+
+// Invite friends — referral share, prominent on the profile. The share text
+// carries the site link, a mini how-to and the user's number so the friend
+// has zero follow-up questions.
+function InviteFriendsCard({ phone }: { phone: string }) {
+  const [toast, setToast] = useState<string | null>(null);
+
+  async function share() {
+    const text =
+      `Hey! I'm using Ally — an AI assistant that works your own network to get things done. Join me:\n\n` +
+      `1. Open ${SITE_URL} and sign in with your phone number\n` +
+      `2. On the sign-up step, put my number in the “Invited by” field: ${phone}\n\n` +
+      `That's it — see you inside!`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        setToast("Invite copied to clipboard");
+        setTimeout(() => setToast(null), 3000);
+      }
+    } catch {}
+  }
+
+  return (
+    <div
+      className="rounded-2xl p-6 flex flex-col gap-3"
+      style={{ background: "#FFFFFF", border: "1px solid var(--sidebar-border)" }}
+    >
+      {toast && (
+        <div className="rounded-lg bg-[#DEE8E0] px-3 py-2 text-sm font-medium text-[#2E5C41]">{toast}</div>
+      )}
+      <h2 className="font-semibold" style={{ color: "var(--ink)" }}>Invite friends</h2>
+      <p className="text-sm" style={{ color: "var(--meta)" }}>
+        When a friend signs up, they enter your number in the invite field. You earn
+        a share of their first subscription — and of subscriptions from the people
+        they invite, up to 6 levels deep.
+      </p>
+      <button
+        type="button"
+        onClick={share}
+        className="self-start rounded-xl bg-[#3E7A56] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+      >
+        Invite friend
+      </button>
+    </div>
+  );
 }
 
 // Static "add Ally to your Claude" guide — no API involved. Collapsible so the
@@ -462,6 +511,9 @@ export default function ProfilePage() {
               </div>
             </div>
 
+            {/* Invite friends (referral share) */}
+            <InviteFriendsCard phone={profile.phone} />
+
             {/* Token wallet */}
             <TokensWidget />
 
@@ -474,7 +526,7 @@ export default function ProfilePage() {
               <div>
                 <h2 className="font-semibold" style={{ color: "var(--ink)" }}>My earnings</h2>
                 <p className="mt-0.5 text-xs" style={{ color: "var(--meta)" }}>
-                  Invite friends, earn from their subscriptions
+                  Balance, history, spend on tokens or subscriptions
                 </p>
               </div>
               <span style={{ color: "var(--meta)" }}>→</span>
