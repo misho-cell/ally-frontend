@@ -68,7 +68,6 @@ type Confirm =
 export default function EarningsPage() {
   const [data, setData] = useState<Referral | null>(null);
   const [packages, setPackages] = useState<TopupPackage[]>([]);
-  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
@@ -94,32 +93,13 @@ export default function EarningsPage() {
   }, []);
 
   useEffect(() => {
-    Promise.all([
-      loadReferral(),
-      loadPackages(),
-      fetch(`${BASE_URL}/profile`, { headers: authHeaders() })
-        .then((r) => r.json())
-        .then((j) => setPhone(j?.data?.phone ?? ""))
-        .catch(() => {}),
-    ])
+    Promise.all([loadReferral(), loadPackages()])
       .then(([ref]) => {
         if (!ref) setError(true);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [loadReferral, loadPackages]);
-
-  async function share() {
-    const text = `Sign up for Ally and enter my number in the invite field: ${phone}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ text });
-      } else {
-        await navigator.clipboard.writeText(text);
-        showToast("Copied to clipboard");
-      }
-    } catch {}
-  }
 
   // Shared spend handler. Branches on the response `reason` code (not the error
   // text — texts may change). Buttons stay disabled while the request runs.
@@ -201,23 +181,6 @@ export default function EarningsPage() {
               <p className="mt-1 text-xs" style={{ color: "var(--meta)" }}>
                 Total earned: {usd(data.totalEarnedUsd)}
               </p>
-            </div>
-
-            {/* How to earn + share */}
-            <div className="rounded-2xl border border-[#E4E0D3] bg-white p-6 flex flex-col gap-3">
-              <h2 className="font-semibold" style={{ color: "var(--ink)" }}>How do I earn?</h2>
-              <p className="text-sm" style={{ color: "var(--meta)" }}>
-                Invite friends: when they sign up, they enter your number in the invite
-                field. You earn a share of their first subscription — and of
-                subscriptions from the people they invite, up to 6 levels deep.
-              </p>
-              <button
-                type="button"
-                onClick={share}
-                className="self-start rounded-xl bg-[#3E7A56] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              >
-                Share my number
-              </button>
             </div>
 
             {/* Spend: tokens */}
