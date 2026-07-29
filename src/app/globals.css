@@ -103,6 +103,7 @@ body {
 .btn-secondary:hover { background: var(--accent-tint); }
 .btn-secondary:active { transform: translateY(1px); }
 .btn-secondary:focus-visible { box-shadow: var(--focus-ring); }
+.btn-secondary:disabled { opacity: .5; cursor: default; transform: none; }
 
 .btn-destructive {
   background: none; border: 0; padding: 0; cursor: pointer;
@@ -290,4 +291,24 @@ body {
 .section-label {
   font: 600 10.5px/14px var(--font-system); letter-spacing: 1.6px;
   text-transform: uppercase; color: var(--meta);
+}
+
+/* ============ Composer ============ */
+.composer-pill {
+  background: #FFFFFF; border: 1px solid var(--header-border);
+  border-radius: var(--radius-pill); box-shadow: var(--shadow-card);
+}
+.composer-pill:focus-within { border-color: var(--accent); box-shadow: var(--input-focus-ring); }
+
+/* ============ Responsive ============ */
+@media (max-width: 767px) {
+  .thread-header { padding: 11px 14px; gap: 10px; }
+  .thread-header .title { font-size: 15px; line-height: 20px; }
+  .token-badge { padding: 6px 9px; }
+  .token-badge .count { display: none; }
+  .messages { padding: 16px 14px; gap: 14px; }
+  .msg-user { max-width: 84%; font-size: 14.5px; }
+  .msg-ally { font-size: 16px; line-height: 26px; }
+  .steps { margin-left: 0; }
+  .row-request, .thread-row { min-height: 44px; }
 }

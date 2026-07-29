@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { authHeaders, handleAdminTokenMisuse } from "@/lib/deviceId";
+import { t } from "@/lib/i18n";
 import {
   ThreadsContext,
   updateThreadState,
@@ -63,6 +64,7 @@ function isStaleRun(ts: ThreadState, eventRunId: unknown): boolean {
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [threadsLoaded, setThreadsLoaded] = useState(false);
   const [threadStates, setThreadStates] = useState<Record<string, ThreadState>>({});
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [tokens, setTokens] = useState<TokenBalance | null>(null);
@@ -110,6 +112,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       const fetched: Thread[] = json.data ?? json;
       setThreads(dedup(fetched));
     } catch {}
+    finally {
+      setThreadsLoaded(true);
+    }
   }, [router]);
 
   // Token wallet balance. First call of the month also triggers the backend's
@@ -317,7 +322,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     return () => ctrl.abort();
   }, [loadThreads, refreshTokens]);
 
-  async function createThread() {
+  const createThread = useCallback(async () => {
     setCreating(true);
     try {
       const res = await fetch(`${BASE_URL}/threads`, {
@@ -340,7 +345,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     finally {
       setCreating(false);
     }
-  }
+  }, [router]);
 
   async function handleSignOut() {
     const token = getToken();
@@ -360,11 +365,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     router.replace("/login");
   }
 
-  const filtered = threads.filter((t) =>
-    (t.title ?? "").toLowerCase().includes(search.toLowerCase())
+  const filtered = threads.filter((th) =>
+    (th.title ?? "").toLowerCase().includes(search.toLowerCase())
   );
-  const incoming = filtered.filter((t) => t.type === "incoming_request");
-  const mine = filtered.filter((t) => t.type !== "incoming_request");
+  const incoming = filtered.filter((th) => th.type === "incoming_request");
+  const mine = filtered.filter((th) => th.type !== "incoming_request");
 
   const user = getUserInfo();
 
@@ -377,129 +382,137 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     : "hidden md:flex md:flex-1 md:flex-col";
 
   return (
-    <ThreadsContext.Provider value={{ threads, setThreads, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens }}>
+    <ThreadsContext.Provider
+      value={{ threads, setThreads, threadsLoaded, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens, createThread }}
+    >
       <div className="flex h-full" style={{ background: "var(--bg)" }}>
         <aside
-          className={`${sidebarClass} flex-col shrink-0 w-full md:w-[268px]`}
+          className={`${sidebarClass} sidebar flex-col shrink-0 w-full md:w-[240px] lg:w-[268px]`}
           style={{
             background: "var(--sidebar-bg)",
             borderRight: "1px solid var(--sidebar-border)",
+            padding: "14px 12px 12px",
+            gap: "12px",
           }}
         >
-          {/* Header: wordmark left, quick new-task right (mockup) */}
-          <div className="flex items-center justify-between pl-4 pr-2 pt-4 pb-2">
+          {/* Logo row: avatar mark + wordmark, quick new-task on the right */}
+          <div className="flex items-center justify-between pl-1">
             <div className="flex items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/ally-logo.svg" alt="Ally" style={{ borderRadius: "26%", width: 22, height: 22 }} />
-              <span
-                style={{
-                  fontSize: "17px",
-                  fontWeight: 600,
-                  letterSpacing: "-0.01em",
-                  color: "var(--ink)",
-                }}
-              >
-                Ally
+              <span className="ally-avatar">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              </span>
+              <span style={{ font: "500 20px/26px var(--font-bricolage)", color: "var(--ink)" }}>
+                Netai
               </span>
             </div>
             <button
               onClick={createThread}
               disabled={creating}
-              aria-label="New task"
-              className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[#F1F0EA] disabled:opacity-50"
-              style={{ color: "var(--accent)", fontSize: "20px", fontWeight: 500 }}
+              aria-label={t("newTask")}
+              className="flex items-center justify-center transition-colors disabled:opacity-50"
+              style={{ width: 28, height: 28, borderRadius: 8, color: "var(--ink-soft)", fontSize: "18px" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--skeleton)"; e.currentTarget.style.color = "var(--ink)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--ink-soft)"; }}
             >
               +
             </button>
           </div>
 
-          <div className="px-4 pb-2">
-            <button
-              onClick={createThread}
-              disabled={creating}
-              className="flex w-full items-center gap-2 rounded-xl border bg-white px-3.5 py-2.5 transition-colors hover:bg-[#F7F9F7] disabled:opacity-50"
-              style={{
-                borderColor: "var(--cta-border)",
-                color: "var(--ink)",
-                fontSize: "13.5px",
-                fontWeight: 500,
-              }}
-            >
-              <span style={{ color: "var(--accent)", fontWeight: 600, fontSize: "15px" }}>+</span>
-              {creating ? "..." : "New task"}
-            </button>
+          <button
+            onClick={createThread}
+            disabled={creating}
+            className="btn-secondary w-full"
+            style={{ padding: "9px 0" }}
+          >
+            + {creating ? "…" : t("newTask")}
+          </button>
+
+          <div
+            className="flex items-center gap-2"
+            style={{
+              background: "#FFFFFF",
+              border: "1px solid var(--header-border)",
+              borderRadius: "var(--radius-pill)",
+              padding: "8px 14px",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+              <circle cx="8.5" cy="8.5" r="5.75" stroke="var(--meta)" strokeWidth="1.75" />
+              <path d="M13 13l3.5 3.5" stroke="var(--meta)" strokeWidth="1.75" strokeLinecap="round" />
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("searchTasks")}
+              className="flex-1 bg-transparent outline-none"
+              style={{ color: "var(--ink)", fontSize: "13px" }}
+            />
           </div>
 
-          <div className="px-4 pb-2">
-            <div
-              className="flex items-center gap-2 rounded-[10px] px-3 py-2"
-              style={{ background: "var(--bg)", border: "1px solid var(--sidebar-border)" }}
-            >
-              <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
-                <circle cx="8.5" cy="8.5" r="5.75" stroke="var(--placeholder)" strokeWidth="1.75" />
-                <path d="M13 13l3.5 3.5" stroke="var(--placeholder)" strokeWidth="1.75" strokeLinecap="round" />
-              </svg>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search tasks"
-                className="flex-1 bg-transparent outline-none"
-                style={{ color: "var(--ink)", fontSize: "13px" }}
-              />
-            </div>
-          </div>
-
-          {/* Thread list — rows bleed close to the edges like the mockup */}
-          <div className="flex-1 overflow-y-auto pl-0 pr-2.5 pt-1 flex flex-col gap-[2px]">
-            {incoming.length > 0 && (
-              <section className="mb-1 flex flex-col gap-[2px]">
-                <p className="pl-4 pb-1 pt-1" style={{ fontSize: "10.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--meta)" }}>
-                  Incoming requests
-                </p>
-                {incoming.map((t) => (
-                  <ThreadRow key={t.id} thread={t} active={pathname === `/chat/${t.id}`} unread={unread.has(String(t.id))} />
-                ))}
-              </section>
+          {/* Lists */}
+          <div className="flex-1 overflow-y-auto flex flex-col gap-[2px]">
+            {!threadsLoaded ? (
+              <div className="flex flex-col gap-2 pt-1">
+                <p className="section-label" style={{ padding: "0 6px 4px" }}>{t("myTasks")}</p>
+                <span className="sk-bar" style={{ width: "84%" }} />
+                <span className="sk-bar" style={{ width: "70%" }} />
+                <span className="sk-bar" style={{ width: "76%" }} />
+                <span className="sk-bar" style={{ width: "62%" }} />
+                <span className="sk-bar" style={{ width: "78%" }} />
+              </div>
+            ) : (
+              <>
+                {incoming.length > 0 && (
+                  <section className="mb-1 flex flex-col gap-[2px]">
+                    <p className="section-label" style={{ padding: "0 6px 4px" }}>{t("incomingRequests")}</p>
+                    {incoming.map((th) => (
+                      <RequestRow key={th.id} thread={th} active={pathname === `/chat/${th.id}`} />
+                    ))}
+                  </section>
+                )}
+                <section className="flex flex-col gap-[2px]">
+                  {incoming.length > 0 && mine.length > 0 && (
+                    <p className="section-label" style={{ padding: "0 6px 4px" }}>{t("myTasks")}</p>
+                  )}
+                  {mine.map((th) => (
+                    <ThreadRow key={th.id} thread={th} active={pathname === `/chat/${th.id}`} unread={unread.has(String(th.id))} />
+                  ))}
+                  {threads.length === 0 && (
+                    <p style={{ padding: "2px 6px", fontSize: "12px", color: "var(--meta)" }}>
+                      {t("threadsHint")}
+                    </p>
+                  )}
+                </section>
+              </>
             )}
-            <section className="flex flex-col gap-[2px]">
-              {incoming.length > 0 && mine.length > 0 && (
-                <p className="pl-4 pb-1 pt-1" style={{ fontSize: "10.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--meta)" }}>
-                  My tasks
-                </p>
-              )}
-              {mine.map((t) => (
-                <ThreadRow key={t.id} thread={t} active={pathname === `/chat/${t.id}`} unread={unread.has(String(t.id))} />
-              ))}
-              {threads.length === 0 && (
-                <p className="px-3 py-6 text-center" style={{ color: "var(--placeholder)", fontSize: "13px" }}>
-                  No tasks yet
-                </p>
-              )}
-            </section>
           </div>
 
-          <div className="flex items-center gap-2.5 px-4 py-3" style={{ borderTop: "1px solid var(--sidebar-border)" }}>
+          {/* Footer */}
+          <div className="flex items-center gap-2.5" style={{ borderTop: "1px solid var(--sidebar-border)", paddingTop: "10px" }}>
             <Link
               href="/profile"
-              className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-[11px] font-semibold transition-opacity hover:opacity-70"
-              style={{ background: "var(--thread-active-bg)", border: "2px solid var(--accent)", color: "var(--ink)" }}
+              className="initial-avatar transition-opacity hover:opacity-80"
+              style={{ width: 28, height: 28, fontSize: "12px" }}
             >
               {user.initial}
             </Link>
             <Link
               href="/profile"
               className="flex-1 truncate transition-opacity hover:opacity-70"
-              style={{ color: "var(--ink)", fontWeight: 500, fontSize: "13px" }}
+              style={{ color: "var(--ink)", fontWeight: 600, fontSize: "13px" }}
             >
               {user.name}
             </Link>
             <button
               onClick={handleSignOut}
-              className="transition-opacity hover:opacity-60"
-              style={{ fontSize: "11.5px", color: "var(--meta)" }}
+              className="transition-colors"
+              style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--danger)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--ink-soft)"; }}
             >
-              Sign out
+              {t("signOut")}
             </button>
           </div>
         </aside>
@@ -514,27 +527,35 @@ function ThreadRow({ thread, active, unread }: { thread: Thread; active: boolean
   return (
     <Link
       href={`/chat/${thread.id}`}
-      className={`flex items-center py-[10px] pr-3 transition-colors ${
-        active ? "" : "hover:bg-[#F1F0EA]"
-      }`}
+      className="thread-row flex items-center transition-colors"
       style={{
+        padding: "8px 10px",
+        borderRadius: "var(--radius-row)",
         background: active ? "var(--thread-active-bg)" : undefined,
-        borderLeft: active ? "3px solid var(--accent)" : "3px solid transparent",
-        borderRadius: "0 9px 9px 0",
-        paddingLeft: "13px",
+        boxShadow: active ? "inset 3px 0 0 var(--accent)" : undefined,
       }}
+      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--skeleton)"; }}
+      onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = ""; }}
     >
       <span
         className="flex-1 truncate"
-        style={{ fontSize: "14px", fontWeight: active || unread ? 600 : 400, color: active ? "var(--ink)" : "var(--ink-muted)", lineHeight: "1.35" }}
+        style={{ font: `${active || unread ? 600 : 500} 13px/18px var(--font-system)`, color: "var(--ink)" }}
       >
-        {thread.type === "incoming_request" && <span style={{ color: "var(--accent)", marginRight: "4px" }}>↓</span>}
         {thread.type === "outgoing_request" && <span style={{ color: "var(--meta)", marginRight: "4px" }}>↑</span>}
-        {thread.title ?? "New task"}
+        {thread.title ?? t("taskFallback")}
       </span>
       {unread && !active && (
         <span className="ml-2 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--accent)" }} />
       )}
+    </Link>
+  );
+}
+
+function RequestRow({ thread, active }: { thread: Thread; active: boolean }) {
+  return (
+    <Link href={`/chat/${thread.id}`} className={`row-request${active ? " active" : ""}`}>
+      <span className="req-chip">→</span>
+      <span className="req-names">{thread.title ?? t("taskFallback")}</span>
     </Link>
   );
 }
