@@ -11,6 +11,7 @@ import {
   useThreads,
   updateThreadState,
   taskStatusOf,
+  forceLogin,
   DEFAULT_THREAD_STATE,
   type ChatMessage,
   type TaskStatus,
@@ -162,13 +163,44 @@ function extractQuote(text: string): string | null {
   return m ? m[1].trim() : null;
 }
 
+// System-style error block (F1): distinct background, no emoji, never an
+// assistant bubble. Used for BOTH persisted kind:'error' rows and live
+// run_error — the two must look identical.
+function ErrorBlock({ text, onRetry }: { text: string; onRetry: (() => void) | null }) {
+  return (
+    <div className="flex items-start" style={{ gap: "10px" }}>
+      <div className="flex items-center" style={{ flex: "none" }}>
+        <AllyAnim clip="ally-error" size="inline" />
+      </div>
+      <div className="flex flex-col gap-2" style={{ flex: 1, minWidth: 0 }}>
+        <div
+          className="px-4 py-3"
+          style={{
+            background: "var(--terra-tint)",
+            color: "var(--danger)",
+            fontSize: "14px",
+            borderRadius: "var(--radius-tile)",
+          }}
+        >
+          {text}
+        </div>
+        {onRetry && (
+          <button type="button" onClick={onRetry} className="btn-secondary self-start">
+            {t("retry")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ThreadPage() {
   const params = useParams();
   const threadId = params.id as string;
   const router = useRouter();
   const {
     threads, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens,
-    tasks, resolveRequest, resolvedRequests,
+    titles, resolveRequest, resolvedRequests,
   } = useThreads();
 
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
@@ -199,12 +231,9 @@ export default function ThreadPage() {
   const thread = threads.find((th) => String(th.id) === threadId);
   const userInitial = getUserInitial();
   const isRequest = thread?.type === "incoming_request";
-  const taskStatus: TaskStatus | null = thread
-    ? taskStatusOf(thread, st, tasks[threadId])
-    : null;
-  const taskMeta = tasks[threadId];
-  // Backend human status line wins; local fallback otherwise (§9.1).
-  const statusLine = thread?.status_line ?? taskMeta?.statusLine ?? null;
+  const taskStatus: TaskStatus | null = thread ? taskStatusOf(thread, st) : null;
+  // Server-owned human status line (F2).
+  const statusLine = thread?.status_line ?? null;
 
   const tokensEnabled = tokens?.enabled === true;
   const isTrialWallet = tokensEnabled && tokens.grantedThisPeriod === 120;
@@ -401,6 +430,7 @@ export default function ThreadPage() {
       headers: authHeaders(),
     })
       .then((r) => {
+        if (r.status === 401) { forceLogin(); throw new Error("401"); }
         if (!r.ok) throw new Error(String(r.status));
         return r.json();
       })
@@ -416,7 +446,7 @@ export default function ThreadPage() {
           id: crypto.randomUUID(),
           role: m.role as "user" | "assistant",
           content: m.content,
-          kind: m.kind === "step" ? "step" : "message",
+          kind: m.kind === "step" ? "step" : m.kind === "error" ? "error" : "message",
           runId: m.run_id ?? null,
         }));
         setThreadStates((prev) =>
@@ -487,6 +517,8 @@ export default function ThreadPage() {
           headers: authHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ message: trimmed }),
         });
+
+        if (res.status === 401) { forceLogin(); return; }
 
         if (res.status === 402) {
           const body = await res.json().catch(() => ({}));
@@ -575,8 +607,8 @@ export default function ThreadPage() {
       : t("stDone")
     : null;
 
-  const displayTitle = taskMeta?.title && (thread?.title === "New task" || thread?.title === "ახალი დავალება" || !thread?.title)
-    ? taskMeta.title
+  const displayTitle = titles[threadId] && (thread?.title === "New task" || thread?.title === "ახალი დავალება" || !thread?.title)
+    ? titles[threadId]
     : thread?.title ?? t("threadFallback");
 
   const resultRows: Array<{ key: "who" | "when" | "where" | "topic"; label: string }> = [
@@ -739,6 +771,16 @@ export default function ThreadPage() {
                 );
               }
               const msg = block.msg;
+              // Persisted failed-run marker (F1): system block, not a bubble.
+              if (msg.kind === "error") {
+                return (
+                  <ErrorBlock
+                    key={msg.id}
+                    text={msg.content || t("genericError")}
+                    onRetry={lastUserText ? () => sendMessage(lastUserText, false) : null}
+                  />
+                );
+              }
               if (msg.role === "user") {
                 return (
                   <div key={msg.id} className="flex justify-end">
@@ -891,34 +933,12 @@ export default function ThreadPage() {
               </div>
             )}
 
+            {/* Live run_error — same system block as persisted kind:'error'. */}
             {!loading && error && (
-              <div className="flex items-start" style={{ gap: "10px" }}>
-                <div className="flex items-center" style={{ flex: "none" }}>
-                  <AllyAnim clip="ally-error" size="inline" />
-                </div>
-                <div className="flex flex-col gap-2" style={{ flex: 1 }}>
-                  <div
-                    className="px-4 py-3"
-                    style={{
-                      background: "var(--terra-tint)",
-                      color: "var(--danger)",
-                      fontSize: "14px",
-                      borderRadius: "var(--radius-tile)",
-                    }}
-                  >
-                    {error}
-                  </div>
-                  {lastUserText && (
-                    <button
-                      type="button"
-                      onClick={() => sendMessage(lastUserText, false)}
-                      className="btn-secondary self-start"
-                    >
-                      {t("retry")}
-                    </button>
-                  )}
-                </div>
-              </div>
+              <ErrorBlock
+                text={error}
+                onRetry={lastUserText ? () => sendMessage(lastUserText, false) : null}
+              />
             )}
 
             <div ref={messagesEndRef} />
