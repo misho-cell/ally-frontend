@@ -85,7 +85,11 @@ const en = {
   // structured result
   resultLabel: "RESULT",
   resultFollowup: "Anything else on this?",
-  // one-tap replies sent into the thread
+  rWho: "Who",
+  rWhen: "When",
+  rWhere: "Where",
+  rTopic: "Topic",
+  // one-tap replies sent into the thread (fallback when request_ref is absent)
   reqAcceptMsg: "Yes, I accept — go ahead with the intro.",
   reqDenyMsg: "No, I'd rather not — please decline politely.",
   reqLaterMsg: "Remind me about this later.",
@@ -154,6 +158,10 @@ const ka: typeof en = {
   introRequestLabel: "გაცნობის თხოვნა",
   resultLabel: "შედეგი",
   resultFollowup: "კიდევ რამე ამ თემაზე?",
+  rWho: "ვინ",
+  rWhen: "როდის",
+  rWhere: "სად",
+  rTopic: "თემა",
   reqAcceptMsg: "კი, თანახმა ვარ, გააგრძელე გაცნობა.",
   reqDenyMsg: "არა, არ მინდა, რბილად უთხარი უარი.",
   reqLaterMsg: "მოგვიანებით შემახსენე ამაზე.",

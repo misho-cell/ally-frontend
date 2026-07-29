@@ -75,8 +75,6 @@ function fmtTokens(n: number): string {
   return Number(n).toLocaleString("en-US");
 }
 
-// Step strings contain literal **bold** markers — render as <strong>; emoji
-// are stripped (steps are ✓ + text only, founder review item 10).
 function renderStepText(text: string): React.ReactNode {
   const parts = stripEmoji(text).split(/\*\*(.+?)\*\*/g);
   return parts.map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part));
@@ -124,7 +122,7 @@ function AllyAvatar() {
   );
 }
 
-function AllyAnim({ clip, size }: { clip: string; size?: "thinking" | "e3" | "inline" }) {
+function AllyAnim({ clip, size, loop = true }: { clip: string; size?: "thinking" | "e3" | "inline"; loop?: boolean }) {
   const cls = size ? ` size-${size}` : "";
   return (
     <>
@@ -132,7 +130,7 @@ function AllyAnim({ clip, size }: { clip: string; size?: "thinking" | "e3" | "in
         className={`ally-anim${cls}`}
         autoPlay
         muted
-        loop
+        loop={loop}
         playsInline
         src={`/assets/ally/anim/${clip}.mp4`}
         poster={`/assets/ally/anim/${clip}-poster.jpg`}
@@ -149,10 +147,8 @@ function AllyAnim({ clip, size }: { clip: string; size?: "thinking" | "e3" | "in
   );
 }
 
-// Founder rule (review item 8): while she works, she is ALWAYS in motion.
-// Backend doesn't label step types yet, so the minimum-viable rotation:
-// no steps → thinking (the only stillness allowed); with steps, rotate
-// loading → walk → slow every 3 steps so she visibly keeps moving.
+// Founder rule: while she works she is ALWAYS in motion. No steps → thinking
+// (the only stillness allowed); with steps, rotate loading → walk → slow.
 function workingClip(stepCount: number): string {
   if (stepCount === 0) return "ally-thinking";
   const clips = ["ally-loading", "ally-walk", "ally-slow"];
@@ -161,7 +157,6 @@ function workingClip(stepCount: number): string {
 
 type LoadPhase = "loading" | "slow" | "failed" | "done";
 
-// Extract the quoted ask out of an intro-request message („…“ / "…" / «…»).
 function extractQuote(text: string): string | null {
   const m = text.match(/[„"«“]([^“”"»]{10,300})[“”"»]/);
   return m ? m[1].trim() : null;
@@ -177,7 +172,7 @@ export default function ThreadPage() {
   } = useThreads();
 
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
-  const { messages, options, choices, loading, error, streaming } = st;
+  const { messages, options, choices, loading, error, streaming, result } = st;
 
   const [input, setInput] = useState("");
   const [loadPhase, setLoadPhase] = useState<LoadPhase>(st.loaded ? "done" : "loading");
@@ -208,6 +203,8 @@ export default function ThreadPage() {
     ? taskStatusOf(thread, st, tasks[threadId])
     : null;
   const taskMeta = tasks[threadId];
+  // Backend human status line wins; local fallback otherwise (§9.1).
+  const statusLine = thread?.status_line ?? taskMeta?.statusLine ?? null;
 
   const tokensEnabled = tokens?.enabled === true;
   const isTrialWallet = tokensEnabled && tokens.grantedThisPeriod === 120;
@@ -447,7 +444,7 @@ export default function ThreadPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, error, streaming]);
+  }, [messages, loading, error, streaming, result]);
 
   const sendMessage = useCallback(
     async (text: string, echo: boolean = true) => {
@@ -479,6 +476,7 @@ export default function ThreadPage() {
           loading: true,
           runId: sentinel,
           streaming: null,
+          result: null,
         }))
       );
       setInput("");
@@ -556,15 +554,12 @@ export default function ThreadPage() {
 
   const showInitialLoad = loadPhase !== "done" && messages.length === 0;
 
-  // Live step count of the trailing run — drives the activity clip rotation.
   const trailingSteps = (() => {
     let n = 0;
     for (let i = messages.length - 1; i >= 0 && messages[i].kind === "step"; i--) n++;
     return n;
   })();
 
-  // Intro request context (gap 4): names from the title, quote from the first
-  // assistant message. Model-generated sentences are content — never hardcoded.
   const firstAssistant = isRequest ? messages.find((m) => m.kind === "message" && m.role === "assistant") : undefined;
   const reqQuote = firstAssistant ? extractQuote(firstAssistant.content) : null;
   const reqNames = isRequest && thread?.title.includes("→")
@@ -584,6 +579,13 @@ export default function ThreadPage() {
     ? taskMeta.title
     : thread?.title ?? t("threadFallback");
 
+  const resultRows: Array<{ key: "who" | "when" | "where" | "topic"; label: string }> = [
+    { key: "who", label: t("rWho") },
+    { key: "when", label: t("rWhen") },
+    { key: "where", label: t("rWhere") },
+    { key: "topic", label: t("rTopic") },
+  ];
+
   return (
     <div className="flex h-full flex-col" style={{ background: "var(--bg)" }}>
       {toast && (
@@ -593,7 +595,6 @@ export default function ThreadPage() {
         </div>
       )}
 
-      {/* Header: back + goal name + status word under it (§6) */}
       <header
         className="thread-header flex items-center"
         style={{
@@ -658,7 +659,6 @@ export default function ThreadPage() {
         </div>
       </header>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto">
         {showInitialLoad ? (
           loadPhase === "slow" || loadPhase === "failed" ? (
@@ -694,14 +694,13 @@ export default function ThreadPage() {
             className="messages mx-auto flex flex-col"
             style={{ maxWidth: "720px", padding: "26px 24px", gap: "18px" }}
           >
-            {/* Embedded task card — updates in place on status change (§6) */}
             {taskStatus && messages.length > 0 && (
               <div className="card flex items-center gap-3" style={{ padding: "12px 14px", maxWidth: "520px" }}>
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
                   <span className={`task-pill ${taskStatus}`} style={{ alignSelf: "flex-start" }}>{statusLabel}</span>
-                  {taskMeta?.statusLine && taskStatus !== "working" && (
+                  {statusLine && taskStatus !== "working" && taskStatus !== "done" && (
                     <span className="truncate" style={{ font: "400 12.5px/18px var(--font-system)", color: taskStatus === "needs_you" ? "var(--request-accent)" : "var(--ink-soft)", fontWeight: taskStatus === "needs_you" ? 600 : 400 }}>
-                      {taskMeta.statusLine}
+                      {statusLine}
                     </span>
                   )}
                 </div>
@@ -771,7 +770,6 @@ export default function ThreadPage() {
                       </ReactMarkdown>
                     </div>
                   </div>
-                  {/* INTRO REQUEST card (C1) built from the message's own content */}
                   {isFirstAssistant && isRequest && (reqNames || reqQuote) && (
                     <div style={{ marginLeft: "36px" }} className="flex flex-col gap-2">
                       <div className="request-card">
@@ -807,6 +805,32 @@ export default function ThreadPage() {
               </div>
             )}
 
+            {/* StructuredResult (§7): framed card with labeled rows + success
+                clip playing once, then freezing on its last frame. */}
+            {!loading && result && resultRows.some((r) => result[r.key]) && (
+              <div className="flex flex-col items-start gap-3" style={{ marginLeft: "36px" }}>
+                <div className="result-card w-full">
+                  <div className="result-label">{t("resultLabel")}</div>
+                  {resultRows.map((r) =>
+                    result[r.key] ? (
+                      <div key={r.key} className="result-row">
+                        <span className="k">{r.label}</span>
+                        <span className="v">{result[r.key]}</span>
+                      </div>
+                    ) : null
+                  )}
+                </div>
+                <video
+                  className="ally-anim"
+                  style={{ width: "auto", height: 130 }}
+                  autoPlay muted playsInline
+                  src="/assets/ally/anim/ally-success.mp4"
+                  poster="/assets/ally/anim/ally-success-poster.jpg"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+              </div>
+            )}
+
             {showOptions && (
               <div className="flex flex-col gap-2 pl-9">
                 {options.map((opt) => (
@@ -834,7 +858,6 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {/* Pending decision — framed card, terracotta left border (§6) */}
             {showChoices && (
               <div className="decision-card" style={{ marginLeft: "36px" }}>
                 <div className="flex flex-wrap gap-2">
@@ -861,7 +884,6 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {/* Working: she is ALWAYS in motion — clip rotates with activity */}
             {loading && !streamingActive && (
               <div className="flex items-center gap-3 pl-9">
                 <AllyAnim clip={workingClip(trailingSteps)} size="inline" />
@@ -961,7 +983,6 @@ export default function ThreadPage() {
         </div>
       )}
 
-      {/* Composer */}
       <div
         className="composer-wrap px-4 py-3"
         style={{
@@ -996,6 +1017,8 @@ export default function ThreadPage() {
                   ? t("outOfTokens")
                   : rateLimited
                   ? t("rateLimitedPlaceholder")
+                  : result
+                  ? t("resultFollowup")
                   : t("composerPlaceholder")
               }
               rows={1}
@@ -1079,8 +1102,6 @@ export default function ThreadPage() {
   );
 }
 
-// Steps disclosure (§6, founder decision): collapsed by default, quiet toggle
-// "ნაბიჯები (N)". State persists while the thread stays open.
 function StepGroup({ steps }: { steps: ChatMessage[] }) {
   const [open, setOpen] = useState(false);
 
