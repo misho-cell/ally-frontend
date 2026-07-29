@@ -6,12 +6,14 @@ import ReactMarkdown from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
-import { t, tf } from "@/lib/i18n";
+import { t, tf, stripEmoji } from "@/lib/i18n";
 import {
   useThreads,
   updateThreadState,
+  taskStatusOf,
   DEFAULT_THREAD_STATE,
   type ChatMessage,
+  type TaskStatus,
 } from "@/contexts/ThreadsContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -63,7 +65,6 @@ function getUserInitial(): string {
   }
 }
 
-// First day of next calendar month, localized (monthly grants are calendar-based).
 function nextRenewalDate(): string {
   const now = new Date();
   const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -74,16 +75,13 @@ function fmtTokens(n: number): string {
   return Number(n).toLocaleString("en-US");
 }
 
-// Step strings contain literal **bold** markers — render them as <strong>,
-// never as raw asterisks (handover §6.1).
+// Step strings contain literal **bold** markers — render as <strong>; emoji
+// are stripped (steps are ✓ + text only, founder review item 10).
 function renderStepText(text: string): React.ReactNode {
-  const parts = text.split(/\*\*(.+?)\*\*/g);
+  const parts = stripEmoji(text).split(/\*\*(.+?)\*\*/g);
   return parts.map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part));
 }
 
-// Walk the chronological list and fold runs of consecutive `step` items into a
-// single group, leaving `message` items standalone. Order is preserved, so a
-// run reads as: user message → step group → final answer.
 type RenderBlock =
   | { type: "message"; msg: ChatMessage }
   | { type: "steps"; steps: ChatMessage[]; trailing: boolean };
@@ -126,8 +124,7 @@ function AllyAvatar() {
   );
 }
 
-// Animated character clip with poster fallback (reduced motion / video 404).
-function AllyAnim({ clip, size }: { clip: string; size?: "thinking" | "e3" }) {
+function AllyAnim({ clip, size }: { clip: string; size?: "thinking" | "e3" | "inline" }) {
   const cls = size ? ` size-${size}` : "";
   return (
     <>
@@ -152,13 +149,32 @@ function AllyAnim({ clip, size }: { clip: string; size?: "thinking" | "e3" }) {
   );
 }
 
+// Founder rule (review item 8): while she works, she is ALWAYS in motion.
+// Backend doesn't label step types yet, so the minimum-viable rotation:
+// no steps → thinking (the only stillness allowed); with steps, rotate
+// loading → walk → slow every 3 steps so she visibly keeps moving.
+function workingClip(stepCount: number): string {
+  if (stepCount === 0) return "ally-thinking";
+  const clips = ["ally-loading", "ally-walk", "ally-slow"];
+  return clips[Math.floor(stepCount / 3) % clips.length];
+}
+
 type LoadPhase = "loading" | "slow" | "failed" | "done";
+
+// Extract the quoted ask out of an intro-request message („…“ / "…" / «…»).
+function extractQuote(text: string): string | null {
+  const m = text.match(/[„"«“]([^“”"»]{10,300})[“”"»]/);
+  return m ? m[1].trim() : null;
+}
 
 export default function ThreadPage() {
   const params = useParams();
   const threadId = params.id as string;
   const router = useRouter();
-  const { threads, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens } = useThreads();
+  const {
+    threads, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens,
+    tasks, resolveRequest, resolvedRequests,
+  } = useThreads();
 
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
   const { messages, options, choices, loading, error, streaming } = st;
@@ -169,10 +185,8 @@ export default function ThreadPage() {
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [speechSupported, setSpeechSupported] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-  // ms timestamp until which sending is blocked due to a 429 rate limit.
   const [rateLimitedUntil, setRateLimitedUntil] = useState(0);
   const rateLimited = rateLimitedUntil > Date.now();
-  // 402 insufficient_tokens — blocks the composer until balance recovers.
   const [limitHit, setLimitHit] = useState(false);
   const [packages, setPackages] = useState<TopupPackage[]>([]);
   const packagesFetchedRef = useRef(false);
@@ -189,6 +203,11 @@ export default function ThreadPage() {
 
   const thread = threads.find((th) => String(th.id) === threadId);
   const userInitial = getUserInitial();
+  const isRequest = thread?.type === "incoming_request";
+  const taskStatus: TaskStatus | null = thread
+    ? taskStatusOf(thread, st, tasks[threadId])
+    : null;
+  const taskMeta = tasks[threadId];
 
   const tokensEnabled = tokens?.enabled === true;
   const isTrialWallet = tokensEnabled && tokens.grantedThisPeriod === 120;
@@ -198,28 +217,22 @@ export default function ThreadPage() {
       : null;
   const lowBalance = remainingPct !== null && remainingPct <= 0.05;
 
-  // The final answer is streaming in — show the building bubble and collapse
-  // the live step group (the narration is over, the answer has started).
   const streamingActive = loading && !!streaming && streaming.text.length > 0;
 
   useEffect(() => {
     setSpeechSupported(!!getSpeechRecognition());
   }, []);
 
-  // Track latest balance for the post-checkout poll.
   useEffect(() => {
     if (tokensEnabled) balanceRef.current = tokens.balance;
   }, [tokensEnabled, tokens]);
 
-  // Clear the limit screen once the wallet recovers (monthly grant / top-up).
   useEffect(() => {
     if (limitHit && tokensEnabled && tokens.balance > 0) {
       setLimitHit(false);
     }
   }, [limitHit, tokensEnabled, tokens]);
 
-  // Top-up packages: subscribers only (trial gets the subscribe CTA instead).
-  // Empty list = backend kill-switch → no buy UI at all.
   useEffect(() => {
     if (!tokensEnabled || isTrialWallet || packagesFetchedRef.current) return;
     packagesFetchedRef.current = true;
@@ -231,9 +244,6 @@ export default function ThreadPage() {
       .catch(() => {});
   }, [tokensEnabled, isTrialWallet]);
 
-  // After checkout completes the webhook credits tokens within seconds — poll
-  // the balance every 2s (max 30s) until it grows. The limit screen clears
-  // itself via the effect above once balance > 0.
   useEffect(() => {
     const off = onCheckoutCompleted(() => {
       const startBalance = balanceRef.current ?? 0;
@@ -266,7 +276,6 @@ export default function ThreadPage() {
     }
   }
 
-  // ≤20% remaining → one toast per calendar month (deduped via localStorage).
   useEffect(() => {
     if (remainingPct === null || remainingPct > 0.2 || remainingPct <= 0.05) return;
     const key = `token_warn20_${new Date().getFullYear()}-${new Date().getMonth() + 1}`;
@@ -276,7 +285,6 @@ export default function ThreadPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remainingPct]);
 
-  // Auto-clear the rate-limit block when Retry-After elapses.
   useEffect(() => {
     if (rateLimitedUntil <= 0) return;
     const ms = rateLimitedUntil - Date.now();
@@ -384,11 +392,6 @@ export default function ThreadPage() {
     }
   }
 
-  // Hydrate message history from the server. Backend persists steps too
-  // (kind='step', run_id), so refetching restores prior runs' steps + final
-  // replies. Runs on thread change, on SSE reconnect (catch-up), and on Retry
-  // from the slow/failed state. An 8s timer swaps the skeleton for E3 (slow);
-  // a failed fetch goes straight to E3 (failed).
   useEffect(() => {
     if (!threadId) return;
     let cancelled = false;
@@ -446,10 +449,6 @@ export default function ThreadPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading, error, streaming]);
 
-  // Sending is allowed even while a run is in flight — the new message simply
-  // REPLACES the pending run in the UI. A sentinel runId makes any late events
-  // from the replaced run stale (the layout drops them), and the 202 response
-  // swaps in the real runId.
   const sendMessage = useCallback(
     async (text: string, echo: boolean = true) => {
       if (voiceState === "recording") {
@@ -491,7 +490,6 @@ export default function ThreadPage() {
           body: JSON.stringify({ message: trimmed }),
         });
 
-        // 402: out of tokens — dedicated limit screen, not a generic error.
         if (res.status === 402) {
           const body = await res.json().catch(() => ({}));
           if (body.reason === "insufficient_tokens") {
@@ -504,7 +502,6 @@ export default function ThreadPage() {
           }
         }
 
-        // 429: friendly message + block sending until Retry-After elapses.
         if (res.status === 429) {
           const body = await res.json().catch(() => ({}));
           const secs = parseRetryAfter(res);
@@ -520,8 +517,6 @@ export default function ThreadPage() {
         if (!res.ok || json.success === false) {
           throw new Error(json.error ?? `Request failed with status ${res.status}`);
         }
-        // 202 Accepted — swap the sentinel for the real runId; reply + steps
-        // arrive over SSE.
         const runId: string | null = json.runId ?? json.data?.runId ?? null;
         setThreadStates((prev) =>
           updateThreadState(prev, threadId, (ts) =>
@@ -561,9 +556,36 @@ export default function ThreadPage() {
 
   const showInitialLoad = loadPhase !== "done" && messages.length === 0;
 
+  // Live step count of the trailing run — drives the activity clip rotation.
+  const trailingSteps = (() => {
+    let n = 0;
+    for (let i = messages.length - 1; i >= 0 && messages[i].kind === "step"; i--) n++;
+    return n;
+  })();
+
+  // Intro request context (gap 4): names from the title, quote from the first
+  // assistant message. Model-generated sentences are content — never hardcoded.
+  const firstAssistant = isRequest ? messages.find((m) => m.kind === "message" && m.role === "assistant") : undefined;
+  const reqQuote = firstAssistant ? extractQuote(firstAssistant.content) : null;
+  const reqNames = isRequest && thread?.title.includes("→")
+    ? thread.title.split("→").map((s) => s.trim())
+    : null;
+  const reqResolved = resolvedRequests[threadId]?.action;
+
+  const statusLabel = taskStatus
+    ? taskStatus === "working" ? t("stWorking")
+      : taskStatus === "waiting" ? t("stWaiting")
+      : taskStatus === "needs_you" ? t("stNeedsYou")
+      : taskStatus === "failed" ? t("stFailed")
+      : t("stDone")
+    : null;
+
+  const displayTitle = taskMeta?.title && (thread?.title === "New task" || thread?.title === "ახალი დავალება" || !thread?.title)
+    ? taskMeta.title
+    : thread?.title ?? t("threadFallback");
+
   return (
     <div className="flex h-full flex-col" style={{ background: "var(--bg)" }}>
-      {/* Toast (T1) */}
       {toast && (
         <div className="toast" role="status" aria-live="polite">
           {toast.ok && <span>✓</span>}
@@ -571,11 +593,11 @@ export default function ThreadPage() {
         </div>
       )}
 
-      {/* Header */}
+      {/* Header: back + goal name + status word under it (§6) */}
       <header
         className="thread-header flex items-center"
         style={{
-          padding: "12px 24px",
+          padding: "10px 24px",
           gap: "14px",
           borderBottom: "1px solid var(--header-border)",
           background: "var(--bg)",
@@ -593,15 +615,27 @@ export default function ThreadPage() {
           </svg>
         </button>
 
-        <span
-          className="title flex-1 truncate"
-          style={{ font: "500 17px/24px var(--font-bricolage)", color: "var(--ink)", minWidth: 0 }}
-        >
-          {thread?.title ?? t("threadFallback")}
-        </span>
+        <div className="flex-1 min-w-0 flex flex-col">
+          <span
+            className="title truncate"
+            style={{ font: "500 17px/22px var(--font-bricolage)", color: "var(--ink)" }}
+          >
+            {isRequest && reqNames ? (
+              <>
+                {reqNames[0]} <span style={{ color: "var(--request-accent)" }}>→</span> {reqNames[1]}
+              </>
+            ) : (
+              displayTitle
+            )}
+          </span>
+          {statusLabel && (
+            <span style={{ font: "600 11px/15px var(--font-system)", color: taskStatus === "needs_you" || taskStatus === "failed" ? "var(--request-accent)" : "var(--ink-soft)" }}>
+              {statusLabel}
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center gap-3">
-          {/* Token balance badge — refreshed on tokens_debited (SSE) */}
           {tokensEnabled && (
             <span className={`token-badge${lowBalance ? " low" : ""}`}>
               <i className="dot" style={{ width: 8, height: 8, borderRadius: "50%", background: lowBalance ? "var(--request-accent)" : "var(--accent)", display: "inline-block" }} />
@@ -660,6 +694,29 @@ export default function ThreadPage() {
             className="messages mx-auto flex flex-col"
             style={{ maxWidth: "720px", padding: "26px 24px", gap: "18px" }}
           >
+            {/* Embedded task card — updates in place on status change (§6) */}
+            {taskStatus && messages.length > 0 && (
+              <div className="card flex items-center gap-3" style={{ padding: "12px 14px", maxWidth: "520px" }}>
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <span className={`task-pill ${taskStatus}`} style={{ alignSelf: "flex-start" }}>{statusLabel}</span>
+                  {taskMeta?.statusLine && taskStatus !== "working" && (
+                    <span className="truncate" style={{ font: "400 12.5px/18px var(--font-system)", color: taskStatus === "needs_you" ? "var(--request-accent)" : "var(--ink-soft)", fontWeight: taskStatus === "needs_you" ? 600 : 400 }}>
+                      {taskMeta.statusLine}
+                    </span>
+                  )}
+                </div>
+                <span className="anim-box" style={{ width: 56, height: 56 }}>
+                  {taskStatus !== "done" && (
+                    <video
+                      autoPlay muted loop playsInline
+                      src={`/assets/ally/anim/${taskStatus === "needs_you" ? "ally-walk" : taskStatus === "failed" ? "ally-error" : "ally-loading"}.mp4`}
+                      onError={(e) => { e.currentTarget.style.display = "none"; }}
+                    />
+                  )}
+                </span>
+              </div>
+            )}
+
             {messages.length === 0 && !loading && (
               <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
                 <span className="ally-avatar" style={{ width: 44, height: 44 }}>
@@ -675,14 +732,10 @@ export default function ThreadPage() {
 
             {blocks.map((block, bi) => {
               if (block.type === "steps") {
-                // Expanded while the agent is narrating; collapses as soon as
-                // the answer starts streaming in (or the run completes).
-                const live = loading && block.trailing && !streamingActive;
                 return (
                   <StepGroup
                     key={`steps-${bi}`}
                     steps={block.steps}
-                    live={live}
                   />
                 );
               }
@@ -707,20 +760,42 @@ export default function ThreadPage() {
                   </div>
                 );
               }
+              const isFirstAssistant = firstAssistant && msg.id === firstAssistant.id;
               return (
-                <div key={msg.id} className="flex items-start" style={{ gap: "10px" }}>
-                  <AllyAvatar />
-                  <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)", flex: 1, minWidth: 0 }}>
-                    <ReactMarkdown components={markdownComponents}>
-                      {msg.content}
-                    </ReactMarkdown>
+                <div key={msg.id} className="flex flex-col gap-3">
+                  <div className="flex items-start" style={{ gap: "10px" }}>
+                    <AllyAvatar />
+                    <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)", flex: 1, minWidth: 0 }}>
+                      <ReactMarkdown components={markdownComponents}>
+                        {msg.content}
+                      </ReactMarkdown>
+                    </div>
                   </div>
+                  {/* INTRO REQUEST card (C1) built from the message's own content */}
+                  {isFirstAssistant && isRequest && (reqNames || reqQuote) && (
+                    <div style={{ marginLeft: "36px" }} className="flex flex-col gap-2">
+                      <div className="request-card">
+                        <div className="rc-label">{t("introRequestLabel")}</div>
+                        {reqNames && (
+                          <div className="rc-names">
+                            <span>{reqNames[0]}</span><b>→</b><span>{reqNames[1]}</span>
+                          </div>
+                        )}
+                        {reqQuote && <blockquote className="rc-quote">„{reqQuote}“</blockquote>}
+                      </div>
+                      {!reqResolved && (
+                        <div className="flex gap-2">
+                          <button className="req-btn accept" onClick={() => resolveRequest(threadId, "accept")}>{t("reqAccept")}</button>
+                          <button className="req-btn deny" onClick={() => resolveRequest(threadId, "deny")}>{t("reqDeny")}</button>
+                          <button className="req-btn later" onClick={() => resolveRequest(threadId, "later")}>{t("reqLater")}</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
 
-            {/* Streaming answer — built from answer_delta; replaced by the
-                authoritative reply on run_complete. */}
             {streamingActive && (
               <div className="flex items-start" style={{ gap: "10px" }}>
                 <AllyAvatar />
@@ -732,7 +807,6 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {/* Disambiguation options (attach to final answer) */}
             {showOptions && (
               <div className="flex flex-col gap-2 pl-9">
                 {options.map((opt) => (
@@ -760,44 +834,46 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {/* Quick-reply choices */}
+            {/* Pending decision — framed card, terracotta left border (§6) */}
             {showChoices && (
-              <div className="flex flex-wrap gap-2 pl-9">
-                {choices.map((choice, ci) => (
-                  <button
-                    key={`${ci}-${choice}`}
-                    type="button"
-                    onClick={() => sendMessage(choice)}
-                    className="bg-white px-4 py-2 text-left transition-colors"
-                    style={{
-                      border: "1px solid var(--cta-border)",
-                      borderRadius: "var(--radius-pill)",
-                      color: "var(--accent-strong)",
-                      fontSize: "14px",
-                      fontWeight: 500,
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-tint)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "#FFFFFF"; }}
-                  >
-                    {choice}
-                  </button>
-                ))}
+              <div className="decision-card" style={{ marginLeft: "36px" }}>
+                <div className="flex flex-wrap gap-2">
+                  {choices.map((choice, ci) => (
+                    <button
+                      key={`${ci}-${choice}`}
+                      type="button"
+                      onClick={() => sendMessage(choice)}
+                      className="bg-white px-4 py-2 text-left transition-colors"
+                      style={{
+                        border: "1px solid var(--cta-border)",
+                        borderRadius: "var(--radius-pill)",
+                        color: "var(--accent-strong)",
+                        fontSize: "14px",
+                        fontWeight: 500,
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-tint)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "#FFFFFF"; }}
+                    >
+                      {choice}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* Live indicator while a run is in flight and nothing streams yet:
-                the thinking clip replaces the typing dots. */}
+            {/* Working: she is ALWAYS in motion — clip rotates with activity */}
             {loading && !streamingActive && (
               <div className="flex items-center gap-3 pl-9">
-                <AllyAnim clip="ally-thinking" size="thinking" />
+                <AllyAnim clip={workingClip(trailingSteps)} size="inline" />
                 <span style={{ fontSize: "13px", color: "var(--ink-soft)" }}>{t("workingOnIt")}</span>
               </div>
             )}
 
-            {/* Run error + Retry */}
             {!loading && error && (
               <div className="flex items-start" style={{ gap: "10px" }}>
-                <AllyAvatar />
+                <div className="flex items-center" style={{ flex: "none" }}>
+                  <AllyAnim clip="ally-error" size="inline" />
+                </div>
                 <div className="flex flex-col gap-2" style={{ flex: 1 }}>
                   <div
                     className="px-4 py-3"
@@ -828,7 +904,6 @@ export default function ThreadPage() {
         )}
       </div>
 
-      {/* Low balance banner (≤5% remaining) */}
       {!limitHit && lowBalance && (
         <div className="px-4 pt-2">
           <div
@@ -847,7 +922,6 @@ export default function ThreadPage() {
         </div>
       )}
 
-      {/* 402 limit screen */}
       {limitHit && (
         <div className="px-4 pt-2">
           <div className="card mx-auto flex flex-col gap-2" style={{ maxWidth: "720px" }}>
@@ -937,7 +1011,6 @@ export default function ThreadPage() {
               }}
             />
 
-            {/* Mic button */}
             {speechSupported && (
               <button
                 type="button"
@@ -974,9 +1047,6 @@ export default function ThreadPage() {
               </button>
             )}
 
-            {/* Send button — hidden while recording. NOT disabled during a run:
-                sending mid-run replaces the pending run. Empty input = grey
-                skeleton circle; non-empty = green. */}
             {voiceState !== "recording" && (
               <button
                 type="button"
@@ -1009,14 +1079,10 @@ export default function ThreadPage() {
   );
 }
 
-// One renderer for both live and stored steps. Expanded while the run is live,
-// collapsed once the answer starts streaming or the run completes (toggleable).
-function StepGroup({ steps, live }: { steps: ChatMessage[]; live: boolean }) {
-  const [open, setOpen] = useState(live);
-
-  useEffect(() => {
-    setOpen(live);
-  }, [live]);
+// Steps disclosure (§6, founder decision): collapsed by default, quiet toggle
+// "ნაბიჯები (N)". State persists while the thread stays open.
+function StepGroup({ steps }: { steps: ChatMessage[] }) {
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="flex items-start" style={{ gap: "10px" }}>
@@ -1028,7 +1094,7 @@ function StepGroup({ steps, live }: { steps: ChatMessage[]; live: boolean }) {
           className="steps-toggle"
         >
           <span style={{ fontSize: "10px" }}>{open ? "▾" : "▸"}</span>
-          {open ? t("hideSteps") : tf("showSteps", { n: steps.length })}
+          {tf("stepsToggle", { n: steps.length })}
         </button>
         {open && (
           <div className="steps-list">

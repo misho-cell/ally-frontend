@@ -7,12 +7,27 @@ export type Thread = {
   title: string;
   last_message?: string;
   updated_at: string;
+  // Phase 2 backend fields (messenger handover §9.1) — optional until the
+  // backend ships them; the frontend falls back to session-derived state.
+  status?: TaskStatus;
+  status_line?: string | null;
+  is_task?: boolean;
 };
 
-// A single rendered item in a thread. Both final replies and intermediate
-// agent steps share this shape — `kind` distinguishes them, `runId` groups a
-// run's steps with its answer. Live (SSE) and stored (GET /messages) items are
-// identical, so they render through the same component.
+// §4 status words — the only state language.
+export type TaskStatus = "working" | "waiting" | "needs_you" | "done" | "failed";
+
+// Frontend-tracked task metadata (stub for messenger §9.1 until the backend
+// persists status/status_line/title). Kept in localStorage so goals survive
+// reloads; backend fields win when present.
+export type TaskMeta = {
+  isTask: boolean;
+  status: TaskStatus;
+  statusLine?: string;
+  title?: string;
+  updatedAt: number;
+};
+
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
@@ -23,10 +38,6 @@ export type ChatMessage = {
 
 export type Option = { phone: string; name: string };
 
-// Per-thread state. `messages` is the chronological list (messages + steps).
-// The live-run fields (loading/runId/error/streaming) are driven by SSE.
-// `streaming` is the in-flight assistant answer built from answer_delta
-// events; run_complete replaces it with the authoritative full reply.
 export type ThreadState = {
   messages: ChatMessage[];
   options: Option[];
@@ -49,7 +60,6 @@ export const DEFAULT_THREAD_STATE: ThreadState = {
   streaming: null,
 };
 
-// Immutable per-thread updater. Ensures an entry exists (default) before applying fn.
 export function updateThreadState(
   map: Record<string, ThreadState>,
   threadId: string | number,
@@ -60,8 +70,6 @@ export function updateThreadState(
   return { ...map, [key]: fn(cur) };
 }
 
-// Token wallet balance (GET /billing/tokens). null = not loaded / fetch failed.
-// enabled:false is the backend kill-switch — hide every token UI element.
 export type TokenBalance = {
   enabled: boolean;
   balance: number;
@@ -72,17 +80,20 @@ export type TokenBalance = {
 type Ctx = {
   threads: Thread[];
   setThreads: Dispatch<SetStateAction<Thread[]>>;
-  // true once the first GET /threads has resolved — empty-state text may only
-  // render after this (skeletons show before).
   threadsLoaded: boolean;
   threadStates: Record<string, ThreadState>;
   setThreadStates: Dispatch<SetStateAction<Record<string, ThreadState>>>;
-  // Bumped when the SSE stream (re)connects, so open threads re-fetch history
-  // for catch-up. Not bumped on the very first connect.
   reconnectNonce: number;
   tokens: TokenBalance | null;
   refreshTokens: () => void;
   createThread: () => void;
+  // Phase 2: create a named goal from any composer input (home or +).
+  createTask: (text: string) => Promise<void>;
+  // Per-thread task metadata (status pills, presence count).
+  tasks: Record<string, TaskMeta>;
+  // Resolve an incoming request with one tap (optimistic).
+  resolveRequest: (threadId: string, action: "accept" | "deny" | "later") => void;
+  resolvedRequests: Record<string, { action: string; at: number }>;
 };
 
 export const ThreadsContext = createContext<Ctx>({
@@ -95,6 +106,24 @@ export const ThreadsContext = createContext<Ctx>({
   tokens: null,
   refreshTokens: () => {},
   createThread: () => {},
+  createTask: async () => {},
+  tasks: {},
+  resolveRequest: () => {},
+  resolvedRequests: {},
 });
 
 export const useThreads = () => useContext(ThreadsContext);
+
+// Effective status for a thread: backend field wins, then live run state,
+// then stored meta. Returns null for threads that are not goals (legacy).
+export function taskStatusOf(
+  thread: Thread,
+  ts: ThreadState | undefined,
+  meta: TaskMeta | undefined
+): TaskStatus | null {
+  if (thread.type !== "regular") return null;
+  const isTask = thread.is_task === true || meta?.isTask === true;
+  if (!isTask && !thread.status) return null;
+  if (ts?.loading) return "working";
+  return thread.status ?? meta?.status ?? "waiting";
+}

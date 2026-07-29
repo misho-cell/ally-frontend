@@ -1,37 +1,29 @@
 "use client";
 
-import { useThreads } from "@/contexts/ThreadsContext";
-import { t, tf } from "@/lib/i18n";
+import { useThreads, taskStatusOf } from "@/contexts/ThreadsContext";
+import { t } from "@/lib/i18n";
 
-// Chat home main pane: E1 (threads exist, none selected) / E2 (first run).
-// While the thread list loads, show nothing here — the sidebar carries the
-// skeletons; empty-state copy may only appear once loading resolved.
+// Desktop right pane, no goal selected (desktop addendum): dogs clip + one
+// line, nothing else. Empty home (never any goals): the §2.7 line instead.
 export default function ChatIndexPage() {
-  const { threads, threadsLoaded, createThread } = useThreads();
-  const incoming = threads.filter((th) => th.type === "incoming_request").length;
-  const firstRun = threadsLoaded && threads.length === 0;
+  const { threads, threadsLoaded, threadStates, tasks } = useThreads();
+  const hasGoals = threads.some((th) =>
+    taskStatusOf(th, threadStates[String(th.id)], tasks[String(th.id)]) !== null
+  );
 
   return (
     <div className="hidden md:flex flex-1 h-full flex-col" style={{ background: "var(--bg)" }}>
       {threadsLoaded && (
         <div className="empty">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/assets/ally/rest.jpg"
-            alt=""
-            className="empty-art"
-            style={firstRun ? { width: 170 } : undefined}
+          <video
+            className="ally-anim"
+            style={{ width: "auto", height: 160 }}
+            autoPlay muted loop playsInline
+            src="/assets/ally/anim/ally-dogs.mp4"
+            poster="/assets/ally/anim/ally-dogs-poster.jpg"
             onError={(e) => { e.currentTarget.style.display = "none"; }}
           />
-          <h2>{firstRun ? t("nothingYet") : t("selectThread")}</h2>
-          {firstRun ? (
-            <p>{t("firstRunBody")}</p>
-          ) : incoming > 0 ? (
-            <p>{incoming === 1 ? t("waitingRequestOne") : tf("waitingRequests", { n: incoming })}</p>
-          ) : null}
-          <button type="button" className="btn-primary" onClick={createThread}>
-            + {t("newTask")}
-          </button>
+          <h2>{hasGoals ? t("selectThread") : t("emptyHome")}</h2>
         </div>
       )}
     </div>

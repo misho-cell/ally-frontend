@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..600&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600&family=Noto+Sans+Georgian:wght@400..700&family=Noto+Serif+Georgian:wght@400..600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..600&family=Newsreader:ital,opsz,wght@0,6..72,400..600&family=Noto+Sans+Georgian:wght@400..700&family=Noto+Serif+Georgian:wght@400..600&display=swap');
 
 :root {
   /* ---- brand ---- */
@@ -206,6 +206,70 @@ body {
   font: italic 400 15px/23px var(--font-bricolage); color: var(--ink-2);
 }
 
+/* ============ Phase 2: task pills, rows, request actions ============ */
+.task-pill {
+  display: inline-flex; align-items: center; border-radius: var(--radius-pill);
+  padding: 5px 12px; font: 600 12px/16px var(--font-system); white-space: nowrap; flex: none;
+}
+.task-pill.working { background: var(--accent-tint); color: var(--accent-strong); }
+.task-pill.waiting { background: #FFFFFF; border: 1px solid var(--sidebar-border); color: var(--ink-soft); }
+.task-pill.needs_you { background: var(--request-tint); color: var(--request-accent); }
+.task-pill.done { background: none; border: 1px solid var(--sidebar-border); color: var(--meta); }
+.task-pill.failed { background: var(--request-tint); color: var(--request-accent); }
+
+.task-row {
+  display: flex; align-items: center; gap: 10px; min-height: 56px;
+  padding: 8px 12px; border-radius: 12px; text-decoration: none; transition: background .15s;
+}
+
+.anim-box {
+  border-radius: 8px; overflow: hidden; flex: none; display: block;
+}
+.anim-box video {
+  height: 100%; width: auto; mix-blend-mode: multiply; pointer-events: none; display: block;
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .anim-box { display: none; }
+}
+
+.req-card {
+  background: var(--request-tint); border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card); padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.req-btn {
+  border-radius: var(--radius-pill); padding: 7px 14px;
+  font: 600 12.5px/17px var(--font-system); cursor: pointer; border: 1px solid transparent;
+}
+.req-btn.accept { background: var(--accent); color: #FBFAF4; }
+.req-btn.accept:hover { background: var(--accent-strong); }
+.req-btn.deny { background: none; border-color: var(--danger); color: var(--danger); }
+.req-btn.deny:hover { background: var(--terra-tint); }
+.req-btn.later { background: none; border-color: var(--sidebar-border); color: var(--ink-2); }
+.req-btn.later:hover { background: var(--skeleton); }
+
+/* Pending decision card (in-thread) */
+.decision-card {
+  background: #FFFFFF; border: 1px solid var(--sidebar-border);
+  border-left: 3px solid var(--request-accent); border-radius: 14px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
+  box-shadow: var(--shadow-card); max-width: 520px;
+}
+
+/* StructuredResult card (§7) */
+.result-card {
+  background: #FFFFFF; border: 1px solid var(--sidebar-border);
+  border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; max-width: 560px;
+}
+.result-label { font: 600 10px/14px var(--font-system); letter-spacing: 1.8px; color: var(--accent); text-transform: uppercase; }
+.result-row { display: flex; gap: 10px; }
+.result-row .k {
+  width: 74px; flex: none; font: 600 10.5px/18px var(--font-system);
+  letter-spacing: 1px; text-transform: uppercase; color: var(--meta);
+}
+.result-row .v { font: 400 14px/20px var(--font-system); color: var(--ink); }
+
 /* ============ Skeletons ============ */
 @keyframes skpulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
 .sk-bar {
@@ -254,7 +318,7 @@ body {
   justify-content: center; gap: 14px; padding: 40px; text-align: center;
 }
 .empty-art { width: 150px; mix-blend-mode: multiply; }
-.empty h2 { margin: 0; font: 500 22px/30px var(--font-bricolage); color: var(--ink); }
+.empty h2 { margin: 0; font: 500 22px/30px var(--font-bricolage); color: var(--ink); max-width: 420px; }
 .empty p { margin: 0; font: 400 13.5px/21px var(--font-system); color: var(--ink-soft); max-width: 340px; }
 
 /* ============ Character animations ============ */
@@ -262,6 +326,8 @@ body {
 .ally-anim-fallback { display: none; width: 140px; mix-blend-mode: multiply; }
 .ally-anim.size-thinking, .ally-anim-fallback.size-thinking { width: 96px; }
 .ally-anim.size-e3, .ally-anim-fallback.size-e3 { width: 130px; }
+/* Inline working indicator (founder review item 9): 56-64px tall, next to the label */
+.ally-anim.size-inline, .ally-anim-fallback.size-inline { width: auto; height: 60px; }
 @media (prefers-reduced-motion: reduce) {
   .ally-anim { display: none; }
   .ally-anim-fallback { display: block; }

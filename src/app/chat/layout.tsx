@@ -5,16 +5,22 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { authHeaders, handleAdminTokenMisuse } from "@/lib/deviceId";
-import { t } from "@/lib/i18n";
+import { t, tf } from "@/lib/i18n";
 import {
   ThreadsContext,
   updateThreadState,
+  taskStatusOf,
   type Thread,
   type ThreadState,
   type TokenBalance,
+  type TaskMeta,
+  type TaskStatus,
 } from "@/contexts/ThreadsContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const TASKS_KEY = "netai_tasks";
+const REQ_KEY = "netai_req_resolved";
+const SNOOZE_MS = 12 * 60 * 60 * 1000;
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
@@ -34,8 +40,8 @@ function getUserInfo(): { name: string; initial: string } {
 
 function dedup(arr: Thread[]): Thread[] {
   const seen = new Set<string>();
-  return arr.filter((t) => {
-    const key = String(t.id);
+  return arr.filter((th) => {
+    const key = String(th.id);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -55,11 +61,55 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   return arr.buffer;
 }
 
-// Should a run event apply to this thread's CURRENT run? Events from a
-// replaced/stale run (old runId) are dropped so a new message cleanly takes
-// over the UI. ts.runId is a sentinel between send and the 202 response.
 function isStaleRun(ts: ThreadState, eventRunId: unknown): boolean {
   return Boolean(ts.runId && eventRunId && String(eventRunId) !== String(ts.runId));
+}
+
+function loadJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getSpeechRecognition(): any {
+  if (typeof window === "undefined") return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const w = window as any;
+  return w.SpeechRecognition || w.webkitSpeechRecognition || null;
+}
+
+// Small stage-animation crop box (messenger §5). Hidden at 768-1023 via CSS.
+function AnimBox({ status, size }: { status: TaskStatus; size: number }) {
+  const clip =
+    status === "needs_you" ? "ally-walk" :
+    status === "failed" ? "ally-error" :
+    status === "done" ? null :
+    "ally-loading";
+  if (!clip) return null;
+  return (
+    <span className="anim-box" style={{ width: size, height: size }}>
+      <video
+        autoPlay muted loop playsInline
+        src={`/assets/ally/anim/${clip}.mp4`}
+        poster={`/assets/ally/anim/${clip}-poster.jpg`}
+        onError={(e) => { e.currentTarget.style.display = "none"; }}
+      />
+    </span>
+  );
+}
+
+function StatusPill({ status }: { status: TaskStatus }) {
+  const label =
+    status === "working" ? t("stWorking") :
+    status === "waiting" ? t("stWaiting") :
+    status === "needs_you" ? t("stNeedsYou") :
+    status === "failed" ? t("stFailed") :
+    t("stDone");
+  return <span className={`task-pill ${status}`}>{label}</span>;
 }
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
@@ -68,39 +118,51 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [threadStates, setThreadStates] = useState<Record<string, ThreadState>>({});
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [tokens, setTokens] = useState<TokenBalance | null>(null);
-  const [unread, setUnread] = useState<Set<string>>(new Set());
-  const [search, setSearch] = useState("");
+  const [tasks, setTasks] = useState<Record<string, TaskMeta>>({});
+  const [resolvedRequests, setResolvedRequests] = useState<Record<string, { action: string; at: number }>>({});
+  const [showAllDone, setShowAllDone] = useState(false);
+  const [showLegacy, setShowLegacy] = useState(false);
+  const [homeInput, setHomeInput] = useState("");
   const [creating, setCreating] = useState(false);
+  const [recording, setRecording] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const abortRef = useRef<AbortController | null>(null);
   const sawFirstOpenRef = useRef(false);
   const pathnameRef = useRef(pathname);
+  const homeInputRef = useRef<HTMLInputElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
   pathnameRef.current = pathname;
 
   const isOnThread = pathname !== "/chat";
 
-  // Opening a thread clears its unread dot.
+  // Hydrate persisted task metadata + resolved requests.
   useEffect(() => {
-    const m = pathname.match(/^\/chat\/(.+)$/);
-    if (!m) return;
-    const id = m[1];
-    setUnread((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.delete(id);
+    setTasks(loadJson<Record<string, TaskMeta>>(TASKS_KEY, {}));
+    setResolvedRequests(loadJson<Record<string, { action: string; at: number }>>(REQ_KEY, {}));
+  }, []);
+
+  const patchTask = useCallback((threadId: string | number, patch: Partial<TaskMeta>) => {
+    setTasks((prev) => {
+      const key = String(threadId);
+      const cur = prev[key];
+      // Only track threads explicitly created as goals (or already tracked).
+      if (!cur && patch.isTask !== true) return prev;
+      const next = {
+        ...prev,
+        [key]: { isTask: true, status: "working" as TaskStatus, updatedAt: Date.now(), ...cur, ...patch },
+      };
+      try { localStorage.setItem(TASKS_KEY, JSON.stringify(next)); } catch {}
       return next;
     });
-  }, [pathname]);
+  }, []);
 
   const loadThreads = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE_URL}/threads`, {
-        headers: authHeaders(),
-      });
+      const res = await fetch(`${BASE_URL}/threads`, { headers: authHeaders() });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        // Leftover admin JWT on a user endpoint — reset to phone login.
         if (handleAdminTokenMisuse(res.status, body)) return;
         if (isSubscriptionError(res.status, body)) {
           router.replace("/pricing");
@@ -117,8 +179,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     }
   }, [router]);
 
-  // Token wallet balance. First call of the month also triggers the backend's
-  // automatic grant. On failure keep the last known value (do not block chat).
   const refreshTokens = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/billing/tokens`, { headers: authHeaders() });
@@ -130,9 +190,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     } catch {}
   }, []);
 
-  // Silent push re-subscribe: permission already granted but no stored
-  // endpoint (new device/cleared storage). No prompt is shown — the manual
-  // opt-in stays in NotificationButton.
+  // Silent push re-subscribe (unchanged from Phase 1).
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
@@ -160,11 +218,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     })();
   }, []);
 
-  // One persistent SSE connection for the whole chat session. It lives above the
-  // page so navigation between threads never tears it down — events are never
-  // buffered server-side, so a closed socket means a lost run_complete. Auto-
-  // reconnects on drop (onerror returns a retry delay). NOTE: device-id is not
-  // sent here — best-effort fingerprinting lives on POSTs; SSE keeps Bearer only.
+  // One persistent SSE connection (unchanged transport; Phase 2 adds task
+  // status transitions on run events).
   useEffect(() => {
     loadThreads();
     refreshTokens();
@@ -177,9 +232,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       signal: ctrl.signal,
       openWhenHidden: true,
       onopen: async () => {
-        // Skip the first open (page mount already fetches). On every reconnect
-        // after that, bump the nonce so the open thread re-fetches /messages for
-        // catch-up before resuming live events.
         if (sawFirstOpenRef.current) {
           setReconnectNonce((n) => n + 1);
         } else {
@@ -194,21 +246,16 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             case "thread_created":
               if (data.thread) {
                 setThreads((prev) =>
-                  dedup([data.thread, ...prev.filter((t) => String(t.id) !== String(data.thread.id))])
+                  dedup([data.thread, ...prev.filter((th) => String(th.id) !== String(data.thread.id))])
                 );
               }
               break;
 
             case "tokens_debited":
-              // Refetch instead of local subtraction — authoritative and simple.
               refreshTokens();
               break;
 
             case "answer_delta": {
-              // Token-by-token final answer. Append per runId; a new runId
-              // starts a fresh buffer. run_complete replaces the buffer with
-              // the authoritative full reply (reconcile), so a lost delta
-              // never corrupts the final message.
               const delta: string | undefined = data.delta;
               if (data.threadId != null && typeof delta === "string" && delta.length > 0) {
                 setThreadStates((prev) =>
@@ -230,9 +277,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
             case "tool_progress":
             case "step_summary": {
-              // Append every intermediate update as a durable step item so none
-              // get lost. tool_progress carries `message`, step_summary carries
-              // `text`. Skip a consecutive duplicate of the same line.
               const line: string | undefined = data.text ?? data.message;
               if (data.threadId != null && line) {
                 setThreadStates((prev) =>
@@ -261,6 +305,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
             case "run_complete":
               if (data.threadId != null) {
+                const hasFollowup = (Array.isArray(data.choices) && data.choices.length > 0) ||
+                  (Array.isArray(data.options) && data.options.length > 0);
                 setThreadStates((prev) =>
                   updateThreadState(prev, data.threadId, (ts) => {
                     if (isStaleRun(ts, data.runId)) return ts;
@@ -285,11 +331,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     };
                   })
                 );
-                // Unread dot for threads the user is not currently viewing.
-                if (pathnameRef.current !== `/chat/${data.threadId}`) {
-                  setUnread((prev) => new Set(prev).add(String(data.threadId)));
-                }
-                // bump thread to top of sidebar
+                // Task status transition: a question for the user → needs_you;
+                // otherwise she reported and is waiting on the world.
+                patchTask(data.threadId, {
+                  status: hasFollowup ? "needs_you" : "waiting",
+                  statusLine: typeof data.reply === "string" ? data.reply.replace(/\s+/g, " ").slice(0, 80) : undefined,
+                  updatedAt: Date.now(),
+                });
                 loadThreads();
               }
               break;
@@ -308,21 +356,59 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     };
                   })
                 );
+                patchTask(data.threadId, { status: "failed", updatedAt: Date.now() });
               }
               break;
           }
         } catch {}
       },
       onerror() {
-        // reconnect after 4s; throwing here would stop retries
         return 4000;
       },
     });
 
     return () => ctrl.abort();
-  }, [loadThreads, refreshTokens]);
+  }, [loadThreads, refreshTokens, patchTask]);
+
+  // Send a message inside a thread (used by createTask and request actions).
+  const sendIntoThread = useCallback(async (threadId: string, text: string, echo: boolean) => {
+    const sentinel = `pending-${crypto.randomUUID()}`;
+    setThreadStates((prev) =>
+      updateThreadState(prev, threadId, (ts) => ({
+        ...ts,
+        messages: echo
+          ? [...ts.messages, { id: crypto.randomUUID(), role: "user" as const, content: text, kind: "message" as const, runId: null }]
+          : ts.messages,
+        options: [],
+        choices: [],
+        error: null,
+        loading: true,
+        runId: sentinel,
+        streaming: null,
+      }))
+    );
+    const res = await fetch(`${BASE_URL}/threads/${threadId}/message`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ message: text }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json.success === false) throw new Error(json.error ?? String(res.status));
+    const runId: string | null = json.runId ?? json.data?.runId ?? null;
+    setThreadStates((prev) =>
+      updateThreadState(prev, threadId, (ts) => (ts.runId === sentinel ? { ...ts, runId } : ts))
+    );
+  }, []);
 
   const createThread = useCallback(async () => {
+    homeInputRef.current?.focus();
+  }, []);
+
+  // Phase 2: any composer input on home creates a goal (messenger §9.3).
+  // Optimistic title = the user's own words trimmed; backend naming wins later.
+  const createTask = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || creating) return;
     setCreating(true);
     try {
       const res = await fetch(`${BASE_URL}/threads`, {
@@ -339,13 +425,50 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       }
       const json = await res.json();
       const thread: Thread = json.data ?? json;
-      setThreads((prev) => dedup([thread, ...prev.filter((t) => String(t.id) !== String(thread.id))]));
+      setThreads((prev) => dedup([thread, ...prev.filter((th) => String(th.id) !== String(thread.id))]));
+      patchTask(thread.id, {
+        isTask: true,
+        status: "working",
+        title: trimmed.length > 42 ? trimmed.slice(0, 42) + "…" : trimmed,
+        updatedAt: Date.now(),
+      });
+      setHomeInput("");
       router.push(`/chat/${thread.id}`);
+      await sendIntoThread(String(thread.id), trimmed, true);
     } catch {}
     finally {
       setCreating(false);
     }
-  }, [router]);
+  }, [creating, router, patchTask, sendIntoThread]);
+
+  // RequestActionRow: optimistic one-tap resolve (request-actions addendum).
+  // Stub transport: the decision is sent as a normal message into the request
+  // thread (answering in text counts, messenger §6); dedicated idempotent
+  // endpoints are a backend follow-up. No spinner, no disabled state.
+  const resolveRequest = useCallback((threadId: string, action: "accept" | "deny" | "later") => {
+    const next = { ...resolvedRequests, [threadId]: { action, at: Date.now() } };
+    setResolvedRequests(next);
+    try { localStorage.setItem(REQ_KEY, JSON.stringify(next)); } catch {}
+    const msg = action === "accept" ? t("reqAcceptMsg") : action === "deny" ? t("reqDenyMsg") : t("reqLaterMsg");
+    // Fire-and-forget with silent retries (×3).
+    (async () => {
+      for (let i = 0; i < 3; i++) {
+        try {
+          await sendIntoThread(threadId, msg, true);
+          return;
+        } catch {
+          await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+        }
+      }
+      // Terminal failure: quietly un-resolve so the row returns.
+      setResolvedRequests((prev) => {
+        const copy = { ...prev };
+        delete copy[threadId];
+        try { localStorage.setItem(REQ_KEY, JSON.stringify(copy)); } catch {}
+        return copy;
+      });
+    })();
+  }, [resolvedRequests, sendIntoThread]);
 
   async function handleSignOut() {
     const token = getToken();
@@ -365,29 +488,84 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     router.replace("/login");
   }
 
-  const filtered = threads.filter((th) =>
-    (th.title ?? "").toLowerCase().includes(search.toLowerCase())
-  );
-  const incoming = filtered.filter((th) => th.type === "incoming_request");
-  const mine = filtered.filter((th) => th.type !== "incoming_request");
+  function startHomeMic() {
+    const SR = getSpeechRecognition();
+    if (!SR) {
+      homeInputRef.current?.focus();
+      return;
+    }
+    if (recording) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const rec = new SR();
+    rec.lang = navigator.language || "en-US";
+    rec.continuous = true;
+    rec.interimResults = true;
+    recognitionRef.current = rec;
+    setRecording(true);
+    let finalText = "";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const tr = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += (finalText ? " " : "") + tr.trim();
+        else interim += tr;
+      }
+      setHomeInput([finalText, interim.trim()].filter(Boolean).join(" "));
+    };
+    rec.onend = () => { recognitionRef.current = null; setRecording(false); };
+    rec.onerror = () => { recognitionRef.current = null; setRecording(false); };
+    rec.start();
+  }
+
+  // ---- Derived lists ----
+  const now = Date.now();
+  const visibleRequests = threads.filter((th) => {
+    if (th.type !== "incoming_request") return false;
+    const r = resolvedRequests[String(th.id)];
+    if (!r) return true;
+    if (r.action === "later") return now - r.at > SNOOZE_MS; // re-surface next session
+    return false;
+  });
+
+  const goalThreads: { thread: Thread; status: TaskStatus }[] = [];
+  const legacyThreads: Thread[] = [];
+  for (const th of threads) {
+    if (th.type === "incoming_request") continue;
+    const st = taskStatusOf(th, threadStates[String(th.id)], tasks[String(th.id)]);
+    if (st) goalThreads.push({ thread: th, status: st });
+    else legacyThreads.push(th);
+  }
+  const active = goalThreads.filter((g) => g.status !== "done");
+  const finished = goalThreads.filter((g) => g.status === "done");
+  const presenceN = goalThreads.filter((g) => g.status === "working" || g.status === "waiting").length;
 
   const user = getUserInfo();
 
-  const sidebarClass = isOnThread
-    ? "hidden md:flex"
-    : "flex w-full md:flex";
+  const sidebarClass = isOnThread ? "hidden md:flex" : "flex w-full md:flex";
+  const mainClass = isOnThread ? "flex flex-1 flex-col min-w-0" : "hidden md:flex md:flex-1 md:flex-col";
 
-  const mainClass = isOnThread
-    ? "flex flex-1 flex-col min-w-0"
-    : "hidden md:flex md:flex-1 md:flex-col";
+  function goalTitle(th: Thread): string {
+    const meta = tasks[String(th.id)];
+    const backend = th.title;
+    // Prefer a real backend name; fall back to the user's own words.
+    if (backend && backend !== "New task" && backend !== "ახალი დავალება" && backend !== "New chat") return backend;
+    return meta?.title || backend || t("taskFallback");
+  }
 
   return (
     <ThreadsContext.Provider
-      value={{ threads, setThreads, threadsLoaded, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens, createThread }}
+      value={{
+        threads, setThreads, threadsLoaded, threadStates, setThreadStates,
+        reconnectNonce, tokens, refreshTokens, createThread, createTask,
+        tasks, resolveRequest, resolvedRequests,
+      }}
     >
       <div className="flex h-full" style={{ background: "var(--bg)" }}>
         <aside
-          className={`${sidebarClass} sidebar flex-col shrink-0 w-full md:w-[240px] lg:w-[268px]`}
+          className={`${sidebarClass} sidebar flex-col shrink-0 w-full md:w-[300px] lg:w-[380px]`}
           style={{
             background: "var(--sidebar-bg)",
             borderRight: "1px solid var(--sidebar-border)",
@@ -395,67 +573,26 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             gap: "12px",
           }}
         >
-          {/* Logo row: avatar mark + wordmark, quick new-task on the right */}
-          <div className="flex items-center justify-between pl-1">
-            <div className="flex items-center gap-2">
-              <span className="ally-avatar">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
-              </span>
-              <span style={{ font: "500 20px/26px var(--font-bricolage)", color: "var(--ink)" }}>
+          {/* Header: avatar + wordmark + honest presence line (§2.1) */}
+          <div className="flex items-center gap-2.5 pl-1">
+            <span className="ally-avatar" style={{ width: 30, height: 30 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+            </span>
+            <div className="flex flex-col min-w-0">
+              <span style={{ font: "500 20px/24px var(--font-bricolage)", color: "var(--ink)" }}>
                 Netai
               </span>
+              <span style={{ font: "500 11.5px/15px var(--font-system)", color: "var(--accent)" }}>
+                {presenceN > 0 ? tf("presenceWorking", { n: presenceN }) : t("presenceReady")}
+              </span>
             </div>
-            <button
-              onClick={createThread}
-              disabled={creating}
-              aria-label={t("newTask")}
-              className="flex items-center justify-center transition-colors disabled:opacity-50"
-              style={{ width: 28, height: 28, borderRadius: 8, color: "var(--ink-soft)", fontSize: "18px" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--skeleton)"; e.currentTarget.style.color = "var(--ink)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--ink-soft)"; }}
-            >
-              +
-            </button>
-          </div>
-
-          <button
-            onClick={createThread}
-            disabled={creating}
-            className="btn-secondary w-full"
-            style={{ padding: "9px 0" }}
-          >
-            + {creating ? "…" : t("newTask")}
-          </button>
-
-          <div
-            className="flex items-center gap-2"
-            style={{
-              background: "#FFFFFF",
-              border: "1px solid var(--header-border)",
-              borderRadius: "var(--radius-pill)",
-              padding: "8px 14px",
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-              <circle cx="8.5" cy="8.5" r="5.75" stroke="var(--meta)" strokeWidth="1.75" />
-              <path d="M13 13l3.5 3.5" stroke="var(--meta)" strokeWidth="1.75" strokeLinecap="round" />
-            </svg>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("searchTasks")}
-              className="flex-1 bg-transparent outline-none"
-              style={{ color: "var(--ink)", fontSize: "13px" }}
-            />
           </div>
 
           {/* Lists */}
-          <div className="flex-1 overflow-y-auto flex flex-col gap-[2px]">
+          <div className="flex-1 overflow-y-auto flex flex-col gap-[3px]">
             {!threadsLoaded ? (
               <div className="flex flex-col gap-2 pt-1">
-                <p className="section-label" style={{ padding: "0 6px 4px" }}>{t("myTasks")}</p>
                 <span className="sk-bar" style={{ width: "84%" }} />
                 <span className="sk-bar" style={{ width: "70%" }} />
                 <span className="sk-bar" style={{ width: "76%" }} />
@@ -464,45 +601,158 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               </div>
             ) : (
               <>
-                {incoming.length > 0 && (
-                  <section className="mb-1 flex flex-col gap-[2px]">
-                    <p className="section-label" style={{ padding: "0 6px 4px" }}>{t("incomingRequests")}</p>
-                    {incoming.map((th) => (
-                      <RequestRow key={th.id} thread={th} active={pathname === `/chat/${th.id}`} />
+                {/* Incoming requests — RequestActionRow (one-tap resolve) */}
+                {visibleRequests.length > 0 && (
+                  <section className="mb-2 flex flex-col gap-2">
+                    <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("requestsLabel")}</p>
+                    {visibleRequests.map((th) => (
+                      <RequestActionRow
+                        key={th.id}
+                        thread={th}
+                        resolved={resolvedRequests[String(th.id)]?.action}
+                        onResolve={(a) => resolveRequest(String(th.id), a)}
+                        active={pathname === `/chat/${th.id}`}
+                      />
                     ))}
                   </section>
                 )}
-                <section className="flex flex-col gap-[2px]">
-                  {incoming.length > 0 && mine.length > 0 && (
-                    <p className="section-label" style={{ padding: "0 6px 4px" }}>{t("myTasks")}</p>
-                  )}
-                  {mine.map((th) => (
-                    <ThreadRow key={th.id} thread={th} active={pathname === `/chat/${th.id}`} unread={unread.has(String(th.id))} />
+
+                {/* Active goals */}
+                <section className="flex flex-col gap-[3px]">
+                  <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("inProgress")}</p>
+                  {active.map(({ thread, status }) => (
+                    <TaskRow
+                      key={thread.id}
+                      title={goalTitle(thread)}
+                      status={status}
+                      href={`/chat/${thread.id}`}
+                      active={pathname === `/chat/${thread.id}`}
+                    />
                   ))}
-                  {threads.length === 0 && (
+                  {active.length === 0 && (
                     <p style={{ padding: "2px 6px", fontSize: "12px", color: "var(--meta)" }}>
                       {t("threadsHint")}
                     </p>
                   )}
                 </section>
+
+                {/* Finished goals — 65% opacity, max 5 + view all */}
+                {finished.length > 0 && (
+                  <section className="mt-2 flex flex-col gap-[3px]" style={{ opacity: 0.65 }}>
+                    <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("finishedLabel")}</p>
+                    {(showAllDone ? finished : finished.slice(0, 5)).map(({ thread, status }) => (
+                      <TaskRow
+                        key={thread.id}
+                        title={goalTitle(thread)}
+                        status={status}
+                        href={`/chat/${thread.id}`}
+                        active={pathname === `/chat/${thread.id}`}
+                      />
+                    ))}
+                    {finished.length > 5 && !showAllDone && (
+                      <button
+                        onClick={() => setShowAllDone(true)}
+                        className="self-start"
+                        style={{ padding: "2px 6px", font: "600 12px/16px var(--font-system)", color: "var(--ink-soft)" }}
+                      >
+                        {t("viewAll")}
+                      </button>
+                    )}
+                  </section>
+                )}
+
+                {/* Legacy chats — quiet link, old threads are NOT goals (§2.5) */}
+                {legacyThreads.length > 0 && (
+                  <section className="mt-3 flex flex-col gap-[2px]">
+                    <button
+                      onClick={() => setShowLegacy((v) => !v)}
+                      className="self-start transition-colors"
+                      style={{ padding: "2px 6px", font: "500 12.5px/17px var(--font-system)", color: "var(--meta)" }}
+                    >
+                      {t("legacyChats")}
+                    </button>
+                    {showLegacy && legacyThreads.map((th) => (
+                      <Link
+                        key={th.id}
+                        href={`/chat/${th.id}`}
+                        className="thread-row flex items-center transition-colors"
+                        style={{
+                          padding: "7px 10px",
+                          borderRadius: "var(--radius-row)",
+                          background: pathname === `/chat/${th.id}` ? "var(--thread-active-bg)" : undefined,
+                          boxShadow: pathname === `/chat/${th.id}` ? "inset 3px 0 0 var(--accent)" : undefined,
+                        }}
+                      >
+                        <span className="flex-1 truncate" style={{ font: "400 13px/18px var(--font-system)", color: "var(--ink-soft)" }}>
+                          {th.title || "…"}
+                        </span>
+                      </Link>
+                    ))}
+                  </section>
+                )}
               </>
             )}
           </div>
 
+          {/* Home composer — pinned; any input becomes a goal (§2.6) */}
+          <form
+            onSubmit={(e) => { e.preventDefault(); createTask(homeInput); }}
+            className="flex items-center gap-2"
+          >
+            <div
+              className="composer-pill flex flex-1 items-center gap-2 min-w-0"
+              style={{ padding: "6px 6px 6px 14px", borderColor: recording ? "var(--danger)" : undefined }}
+            >
+              <input
+                ref={homeInputRef}
+                type="text"
+                value={homeInput}
+                onChange={(e) => setHomeInput(e.target.value)}
+                placeholder={recording ? t("listening") : t("homePlaceholder")}
+                className="flex-1 min-w-0 bg-transparent outline-none"
+                style={{ color: "var(--ink)", fontSize: "14px", padding: "6px 0" }}
+                disabled={creating}
+              />
+              {homeInput.trim() && (
+                <button
+                  type="submit"
+                  disabled={creating}
+                  aria-label={t("newTask")}
+                  className="flex shrink-0 items-center justify-center rounded-full"
+                  style={{ width: 34, height: 34, background: "var(--accent)", color: "#FBFAF4" }}
+                >
+                  <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                    <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={startHomeMic}
+              aria-label="voice"
+              className="flex shrink-0 items-center justify-center rounded-full transition-colors"
+              style={{
+                width: 44, height: 44,
+                background: recording ? "var(--danger)" : "var(--accent)",
+                color: "#FBFAF4",
+              }}
+            >
+              <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
+                <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.6" />
+                <path d="M4 10a6 6 0 0012 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <line x1="7" y1="19" x2="13" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            </button>
+          </form>
+
           {/* Footer */}
           <div className="flex items-center gap-2.5" style={{ borderTop: "1px solid var(--sidebar-border)", paddingTop: "10px" }}>
-            <Link
-              href="/profile"
-              className="initial-avatar transition-opacity hover:opacity-80"
-              style={{ width: 28, height: 28, fontSize: "12px" }}
-            >
+            <Link href="/profile" className="initial-avatar transition-opacity hover:opacity-80" style={{ width: 28, height: 28, fontSize: "12px" }}>
               {user.initial}
             </Link>
-            <Link
-              href="/profile"
-              className="flex-1 truncate transition-opacity hover:opacity-70"
-              style={{ color: "var(--ink)", fontWeight: 600, fontSize: "13px" }}
-            >
+            <Link href="/profile" className="flex-1 truncate transition-opacity hover:opacity-70" style={{ color: "var(--ink)", fontWeight: 600, fontSize: "13px" }}>
               {user.name}
             </Link>
             <button
@@ -523,39 +773,80 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   );
 }
 
-function ThreadRow({ thread, active, unread }: { thread: Thread; active: boolean; unread: boolean }) {
+// Compact TaskRow (desktop addendum): name + status pill + 40px stage clip.
+// No status lines, no timestamps — those live inside the open goal.
+function TaskRow({ title, status, href, active }: { title: string; status: TaskStatus; href: string; active: boolean }) {
+  const edge = status === "needs_you" ? "var(--request-accent)" : "var(--accent)";
   return (
     <Link
-      href={`/chat/${thread.id}`}
-      className="thread-row flex items-center transition-colors"
+      href={href}
+      className="task-row thread-row"
       style={{
-        padding: "8px 10px",
-        borderRadius: "var(--radius-row)",
         background: active ? "var(--thread-active-bg)" : undefined,
-        boxShadow: active ? "inset 3px 0 0 var(--accent)" : undefined,
+        boxShadow: active ? `inset 3px 0 0 ${edge}` : undefined,
       }}
       onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--skeleton)"; }}
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = ""; }}
     >
-      <span
-        className="flex-1 truncate"
-        style={{ font: `${active || unread ? 600 : 500} 13px/18px var(--font-system)`, color: "var(--ink)" }}
-      >
-        {thread.type === "outgoing_request" && <span style={{ color: "var(--meta)", marginRight: "4px" }}>↑</span>}
-        {thread.title ?? t("taskFallback")}
+      <span className="flex-1 truncate" style={{ font: `${active ? 600 : 500} 13.5px/18px var(--font-system)`, color: "var(--ink)" }}>
+        {title}
       </span>
-      {unread && !active && (
-        <span className="ml-2 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--accent)" }} />
-      )}
+      <StatusPill status={status} />
+      <AnimBox status={status} size={40} />
     </Link>
   );
 }
 
-function RequestRow({ thread, active }: { thread: Thread; active: boolean }) {
+// RequestActionRow (addendum A): one-tap მიიღე/უარი/მერე on the row itself.
+// Tapping the card (not a button) opens the thread for details.
+function RequestActionRow({
+  thread, resolved, onResolve, active,
+}: {
+  thread: Thread;
+  resolved: string | undefined;
+  onResolve: (a: "accept" | "deny" | "later") => void;
+  active: boolean;
+}) {
+  const router = useRouter();
+  const quote = thread.last_message?.replace(/\s+/g, " ").trim();
+  const confirmation =
+    resolved === "accept" ? t("reqAccepted") :
+    resolved === "deny" ? t("reqDenied") :
+    resolved === "later" ? t("reqSnoozed") : null;
+
   return (
-    <Link href={`/chat/${thread.id}`} className={`row-request${active ? " active" : ""}`}>
-      <span className="req-chip">→</span>
-      <span className="req-names">{thread.title ?? t("taskFallback")}</span>
-    </Link>
+    <div
+      onClick={() => router.push(`/chat/${thread.id}`)}
+      className="req-card cursor-pointer"
+      style={{ boxShadow: active ? "inset 3px 0 0 var(--request-accent)" : undefined, opacity: confirmation ? 0.72 : 1 }}
+    >
+      <p style={{ font: "600 14.5px/20px var(--font-system)", color: "var(--ink)" }} className="truncate">
+        {thread.title}
+      </p>
+      <p style={{ font: "400 13px/19px var(--font-bricolage)", color: "var(--ink-2)" }}>
+        {t("reqAsksIntro")}
+      </p>
+      {quote && (
+        <p
+          className="line-clamp-2"
+          style={{
+            font: "400 12.5px/18px var(--font-system)", color: "var(--ink-2)",
+            borderLeft: "2px solid var(--request-quote-bar)", paddingLeft: "10px",
+            overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+          }}
+        >
+          {quote}
+        </p>
+      )}
+      {confirmation ? (
+        <p style={{ font: "600 13px/18px var(--font-system)", color: "var(--accent-strong)" }}>{confirmation}</p>
+      ) : (
+        <div className="flex gap-2 pt-0.5">
+          <button className="req-btn accept" onClick={(e) => { e.stopPropagation(); onResolve("accept"); }}>{t("reqAccept")}</button>
+          <button className="req-btn deny" onClick={(e) => { e.stopPropagation(); onResolve("deny"); }}>{t("reqDeny")}</button>
+          <button className="req-btn later" onClick={(e) => { e.stopPropagation(); onResolve("later"); }}>{t("reqLater")}</button>
+        </div>
+      )}
+    </div>
   );
 }
