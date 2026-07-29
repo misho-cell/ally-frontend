@@ -3,8 +3,8 @@ import "./globals.css";
 import InstallPrompt from "@/components/InstallPrompt";
 
 export const metadata: Metadata = {
-  title: "Ally",
-  description: "Your AI companion",
+  title: "Netai",
+  description: "Your personal connector",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -16,12 +16,12 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Ally",
+    title: "Netai",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#3E7A56",
+  themeColor: "#2F6B4F",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
