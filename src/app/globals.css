@@ -360,11 +360,24 @@ body {
 }
 
 /* ============ Composer ============ */
+/* One frame only (report item 11): the pill carries the border, the shadow
+   and the focus state. The inner input/textarea is always frameless — no
+   border, no outline, no focus ring, ever. */
 .composer-pill {
   background: #FFFFFF; border: 1px solid var(--header-border);
   border-radius: var(--radius-pill); box-shadow: var(--shadow-card);
 }
 .composer-pill:focus-within { border-color: var(--accent); box-shadow: var(--input-focus-ring); }
+.composer-pill input,
+.composer-pill textarea {
+  border: 0; outline: 0; background: transparent; box-shadow: none; border-radius: 0;
+}
+.composer-pill input:focus,
+.composer-pill textarea:focus,
+.composer-pill input:focus-visible,
+.composer-pill textarea:focus-visible {
+  border: 0; outline: 0; box-shadow: none;
+}
 
 /* ============ Responsive ============ */
 @media (max-width: 767px) {
