@@ -6,9 +6,9 @@ import { t } from "@/lib/i18n";
 // Desktop right pane, no goal selected (desktop addendum): dogs clip + one
 // line, nothing else. Empty home (never any goals): the §2.7 line instead.
 export default function ChatIndexPage() {
-  const { threads, threadsLoaded, threadStates, tasks } = useThreads();
+  const { threads, threadsLoaded, threadStates } = useThreads();
   const hasGoals = threads.some((th) =>
-    taskStatusOf(th, threadStates[String(th.id)], tasks[String(th.id)]) !== null
+    taskStatusOf(th, threadStates[String(th.id)]) !== null
   );
 
   return (

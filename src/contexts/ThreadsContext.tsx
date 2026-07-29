@@ -7,26 +7,16 @@ export type Thread = {
   title: string;
   last_message?: string;
   updated_at: string;
-  // Phase 2 backend fields (messenger handover §9.1).
+  // Phase 2 backend fields (messenger handover §9.1) — the server is the only
+  // source of task state.
   status?: TaskStatus;
   status_line?: string | null;
   is_task?: boolean;
-  // One-tap request endpoints key (incoming_request threads).
   request_ref?: string | null;
 };
 
 // §4 status words — the only state language.
 export type TaskStatus = "working" | "waiting" | "needs_you" | "done" | "failed";
-
-// Frontend fallback metadata — used only when the backend fields are absent
-// (optimistic title at creation, live-run status before thread_updated lands).
-export type TaskMeta = {
-  isTask: boolean;
-  status: TaskStatus;
-  statusLine?: string;
-  title?: string;
-  updatedAt: number;
-};
 
 // StructuredResult payload from run_complete (§7) — all fields optional.
 export type ResultData = { who?: string; when?: string; where?: string; topic?: string };
@@ -35,7 +25,9 @@ export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  kind: "message" | "step";
+  // 'error' = persisted failed-run marker — rendered as a system block with
+  // Retry, never as an assistant bubble.
+  kind: "message" | "step" | "error";
   runId: string | null;
 };
 
@@ -93,7 +85,9 @@ type Ctx = {
   refreshTokens: () => void;
   createThread: () => void;
   createTask: (text: string) => Promise<void>;
-  tasks: Record<string, TaskMeta>;
+  // In-memory optimistic titles (the user's own words) until the backend's
+  // generated title arrives via thread_updated. Not persisted.
+  titles: Record<string, string>;
   resolveRequest: (threadId: string, action: "accept" | "deny" | "later") => void;
   resolvedRequests: Record<string, { action: string; at: number }>;
 };
@@ -109,23 +103,30 @@ export const ThreadsContext = createContext<Ctx>({
   refreshTokens: () => {},
   createThread: () => {},
   createTask: async () => {},
-  tasks: {},
+  titles: {},
   resolveRequest: () => {},
   resolvedRequests: {},
 });
 
 export const useThreads = () => useContext(ThreadsContext);
 
-// Effective status: backend `status` wins, then a live in-flight run, then
-// stored fallback meta. Returns null for threads that are not goals (legacy).
+// Effective status: the SERVER decides (F2). The only local override is a run
+// that is in flight right now — shown as working until thread_updated lands.
+// Returns null for threads that are not goals (legacy chats).
 export function taskStatusOf(
   thread: Thread,
-  ts: ThreadState | undefined,
-  meta: TaskMeta | undefined
+  ts: ThreadState | undefined
 ): TaskStatus | null {
   if (thread.type !== "regular") return null;
-  const isTask = thread.is_task === true || meta?.isTask === true;
-  if (!isTask && !thread.status) return null;
+  if (!thread.is_task && !thread.status) return null;
   if (ts?.loading) return "working";
-  return thread.status ?? meta?.status ?? "waiting";
+  return thread.status ?? "working";
+}
+
+export function forceLogin() {
+  try {
+    localStorage.removeItem("token");
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+  } catch {}
+  window.location.href = "/login";
 }

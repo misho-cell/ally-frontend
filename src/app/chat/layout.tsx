@@ -10,15 +10,14 @@ import {
   ThreadsContext,
   updateThreadState,
   taskStatusOf,
+  forceLogin,
   type Thread,
   type ThreadState,
   type TokenBalance,
-  type TaskMeta,
   type TaskStatus,
 } from "@/contexts/ThreadsContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const TASKS_KEY = "netai_tasks";
 const REQ_KEY = "netai_req_resolved";
 // Snoozed requests re-surface after the backend default (3 days).
 const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
@@ -118,8 +117,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [threadStates, setThreadStates] = useState<Record<string, ThreadState>>({});
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [tokens, setTokens] = useState<TokenBalance | null>(null);
-  const [tasks, setTasks] = useState<Record<string, TaskMeta>>({});
+  const [titles, setTitles] = useState<Record<string, string>>({});
   const [resolvedRequests, setResolvedRequests] = useState<Record<string, { action: string; at: number }>>({});
+  const [toast, setToast] = useState<string | null>(null);
   const [showAllDone, setShowAllDone] = useState(false);
   const [showLegacy, setShowLegacy] = useState(false);
   const [homeInput, setHomeInput] = useState("");
@@ -131,6 +131,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const sawFirstOpenRef = useRef(false);
   const pathnameRef = useRef(pathname);
   const homeInputRef = useRef<HTMLInputElement>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const threadsRef = useRef<Thread[]>([]);
@@ -140,26 +141,20 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const isOnThread = pathname !== "/chat";
 
   useEffect(() => {
-    setTasks(loadJson<Record<string, TaskMeta>>(TASKS_KEY, {}));
     setResolvedRequests(loadJson<Record<string, { action: string; at: number }>>(REQ_KEY, {}));
   }, []);
 
-  const patchTask = useCallback((threadId: string | number, patch: Partial<TaskMeta>) => {
-    setTasks((prev) => {
-      const key = String(threadId);
-      const cur = prev[key];
-      if (!cur && patch.isTask !== true) return prev;
-      const base: TaskMeta = cur ?? { isTask: true, status: "working", updatedAt: Date.now() };
-      const next = { ...prev, [key]: { ...base, ...patch, isTask: true } };
-      try { localStorage.setItem(TASKS_KEY, JSON.stringify(next)); } catch {}
-      return next;
-    });
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2400);
   }, []);
 
   const loadThreads = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/threads`, { headers: authHeaders() });
       if (!res.ok) {
+        if (res.status === 401) { forceLogin(); return; }
         const body = await res.json().catch(() => ({}));
         if (handleAdminTokenMisuse(res.status, body)) return;
         if (isSubscriptionError(res.status, body)) {
@@ -188,11 +183,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     } catch {}
   }, []);
 
+  // Push subscribe (F7): the backend cleared push_subscriptions, so we
+  // re-register on EVERY app open when permission is granted — subscribe() is
+  // idempotent client-side and the POST refreshes the server row.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
     if (Notification.permission !== "granted") return;
-    if (localStorage.getItem("push_endpoint")) return;
     (async () => {
       try {
         const keyRes = await fetch(`${BASE_URL}/notifications/vapid-public-key`, { headers: authHeaders() });
@@ -246,8 +243,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               }
               break;
 
-            // Partial patch: only changed fields arrive (status / status_line /
-            // is_task / generated title). Card re-renders in place.
+            // Partial patch: only fields that arrived are applied — never
+            // overwrite present values with undefined (F2).
             case "thread_updated": {
               const patch = data.thread;
               if (patch?.id != null) {
@@ -259,6 +256,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       ...(patch.status !== undefined ? { status: patch.status } : null),
                       ...(patch.status_line !== undefined ? { status_line: patch.status_line } : null),
                       ...(patch.is_task !== undefined ? { is_task: patch.is_task } : null),
+                      ...(patch.request_ref !== undefined ? { request_ref: patch.request_ref } : null),
                       ...(patch.title ? { title: patch.title } : null),
                     };
                   })
@@ -321,8 +319,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
             case "run_complete":
               if (data.threadId != null) {
-                const hasFollowup = (Array.isArray(data.choices) && data.choices.length > 0) ||
-                  (Array.isArray(data.options) && data.options.length > 0);
                 setThreadStates((prev) =>
                   updateThreadState(prev, data.threadId, (ts) => {
                     if (isStaleRun(ts, data.runId)) return ts;
@@ -349,12 +345,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     };
                   })
                 );
-                // Fallback transition — the backend's thread_updated wins when it arrives.
-                patchTask(data.threadId, {
-                  status: hasFollowup ? "needs_you" : "waiting",
-                  statusLine: typeof data.reply === "string" ? data.reply.replace(/\s+/g, " ").slice(0, 80) : undefined,
-                  updatedAt: Date.now(),
-                });
+                // Status transitions arrive via thread_updated (server-owned).
                 loadThreads();
               }
               break;
@@ -373,7 +364,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     };
                   })
                 );
-                patchTask(data.threadId, { status: "failed", updatedAt: Date.now() });
               }
               break;
           }
@@ -385,7 +375,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     });
 
     return () => ctrl.abort();
-  }, [loadThreads, refreshTokens, patchTask]);
+  }, [loadThreads, refreshTokens]);
 
   const sendIntoThread = useCallback(async (threadId: string, text: string, echo: boolean) => {
     const sentinel = `pending-${crypto.randomUUID()}`;
@@ -409,6 +399,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       headers: authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ message: text }),
     });
+    if (res.status === 401) { forceLogin(); return; }
     const json = await res.json().catch(() => ({}));
     if (!res.ok || json.success === false) throw new Error(json.error ?? String(res.status));
     const runId: string | null = json.runId ?? json.data?.runId ?? null;
@@ -431,6 +422,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         headers: authHeaders({ "Content-Type": "application/json" }),
       });
       if (!res.ok) {
+        if (res.status === 401) { forceLogin(); return; }
         const body = await res.json().catch(() => ({}));
         if (handleAdminTokenMisuse(res.status, body)) return;
         if (isSubscriptionError(res.status, body)) {
@@ -441,12 +433,12 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       const json = await res.json();
       const thread: Thread = json.data ?? json;
       setThreads((prev) => dedup([thread, ...prev.filter((th) => String(th.id) !== String(thread.id))]));
-      patchTask(thread.id, {
-        isTask: true,
-        status: "working",
-        title: trimmed.length > 42 ? trimmed.slice(0, 42) + "…" : trimmed,
-        updatedAt: Date.now(),
-      });
+      // Optimistic in-memory title — the backend's generated title replaces it
+      // via thread_updated.
+      setTitles((prev) => ({
+        ...prev,
+        [String(thread.id)]: trimmed.length > 42 ? trimmed.slice(0, 42) + "…" : trimmed,
+      }));
       setHomeInput("");
       router.push(`/chat/${thread.id}`);
       await sendIntoThread(String(thread.id), trimmed, true);
@@ -454,13 +446,12 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     finally {
       setCreating(false);
     }
-  }, [creating, router, patchTask, sendIntoThread]);
+  }, [creating, router, sendIntoThread]);
 
-  // One-tap request resolve (addendum A), optimistic. Uses the dedicated
-  // idempotent endpoints when request_ref is present on the thread; falls
-  // back to a text reply into the thread when it isn't. 409 = already
-  // answered elsewhere — keep it resolved. Silent retry ×3 on network errors,
-  // then the row quietly returns.
+  // One-tap request resolve (F3), optimistic. Dedicated idempotent endpoints
+  // when request_ref is present; text-reply fallback otherwise. already:true
+  // and 409 both leave the row resolved (409 additionally surfaces the
+  // server's error text). 404/400 quietly return the row.
   const resolveRequest = useCallback((threadId: string, action: "accept" | "deny" | "later") => {
     const next = { ...resolvedRequests, [threadId]: { action, at: Date.now() } };
     setResolvedRequests(next);
@@ -488,7 +479,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               headers: authHeaders({ "Content-Type": "application/json" }),
               body: JSON.stringify({}),
             });
-            if (res.ok || res.status === 409) return; // 409: already answered — stays resolved
+            if (res.status === 401) { forceLogin(); return; }
+            if (res.ok) return; // already:true is also a 200 — success
+            if (res.status === 409) {
+              const body = await res.json().catch(() => ({}));
+              if (body?.error) showToast(body.error);
+              return; // answered differently elsewhere — keep hidden
+            }
             if (res.status === 404 || res.status === 400) { unresolve(); return; }
             throw new Error(String(res.status));
           } else {
@@ -501,7 +498,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       }
       unresolve();
     })();
-  }, [resolvedRequests, sendIntoThread]);
+  }, [resolvedRequests, sendIntoThread, showToast]);
 
   async function handleSignOut() {
     const token = getToken();
@@ -567,7 +564,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const legacyThreads: Thread[] = [];
   for (const th of threads) {
     if (th.type === "incoming_request") continue;
-    const st = taskStatusOf(th, threadStates[String(th.id)], tasks[String(th.id)]);
+    const st = taskStatusOf(th, threadStates[String(th.id)]);
     if (st) goalThreads.push({ thread: th, status: st });
     else legacyThreads.push(th);
   }
@@ -581,10 +578,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const mainClass = isOnThread ? "flex flex-1 flex-col min-w-0" : "hidden md:flex md:flex-1 md:flex-col";
 
   function goalTitle(th: Thread): string {
-    const meta = tasks[String(th.id)];
     const backend = th.title;
     if (backend && backend !== "New task" && backend !== "ახალი დავალება" && backend !== "New chat") return backend;
-    return meta?.title || backend || t("taskFallback");
+    return titles[String(th.id)] || backend || t("taskFallback");
   }
 
   return (
@@ -592,10 +588,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       value={{
         threads, setThreads, threadsLoaded, threadStates, setThreadStates,
         reconnectNonce, tokens, refreshTokens, createThread, createTask,
-        tasks, resolveRequest, resolvedRequests,
+        titles, resolveRequest, resolvedRequests,
       }}
     >
       <div className="flex h-full" style={{ background: "var(--bg)" }}>
+        {toast && (
+          <div className="toast" role="status" aria-live="polite">{toast}</div>
+        )}
         <aside
           className={`${sidebarClass} sidebar flex-col shrink-0 w-full md:w-[300px] lg:w-[380px]`}
           style={{
