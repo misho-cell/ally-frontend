@@ -3,12 +3,41 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authHeaders } from "@/lib/deviceId";
+import { getLocale } from "@/lib/i18n";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+
+const L = {
+  en: {
+    uploaded: "Contacts uploaded!",
+    added: "Added",
+    skipped: "Skipped",
+    start: "Start",
+    title: "Import your contacts",
+    body: "Netai uses your contacts to help you work your network.",
+    shareContacts: "Share contacts",
+    uploadVcf: "Upload .vcf file",
+    skip: "Skip",
+    importError: "Couldn't import contacts",
+  },
+  ka: {
+    uploaded: "კონტაქტები აიტვირთა!",
+    added: "დაემატა",
+    skipped: "გამოტოვებულია",
+    start: "დაწყება",
+    title: "ატვირთე შენი კონტაქტები",
+    body: "Netai შენს კონტაქტებს იყენებს, რომ შენი ქსელით დაგეხმაროს.",
+    shareContacts: "კონტაქტების გაზიარება",
+    uploadVcf: "ატვირთე .vcf ფაილი",
+    skip: "გამოტოვება",
+    importError: "კონტაქტები ვერ აიტვირთა",
+  },
+};
 
 type ImportResult = { imported: number; skipped: number };
 
 export default function OnboardingContactsPage() {
+  const s = L[getLocale()];
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -47,7 +76,7 @@ export default function OnboardingContactsPage() {
       const json = await res.json();
       setResult(json.data ?? json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't import contacts");
+      setError(err instanceof Error ? err.message : s.importError);
     } finally {
       setLoading(false);
     }
@@ -66,7 +95,7 @@ export default function OnboardingContactsPage() {
       const json = await res.json();
       setResult(json.data ?? json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't import contacts");
+      setError(err instanceof Error ? err.message : s.importError);
     } finally {
       setLoading(false);
     }
@@ -74,24 +103,21 @@ export default function OnboardingContactsPage() {
 
   if (result) {
     return (
-      <div className="flex min-h-full flex-col items-center justify-center bg-white px-4">
-        <div className="w-full max-w-sm rounded-2xl border border-[#E4E0D3] bg-white p-8 flex flex-col items-center gap-5 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#DEE8E0]">
-            <svg className="h-7 w-7 text-[#3E7A56]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div className="flex min-h-full flex-col items-center justify-center px-4" style={{ background: "var(--bg)" }}>
+        <div className="card w-full max-w-sm p-8 flex flex-col items-center gap-5 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ background: "var(--accent-tint)" }}>
+            <svg className="h-7 w-7" style={{ color: "var(--accent)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <div>
-            <p className="text-lg font-semibold text-[#23261F]">Contacts uploaded!</p>
-            <p className="mt-1 text-sm text-[#8A8778]">
-              Added: {result.imported} &nbsp;&middot;&nbsp; Skipped: {result.skipped}
+            <p className="text-lg font-semibold" style={{ color: "var(--ink)" }}>{s.uploaded}</p>
+            <p className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>
+              {s.added}: {result.imported} &nbsp;&middot;&nbsp; {s.skipped}: {result.skipped}
             </p>
           </div>
-          <button
-            onClick={() => router.replace("/chat")}
-            className="w-full flex h-12 items-center justify-center rounded-xl bg-[#3E7A56] text-sm font-semibold text-white hover:opacity-90"
-          >
-            Start chatting
+          <button onClick={() => router.replace("/chat")} className="btn-primary w-full h-12">
+            {s.start}
           </button>
         </div>
       </div>
@@ -99,28 +125,25 @@ export default function OnboardingContactsPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-center bg-white px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-[#E4E0D3] bg-white p-8 flex flex-col gap-6">
+    <div className="flex min-h-full flex-col items-center justify-center px-4" style={{ background: "var(--bg)" }}>
+      <div className="card w-full max-w-sm p-8 flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-bold text-[#23261F]">Import your contacts</h1>
-          <p className="text-sm text-[#8A8778]">
-            Ally uses your contacts to help you analyze your network.
-          </p>
+          <h1 style={{ font: "500 22px/28px var(--font-bricolage)", color: "var(--ink)" }}>{s.title}</h1>
+          <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.body}</p>
         </div>
 
         {error && (
-          <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div
+            className="px-4 py-3 text-sm"
+            style={{ background: "var(--terra-tint)", color: "var(--danger)", borderRadius: "var(--radius-tile)" }}
+          >
             {error}
           </div>
         )}
 
         <div className="flex flex-col gap-3">
           {hasContactsApi ? (
-            <button
-              onClick={importAndroid}
-              disabled={loading}
-              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#3E7A56] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-            >
+            <button onClick={importAndroid} disabled={loading} className="btn-primary h-12">
               {loading ? (
                 <Spinner />
               ) : (
@@ -128,12 +151,12 @@ export default function OnboardingContactsPage() {
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  Share contacts
+                  {s.shareContacts}
                 </>
               )}
             </button>
           ) : (
-            <label className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#3E7A56] text-sm font-semibold text-white transition-opacity hover:opacity-90">
+            <label className="btn-primary h-12 cursor-pointer">
               {loading ? (
                 <Spinner />
               ) : (
@@ -141,7 +164,7 @@ export default function OnboardingContactsPage() {
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
-                  Upload .vcf file
+                  {s.uploadVcf}
                 </>
               )}
               <input
@@ -159,9 +182,10 @@ export default function OnboardingContactsPage() {
           <button
             type="button"
             onClick={() => router.replace("/chat")}
-            className="text-sm text-[#8A8778] hover:text-[#23261F] py-2"
+            className="text-sm py-2 transition-colors hover:text-[var(--ink)]"
+            style={{ color: "var(--ink-soft)" }}
           >
-            Skip
+            {s.skip}
           </button>
         </div>
       </div>
