@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
+import { t, tf } from "@/lib/i18n";
 import {
   useThreads,
   updateThreadState,
@@ -69,6 +70,17 @@ function nextRenewalDate(): string {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
+function fmtTokens(n: number): string {
+  return Number(n).toLocaleString("en-US");
+}
+
+// Step strings contain literal **bold** markers — render them as <strong>,
+// never as raw asterisks (handover §6.1).
+function renderStepText(text: string): React.ReactNode {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return parts.map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part));
+}
+
 // Walk the chronological list and fold runs of consecutive `step` items into a
 // single group, leaving `message` items standalone. Order is preserved, so a
 // run reads as: user message → step group → final answer.
@@ -98,11 +110,49 @@ function toBlocks(messages: ChatMessage[]): RenderBlock[] {
 const markdownComponents = {
   p: ({ children }: { children?: React.ReactNode }) => <p style={{ marginBottom: "10px" }} className="last:mb-0">{children}</p>,
   strong: ({ children }: { children?: React.ReactNode }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
-  em: ({ children }: { children?: React.ReactNode }) => <em style={{ fontStyle: "italic" }}>{children}</em>,
+  em: ({ children }: { children?: React.ReactNode }) => <em>{children}</em>,
+  hr: () => <hr style={{ height: "1px", background: "var(--header-border)", border: 0, margin: "12px 0" }} />,
   ol: ({ children }: { children?: React.ReactNode }) => <ol style={{ paddingLeft: "20px", marginBottom: "10px", listStyleType: "decimal" }} className="space-y-1 last:mb-0">{children}</ol>,
   ul: ({ children }: { children?: React.ReactNode }) => <ul style={{ paddingLeft: "20px", marginBottom: "10px", listStyleType: "disc" }} className="space-y-1 last:mb-0">{children}</ul>,
   li: ({ children }: { children?: React.ReactNode }) => <li>{children}</li>,
 };
+
+function AllyAvatar() {
+  return (
+    <span className="ally-avatar" style={{ marginTop: "2px" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/assets/ally/ally-avatar.jpg" alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+    </span>
+  );
+}
+
+// Animated character clip with poster fallback (reduced motion / video 404).
+function AllyAnim({ clip, size }: { clip: string; size?: "thinking" | "e3" }) {
+  const cls = size ? ` size-${size}` : "";
+  return (
+    <>
+      <video
+        className={`ally-anim${cls}`}
+        autoPlay
+        muted
+        loop
+        playsInline
+        src={`/assets/ally/anim/${clip}.mp4`}
+        poster={`/assets/ally/anim/${clip}-poster.jpg`}
+        onError={(e) => { e.currentTarget.style.display = "none"; }}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        className={`ally-anim-fallback${cls}`}
+        src={`/assets/ally/anim/${clip}-poster.jpg`}
+        alt=""
+        onError={(e) => { e.currentTarget.style.display = "none"; }}
+      />
+    </>
+  );
+}
+
+type LoadPhase = "loading" | "slow" | "failed" | "done";
 
 export default function ThreadPage() {
   const params = useParams();
@@ -114,10 +164,11 @@ export default function ThreadPage() {
   const { messages, options, choices, loading, error, streaming } = st;
 
   const [input, setInput] = useState("");
-  const [initialLoading, setInitialLoading] = useState(!st.loaded);
+  const [loadPhase, setLoadPhase] = useState<LoadPhase>(st.loaded ? "done" : "loading");
+  const [fetchNonce, setFetchNonce] = useState(0);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [speechSupported, setSpeechSupported] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   // ms timestamp until which sending is blocked due to a 429 rate limit.
   const [rateLimitedUntil, setRateLimitedUntil] = useState(0);
   const rateLimited = rateLimitedUntil > Date.now();
@@ -136,7 +187,7 @@ export default function ThreadPage() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const balanceRef = useRef<number | null>(null);
 
-  const thread = threads.find((t) => String(t.id) === threadId);
+  const thread = threads.find((th) => String(th.id) === threadId);
   const userInitial = getUserInitial();
 
   const tokensEnabled = tokens?.enabled === true;
@@ -145,6 +196,7 @@ export default function ThreadPage() {
     tokensEnabled && tokens.grantedThisPeriod > 0
       ? Math.max(0, tokens.balance) / tokens.grantedThisPeriod
       : null;
+  const lowBalance = remainingPct !== null && remainingPct <= 0.05;
 
   // The final answer is streaming in — show the building bubble and collapse
   // the live step group (the narration is over, the answer has started).
@@ -192,7 +244,7 @@ export default function ThreadPage() {
         refreshTokens();
         if ((balanceRef.current ?? 0) > startBalance || ticks >= 15) {
           if ((balanceRef.current ?? 0) > startBalance) {
-            showToast("Tokens added");
+            showToast(t("tokensAdded"), true);
           }
           if (pollRef.current) clearInterval(pollRef.current);
         }
@@ -210,7 +262,7 @@ export default function ThreadPage() {
       await ensurePaddle();
       openCheckout(pkg.paddlePriceId);
     } catch {
-      showToast("Couldn't open the payment window");
+      showToast(t("paymentWindowFailed"), false);
     }
   }
 
@@ -220,7 +272,7 @@ export default function ThreadPage() {
     const key = `token_warn20_${new Date().getFullYear()}-${new Date().getMonth() + 1}`;
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, "1");
-    showToast("Tokens running low");
+    showToast(t("tokensLow"), false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remainingPct]);
 
@@ -232,14 +284,21 @@ export default function ThreadPage() {
       setRateLimitedUntil(0);
       return;
     }
-    const t = setTimeout(() => setRateLimitedUntil(0), ms);
-    return () => clearTimeout(t);
+    const tm = setTimeout(() => setRateLimitedUntil(0), ms);
+    return () => clearTimeout(tm);
   }, [rateLimitedUntil]);
 
-  function showToast(msg: string) {
-    setToast(msg);
+  function showToast(msg: string, ok: boolean) {
+    setToast({ msg, ok });
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 3500);
+    toastTimerRef.current = setTimeout(() => setToast(null), 2400);
+  }
+
+  async function handleShare() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      showToast(t("linkCopied"), true);
+    } catch {}
   }
 
   useEffect(() => {
@@ -279,11 +338,11 @@ export default function ThreadPage() {
     recognition.onresult = (e: any) => {
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
+        const tr = e.results[i][0].transcript;
         if (e.results[i].isFinal) {
-          confirmedTranscriptRef.current += (confirmedTranscriptRef.current ? " " : "") + t.trim();
+          confirmedTranscriptRef.current += (confirmedTranscriptRef.current ? " " : "") + tr.trim();
         } else {
-          interim += t;
+          interim += tr;
         }
       }
       const base = inputBeforeRecordingRef.current;
@@ -306,10 +365,10 @@ export default function ThreadPage() {
       recognitionRef.current = null;
       setVoiceState("idle");
       if (e.error === "not-allowed") {
-        showToast("Microphone access is not allowed");
+        showToast(t("micNotAllowed"), false);
         setInput(inputBeforeRecordingRef.current);
       } else if (e.error === "network") {
-        showToast("Internet connection required");
+        showToast(t("netRequired"), false);
         setInput(inputBeforeRecordingRef.current);
       }
     };
@@ -327,17 +386,24 @@ export default function ThreadPage() {
 
   // Hydrate message history from the server. Backend persists steps too
   // (kind='step', run_id), so refetching restores prior runs' steps + final
-  // replies. Runs on thread change and on SSE reconnect (catch-up). Live run
-  // fields (loading/runId) are preserved — only the message list is replaced.
+  // replies. Runs on thread change, on SSE reconnect (catch-up), and on Retry
+  // from the slow/failed state. An 8s timer swaps the skeleton for E3 (slow);
+  // a failed fetch goes straight to E3 (failed).
   useEffect(() => {
     if (!threadId) return;
     let cancelled = false;
-    setInitialLoading(true);
+    setLoadPhase("loading");
+    const slowTimer = setTimeout(() => {
+      if (!cancelled) setLoadPhase((p) => (p === "loading" ? "slow" : p));
+    }, 8000);
 
     fetch(`${BASE_URL}/threads/${threadId}/messages`, {
       headers: authHeaders(),
     })
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
       .then((json) => {
         if (cancelled) return;
         const raw: Array<{
@@ -360,17 +426,21 @@ export default function ThreadPage() {
             loaded: true,
           }))
         );
+        setLoadPhase("done");
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setLoadPhase("failed");
+      })
       .finally(() => {
-        if (!cancelled) setInitialLoading(false);
+        clearTimeout(slowTimer);
       });
 
     return () => {
       cancelled = true;
+      clearTimeout(slowTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadId, reconnectNonce]);
+  }, [threadId, reconnectNonce, fetchNonce]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -438,7 +508,7 @@ export default function ThreadPage() {
         if (res.status === 429) {
           const body = await res.json().catch(() => ({}));
           const secs = parseRetryAfter(res);
-          showToast(body.error ?? "Too many requests. Please try again later.");
+          showToast(body.error ?? t("rateLimitedToast"), false);
           setRateLimitedUntil(Date.now() + secs * 1000);
           setThreadStates((prev) =>
             updateThreadState(prev, threadId, (ts) => ({ ...ts, loading: false, runId: null }))
@@ -464,7 +534,7 @@ export default function ThreadPage() {
             ...ts,
             loading: false,
             runId: null,
-            error: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+            error: err instanceof Error ? err.message : t("genericError"),
           }))
         );
       } finally {
@@ -489,36 +559,24 @@ export default function ThreadPage() {
   const composerBlocked = rateLimited || limitHit;
   const lastUserText = [...messages].reverse().find((m) => m.kind === "message" && m.role === "user")?.content;
 
+  const showInitialLoad = loadPhase !== "done" && messages.length === 0;
+
   return (
     <div className="flex h-full flex-col" style={{ background: "var(--bg)" }}>
-      {/* Toast */}
+      {/* Toast (T1) */}
       {toast && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "80px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "rgba(23,22,19,0.88)",
-            color: "white",
-            borderRadius: "12px",
-            padding: "10px 18px",
-            fontSize: "13.5px",
-            zIndex: 9999,
-            maxWidth: "90%",
-            textAlign: "center",
-            pointerEvents: "none",
-          }}
-        >
-          {toast}
+        <div className="toast" role="status" aria-live="polite">
+          {toast.ok && <span>✓</span>}
+          {toast.msg}
         </div>
       )}
 
       {/* Header */}
       <header
-        className="flex items-center gap-3 px-5"
+        className="thread-header flex items-center"
         style={{
-          height: "62px",
+          padding: "12px 24px",
+          gap: "14px",
           borderBottom: "1px solid var(--header-border)",
           background: "var(--bg)",
           flexShrink: 0,
@@ -526,7 +584,7 @@ export default function ThreadPage() {
       >
         <button
           onClick={() => router.push("/chat")}
-          className="md:hidden mr-1 rounded-lg p-1.5 transition-colors hover:bg-black/5"
+          className="md:hidden rounded-lg p-1.5 transition-colors hover:bg-black/5"
           aria-label="back"
           style={{ color: "var(--ink-muted)" }}
         >
@@ -536,41 +594,31 @@ export default function ThreadPage() {
         </button>
 
         <span
-          className="flex-1 truncate"
-          style={{ fontSize: "15px", fontWeight: 600, color: "var(--ink)" }}
+          className="title flex-1 truncate"
+          style={{ font: "500 17px/24px var(--font-bricolage)", color: "var(--ink)", minWidth: 0 }}
         >
-          {thread?.title ?? "Task"}
+          {thread?.title ?? t("threadFallback")}
         </span>
 
         <div className="flex items-center gap-3">
-          {/* Token balance chip — refreshed on tokens_debited (SSE) */}
+          {/* Token balance badge — refreshed on tokens_debited (SSE) */}
           {tokensEnabled && (
-            <span
-              className="rounded-full px-2.5 py-1 text-xs font-semibold"
-              style={{
-                background: "var(--thread-active-bg)",
-                color:
-                  remainingPct !== null && remainingPct <= 0.05
-                    ? "#dc2626"
-                    : remainingPct !== null && remainingPct <= 0.2
-                    ? "#b45309"
-                    : "var(--accent-strong)",
-              }}
-            >
-              🪙 {Math.max(0, tokens.balance)}
+            <span className={`token-badge${lowBalance ? " low" : ""}`}>
+              <i className="dot" style={{ width: 8, height: 8, borderRadius: "50%", background: lowBalance ? "var(--request-accent)" : "var(--accent)", display: "inline-block" }} />
+              <span className="count">
+                {fmtTokens(Math.max(0, tokens.balance))}{lowBalance ? ` · ${t("lowSuffix")}` : ""}
+              </span>
             </span>
           )}
           <NotificationButton />
           <button
-            style={{ fontSize: "12.5px", color: "var(--meta)" }}
-            className="hidden sm:block transition-opacity hover:opacity-60"
+            onClick={handleShare}
+            style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-soft)" }}
+            className="hidden sm:block transition-colors hover:text-[var(--ink)]"
           >
-            Share
+            {t("share")}
           </button>
-          <div
-            className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold shrink-0"
-            style={{ background: "var(--accent)", color: "#FFFFFF" }}
-          >
+          <div className="initial-avatar shrink-0" style={{ width: 30, height: 30, fontSize: "12px" }}>
             {userInitial}
           </div>
         </div>
@@ -578,29 +626,49 @@ export default function ThreadPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
-        {initialLoading && messages.length === 0 ? (
-          <div className="flex h-full items-center justify-center">
-            <span
-              className="h-5 w-5 animate-spin rounded-full border-2"
-              style={{ borderColor: "var(--sidebar-border)", borderTopColor: "var(--accent)" }}
-            />
-          </div>
+        {showInitialLoad ? (
+          loadPhase === "slow" || loadPhase === "failed" ? (
+            <div className="empty h-full">
+              <AllyAnim clip={loadPhase === "failed" ? "ally-error" : "ally-slow"} size="e3" />
+              <h2>{loadPhase === "failed" ? t("loadFailed") : t("takingLonger")}</h2>
+              {loadPhase === "slow" && <p>{t("stillOnIt")}</p>}
+              <button type="button" className="btn-secondary" onClick={() => setFetchNonce((n) => n + 1)}>
+                {t("retry")}
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="flex justify-center pt-8">
+                <AllyAnim clip="ally-loading" />
+              </div>
+              <div className="sk-thread">
+                <span className="sk-bubble right" style={{ width: "46%" }} />
+                <div className="sk-ally">
+                  <span className="sk-dot" style={{ width: 26, height: 26 }} />
+                  <div>
+                    <span className="sk-bar" style={{ width: "72%" }} />
+                    <span className="sk-bar" style={{ width: "64%" }} />
+                    <span className="sk-bar" style={{ width: "40%" }} />
+                  </div>
+                </div>
+                <span className="sk-bubble right" style={{ width: "28%", height: 30 }} />
+              </div>
+            </div>
+          )
         ) : (
           <div
-            className="mx-auto flex flex-col py-8 px-5"
-            style={{ maxWidth: "760px", gap: "26px" }}
+            className="messages mx-auto flex flex-col"
+            style={{ maxWidth: "720px", padding: "26px 24px", gap: "18px" }}
           >
             {messages.length === 0 && !loading && (
               <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/ally-logo.svg"
-                  alt="Ally"
-                  style={{ width: 44, height: 44, borderRadius: "26%", marginBottom: "4px" }}
-                />
-                <p style={{ fontSize: "22px", fontWeight: 600, color: "var(--ink)" }}>Hi, I&apos;m Ally</p>
-                <p style={{ fontSize: "14px", color: "var(--placeholder)" }}>
-                  Give me a task — I&apos;ll work your network to get it done.
+                <span className="ally-avatar" style={{ width: 44, height: 44 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/assets/ally/ally-avatar.jpg" alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                </span>
+                <p style={{ font: "500 22px/28px var(--font-bricolage)", color: "var(--ink)" }}>{t("hiIntro")}</p>
+                <p style={{ fontSize: "14px", color: "var(--ink-soft)" }}>
+                  {t("giveTaskEmpty")}
                 </p>
               </div>
             )}
@@ -623,13 +691,15 @@ export default function ThreadPage() {
                 return (
                   <div key={msg.id} className="flex justify-end">
                     <div
-                      className="max-w-[72%] px-4 py-3 whitespace-pre-wrap"
+                      className="msg-user whitespace-pre-wrap"
                       style={{
+                        alignSelf: "flex-end",
+                        maxWidth: "74%",
                         background: "var(--user-bubble-bg)",
                         color: "var(--ink)",
-                        borderRadius: "12px 12px 3px 12px",
-                        fontSize: "15px",
-                        lineHeight: "1.55",
+                        padding: "12px 16px",
+                        borderRadius: "16px 16px 4px 16px",
+                        font: "400 15px/22px var(--font-system)",
                       }}
                     >
                       {msg.content}
@@ -638,14 +708,9 @@ export default function ThreadPage() {
                 );
               }
               return (
-                <div key={msg.id} className="flex items-start gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/ally-logo.svg"
-                    alt=""
-                    style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
-                  />
-                  <div style={{ color: "var(--ink)", fontSize: "15px", lineHeight: "1.6", flex: 1 }}>
+                <div key={msg.id} className="flex items-start" style={{ gap: "10px" }}>
+                  <AllyAvatar />
+                  <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)", flex: 1, minWidth: 0 }}>
                     <ReactMarkdown components={markdownComponents}>
                       {msg.content}
                     </ReactMarkdown>
@@ -657,14 +722,9 @@ export default function ThreadPage() {
             {/* Streaming answer — built from answer_delta; replaced by the
                 authoritative reply on run_complete. */}
             {streamingActive && (
-              <div className="flex items-start gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/ally-logo.svg"
-                  alt=""
-                  style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
-                />
-                <div style={{ color: "var(--ink)", fontSize: "15px", lineHeight: "1.6", flex: 1 }}>
+              <div className="flex items-start" style={{ gap: "10px" }}>
+                <AllyAvatar />
+                <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)", flex: 1, minWidth: 0 }}>
                   <ReactMarkdown components={markdownComponents}>
                     {streaming!.text}
                   </ReactMarkdown>
@@ -680,18 +740,20 @@ export default function ThreadPage() {
                     key={opt.phone}
                     type="button"
                     onClick={() => sendMessage(`${opt.name} (${opt.phone})`)}
-                    className="flex items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-left transition-colors hover:bg-gray-50"
-                    style={{ borderColor: "var(--header-border)", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
+                    className="flex items-center gap-3 bg-white px-4 py-3 text-left transition-colors"
+                    style={{
+                      border: "1px solid var(--sidebar-border)",
+                      borderRadius: "var(--radius-tile)",
+                      boxShadow: "var(--shadow-card)",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--sidebar-border)"; }}
                   >
-                    <span
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
-                      style={{ background: "var(--thread-active-bg)", color: "var(--ink)" }}
-                    >
+                    <span className="initial-avatar" style={{ width: 32, height: 32, fontSize: "12px" }}>
                       {opt.name.charAt(0).toUpperCase()}
                     </span>
                     <span className="flex flex-col">
                       <span style={{ fontWeight: 500, color: "var(--ink)", fontSize: "14px" }}>{opt.name}</span>
-                      <span style={{ color: "var(--placeholder)", fontSize: "12.5px" }}>{opt.phone}</span>
                     </span>
                   </button>
                 ))}
@@ -706,13 +768,16 @@ export default function ThreadPage() {
                     key={`${ci}-${choice}`}
                     type="button"
                     onClick={() => sendMessage(choice)}
-                    className="rounded-full border bg-white px-4 py-2 text-left transition-colors hover:bg-gray-50"
+                    className="bg-white px-4 py-2 text-left transition-colors"
                     style={{
-                      borderColor: "var(--accent)",
-                      color: "var(--accent)",
+                      border: "1px solid var(--cta-border)",
+                      borderRadius: "var(--radius-pill)",
+                      color: "var(--accent-strong)",
                       fontSize: "14px",
                       fontWeight: 500,
                     }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-tint)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "#FFFFFF"; }}
                   >
                     {choice}
                   </button>
@@ -720,31 +785,28 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {/* Live indicator while a run is in flight and nothing streams yet */}
+            {/* Live indicator while a run is in flight and nothing streams yet:
+                the thinking clip replaces the typing dots. */}
             {loading && !streamingActive && (
               <div className="flex items-center gap-3 pl-9">
-                <div className="flex gap-1 items-center">
-                  <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.3s]" style={{ background: "var(--placeholder)" }} />
-                  <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:-0.15s]" style={{ background: "var(--placeholder)" }} />
-                  <span className="h-2 w-2 animate-bounce rounded-full" style={{ background: "var(--placeholder)" }} />
-                </div>
-                <span style={{ fontSize: "13px", color: "var(--placeholder)" }}>Working on it…</span>
+                <AllyAnim clip="ally-thinking" size="thinking" />
+                <span style={{ fontSize: "13px", color: "var(--ink-soft)" }}>{t("workingOnIt")}</span>
               </div>
             )}
 
             {/* Run error + Retry */}
             {!loading && error && (
-              <div className="flex items-start gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/ally-logo.svg"
-                  alt=""
-                  style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
-                />
+              <div className="flex items-start" style={{ gap: "10px" }}>
+                <AllyAvatar />
                 <div className="flex flex-col gap-2" style={{ flex: 1 }}>
                   <div
-                    className="rounded-lg px-4 py-3"
-                    style={{ background: "#fef2f2", color: "#dc2626", fontSize: "14px" }}
+                    className="px-4 py-3"
+                    style={{
+                      background: "var(--terra-tint)",
+                      color: "var(--danger)",
+                      fontSize: "14px",
+                      borderRadius: "var(--radius-tile)",
+                    }}
                   >
                     {error}
                   </div>
@@ -752,9 +814,9 @@ export default function ThreadPage() {
                     <button
                       type="button"
                       onClick={() => sendMessage(lastUserText, false)}
-                      className="self-start rounded-xl border border-[#C7D6C9] bg-white px-4 py-2 text-sm font-medium text-[#3E7A56] transition-colors hover:bg-[#F7F9F7]"
+                      className="btn-secondary self-start"
                     >
-                      Retry
+                      {t("retry")}
                     </button>
                   )}
                 </div>
@@ -767,10 +829,20 @@ export default function ThreadPage() {
       </div>
 
       {/* Low balance banner (≤5% remaining) */}
-      {!limitHit && remainingPct !== null && remainingPct <= 0.05 && (
+      {!limitHit && lowBalance && (
         <div className="px-4 pt-2">
-          <div className="mx-auto rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700" style={{ maxWidth: "760px" }}>
-            ⚠ Tokens almost gone — {Math.max(0, tokens!.balance)} left
+          <div
+            className="mx-auto px-4 py-2.5"
+            style={{
+              maxWidth: "720px",
+              background: "var(--terra-tint)",
+              color: "var(--request-accent)",
+              borderRadius: "var(--radius-tile)",
+              fontSize: "13.5px",
+              fontWeight: 500,
+            }}
+          >
+            {tf("tokensAlmostGone", { n: fmtTokens(Math.max(0, tokens!.balance)) })}
           </div>
         </div>
       )}
@@ -778,24 +850,24 @@ export default function ThreadPage() {
       {/* 402 limit screen */}
       {limitHit && (
         <div className="px-4 pt-2">
-          <div className="mx-auto rounded-2xl border border-[#E4E0D3] bg-[#F7F6F2] px-5 py-4 flex flex-col gap-2" style={{ maxWidth: "760px" }}>
-            <p className="text-sm font-semibold" style={{ color: "var(--ink)" }}>
-              {isTrialWallet ? "Trial tokens used up" : "Monthly tokens used up"}
+          <div className="card mx-auto flex flex-col gap-2" style={{ maxWidth: "720px" }}>
+            <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>
+              {isTrialWallet ? t("trialUsedUp") : t("monthlyUsedUp")}
             </p>
-            <p className="text-sm" style={{ color: "var(--meta)" }}>
+            <p style={{ fontSize: "13.5px", color: "var(--ink-soft)" }}>
               {isTrialWallet
-                ? "Subscribe to Ally to continue."
+                ? t("subscribeToContinue")
                 : packages.length > 0
-                ? `Renews ${nextRenewalDate()} — or add tokens now:`
-                : `Renews ${nextRenewalDate()}.`}
+                ? tf("renewsOrTopup", { date: nextRenewalDate() })
+                : tf("renewsOn", { date: nextRenewalDate() })}
             </p>
             {isTrialWallet ? (
               <button
                 type="button"
                 onClick={() => router.push("/pricing")}
-                className="self-start rounded-xl bg-[#3E7A56] px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                className="btn-primary self-start"
               >
-                Subscribe
+                {t("subscribe")}
               </button>
             ) : packages.length > 0 ? (
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -804,7 +876,7 @@ export default function ThreadPage() {
                     key={pkg.id}
                     type="button"
                     onClick={() => buyPackage(pkg)}
-                    className="flex-1 rounded-xl border border-[#C7D6C9] bg-white px-3 py-2.5 text-sm font-medium text-[#23261F] transition-colors hover:bg-[#F7F9F7]"
+                    className="btn-secondary flex-1"
                   >
                     {pkg.label}
                   </button>
@@ -817,7 +889,7 @@ export default function ThreadPage() {
 
       {/* Composer */}
       <div
-        className="px-4 py-3"
+        className="composer-wrap px-4 py-3"
         style={{
           paddingBottom: "max(12px, env(safe-area-inset-bottom))",
           background: "var(--bg)",
@@ -826,18 +898,16 @@ export default function ThreadPage() {
       >
         <style>{`
           @keyframes micPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
-            50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+            0%, 100% { box-shadow: 0 0 0 0 rgba(179,64,46,0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(179,64,46,0); }
           }
         `}</style>
-        <div className="mx-auto flex items-end gap-2" style={{ maxWidth: "760px" }}>
+        <div className="mx-auto" style={{ maxWidth: "720px" }}>
           <div
-            className="flex flex-1 items-end gap-2 px-4 py-3"
+            className="composer-pill flex items-end gap-2"
             style={{
-              background: "#FFFFFF",
-              border: voiceState === "recording" ? "1px solid rgba(239,68,68,0.4)" : "1px solid var(--header-border)",
-              borderRadius: "18px",
-              transition: "border-color 0.2s",
+              padding: "6px 6px 6px 18px",
+              borderColor: voiceState === "recording" ? "var(--danger)" : undefined,
             }}
           >
             <textarea
@@ -847,22 +917,23 @@ export default function ThreadPage() {
               onKeyDown={handleKeyDown}
               placeholder={
                 voiceState === "recording"
-                  ? "Listening..."
+                  ? t("listening")
                   : limitHit
-                  ? "Out of tokens"
+                  ? t("outOfTokens")
                   : rateLimited
-                  ? "Too many requests — please wait…"
-                  : "Give Ally a task…"
+                  ? t("rateLimitedPlaceholder")
+                  : t("composerPlaceholder")
               }
               rows={1}
               disabled={composerBlocked}
               className="flex-1 resize-none bg-transparent outline-none disabled:opacity-60"
               style={{
                 color: voiceState === "recording" ? "var(--placeholder)" : "var(--ink)",
-                fontStyle: voiceState === "recording" ? "italic" : "normal",
                 fontSize: "15px",
                 lineHeight: "1.5",
                 maxHeight: "120px",
+                paddingTop: "7px",
+                paddingBottom: "7px",
               }}
             />
 
@@ -873,10 +944,12 @@ export default function ThreadPage() {
                 onClick={handleMicClick}
                 disabled={voiceState === "processing" || composerBlocked}
                 aria-label={voiceState === "recording" ? "Stop recording" : "Start voice input"}
-                className="flex shrink-0 h-8 w-8 items-center justify-center rounded-full transition-all"
+                className="flex shrink-0 items-center justify-center rounded-full transition-all"
                 style={{
-                  background: voiceState === "recording" ? "#ef4444" : "transparent",
-                  color: voiceState === "recording" ? "white" : "var(--placeholder)",
+                  width: 38,
+                  height: 38,
+                  background: voiceState === "recording" ? "var(--danger)" : "transparent",
+                  color: voiceState === "recording" ? "white" : "var(--meta)",
                   opacity: voiceState === "processing" || composerBlocked ? 0.4 : 1,
                   animation: voiceState === "recording" ? "micPulse 1.2s ease-in-out infinite" : "none",
                 }}
@@ -891,7 +964,7 @@ export default function ThreadPage() {
                     <rect x="5" y="5" width="10" height="10" rx="1.5" />
                   </svg>
                 ) : (
-                  <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                  <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
                     <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.6" />
                     <path d="M4 10a6 6 0 0012 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                     <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -902,18 +975,30 @@ export default function ThreadPage() {
             )}
 
             {/* Send button — hidden while recording. NOT disabled during a run:
-                sending mid-run replaces the pending run. */}
+                sending mid-run replaces the pending run. Empty input = grey
+                skeleton circle; non-empty = green. */}
             {voiceState !== "recording" && (
               <button
                 type="button"
                 onClick={() => sendMessage(input)}
                 disabled={!input.trim() || composerBlocked}
-                className="flex shrink-0 h-8 w-8 items-center justify-center rounded-full transition-opacity disabled:opacity-30"
-                style={{ background: "var(--accent)" }}
+                className="flex shrink-0 items-center justify-center rounded-full transition-colors"
+                style={{
+                  width: 38,
+                  height: 38,
+                  background: input.trim() && !composerBlocked ? "var(--accent)" : "var(--skeleton)",
+                  color: input.trim() && !composerBlocked ? "#FBFAF4" : "var(--meta)",
+                }}
+                onMouseEnter={(e) => {
+                  if (input.trim() && !composerBlocked) e.currentTarget.style.background = "var(--accent-strong)";
+                }}
+                onMouseLeave={(e) => {
+                  if (input.trim() && !composerBlocked) e.currentTarget.style.background = "var(--accent)";
+                }}
                 aria-label="Send"
               >
                 <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-                  <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
             )}
@@ -934,44 +1019,28 @@ function StepGroup({ steps, live }: { steps: ChatMessage[]; live: boolean }) {
   }, [live]);
 
   return (
-    <div className="flex items-start gap-3">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="/ally-logo.svg"
-        alt=""
-        style={{ width: 22, height: 22, borderRadius: "26%", marginTop: "2px", flexShrink: 0 }}
-      />
-      <div className="flex flex-col gap-2" style={{ flex: 1 }}>
+    <div className="flex items-start" style={{ gap: "10px" }}>
+      <AllyAvatar />
+      <div className="steps" style={{ marginLeft: 0, flex: 1 }}>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-1 self-start transition-opacity hover:opacity-70"
-          style={{ fontSize: "12.5px", color: "var(--meta)", fontWeight: 500 }}
+          className="steps-toggle"
         >
           <span style={{ fontSize: "10px" }}>{open ? "▾" : "▸"}</span>
-          {open ? "Hide steps" : `Show steps (${steps.length})`}
+          {open ? t("hideSteps") : tf("showSteps", { n: steps.length })}
         </button>
-        {open &&
-          steps.map((s) => <StepLine key={s.id} text={s.content} />)}
+        {open && (
+          <div className="steps-list">
+            {steps.map((s) => (
+              <div key={s.id} className="step">
+                <span>✓</span>
+                <p>{renderStepText(s.content)}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
-  );
-}
-
-function StepLine({ text }: { text: string }) {
-  return (
-    <div
-      className="flex items-start gap-2"
-      style={{ fontSize: "13.5px", color: "var(--ink-muted)", animation: "fadeInUp 0.2s ease-out" }}
-    >
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-      <span style={{ color: "var(--accent)", lineHeight: "1.5" }}>✓</span>
-      <span style={{ lineHeight: "1.5" }}>{text}</span>
     </div>
   );
 }
