@@ -149,10 +149,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       const key = String(threadId);
       const cur = prev[key];
       if (!cur && patch.isTask !== true) return prev;
-      const next = {
-        ...prev,
-        [key]: { isTask: true, status: "working" as TaskStatus, updatedAt: Date.now(), ...cur, ...patch },
-      };
+      const base: TaskMeta = cur ?? { isTask: true, status: "working", updatedAt: Date.now() };
+      const next = { ...prev, [key]: { ...base, ...patch, isTask: true } };
       try { localStorage.setItem(TASKS_KEY, JSON.stringify(next)); } catch {}
       return next;
     });
