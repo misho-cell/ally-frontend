@@ -2,10 +2,76 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { getLocale } from "@/lib/i18n";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 const SMS_COOLDOWN = 30;
+
+// Screen-local strings (phone locale: ka → Georgian, else English).
+// Georgian: no em-dashes, never italic.
+const L = {
+  en: {
+    enterPhone: "Enter your phone number",
+    getCode: "Get code",
+    wait: (s: number) => `Wait (${s}s)`,
+    otpSent: "6-digit code sent to you on WhatsApp",
+    verify: "Verify",
+    sendSms: (s: number) => `Send via SMS (${s}s)`,
+    sendSmsNow: "Didn't get the code — send via SMS",
+    smsSent: "Code sent via SMS",
+    back: "← Back",
+    inviteOnly: "Netai is invite-only",
+    inviteOnlyBody: "Enter the number of the friend who invited you — they must be a Netai subscriber",
+    referralPlaceholder: "e.g. 5XX XX XX XX",
+    referralNotFound: "This number wasn't found or has no active subscription. Try another number",
+    continueBtn: "Continue",
+    firstTime: "First time here — enter your name",
+    namePlaceholder: "Name Surname",
+    invitedBy: "Invited by (optional)",
+    invitedByPlaceholder: "Friend's phone number",
+    signUp: "Sign up",
+    genericError: "Something went wrong",
+    invalidCode: "Invalid code",
+    cantVerify: "Couldn't verify — please try again",
+    cantProceed: "Registration couldn't proceed. Please try again later.",
+    rateLimited: "Too many requests. Please try again later.",
+    pricing: "Pricing",
+    terms: "Terms",
+    privacy: "Privacy",
+    refund: "Refund Policy",
+  },
+  ka: {
+    enterPhone: "შეიყვანე შენი ტელეფონის ნომერი",
+    getCode: "კოდის მიღება",
+    wait: (s: number) => `მოიცადე (${s}წმ)`,
+    otpSent: "6-ნიშნა კოდი გამოგიგზავნეთ WhatsApp-ზე",
+    verify: "დადასტურება",
+    sendSms: (s: number) => `SMS-ით გაგზავნა (${s}წმ)`,
+    sendSmsNow: "კოდი არ მოვიდა? გაგზავნე SMS-ით",
+    smsSent: "კოდი გაიგზავნა SMS-ით",
+    back: "← უკან",
+    inviteOnly: "Netai მხოლოდ მოწვევით შემოდიხარ",
+    inviteOnlyBody: "შეიყვანე იმ მეგობრის ნომერი, ვინც მოგიწვია. მას უნდა რქონდეს Netai-ს აქტიური გამოწერა",
+    referralPlaceholder: "მაგ. 5XX XX XX XX",
+    referralNotFound: "ეს ნომერი ვერ მოიძებნა ან აქტიური გამოწერა არ აქვს. სცადე სხვა ნომერი",
+    continueBtn: "გაგრძელება",
+    firstTime: "პირველად ხარ აქ? შეიყვანე სახელი",
+    namePlaceholder: "სახელი გვარი",
+    invitedBy: "ვინ მოგიწვია? (არასავალდებულო)",
+    invitedByPlaceholder: "მეგობრის ნომერი",
+    signUp: "რეგისტრაცია",
+    genericError: "რაღაც შეცდომა მოხდა",
+    invalidCode: "არასწორი კოდი",
+    cantVerify: "ვერ გადამოწმდა, სცადე თავიდან",
+    cantProceed: "რეგისტრაცია ვერ გაგრძელდა. სცადე მოგვიანებით.",
+    rateLimited: "ძალიან ბევრი მოთხოვნაა. სცადე მოგვიანებით.",
+    pricing: "ფასები",
+    terms: "წესები",
+    privacy: "კონფიდენციალურობა",
+    refund: "თანხის დაბრუნება",
+  },
+};
 
 type Step = "phone" | "otp" | "referral" | "name";
 
@@ -22,10 +88,8 @@ function clearToken() {
   document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
 }
 
-const inputCls = "rounded-xl border border-[#E4E0D3] px-4 py-3 text-sm outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10";
-const primaryBtnCls = "flex h-12 items-center justify-center rounded-xl bg-[#3E7A56] text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60";
-
 export default function LoginPage() {
+  const s = L[getLocale()];
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -133,7 +197,7 @@ export default function LoginPage() {
       const raw = res.headers.get("Retry-After");
       const secs = raw ? parseInt(raw, 10) : NaN;
       const err = new Error(
-        json.error ?? json.message ?? "Too many requests. Please try again later."
+        json.error ?? json.message ?? s.rateLimited
       ) as PostError;
       err.retryAfter = Number.isFinite(secs) && secs > 0 ? secs : 30;
       throw err;
@@ -166,7 +230,7 @@ export default function LoginPage() {
       await post("/auth/request-otp", { phone, actionType: "AUTH" });
       setStep("otp");
     } catch (err) {
-      handleError(err, "Something went wrong");
+      handleError(err, s.genericError);
     } finally {
       setLoading(false);
     }
@@ -186,7 +250,7 @@ export default function LoginPage() {
       setStep("referral");
     } else {
       // Unknown ineligible reason — fail closed with a generic message.
-      setError("Registration couldn't proceed. Please try again later.");
+      setError(s.cantProceed);
     }
   }
 
@@ -216,11 +280,11 @@ export default function LoginPage() {
         const ee = eligErr as PostError;
         if (ee?.retryAfter) startRateLimit(ee.retryAfter);
         // Do NOT fail open — stay here with a retry message.
-        setError("Couldn't verify — please try again");
+        setError(s.cantVerify);
       }
       setLoading(false);
     } catch (err) {
-      handleError(err, "Invalid code");
+      handleError(err, s.invalidCode);
       setLoading(false);
     }
   }
@@ -240,7 +304,7 @@ export default function LoginPage() {
         confirmedReferralRef.current = referralInput;
         setStep("name");
       } else {
-        setReferralError("This number wasn't found or has no active subscription. Try another number");
+        setReferralError(s.referralNotFound);
       }
     } catch (err) {
       const ee = err as PostError;
@@ -248,7 +312,7 @@ export default function LoginPage() {
         startRateLimit(ee.retryAfter);
         setReferralError(ee.message);
       } else {
-        setReferralError("Couldn't verify — please try again");
+        setReferralError(s.cantVerify);
       }
     } finally {
       setLoading(false);
@@ -273,13 +337,13 @@ export default function LoginPage() {
     } catch (err) {
       const e2 = err as PostError;
       if (e2?.retryAfter) {
-        handleError(err, "Something went wrong");
+        handleError(err, s.genericError);
       } else {
         // Server re-checks the gate at register time (e.g. the referrer's
         // subscription lapsed between eligibility and register). Show the
         // server's error and send the user back to the referral screen.
         setLoading(false);
-        setReferralError(e2 instanceof Error ? e2.message : "Something went wrong");
+        setReferralError(e2 instanceof Error ? e2.message : s.genericError);
         confirmedReferralRef.current = null;
         setReferralInput("");
         setStep("referral");
@@ -292,41 +356,28 @@ export default function LoginPage() {
   const rateLimited = rlSecs > 0;
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-between bg-white px-4 py-12">
+    <div className="flex min-h-full flex-col items-center justify-between px-4 py-12" style={{ background: "var(--bg)" }}>
       {/* SMS toast */}
       {smsToast && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "80px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "rgba(23,22,19,0.88)",
-            color: "white",
-            borderRadius: "12px",
-            padding: "10px 18px",
-            fontSize: "13.5px",
-            zIndex: 9999,
-            maxWidth: "90%",
-            textAlign: "center",
-            pointerEvents: "none",
-          }}
-        >
-          {smsToast}
-        </div>
+        <div className="toast" role="status" aria-live="polite">{smsToast}</div>
       )}
 
       <div className="flex-1 flex flex-col items-center justify-center w-full">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center justify-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/ally-logo.svg" alt="Ally" width={30} height={30} style={{ borderRadius: "26%" }} />
-            <span className="text-2xl font-semibold tracking-tight text-[#23261F]">Ally</span>
+            <span className="ally-avatar" style={{ width: 30, height: 30 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+            </span>
+            <span style={{ font: "500 26px/32px var(--font-bricolage)", color: "var(--ink)" }}>Netai</span>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-[#E4E0D3] bg-white p-6 flex flex-col gap-4">
+          <div className="card flex flex-col gap-4 overflow-hidden">
             {error && (
-              <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div
+                className="px-4 py-3 text-sm"
+                style={{ background: "var(--terra-tint)", color: "var(--danger)", borderRadius: "var(--radius-tile)" }}
+              >
                 {error}
                 {rateLimited && ` (${rlSecs}s)`}
               </div>
@@ -334,26 +385,24 @@ export default function LoginPage() {
 
             {step === "phone" && (
               <form onSubmit={handlePhoneSubmit} className="flex flex-col gap-4">
-                <p className="text-sm text-[#8A8778]">Enter your phone number</p>
+                <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.enterPhone}</p>
                 <input
                   type="tel"
                   required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+995555123456"
-                  className={inputCls}
+                  className="input-pill"
                 />
-                <button type="submit" disabled={loading || rateLimited} className={primaryBtnCls}>
-                  {loading ? <Spinner /> : rateLimited ? `Wait (${rlSecs}s)` : "Get code"}
+                <button type="submit" disabled={loading || rateLimited} className="btn-primary h-12">
+                  {loading ? <Spinner /> : rateLimited ? s.wait(rlSecs) : s.getCode}
                 </button>
               </form>
             )}
 
             {step === "otp" && (
               <form onSubmit={handleOtpSubmit} className="flex flex-col gap-4">
-                <p className="text-sm text-[#8A8778]">
-                  6-digit code sent to you on WhatsApp
-                </p>
+                <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.otpSent}</p>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -363,14 +412,14 @@ export default function LoginPage() {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                   placeholder="000000"
-                  className={`${inputCls} text-center text-2xl tracking-widest`}
+                  className="input-pill text-center text-2xl tracking-widest"
                 />
                 <button
                   type="submit"
                   disabled={loading || otp.length !== 6 || rateLimited}
-                  className={primaryBtnCls}
+                  className="btn-primary h-12"
                 >
-                  {loading ? <Spinner /> : rateLimited ? `Wait (${rlSecs}s)` : "Verify"}
+                  {loading ? <Spinner /> : rateLimited ? s.wait(rlSecs) : s.verify}
                 </button>
 
                 {/* SMS resend */}
@@ -378,23 +427,24 @@ export default function LoginPage() {
                   type="button"
                   onClick={handleSmsResend}
                   disabled={smsCooldown > 0 || smsLoading || rateLimited}
-                  className="flex h-10 items-center justify-center rounded-xl border border-[#E4E0D3] text-xs font-medium text-[#8A8778] transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-secondary h-10 text-xs disabled:cursor-not-allowed"
                 >
                   {smsLoading ? (
                     <Spinner dark />
                   ) : smsCooldown > 0 ? (
-                    `Send via SMS (${smsCooldown}s)`
+                    s.sendSms(smsCooldown)
                   ) : (
-                    "Didn't get the code — send via SMS"
+                    s.sendSmsNow
                   )}
                 </button>
 
                 <button
                   type="button"
                   onClick={() => { setStep("phone"); setOtp(""); setError(""); otpPassedRef.current = false; }}
-                  className="text-xs text-[#8A8778] hover:text-[#23261F]"
+                  className="text-xs transition-colors"
+                  style={{ color: "var(--ink-soft)" }}
                 >
-                  ← Back
+                  {s.back}
                 </button>
               </form>
             )}
@@ -402,10 +452,8 @@ export default function LoginPage() {
             {step === "referral" && (
               <form onSubmit={handleReferralSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                  <p className="text-base font-semibold text-[#23261F]">Ally is invite-only</p>
-                  <p className="text-sm text-[#8A8778]">
-                    Enter the number of the friend who invited you — they must be an Ally subscriber
-                  </p>
+                  <p style={{ font: "500 17px/24px var(--font-bricolage)", color: "var(--ink)" }}>{s.inviteOnly}</p>
+                  <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.inviteOnlyBody}</p>
                 </div>
                 <input
                   type="tel"
@@ -413,56 +461,54 @@ export default function LoginPage() {
                   autoFocus
                   value={referralInput}
                   onChange={(e) => { setReferralInput(e.target.value); setReferralError(""); }}
-                  placeholder="e.g. 5XX XX XX XX"
-                  className={inputCls}
+                  placeholder={s.referralPlaceholder}
+                  className="input-pill"
                 />
                 {referralError && (
-                  <p className="text-sm text-red-600">{referralError}</p>
+                  <p className="text-sm" style={{ color: "var(--danger)" }}>{referralError}</p>
                 )}
                 <button
                   type="submit"
                   disabled={loading || !referralInput.trim() || rateLimited}
-                  className={primaryBtnCls}
+                  className="btn-primary h-12"
                 >
-                  {loading ? <Spinner /> : rateLimited ? `Wait (${rlSecs}s)` : "Continue"}
+                  {loading ? <Spinner /> : rateLimited ? s.wait(rlSecs) : s.continueBtn}
                 </button>
               </form>
             )}
 
             {step === "name" && (
               <form onSubmit={handleNameSubmit} className="flex flex-col gap-4">
-                <p className="text-sm text-[#8A8778]">
-                  First time here — enter your name
-                </p>
+                <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.firstTime}</p>
                 <input
                   type="text"
                   required
                   autoFocus
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Name Surname"
-                  className={inputCls}
+                  placeholder={s.namePlaceholder}
+                  className="input-pill"
                 />
                 {/* Optional referrer — hidden when the invite gate already captured one.
                     Builds the referral chain in every mode; no validation needed. */}
                 {!confirmedReferralRef.current && (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs text-[#8A8778]">Invited by (optional)</label>
+                    <label className="text-xs" style={{ color: "var(--ink-soft)" }}>{s.invitedBy}</label>
                     <input
                       type="tel"
                       value={inviteInput}
                       onChange={(e) => setInviteInput(e.target.value)}
-                      placeholder="Friend's phone number"
-                      className={inputCls}
+                      placeholder={s.invitedByPlaceholder}
+                      className="input-pill"
                     />
                   </div>
                 )}
                 <button
                   type="submit"
                   disabled={loading || !name.trim() || rateLimited}
-                  className={primaryBtnCls}
+                  className="btn-primary h-12"
                 >
-                  {loading ? <Spinner /> : rateLimited ? `Wait (${rlSecs}s)` : "Sign up"}
+                  {loading ? <Spinner /> : rateLimited ? s.wait(rlSecs) : s.signUp}
                 </button>
               </form>
             )}
@@ -471,11 +517,11 @@ export default function LoginPage() {
       </div>
 
       {/* Legal footer */}
-      <div className="mt-8 flex flex-wrap justify-center gap-4 text-xs text-[#8A8778]">
-        <Link href="/pricing" className="hover:text-[#23261F] transition-colors">Pricing</Link>
-        <Link href="/terms" className="hover:text-[#23261F] transition-colors">Terms</Link>
-        <Link href="/privacy" className="hover:text-[#23261F] transition-colors">Privacy</Link>
-        <Link href="/refund" className="hover:text-[#23261F] transition-colors">Refund Policy</Link>
+      <div className="mt-8 flex flex-wrap justify-center gap-4 text-xs" style={{ color: "var(--meta)" }}>
+        <Link href="/pricing" className="transition-colors hover:text-[var(--ink)]">{s.pricing}</Link>
+        <Link href="/terms" className="transition-colors hover:text-[var(--ink)]">{s.terms}</Link>
+        <Link href="/privacy" className="transition-colors hover:text-[var(--ink)]">{s.privacy}</Link>
+        <Link href="/refund" className="transition-colors hover:text-[var(--ink)]">{s.refund}</Link>
       </div>
     </div>
   );
@@ -484,7 +530,7 @@ export default function LoginPage() {
     setSmsLoading(true);
     try {
       await post("/auth/resend-otp", { phone, actionType: "AUTH" });
-      showSmsToast("Code sent via SMS");
+      showSmsToast(s.smsSent);
       // restart cooldown
       setSmsCooldown(SMS_COOLDOWN);
       if (cooldownRef.current) clearInterval(cooldownRef.current);
@@ -500,7 +546,7 @@ export default function LoginPage() {
     } catch (err) {
       const e = err as PostError;
       if (e?.retryAfter) startRateLimit(e.retryAfter);
-      showSmsToast(e instanceof Error ? e.message : "Something went wrong");
+      showSmsToast(e instanceof Error ? e.message : s.genericError);
     } finally {
       setSmsLoading(false);
     }
