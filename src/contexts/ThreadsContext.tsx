@@ -72,6 +72,9 @@ export type TokenBalance = {
 type Ctx = {
   threads: Thread[];
   setThreads: Dispatch<SetStateAction<Thread[]>>;
+  // true once the first GET /threads has resolved — empty-state text may only
+  // render after this (skeletons show before).
+  threadsLoaded: boolean;
   threadStates: Record<string, ThreadState>;
   setThreadStates: Dispatch<SetStateAction<Record<string, ThreadState>>>;
   // Bumped when the SSE stream (re)connects, so open threads re-fetch history
@@ -79,16 +82,19 @@ type Ctx = {
   reconnectNonce: number;
   tokens: TokenBalance | null;
   refreshTokens: () => void;
+  createThread: () => void;
 };
 
 export const ThreadsContext = createContext<Ctx>({
   threads: [],
   setThreads: () => {},
+  threadsLoaded: false,
   threadStates: {},
   setThreadStates: () => {},
   reconnectNonce: 0,
   tokens: null,
   refreshTokens: () => {},
+  createThread: () => {},
 });
 
 export const useThreads = () => useContext(ThreadsContext);
