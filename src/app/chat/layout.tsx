@@ -20,7 +20,8 @@ import {
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const TASKS_KEY = "netai_tasks";
 const REQ_KEY = "netai_req_resolved";
-const SNOOZE_MS = 12 * 60 * 60 * 1000;
+// Snoozed requests re-surface after the backend default (3 days).
+const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
@@ -82,7 +83,6 @@ function getSpeechRecognition(): any {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
 
-// Small stage-animation crop box (messenger §5). Hidden at 768-1023 via CSS.
 function AnimBox({ status, size }: { status: TaskStatus; size: number }) {
   const clip =
     status === "needs_you" ? "ally-walk" :
@@ -133,11 +133,12 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const homeInputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+  const threadsRef = useRef<Thread[]>([]);
   pathnameRef.current = pathname;
+  threadsRef.current = threads;
 
   const isOnThread = pathname !== "/chat";
 
-  // Hydrate persisted task metadata + resolved requests.
   useEffect(() => {
     setTasks(loadJson<Record<string, TaskMeta>>(TASKS_KEY, {}));
     setResolvedRequests(loadJson<Record<string, { action: string; at: number }>>(REQ_KEY, {}));
@@ -147,7 +148,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     setTasks((prev) => {
       const key = String(threadId);
       const cur = prev[key];
-      // Only track threads explicitly created as goals (or already tracked).
       if (!cur && patch.isTask !== true) return prev;
       const next = {
         ...prev,
@@ -190,7 +190,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     } catch {}
   }, []);
 
-  // Silent push re-subscribe (unchanged from Phase 1).
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
@@ -218,8 +217,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     })();
   }, []);
 
-  // One persistent SSE connection (unchanged transport; Phase 2 adds task
-  // status transitions on run events).
   useEffect(() => {
     loadThreads();
     refreshTokens();
@@ -250,6 +247,27 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 );
               }
               break;
+
+            // Partial patch: only changed fields arrive (status / status_line /
+            // is_task / generated title). Card re-renders in place.
+            case "thread_updated": {
+              const patch = data.thread;
+              if (patch?.id != null) {
+                setThreads((prev) =>
+                  prev.map((th) => {
+                    if (String(th.id) !== String(patch.id)) return th;
+                    return {
+                      ...th,
+                      ...(patch.status !== undefined ? { status: patch.status } : null),
+                      ...(patch.status_line !== undefined ? { status_line: patch.status_line } : null),
+                      ...(patch.is_task !== undefined ? { is_task: patch.is_task } : null),
+                      ...(patch.title ? { title: patch.title } : null),
+                    };
+                  })
+                );
+              }
+              break;
+            }
 
             case "tokens_debited":
               refreshTokens();
@@ -328,11 +346,12 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       runId: null,
                       error: null,
                       streaming: null,
+                      // StructuredResult (§7) — render only when the backend sent it.
+                      result: data.result && typeof data.result === "object" ? data.result : null,
                     };
                   })
                 );
-                // Task status transition: a question for the user → needs_you;
-                // otherwise she reported and is waiting on the world.
+                // Fallback transition — the backend's thread_updated wins when it arrives.
                 patchTask(data.threadId, {
                   status: hasFollowup ? "needs_you" : "waiting",
                   statusLine: typeof data.reply === "string" ? data.reply.replace(/\s+/g, " ").slice(0, 80) : undefined,
@@ -370,7 +389,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     return () => ctrl.abort();
   }, [loadThreads, refreshTokens, patchTask]);
 
-  // Send a message inside a thread (used by createTask and request actions).
   const sendIntoThread = useCallback(async (threadId: string, text: string, echo: boolean) => {
     const sentinel = `pending-${crypto.randomUUID()}`;
     setThreadStates((prev) =>
@@ -385,6 +403,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         loading: true,
         runId: sentinel,
         streaming: null,
+        result: null,
       }))
     );
     const res = await fetch(`${BASE_URL}/threads/${threadId}/message`, {
@@ -404,8 +423,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     homeInputRef.current?.focus();
   }, []);
 
-  // Phase 2: any composer input on home creates a goal (messenger §9.3).
-  // Optimistic title = the user's own words trimmed; backend naming wins later.
   const createTask = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || creating) return;
@@ -441,32 +458,50 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     }
   }, [creating, router, patchTask, sendIntoThread]);
 
-  // RequestActionRow: optimistic one-tap resolve (request-actions addendum).
-  // Stub transport: the decision is sent as a normal message into the request
-  // thread (answering in text counts, messenger §6); dedicated idempotent
-  // endpoints are a backend follow-up. No spinner, no disabled state.
+  // One-tap request resolve (addendum A), optimistic. Uses the dedicated
+  // idempotent endpoints when request_ref is present on the thread; falls
+  // back to a text reply into the thread when it isn't. 409 = already
+  // answered elsewhere — keep it resolved. Silent retry ×3 on network errors,
+  // then the row quietly returns.
   const resolveRequest = useCallback((threadId: string, action: "accept" | "deny" | "later") => {
     const next = { ...resolvedRequests, [threadId]: { action, at: Date.now() } };
     setResolvedRequests(next);
     try { localStorage.setItem(REQ_KEY, JSON.stringify(next)); } catch {}
-    const msg = action === "accept" ? t("reqAcceptMsg") : action === "deny" ? t("reqDenyMsg") : t("reqLaterMsg");
-    // Fire-and-forget with silent retries (×3).
-    (async () => {
-      for (let i = 0; i < 3; i++) {
-        try {
-          await sendIntoThread(threadId, msg, true);
-          return;
-        } catch {
-          await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
-        }
-      }
-      // Terminal failure: quietly un-resolve so the row returns.
+
+    const unresolve = () => {
       setResolvedRequests((prev) => {
         const copy = { ...prev };
         delete copy[threadId];
         try { localStorage.setItem(REQ_KEY, JSON.stringify(copy)); } catch {}
         return copy;
       });
+    };
+
+    const ref = threadsRef.current.find((x) => String(x.id) === threadId)?.request_ref;
+    const fallbackMsg = action === "accept" ? t("reqAcceptMsg") : action === "deny" ? t("reqDenyMsg") : t("reqLaterMsg");
+
+    (async () => {
+      for (let i = 0; i < 3; i++) {
+        try {
+          if (ref) {
+            const path = action === "accept" ? "accept" : action === "deny" ? "decline" : "snooze";
+            const res = await fetch(`${BASE_URL}/requests/${ref}/${path}`, {
+              method: "POST",
+              headers: authHeaders({ "Content-Type": "application/json" }),
+              body: JSON.stringify({}),
+            });
+            if (res.ok || res.status === 409) return; // 409: already answered — stays resolved
+            if (res.status === 404 || res.status === 400) { unresolve(); return; }
+            throw new Error(String(res.status));
+          } else {
+            await sendIntoThread(threadId, fallbackMsg, true);
+            return;
+          }
+        } catch {
+          await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+        }
+      }
+      unresolve();
     })();
   }, [resolvedRequests, sendIntoThread]);
 
@@ -526,7 +561,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     if (th.type !== "incoming_request") return false;
     const r = resolvedRequests[String(th.id)];
     if (!r) return true;
-    if (r.action === "later") return now - r.at > SNOOZE_MS; // re-surface next session
+    if (r.action === "later") return now - r.at > SNOOZE_MS;
     return false;
   });
 
@@ -550,7 +585,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   function goalTitle(th: Thread): string {
     const meta = tasks[String(th.id)];
     const backend = th.title;
-    // Prefer a real backend name; fall back to the user's own words.
     if (backend && backend !== "New task" && backend !== "ახალი დავალება" && backend !== "New chat") return backend;
     return meta?.title || backend || t("taskFallback");
   }
@@ -573,7 +607,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             gap: "12px",
           }}
         >
-          {/* Header: avatar + wordmark + honest presence line (§2.1) */}
           <div className="flex items-center gap-2.5 pl-1">
             <span className="ally-avatar" style={{ width: 30, height: 30 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -589,7 +622,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
 
-          {/* Lists */}
           <div className="flex-1 overflow-y-auto flex flex-col gap-[3px]">
             {!threadsLoaded ? (
               <div className="flex flex-col gap-2 pt-1">
@@ -601,7 +633,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               </div>
             ) : (
               <>
-                {/* Incoming requests — RequestActionRow (one-tap resolve) */}
                 {visibleRequests.length > 0 && (
                   <section className="mb-2 flex flex-col gap-2">
                     <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("requestsLabel")}</p>
@@ -617,7 +648,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   </section>
                 )}
 
-                {/* Active goals */}
                 <section className="flex flex-col gap-[3px]">
                   <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("inProgress")}</p>
                   {active.map(({ thread, status }) => (
@@ -636,7 +666,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   )}
                 </section>
 
-                {/* Finished goals — 65% opacity, max 5 + view all */}
                 {finished.length > 0 && (
                   <section className="mt-2 flex flex-col gap-[3px]" style={{ opacity: 0.65 }}>
                     <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("finishedLabel")}</p>
@@ -661,7 +690,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   </section>
                 )}
 
-                {/* Legacy chats — quiet link, old threads are NOT goals (§2.5) */}
                 {legacyThreads.length > 0 && (
                   <section className="mt-3 flex flex-col gap-[2px]">
                     <button
@@ -694,7 +722,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             )}
           </div>
 
-          {/* Home composer — pinned; any input becomes a goal (§2.6) */}
           <form
             onSubmit={(e) => { e.preventDefault(); createTask(homeInput); }}
             className="flex items-center gap-2"
@@ -747,7 +774,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </button>
           </form>
 
-          {/* Footer */}
           <div className="flex items-center gap-2.5" style={{ borderTop: "1px solid var(--sidebar-border)", paddingTop: "10px" }}>
             <Link href="/profile" className="initial-avatar transition-opacity hover:opacity-80" style={{ width: 28, height: 28, fontSize: "12px" }}>
               {user.initial}
@@ -773,8 +799,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   );
 }
 
-// Compact TaskRow (desktop addendum): name + status pill + 40px stage clip.
-// No status lines, no timestamps — those live inside the open goal.
 function TaskRow({ title, status, href, active }: { title: string; status: TaskStatus; href: string; active: boolean }) {
   const edge = status === "needs_you" ? "var(--request-accent)" : "var(--accent)";
   return (
@@ -797,8 +821,6 @@ function TaskRow({ title, status, href, active }: { title: string; status: TaskS
   );
 }
 
-// RequestActionRow (addendum A): one-tap მიიღე/უარი/მერე on the row itself.
-// Tapping the card (not a button) opens the thread for details.
 function RequestActionRow({
   thread, resolved, onResolve, active,
 }: {

@@ -7,19 +7,19 @@ export type Thread = {
   title: string;
   last_message?: string;
   updated_at: string;
-  // Phase 2 backend fields (messenger handover §9.1) — optional until the
-  // backend ships them; the frontend falls back to session-derived state.
+  // Phase 2 backend fields (messenger handover §9.1).
   status?: TaskStatus;
   status_line?: string | null;
   is_task?: boolean;
+  // One-tap request endpoints key (incoming_request threads).
+  request_ref?: string | null;
 };
 
 // §4 status words — the only state language.
 export type TaskStatus = "working" | "waiting" | "needs_you" | "done" | "failed";
 
-// Frontend-tracked task metadata (stub for messenger §9.1 until the backend
-// persists status/status_line/title). Kept in localStorage so goals survive
-// reloads; backend fields win when present.
+// Frontend fallback metadata — used only when the backend fields are absent
+// (optimistic title at creation, live-run status before thread_updated lands).
 export type TaskMeta = {
   isTask: boolean;
   status: TaskStatus;
@@ -27,6 +27,9 @@ export type TaskMeta = {
   title?: string;
   updatedAt: number;
 };
+
+// StructuredResult payload from run_complete (§7) — all fields optional.
+export type ResultData = { who?: string; when?: string; where?: string; topic?: string };
 
 export type ChatMessage = {
   id: string;
@@ -47,6 +50,7 @@ export type ThreadState = {
   error: string | null;
   loaded: boolean;
   streaming: { runId: string | null; text: string } | null;
+  result: ResultData | null;
 };
 
 export const DEFAULT_THREAD_STATE: ThreadState = {
@@ -58,6 +62,7 @@ export const DEFAULT_THREAD_STATE: ThreadState = {
   error: null,
   loaded: false,
   streaming: null,
+  result: null,
 };
 
 export function updateThreadState(
@@ -87,11 +92,8 @@ type Ctx = {
   tokens: TokenBalance | null;
   refreshTokens: () => void;
   createThread: () => void;
-  // Phase 2: create a named goal from any composer input (home or +).
   createTask: (text: string) => Promise<void>;
-  // Per-thread task metadata (status pills, presence count).
   tasks: Record<string, TaskMeta>;
-  // Resolve an incoming request with one tap (optimistic).
   resolveRequest: (threadId: string, action: "accept" | "deny" | "later") => void;
   resolvedRequests: Record<string, { action: string; at: number }>;
 };
@@ -114,8 +116,8 @@ export const ThreadsContext = createContext<Ctx>({
 
 export const useThreads = () => useContext(ThreadsContext);
 
-// Effective status for a thread: backend field wins, then live run state,
-// then stored meta. Returns null for threads that are not goals (legacy).
+// Effective status: backend `status` wins, then a live in-flight run, then
+// stored fallback meta. Returns null for threads that are not goals (legacy).
 export function taskStatusOf(
   thread: Thread,
   ts: ThreadState | undefined,
