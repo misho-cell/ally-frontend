@@ -9,8 +9,8 @@ import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { getLocale } from "@/lib/i18n";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const MCP_URL = "https://api.allyapp.one/mcp";
-const SITE_URL = "https://allyapp.one";
+const MCP_URL = "https://api.netai.guru/mcp";
+const SITE_URL = "https://netai.guru";
 
 // Screen-local strings (phone locale: ka → Georgian, else English).
 // Georgian: no em-dashes, never italic.
