@@ -3,30 +3,28 @@ import { createContext, useContext, type Dispatch, type SetStateAction } from "r
 
 export type Thread = {
   id: number;
-  type: "regular" | "incoming_request" | "outgoing_request";
+  // incoming_ask (v68): another user's assistant asking THIS user a question.
+  // Plain chat — no accept/decline UI; the backend picks up the first reply.
+  type: "regular" | "incoming_request" | "outgoing_request" | "incoming_ask";
   title: string;
   last_message?: string;
   updated_at: string;
-  // Phase 2 backend fields (messenger handover §9.1) — the server is the only
-  // source of task state.
   status?: TaskStatus;
   status_line?: string | null;
   is_task?: boolean;
   request_ref?: string | null;
 };
 
-// §4 status words — the only state language.
 export type TaskStatus = "working" | "waiting" | "needs_you" | "done" | "failed";
 
-// StructuredResult payload from run_complete (§7) — all fields optional.
+const KNOWN_STATUSES: readonly string[] = ["working", "waiting", "needs_you", "done", "failed"];
+
 export type ResultData = { who?: string; when?: string; where?: string; topic?: string };
 
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  // 'error' = persisted failed-run marker — rendered as a system block with
-  // Retry, never as an assistant bubble.
   kind: "message" | "step" | "error";
   runId: string | null;
 };
@@ -85,11 +83,12 @@ type Ctx = {
   refreshTokens: () => void;
   createThread: () => void;
   createTask: (text: string) => Promise<void>;
-  // In-memory optimistic titles (the user's own words) until the backend's
-  // generated title arrives via thread_updated. Not persisted.
   titles: Record<string, string>;
   resolveRequest: (threadId: string, action: "accept" | "deny" | "later") => void;
   resolvedRequests: Record<string, { action: string; at: number }>;
+  // Bumped per-thread on thread_updated — an open thread refetches its
+  // messages so task-engine messages appear without any user action (v68 #5).
+  threadBumps: Record<string, number>;
 };
 
 export const ThreadsContext = createContext<Ctx>({
@@ -106,13 +105,14 @@ export const ThreadsContext = createContext<Ctx>({
   titles: {},
   resolveRequest: () => {},
   resolvedRequests: {},
+  threadBumps: {},
 });
 
 export const useThreads = () => useContext(ThreadsContext);
 
-// Effective status: the SERVER decides (F2). The only local override is a run
-// that is in flight right now — shown as working until thread_updated lands.
-// Returns null for threads that are not goals (legacy chats).
+// Effective status: the SERVER decides. Unknown future statuses degrade to
+// "working" instead of breaking the UI. Live in-flight run overrides until
+// thread_updated lands. Returns null for non-goal threads (legacy, asks).
 export function taskStatusOf(
   thread: Thread,
   ts: ThreadState | undefined
@@ -120,7 +120,9 @@ export function taskStatusOf(
   if (thread.type !== "regular") return null;
   if (!thread.is_task && !thread.status) return null;
   if (ts?.loading) return "working";
-  return thread.status ?? "working";
+  const s = thread.status;
+  if (s && KNOWN_STATUSES.includes(s)) return s;
+  return "working";
 }
 
 export function forceLogin() {
