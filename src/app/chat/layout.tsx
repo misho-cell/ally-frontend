@@ -19,7 +19,6 @@ import {
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const REQ_KEY = "netai_req_resolved";
-// Snoozed requests re-surface after the backend default (3 days).
 const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
 
 function getToken() {
@@ -118,6 +117,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [tokens, setTokens] = useState<TokenBalance | null>(null);
   const [titles, setTitles] = useState<Record<string, string>>({});
+  const [threadBumps, setThreadBumps] = useState<Record<string, number>>({});
   const [resolvedRequests, setResolvedRequests] = useState<Record<string, { action: string; at: number }>>({});
   const [toast, setToast] = useState<string | null>(null);
   const [showAllDone, setShowAllDone] = useState(false);
@@ -183,9 +183,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     } catch {}
   }, []);
 
-  // Push subscribe (F7): the backend cleared push_subscriptions, so we
-  // re-register on EVERY app open when permission is granted — subscribe() is
-  // idempotent client-side and the POST refreshes the server row.
+  // Push subscribe: re-register on EVERY app open when permission is granted.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
@@ -243,8 +241,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               }
               break;
 
-            // Partial patch: only fields that arrived are applied — never
-            // overwrite present values with undefined (F2).
+            // Partial patch: merge only the fields that arrived. Also bumps the
+            // thread so an open view refetches messages (task engine can write
+            // without any user action — v68 #5).
             case "thread_updated": {
               const patch = data.thread;
               if (patch?.id != null) {
@@ -261,6 +260,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     };
                   })
                 );
+                setThreadBumps((prev) => ({
+                  ...prev,
+                  [String(patch.id)]: (prev[String(patch.id)] ?? 0) + 1,
+                }));
               }
               break;
             }
@@ -340,12 +343,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       runId: null,
                       error: null,
                       streaming: null,
-                      // StructuredResult (§7) — render only when the backend sent it.
                       result: data.result && typeof data.result === "object" ? data.result : null,
                     };
                   })
                 );
-                // Status transitions arrive via thread_updated (server-owned).
                 loadThreads();
               }
               break;
@@ -433,8 +434,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       const json = await res.json();
       const thread: Thread = json.data ?? json;
       setThreads((prev) => dedup([thread, ...prev.filter((th) => String(th.id) !== String(thread.id))]));
-      // Optimistic in-memory title — the backend's generated title replaces it
-      // via thread_updated.
       setTitles((prev) => ({
         ...prev,
         [String(thread.id)]: trimmed.length > 42 ? trimmed.slice(0, 42) + "…" : trimmed,
@@ -448,10 +447,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     }
   }, [creating, router, sendIntoThread]);
 
-  // One-tap request resolve (F3), optimistic. Dedicated idempotent endpoints
-  // when request_ref is present; text-reply fallback otherwise. already:true
-  // and 409 both leave the row resolved (409 additionally surfaces the
-  // server's error text). 404/400 quietly return the row.
   const resolveRequest = useCallback((threadId: string, action: "accept" | "deny" | "later") => {
     const next = { ...resolvedRequests, [threadId]: { action, at: Date.now() } };
     setResolvedRequests(next);
@@ -480,11 +475,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               body: JSON.stringify({}),
             });
             if (res.status === 401) { forceLogin(); return; }
-            if (res.ok) return; // already:true is also a 200 — success
+            if (res.ok) return;
             if (res.status === 409) {
               const body = await res.json().catch(() => ({}));
               if (body?.error) showToast(body.error);
-              return; // answered differently elsewhere — keep hidden
+              return;
             }
             if (res.status === 404 || res.status === 400) { unresolve(); return; }
             throw new Error(String(res.status));
@@ -560,10 +555,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     return false;
   });
 
+  // incoming_ask (v68): another user's assistant asking this user — plain
+  // chat threads, shown with a badge, never treated as goals or legacy.
+  const asks = threads.filter((th) => th.type === "incoming_ask");
+
   const goalThreads: { thread: Thread; status: TaskStatus }[] = [];
   const legacyThreads: Thread[] = [];
   for (const th of threads) {
-    if (th.type === "incoming_request") continue;
+    if (th.type === "incoming_request" || th.type === "incoming_ask") continue;
     const st = taskStatusOf(th, threadStates[String(th.id)]);
     if (st) goalThreads.push({ thread: th, status: st });
     else legacyThreads.push(th);
@@ -588,7 +587,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       value={{
         threads, setThreads, threadsLoaded, threadStates, setThreadStates,
         reconnectNonce, tokens, refreshTokens, createThread, createTask,
-        titles, resolveRequest, resolvedRequests,
+        titles, resolveRequest, resolvedRequests, threadBumps,
       }}
     >
       <div className="flex h-full" style={{ background: "var(--bg)" }}>
@@ -641,6 +640,30 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         onResolve={(a) => resolveRequest(String(th.id), a)}
                         active={pathname === `/chat/${th.id}`}
                       />
+                    ))}
+                  </section>
+                )}
+
+                {asks.length > 0 && (
+                  <section className="mb-2 flex flex-col gap-[3px]">
+                    <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("asksLabel")}</p>
+                    {asks.map((th) => (
+                      <Link
+                        key={th.id}
+                        href={`/chat/${th.id}`}
+                        className="task-row thread-row"
+                        style={{
+                          background: pathname === `/chat/${th.id}` ? "var(--thread-active-bg)" : undefined,
+                          boxShadow: pathname === `/chat/${th.id}` ? "inset 3px 0 0 var(--request-accent)" : undefined,
+                        }}
+                        onMouseEnter={(e) => { if (pathname !== `/chat/${th.id}`) e.currentTarget.style.background = "var(--request-tint)"; }}
+                        onMouseLeave={(e) => { if (pathname !== `/chat/${th.id}`) e.currentTarget.style.background = ""; }}
+                      >
+                        <span className="flex-1 truncate" style={{ font: "500 13.5px/18px var(--font-system)", color: "var(--ink)" }}>
+                          {th.title || "…"}
+                        </span>
+                        <span className="task-pill needs_you">{t("askBadge")}</span>
+                      </Link>
                     ))}
                   </section>
                 )}
