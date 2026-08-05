@@ -148,8 +148,6 @@ function AllyAnim({ clip, size, loop = true }: { clip: string; size?: "thinking"
   );
 }
 
-// Founder rule: while she works she is ALWAYS in motion. No steps → thinking
-// (the only stillness allowed); with steps, rotate loading → walk → slow.
 function workingClip(stepCount: number): string {
   if (stepCount === 0) return "ally-thinking";
   const clips = ["ally-loading", "ally-walk", "ally-slow"];
@@ -200,7 +198,7 @@ export default function ThreadPage() {
   const router = useRouter();
   const {
     threads, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens,
-    titles, resolveRequest, resolvedRequests,
+    titles, resolveRequest, resolvedRequests, threadBumps,
   } = useThreads();
 
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
@@ -215,6 +213,7 @@ export default function ThreadPage() {
   const [rateLimitedUntil, setRateLimitedUntil] = useState(0);
   const rateLimited = rateLimitedUntil > Date.now();
   const [limitHit, setLimitHit] = useState(false);
+  const [stopping, setStopping] = useState(false);
   const [packages, setPackages] = useState<TopupPackage[]>([]);
   const packagesFetchedRef = useRef(false);
 
@@ -232,7 +231,6 @@ export default function ThreadPage() {
   const userInitial = getUserInitial();
   const isRequest = thread?.type === "incoming_request";
   const taskStatus: TaskStatus | null = thread ? taskStatusOf(thread, st) : null;
-  // Server-owned human status line (F2).
   const statusLine = thread?.status_line ?? null;
 
   const tokensEnabled = tokens?.enabled === true;
@@ -244,6 +242,18 @@ export default function ThreadPage() {
   const lowBalance = remainingPct !== null && remainingPct <= 0.05;
 
   const streamingActive = loading && !!streaming && streaming.text.length > 0;
+
+  // v68 #5: the task engine can write into the thread without any user
+  // action — thread_updated bumps this counter, and an open, idle thread
+  // refetches its messages.
+  const bump = threadBumps[threadId] ?? 0;
+  const prevBumpRef = useRef(bump);
+  useEffect(() => {
+    if (bump !== prevBumpRef.current) {
+      prevBumpRef.current = bump;
+      if (!loading) setFetchNonce((n) => n + 1);
+    }
+  }, [bump, loading]);
 
   useEffect(() => {
     setSpeechSupported(!!getSpeechRecognition());
@@ -333,6 +343,25 @@ export default function ThreadPage() {
       await navigator.clipboard.writeText(window.location.href);
       showToast(t("linkCopied"), true);
     } catch {}
+  }
+
+  // v68 #3: stop a running task. Idempotent server-side; the status flips to
+  // done via thread_updated — no local state change needed here.
+  async function stopTask() {
+    if (stopping) return;
+    setStopping(true);
+    try {
+      const res = await fetch(`${BASE_URL}/tasks/${threadId}/stop`, {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+      });
+      if (res.status === 401) { forceLogin(); return; }
+      if (!res.ok) showToast(t("stopFailed"), false);
+    } catch {
+      showToast(t("stopFailed"), false);
+    } finally {
+      setStopping(false);
+    }
   }
 
   useEffect(() => {
@@ -669,6 +698,19 @@ export default function ThreadPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* v68 #3: stop a live goal — status flips via thread_updated */}
+          {thread?.is_task === true && taskStatus && taskStatus !== "done" && (
+            <button
+              onClick={stopTask}
+              disabled={stopping}
+              className="transition-colors disabled:opacity-50"
+              style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-soft)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--danger)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--ink-soft)"; }}
+            >
+              {t("stopGoal")}
+            </button>
+          )}
           {tokensEnabled && (
             <span className={`token-badge${lowBalance ? " low" : ""}`}>
               <i className="dot" style={{ width: 8, height: 8, borderRadius: "50%", background: lowBalance ? "var(--request-accent)" : "var(--accent)", display: "inline-block" }} />
@@ -730,7 +772,7 @@ export default function ThreadPage() {
               <div className="card flex items-center gap-3" style={{ padding: "12px 14px", maxWidth: "520px" }}>
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
                   <span className={`task-pill ${taskStatus}`} style={{ alignSelf: "flex-start" }}>{statusLabel}</span>
-                  {statusLine && taskStatus !== "working" && taskStatus !== "done" && (
+                  {statusLine && taskStatus !== "working" && (
                     <span className="truncate" style={{ font: "400 12.5px/18px var(--font-system)", color: taskStatus === "needs_you" ? "var(--request-accent)" : "var(--ink-soft)", fontWeight: taskStatus === "needs_you" ? 600 : 400 }}>
                       {statusLine}
                     </span>
@@ -771,7 +813,6 @@ export default function ThreadPage() {
                 );
               }
               const msg = block.msg;
-              // Persisted failed-run marker (F1): system block, not a bubble.
               if (msg.kind === "error") {
                 return (
                   <ErrorBlock
@@ -847,8 +888,6 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {/* StructuredResult (§7): framed card with labeled rows + success
-                clip playing once, then freezing on its last frame. */}
             {!loading && result && resultRows.some((r) => result[r.key]) && (
               <div className="flex flex-col items-start gap-3" style={{ marginLeft: "36px" }}>
                 <div className="result-card w-full">
@@ -933,7 +972,6 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {/* Live run_error — same system block as persisted kind:'error'. */}
             {!loading && error && (
               <ErrorBlock
                 text={error}
