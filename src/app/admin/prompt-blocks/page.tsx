@@ -3,17 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
-
-// ---- ბექის კონტრაქტი ----
-export type PromptBlock = {
-  name: string;
-  content: string;
-  modes: string[];
-  sort_order: number;
-  enabled: boolean;
-  enabled_for_user_ids: number[];
-  updated_at: string;
-};
+import { unwrap, fmtN, fmtDate, type PromptBlock } from "./shared";
 
 type ListData = {
   blocks: PromptBlock[];
@@ -39,22 +29,6 @@ type RunMode = {
   block_names: string[];
   created_at: string;
 };
-
-// პასუხი შეიძლება მოვიდეს {success,data} კონვერტით ან შიშველი ობიექტით.
-export function unwrap<T>(res: unknown): T {
-  const r = res as { data?: T };
-  return r && typeof r === "object" && r !== null && "data" in r ? (r.data as T) : (res as T);
-}
-
-function fmtN(n: number): string {
-  return Number(n).toLocaleString("en-US");
-}
-
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-}
 
 type Tab = "blocks" | "preview" | "runs";
 
@@ -119,7 +93,6 @@ export default function PromptBlocksPage() {
       </header>
 
       <div className="mx-auto max-w-5xl px-4 py-6 flex flex-col gap-6">
-        {/* Tabs */}
         <div className="flex gap-1 rounded-xl bg-gray-100 p-1 self-start">
           {([
             ["blocks", "ბლოკები"],
@@ -149,7 +122,6 @@ export default function PromptBlocksPage() {
             </div>
           ) : data ? (
             <>
-              {/* რეჟიმების მთვლელები */}
               <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {data.mode_totals.map((mt) => {
                   const pct = mt.budget_chars > 0 ? mt.enabled_chars / mt.budget_chars : 0;
@@ -173,7 +145,6 @@ export default function PromptBlocksPage() {
                 })}
               </section>
 
-              {/* ბლოკების სია */}
               <section className="flex flex-col gap-3">
                 {data.blocks.length === 0 && (
                   <p className="text-sm text-gray-400">ბლოკები ჯერ არ არის.</p>
@@ -231,7 +202,6 @@ export default function PromptBlocksPage() {
   );
 }
 
-// ---- Preview ----
 function PreviewTab({ modes }: { modes: string[] }) {
   const [mode, setMode] = useState(modes[0] ?? "");
   const [userId, setUserId] = useState("");
@@ -352,7 +322,6 @@ function PreviewTab({ modes }: { modes: string[] }) {
   );
 }
 
-// ---- Run-ჟურნალი ----
 function RunsTab() {
   const [threadFilter, setThreadFilter] = useState("");
   const [runs, setRuns] = useState<RunMode[]>([]);
