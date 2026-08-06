@@ -118,6 +118,12 @@ export default function AdminPage() {
         <h1 className="text-lg font-bold text-[#23261F]">Admin — Insight Fields</h1>
         <div className="flex items-center gap-2">
           <a
+            href="/admin/prompt-blocks"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
+          >
+            პრომპტის ბლოკები →
+          </a>
+          <a
             href="/admin/users"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
           >
