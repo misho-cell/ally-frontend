@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
-import { unwrap, type PromptBlock } from "../page";
+import { unwrap, fmtN, type PromptBlock } from "../shared";
 
 const NAME_RE = /^[a-z0-9_]{2,40}$/;
 const BLOCK_LIMIT = 20000;
@@ -26,11 +26,7 @@ type HistoryEntry = {
   changed_at: string;
 };
 
-function fmtN(n: number): string {
-  return Number(n).toLocaleString("en-US");
-}
-
-function fmtDate(iso: string): string {
+function fmtDateFull(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "—";
   return d.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -50,7 +46,6 @@ export default function PromptBlockEditorPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // ფორმის ველები
   const [name, setName] = useState(isNew ? "" : rawName);
   const [content, setContent] = useState("");
   const [blockModes, setBlockModes] = useState<string[]>([]);
@@ -58,11 +53,9 @@ export default function PromptBlockEditorPage() {
   const [enabled, setEnabled] = useState(true);
   const [userIds, setUserIds] = useState("");
 
-  // წაშლა
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
 
-  // ისტორია
   const [history, setHistory] = useState<HistoryEntry[] | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [openEntry, setOpenEntry] = useState<number | null>(null);
@@ -157,7 +150,7 @@ export default function PromptBlockEditorPage() {
         await load();
       }
     } catch (err) {
-      // 400: ბექის ვალიდაციის ტექსტი (მაგ. ჭერის გადაჭარბება) ვერბატიმ.
+      // 400: ბექის ვალიდაციის ტექსტი (მაგ. ჭერის გადაჭარბება) ვერბატიმ ჩანს.
       setError(err instanceof ApiError ? err.message : "ვერ შეინახა");
     } finally {
       setSaving(false);
@@ -178,7 +171,7 @@ export default function PromptBlockEditorPage() {
   }
 
   async function restore(entry: HistoryEntry) {
-    const ok = window.confirm(`დავაბრუნო ბლოკი ${fmtDate(entry.changed_at)}-ის ვერსიაზე?`);
+    const ok = window.confirm(`დავაბრუნო ბლოკი ${fmtDateFull(entry.changed_at)}-ის ვერსიაზე?`);
     if (!ok) return;
     setError(null);
     try {
@@ -349,7 +342,6 @@ export default function PromptBlockEditorPage() {
               </button>
             </div>
 
-            {/* წაშლა */}
             {!isNew && (
               <div className="rounded-2xl border border-red-200 bg-white p-6 shadow-sm flex flex-col gap-3">
                 <h2 className="text-sm font-bold text-red-700">ბლოკის წაშლა</h2>
@@ -404,7 +396,7 @@ export default function PromptBlockEditorPage() {
                       }`}>
                         {h.action}
                       </span>
-                      <span className="text-sm text-gray-600">{fmtDate(h.changed_at)}</span>
+                      <span className="text-sm text-gray-600">{fmtDateFull(h.changed_at)}</span>
                       <span className="text-xs text-gray-400">{fmtN(h.content.length)} სიმბ. · {h.modes.join(", ")}</span>
                     </div>
                     <span className="text-gray-400">{openEntry === h.id ? "▾" : "▸"}</span>
