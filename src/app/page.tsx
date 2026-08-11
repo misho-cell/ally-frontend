@@ -16,8 +16,11 @@ export default function Home() {
   }, [router]);
 
   return (
-    <div className="flex h-full items-center justify-center bg-[#1a1a2e]">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/20 border-t-white" />
+    <div className="flex h-full items-center justify-center" style={{ background: "var(--bg)" }}>
+      <span
+        className="h-8 w-8 animate-spin rounded-full border-2"
+        style={{ borderColor: "var(--sidebar-border)", borderTopColor: "var(--accent)" }}
+      />
     </div>
   );
 }
