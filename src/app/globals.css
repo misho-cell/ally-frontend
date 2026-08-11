@@ -359,6 +359,28 @@ body {
   text-transform: uppercase; color: var(--meta);
 }
 
+/* ============ Legal pages (terms / privacy / refund) ============ */
+/* Long-form documents. Only colour and rhythm come from the design system —
+   the legal copy itself is never touched. */
+.legal-body { color: var(--ink-2); font: 400 15.5px/26px var(--font-system); }
+.legal-body strong { color: var(--ink); font-weight: 600; }
+.legal-h1 { font: 500 30px/38px var(--font-bricolage); color: var(--ink); }
+.legal-h2 { font: 600 19px/26px var(--font-system); color: var(--ink); }
+.legal-h3 { font: 600 15px/22px var(--font-system); color: var(--ink); }
+.legal-meta { font: 400 13px/18px var(--font-system); color: var(--meta); }
+.legal-quote {
+  margin: 0; border-left: 3px solid var(--sidebar-border); padding: 2px 0 2px 16px;
+  font: italic 400 16px/27px var(--font-bricolage); color: var(--ink-soft);
+}
+.legal-link { color: var(--accent-strong); text-decoration: underline; }
+.legal-link:hover { color: var(--accent); }
+.legal-table { width: 100%; border-collapse: collapse; font: 400 14px/20px var(--font-system); }
+.legal-table th, .legal-table td {
+  border: 1px solid var(--sidebar-border); padding: 8px 12px; text-align: left;
+}
+.legal-table th { background: var(--sidebar-bg); color: var(--ink); font-weight: 600; }
+.legal-table td { color: var(--ink-2); }
+
 /* ============ Composer ============ */
 /* One frame only (report item 11): the pill carries the border, the shadow
    and the focus state. The inner input/textarea is always frameless — no
@@ -390,4 +412,7 @@ body {
   .msg-ally { font-size: 16px; line-height: 26px; }
   .steps { margin-left: 0; }
   .row-request, .thread-row { min-height: 44px; }
+  .legal-h1 { font-size: 25px; line-height: 32px; }
+  .legal-h2 { font-size: 17px; line-height: 24px; }
+  .legal-body { font-size: 15px; line-height: 25px; }
 }
