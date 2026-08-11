@@ -1,20 +1,20 @@
-import LegalNav from "@/components/LegalNav";
+import LegalNav, { LegalFooter } from "@/components/LegalNav";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Refund Policy — Ally",
+  title: "Refund Policy — Netai",
 };
 
 export default function RefundPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen" style={{ background: "var(--bg)" }}>
       <LegalNav />
       <main className="mx-auto max-w-4xl px-6 py-12">
-        <div className="prose prose-gray max-w-none">
-          <h1 className="text-3xl font-bold text-[#1a1a2e] mb-2">Refund Policy</h1>
-          <p className="text-sm text-gray-500 mb-8">Effective Date: January 1, 2026 · Last Updated: June 2026</p>
+        <div className="legal-body max-w-none">
+          <h1 className="legal-h1 mb-2">Refund Policy</h1>
+          <p className="legal-meta mb-8">Effective Date: January 1, 2026 · Last Updated: June 2026</p>
 
-          <p className="text-gray-700 mb-8">Ally subscriptions and purchases are processed by <strong>Paddle (Paddle.com Market Ltd)</strong>, our Merchant of Record — the legal seller of record for all Ally transactions. Paddle handles all billing, payment processing, and refund administration on our behalf.</p>
+          <p className="mb-8">Ally subscriptions and purchases are processed by <strong>Paddle (Paddle.com Market Ltd)</strong>, our Merchant of Record — the legal seller of record for all Ally transactions. Paddle handles all billing, payment processing, and refund administration on our behalf.</p>
 
           <Section title="1. Free Trial">
             <p>Every new Ally account begins with a <strong>5-day full-feature trial</strong> at no cost. The trial begins on your first assistant conversation — not on registration. If you do not subscribe before the trial ends, your account automatically moves to the free tier. No payment is taken and no refund request is necessary.</p>
@@ -54,7 +54,7 @@ export default function RefundPage() {
           </Section>
         </div>
       </main>
-      <LegalNav />
+      <LegalFooter />
     </div>
   );
 }
@@ -62,8 +62,8 @@ export default function RefundPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-8">
-      <h2 className="text-xl font-bold text-[#1a1a2e] mb-3 mt-8">{title}</h2>
-      <div className="text-gray-700 leading-relaxed">{children}</div>
+      <h2 className="legal-h2 mb-3 mt-8">{title}</h2>
+      <div>{children}</div>
     </section>
   );
 }

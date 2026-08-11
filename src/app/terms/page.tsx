@@ -1,20 +1,20 @@
-import LegalNav from "@/components/LegalNav";
+import LegalNav, { LegalFooter } from "@/components/LegalNav";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms and Conditions — Ally",
+  title: "Terms and Conditions — Netai",
 };
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen" style={{ background: "var(--bg)" }}>
       <LegalNav />
       <main className="mx-auto max-w-4xl px-6 py-12">
-        <div className="prose prose-gray max-w-none">
-          <h1 className="text-3xl font-bold text-[#1a1a2e] mb-2">Terms and Conditions</h1>
-          <p className="text-sm text-gray-500 mb-8">Effective Date: January 1, 2026 · Last Updated: June 2026</p>
+        <div className="legal-body max-w-none">
+          <h1 className="legal-h1 mb-2">Terms and Conditions</h1>
+          <p className="legal-meta mb-8">Effective Date: January 1, 2026 · Last Updated: June 2026</p>
 
-          <blockquote className="border-l-4 border-gray-200 pl-4 text-gray-600 italic mb-8">
+          <blockquote className="legal-quote mb-8">
             Please read these Terms and Conditions carefully before using Ally. By creating an account or using the service, you agree to be bound by these terms in their entirety.
           </blockquote>
 
@@ -44,19 +44,19 @@ export default function TermsPage() {
 
           <Section title="5. Subscriptions, Billing, and Payments">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse mt-2">
+              <table className="legal-table mt-2">
                 <thead>
-                  <tr className="bg-gray-50">
-                    <th className="border border-gray-200 px-3 py-2 text-left">Tier</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left">Monthly</th>
-                    <th className="border border-gray-200 px-3 py-2 text-left">Annual</th>
+                  <tr>
+                    <th>Tier</th>
+                    <th>Monthly</th>
+                    <th>Annual</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr><td className="border border-gray-200 px-3 py-2">Free</td><td className="border border-gray-200 px-3 py-2">$0</td><td className="border border-gray-200 px-3 py-2">$0</td></tr>
-                  <tr><td className="border border-gray-200 px-3 py-2">Premium</td><td className="border border-gray-200 px-3 py-2">$2.99</td><td className="border border-gray-200 px-3 py-2">$29.99</td></tr>
-                  <tr><td className="border border-gray-200 px-3 py-2">Pro</td><td className="border border-gray-200 px-3 py-2">$19.99</td><td className="border border-gray-200 px-3 py-2">$179.99</td></tr>
-                  <tr><td className="border border-gray-200 px-3 py-2">Enterprise</td><td className="border border-gray-200 px-3 py-2">$79.00</td><td className="border border-gray-200 px-3 py-2">$599.99</td></tr>
+                  <tr><td>Free</td><td>$0</td><td>$0</td></tr>
+                  <tr><td>Premium</td><td>$2.99</td><td>$29.99</td></tr>
+                  <tr><td>Pro</td><td>$19.99</td><td>$179.99</td></tr>
+                  <tr><td>Enterprise</td><td>$79.00</td><td>$599.99</td></tr>
                 </tbody>
               </table>
             </div>
@@ -74,7 +74,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="8. Data and Privacy">
-            <p>Your use of Ally is subject to our <a href="/privacy" className="text-[#29a9e1] hover:underline">Privacy Policy</a>. Conversation messages are retained for 12 months; summaries for 3 years. You may request deletion at any time from Settings.</p>
+            <p>Your use of Ally is subject to our <a href="/privacy" className="legal-link">Privacy Policy</a>. Conversation messages are retained for 12 months; summaries for 3 years. You may request deletion at any time from Settings.</p>
           </Section>
 
           <Section title="9. Intellectual Property">
@@ -103,7 +103,7 @@ export default function TermsPage() {
           </Section>
         </div>
       </main>
-      <LegalNav />
+      <LegalFooter />
     </div>
   );
 }
@@ -111,8 +111,8 @@ export default function TermsPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-8">
-      <h2 className="text-xl font-bold text-[#1a1a2e] mb-3 mt-8">{title}</h2>
-      <div className="text-gray-700 leading-relaxed">{children}</div>
+      <h2 className="legal-h2 mb-3 mt-8">{title}</h2>
+      <div>{children}</div>
     </section>
   );
 }
