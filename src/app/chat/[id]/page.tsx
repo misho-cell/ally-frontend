@@ -6,18 +6,25 @@ import ReactMarkdown from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
-import { t, tf, stripEmoji } from "@/lib/i18n";
+import { t, tf, stripEmoji, getLocale } from "@/lib/i18n";
 import {
   useThreads,
   updateThreadState,
   taskStatusOf,
   forceLogin,
+  mergeHydrated,
   DEFAULT_THREAD_STATE,
   type ChatMessage,
   type TaskStatus,
 } from "@/contexts/ThreadsContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+
+// Screen-local copy for the send-failure marker.
+const SEND = {
+  en: { failed: "Not sent", resend: "Resend" },
+  ka: { failed: "ვერ გაიგზავნა", resend: "ხელახლა" },
+};
 
 const SUPPORTED_LANGS = [
   "en-US", "en-GB", "es-ES", "fr-FR", "de-DE",
@@ -161,9 +168,8 @@ function extractQuote(text: string): string | null {
   return m ? m[1].trim() : null;
 }
 
-// System-style error block (F1): distinct background, no emoji, never an
-// assistant bubble. Used for BOTH persisted kind:'error' rows and live
-// run_error — the two must look identical.
+// System-style error block: distinct background, no emoji, never an assistant
+// bubble. Used for BOTH persisted kind:'error' rows and live run_error.
 function ErrorBlock({ text, onRetry }: { text: string; onRetry: (() => void) | null }) {
   return (
     <div className="flex items-start" style={{ gap: "10px" }}>
@@ -202,7 +208,8 @@ export default function ThreadPage() {
   } = useThreads();
 
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
-  const { messages, options, choices, loading, error, streaming, result } = st;
+  const { messages, options, choices, loading, error, streaming, progress, result } = st;
+  const send = SEND[getLocale()];
 
   const [input, setInput] = useState("");
   const [loadPhase, setLoadPhase] = useState<LoadPhase>(st.loaded ? "done" : "loading");
@@ -226,6 +233,10 @@ export default function ThreadPage() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const balanceRef = useRef<number | null>(null);
+  // How many messages this thread already has in memory — read inside the fetch
+  // effect to decide cache-first vs skeleton.
+  const msgCountRef = useRef(0);
+  msgCountRef.current = messages.length;
 
   const thread = threads.find((th) => String(th.id) === threadId);
   const userInitial = getUserInitial();
@@ -243,9 +254,8 @@ export default function ThreadPage() {
 
   const streamingActive = loading && !!streaming && streaming.text.length > 0;
 
-  // v68 #5: the task engine can write into the thread without any user
-  // action — thread_updated bumps this counter, and an open, idle thread
-  // refetches its messages.
+  // The task engine can write into the thread with no user action —
+  // thread_updated bumps this counter and an idle open thread refetches.
   const bump = threadBumps[threadId] ?? 0;
   const prevBumpRef = useRef(bump);
   useEffect(() => {
@@ -345,8 +355,6 @@ export default function ThreadPage() {
     } catch {}
   }
 
-  // v68 #3: stop a running task. Idempotent server-side; the status flips to
-  // done via thread_updated — no local state change needed here.
   async function stopTask() {
     if (stopping) return;
     setStopping(true);
@@ -447,13 +455,21 @@ export default function ThreadPage() {
     }
   }
 
+  // Hydrate history. Cache-first: if this thread is already in memory we keep
+  // showing it and refresh in the background — no skeleton flash, no spinner.
+  // The server list is MERGED with local pending messages so a fetch that lands
+  // right after the user hit send never wipes their own bubble.
   useEffect(() => {
     if (!threadId) return;
     let cancelled = false;
-    setLoadPhase("loading");
-    const slowTimer = setTimeout(() => {
-      if (!cancelled) setLoadPhase((p) => (p === "loading" ? "slow" : p));
-    }, 8000);
+    const hasCache = msgCountRef.current > 0;
+    setLoadPhase(hasCache ? "done" : "loading");
+
+    const slowTimer = hasCache
+      ? null
+      : setTimeout(() => {
+          if (!cancelled) setLoadPhase((p) => (p === "loading" ? "slow" : p));
+        }, 8000);
 
     fetch(`${BASE_URL}/threads/${threadId}/messages`, {
       headers: authHeaders(),
@@ -481,22 +497,22 @@ export default function ThreadPage() {
         setThreadStates((prev) =>
           updateThreadState(prev, threadId, (ts) => ({
             ...ts,
-            messages: hydrated,
+            messages: mergeHydrated(hydrated, ts.messages),
             loaded: true,
           }))
         );
         setLoadPhase("done");
       })
       .catch(() => {
-        if (!cancelled) setLoadPhase("failed");
+        if (!cancelled) setLoadPhase(msgCountRef.current > 0 ? "done" : "failed");
       })
       .finally(() => {
-        clearTimeout(slowTimer);
+        if (slowTimer) clearTimeout(slowTimer);
       });
 
     return () => {
       cancelled = true;
-      clearTimeout(slowTimer);
+      if (slowTimer) clearTimeout(slowTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId, reconnectNonce, fetchNonce]);
@@ -505,6 +521,8 @@ export default function ThreadPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading, error, streaming, result]);
 
+  // Optimistic send: the bubble is on screen before the request leaves. On
+  // failure the text STAYS with a "not sent / resend" marker — never deleted.
   const sendMessage = useCallback(
     async (text: string, echo: boolean = true) => {
       if (voiceState === "recording") {
@@ -513,6 +531,7 @@ export default function ThreadPage() {
       const trimmed = text.trim();
       if (!trimmed || rateLimitedUntil > Date.now() || limitHit) return;
 
+      const localId = crypto.randomUUID();
       const sentinel = `pending-${crypto.randomUUID()}`;
       setThreadStates((prev) =>
         updateThreadState(prev, threadId, (ts) => ({
@@ -521,11 +540,12 @@ export default function ThreadPage() {
             ? [
                 ...ts.messages,
                 {
-                  id: crypto.randomUUID(),
+                  id: localId,
                   role: "user",
                   content: trimmed,
                   kind: "message",
                   runId: null,
+                  pending: true,
                 },
               ]
             : ts.messages,
@@ -535,10 +555,24 @@ export default function ThreadPage() {
           loading: true,
           runId: sentinel,
           streaming: null,
+          progress: null,
           result: null,
         }))
       );
       setInput("");
+
+      const markFailed = () =>
+        setThreadStates((prev) =>
+          updateThreadState(prev, threadId, (ts) => ({
+            ...ts,
+            loading: false,
+            runId: null,
+            progress: null,
+            messages: ts.messages.map((m) =>
+              m.id === localId ? { ...m, failed: true, pending: true } : m
+            ),
+          }))
+        );
 
       try {
         const res = await fetch(`${BASE_URL}/threads/${threadId}/message`, {
@@ -555,7 +589,7 @@ export default function ThreadPage() {
             setLimitHit(true);
             refreshTokens();
             setThreadStates((prev) =>
-              updateThreadState(prev, threadId, (ts) => ({ ...ts, loading: false, runId: null }))
+              updateThreadState(prev, threadId, (ts) => ({ ...ts, loading: false, runId: null, progress: null }))
             );
             return;
           }
@@ -566,9 +600,7 @@ export default function ThreadPage() {
           const secs = parseRetryAfter(res);
           showToast(body.error ?? t("rateLimitedToast"), false);
           setRateLimitedUntil(Date.now() + secs * 1000);
-          setThreadStates((prev) =>
-            updateThreadState(prev, threadId, (ts) => ({ ...ts, loading: false, runId: null }))
-          );
+          markFailed();
           return;
         }
 
@@ -582,20 +614,27 @@ export default function ThreadPage() {
             ts.runId === sentinel ? { ...ts, runId } : ts
           )
         );
-      } catch (err) {
-        setThreadStates((prev) =>
-          updateThreadState(prev, threadId, (ts) => ({
-            ...ts,
-            loading: false,
-            runId: null,
-            error: err instanceof Error ? err.message : t("genericError"),
-          }))
-        );
+      } catch {
+        markFailed();
       } finally {
         inputRef.current?.focus();
       }
     },
     [threadId, voiceState, setThreadStates, rateLimitedUntil, limitHit, refreshTokens]
+  );
+
+  // Resend a failed bubble: drop the old one, send the same text again.
+  const resend = useCallback(
+    (msg: ChatMessage) => {
+      setThreadStates((prev) =>
+        updateThreadState(prev, threadId, (ts) => ({
+          ...ts,
+          messages: ts.messages.filter((m) => m.id !== msg.id),
+        }))
+      );
+      sendMessage(msg.content, true);
+    },
+    [threadId, setThreadStates, sendMessage]
   );
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -606,6 +645,13 @@ export default function ThreadPage() {
   }
 
   const blocks = toBlocks(messages);
+  const lastBlock = blocks[blocks.length - 1];
+  const trailingSteps =
+    lastBlock && lastBlock.type === "steps" && lastBlock.trailing ? lastBlock.steps : [];
+  // While a run is live the trailing steps move into the live panel below, so
+  // they are not rendered twice.
+  const renderBlocks = loading && trailingSteps.length > 0 ? blocks.slice(0, -1) : blocks;
+
   const lastMsg = messages[messages.length - 1];
   const lastIsAssistantMessage = lastMsg?.kind === "message" && lastMsg.role === "assistant";
   const showOptions = !loading && lastIsAssistantMessage && options.length > 0;
@@ -614,12 +660,6 @@ export default function ThreadPage() {
   const lastUserText = [...messages].reverse().find((m) => m.kind === "message" && m.role === "user")?.content;
 
   const showInitialLoad = loadPhase !== "done" && messages.length === 0;
-
-  const trailingSteps = (() => {
-    let n = 0;
-    for (let i = messages.length - 1; i >= 0 && messages[i].kind === "step"; i--) n++;
-    return n;
-  })();
 
   const firstAssistant = isRequest ? messages.find((m) => m.kind === "message" && m.role === "assistant") : undefined;
   const reqQuote = firstAssistant ? extractQuote(firstAssistant.content) : null;
@@ -698,7 +738,6 @@ export default function ThreadPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* v68 #3: stop a live goal — status flips via thread_updated */}
           {thread?.is_task === true && taskStatus && taskStatus !== "done" && (
             <button
               onClick={stopTask}
@@ -745,22 +784,17 @@ export default function ThreadPage() {
               </button>
             </div>
           ) : (
-            <div>
-              <div className="flex justify-center pt-8">
-                <AllyAnim clip="ally-loading" />
-              </div>
-              <div className="sk-thread">
-                <span className="sk-bubble right" style={{ width: "46%" }} />
-                <div className="sk-ally">
-                  <span className="sk-dot" style={{ width: 26, height: 26 }} />
-                  <div>
-                    <span className="sk-bar" style={{ width: "72%" }} />
-                    <span className="sk-bar" style={{ width: "64%" }} />
-                    <span className="sk-bar" style={{ width: "40%" }} />
-                  </div>
+            <div className="sk-thread">
+              <span className="sk-bubble right" style={{ width: "46%" }} />
+              <div className="sk-ally">
+                <span className="sk-dot" style={{ width: 26, height: 26 }} />
+                <div>
+                  <span className="sk-bar" style={{ width: "72%" }} />
+                  <span className="sk-bar" style={{ width: "64%" }} />
+                  <span className="sk-bar" style={{ width: "40%" }} />
                 </div>
-                <span className="sk-bubble right" style={{ width: "28%", height: 30 }} />
               </div>
+              <span className="sk-bubble right" style={{ width: "28%", height: 30 }} />
             </div>
           )
         ) : (
@@ -803,14 +837,9 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {blocks.map((block, bi) => {
+            {renderBlocks.map((block, bi) => {
               if (block.type === "steps") {
-                return (
-                  <StepGroup
-                    key={`steps-${bi}`}
-                    steps={block.steps}
-                  />
-                );
+                return <StepGroup key={`steps-${bi}`} steps={block.steps} />;
               }
               const msg = block.msg;
               if (msg.kind === "error") {
@@ -824,21 +853,35 @@ export default function ThreadPage() {
               }
               if (msg.role === "user") {
                 return (
-                  <div key={msg.id} className="flex justify-end">
+                  <div key={msg.id} className="flex flex-col items-end gap-1">
                     <div
                       className="msg-user whitespace-pre-wrap"
                       style={{
-                        alignSelf: "flex-end",
                         maxWidth: "74%",
                         background: "var(--user-bubble-bg)",
                         color: "var(--ink)",
                         padding: "12px 16px",
                         borderRadius: "16px 16px 4px 16px",
                         font: "400 15px/22px var(--font-system)",
+                        opacity: msg.failed ? 0.7 : 1,
                       }}
                     >
                       {msg.content}
                     </div>
+                    {msg.failed && (
+                      <div className="flex items-center gap-2">
+                        <span style={{ font: "400 11.5px/16px var(--font-system)", color: "var(--request-accent)" }}>
+                          {send.failed}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => resend(msg)}
+                          style={{ font: "600 11.5px/16px var(--font-system)", color: "var(--accent-strong)", textDecoration: "underline" }}
+                        >
+                          {send.resend}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               }
@@ -884,6 +927,36 @@ export default function ThreadPage() {
                   <ReactMarkdown components={markdownComponents}>
                     {streaming!.text}
                   </ReactMarkdown>
+                </div>
+              </div>
+            )}
+
+            {/* Live activity — on screen from the moment of send, so the long
+                search is never silent. Steps accumulate here; the pulsing line
+                is the current tool_progress. */}
+            {loading && (
+              <div className="flex items-start" style={{ gap: "10px" }}>
+                <AllyAvatar />
+                <div className="flex flex-col gap-2" style={{ flex: 1, minWidth: 0 }}>
+                  <div className="steps" style={{ marginLeft: 0 }}>
+                    <div className="steps-list" style={{ marginTop: 0 }}>
+                      {trailingSteps.map((s) => (
+                        <div key={s.id} className="step">
+                          <span>✓</span>
+                          <p>{renderStepText(s.content)}</p>
+                        </div>
+                      ))}
+                      {!streamingActive && (
+                        <div className="step">
+                          <span className="sk-dot" style={{ width: 8, height: 8, marginTop: 6 }} />
+                          <p>{progress ? stripEmoji(progress) : t("workingOnIt")}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {!streamingActive && (
+                    <AllyAnim clip={workingClip(trailingSteps.length)} size="inline" />
+                  )}
                 </div>
               </div>
             )}
@@ -962,13 +1035,6 @@ export default function ThreadPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {loading && !streamingActive && (
-              <div className="flex items-center gap-3 pl-9">
-                <AllyAnim clip={workingClip(trailingSteps)} size="inline" />
-                <span style={{ fontSize: "13px", color: "var(--ink-soft)" }}>{t("workingOnIt")}</span>
               </div>
             )}
 
