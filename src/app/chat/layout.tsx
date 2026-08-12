@@ -64,6 +64,17 @@ function isStaleRun(ts: ThreadState, eventRunId: unknown): boolean {
   return Boolean(ts.runId && eventRunId && String(eventRunId) !== String(ts.runId));
 }
 
+// The backend has used more than one field name for the streamed piece of the
+// answer (chunk / delta / text). Accept all of them — a rename must never turn
+// streaming back into one silent block.
+function readChunk(data: Record<string, unknown>): string | null {
+  for (const key of ["chunk", "delta", "text"]) {
+    const v = data[key];
+    if (typeof v === "string" && v.length > 0) return v;
+  }
+  return null;
+}
+
 function loadJson<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
@@ -273,8 +284,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               break;
 
             case "answer_delta": {
-              const delta: string | undefined = data.delta;
-              if (data.threadId != null && typeof delta === "string" && delta.length > 0) {
+              const chunk = readChunk(data);
+              if (data.threadId != null && chunk) {
                 setThreadStates((prev) =>
                   updateThreadState(prev, data.threadId, (ts) => {
                     if (isStaleRun(ts, data.runId)) return ts;
@@ -283,7 +294,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       ...ts,
                       streaming: {
                         runId: data.runId ?? null,
-                        text: sameRun ? ts.streaming!.text + delta : delta,
+                        text: sameRun ? ts.streaming!.text + chunk : chunk,
                       },
                     };
                   })
@@ -292,27 +303,46 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               break;
             }
 
+            // What was streamed so far was not the answer after all. The
+            // backend immediately re-sends the same text as a step_summary, so
+            // the text does not vanish — it moves into the steps panel.
+            case "answer_reset":
+              if (data.threadId != null) {
+                setThreadStates((prev) =>
+                  updateThreadState(prev, data.threadId, (ts) => {
+                    if (isStaleRun(ts, data.runId)) return ts;
+                    return { ...ts, streaming: null };
+                  })
+                );
+              }
+              break;
+
             case "tool_progress":
             case "step_summary": {
               const line: string | undefined = data.text ?? data.message;
               if (data.threadId != null && line) {
+                const isProgress = data.event === "tool_progress";
                 setThreadStates((prev) =>
                   updateThreadState(prev, data.threadId, (ts) => {
                     if (isStaleRun(ts, data.runId)) return ts;
                     const last = ts.messages[ts.messages.length - 1];
-                    if (last && last.kind === "step" && last.content === line) return ts;
+                    const dup = last && last.kind === "step" && last.content === line;
                     return {
                       ...ts,
-                      messages: [
-                        ...ts.messages,
-                        {
-                          id: crypto.randomUUID(),
-                          role: "assistant",
-                          content: line,
-                          kind: "step",
-                          runId: data.runId ?? null,
-                        },
-                      ],
+                      // tool_progress also drives the live "doing this now" line.
+                      progress: isProgress ? line : ts.progress,
+                      messages: dup
+                        ? ts.messages
+                        : [
+                            ...ts.messages,
+                            {
+                              id: crypto.randomUUID(),
+                              role: "assistant",
+                              content: line,
+                              kind: "step",
+                              runId: data.runId ?? null,
+                            },
+                          ],
                     };
                   })
                 );
@@ -343,6 +373,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       runId: null,
                       error: null,
                       streaming: null,
+                      progress: null,
                       result: data.result && typeof data.result === "object" ? data.result : null,
                     };
                   })
@@ -362,6 +393,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       runId: null,
                       error: data.message ?? "Something went wrong.",
                       streaming: null,
+                      progress: null,
                     };
                   })
                 );
@@ -384,7 +416,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       updateThreadState(prev, threadId, (ts) => ({
         ...ts,
         messages: echo
-          ? [...ts.messages, { id: crypto.randomUUID(), role: "user" as const, content: text, kind: "message" as const, runId: null }]
+          ? [...ts.messages, { id: crypto.randomUUID(), role: "user" as const, content: text, kind: "message" as const, runId: null, pending: true }]
           : ts.messages,
         options: [],
         choices: [],
@@ -392,6 +424,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         loading: true,
         runId: sentinel,
         streaming: null,
+        progress: null,
         result: null,
       }))
     );
@@ -417,6 +450,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     const trimmed = text.trim();
     if (!trimmed || creating) return;
     setCreating(true);
+    // Clear the composer immediately — the tap must feel instant even though
+    // the thread id can only come from the server.
+    setHomeInput("");
     try {
       const res = await fetch(`${BASE_URL}/threads`, {
         method: "POST",
@@ -429,16 +465,20 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         if (isSubscriptionError(res.status, body)) {
           router.replace("/pricing");
         }
+        setHomeInput(trimmed);
         return;
       }
       const json = await res.json();
       const thread: Thread = json.data ?? json;
+      // Row in the list + the user's own words as the title, before any status
+      // event arrives. The generated title replaces it via thread_updated.
       setThreads((prev) => dedup([thread, ...prev.filter((th) => String(th.id) !== String(thread.id))]));
       setTitles((prev) => ({
         ...prev,
         [String(thread.id)]: trimmed.length > 42 ? trimmed.slice(0, 42) + "…" : trimmed,
       }));
-      setHomeInput("");
+      // Seed the message and the working state BEFORE navigating, so the thread
+      // screen paints with the text already in place.
       router.push(`/chat/${thread.id}`);
       await sendIntoThread(String(thread.id), trimmed, true);
     } catch {}
@@ -555,8 +595,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     return false;
   });
 
-  // incoming_ask (v68): another user's assistant asking this user — plain
-  // chat threads, shown with a badge, never treated as goals or legacy.
   const asks = threads.filter((th) => th.type === "incoming_ask");
 
   const goalThreads: { thread: Thread; status: TaskStatus }[] = [];
@@ -651,6 +689,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       <Link
                         key={th.id}
                         href={`/chat/${th.id}`}
+                        prefetch
                         className="task-row thread-row"
                         style={{
                           background: pathname === `/chat/${th.id}` ? "var(--thread-active-bg)" : undefined,
@@ -723,6 +762,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       <Link
                         key={th.id}
                         href={`/chat/${th.id}`}
+                        prefetch
                         className="thread-row flex items-center transition-colors"
                         style={{
                           padding: "7px 10px",
@@ -758,12 +798,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 placeholder={recording ? t("listening") : t("homePlaceholder")}
                 className="flex-1 min-w-0 bg-transparent outline-none"
                 style={{ color: "var(--ink)", fontSize: "14px", padding: "6px 0" }}
-                disabled={creating}
               />
               {homeInput.trim() && (
                 <button
                   type="submit"
-                  disabled={creating}
                   aria-label={t("newTask")}
                   className="flex shrink-0 items-center justify-center rounded-full"
                   style={{ width: 34, height: 34, background: "var(--accent)", color: "#FBFAF4" }}
@@ -795,10 +833,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           </form>
 
           <div className="flex items-center gap-2.5" style={{ borderTop: "1px solid var(--sidebar-border)", paddingTop: "10px" }}>
-            <Link href="/profile" className="initial-avatar transition-opacity hover:opacity-80" style={{ width: 28, height: 28, fontSize: "12px" }}>
+            <Link href="/profile" prefetch className="initial-avatar transition-opacity hover:opacity-80" style={{ width: 28, height: 28, fontSize: "12px" }}>
               {user.initial}
             </Link>
-            <Link href="/profile" className="flex-1 truncate transition-opacity hover:opacity-70" style={{ color: "var(--ink)", fontWeight: 600, fontSize: "13px" }}>
+            <Link href="/profile" prefetch className="flex-1 truncate transition-opacity hover:opacity-70" style={{ color: "var(--ink)", fontWeight: 600, fontSize: "13px" }}>
               {user.name}
             </Link>
             <button
@@ -824,6 +862,7 @@ function TaskRow({ title, status, href, active }: { title: string; status: TaskS
   return (
     <Link
       href={href}
+      prefetch
       className="task-row thread-row"
       style={{
         background: active ? "var(--thread-active-bg)" : undefined,
