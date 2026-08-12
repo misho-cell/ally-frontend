@@ -4,6 +4,9 @@ import Link from "next/link";
 // — that is the company, not the product. Only the chrome (logo mark, wordmark)
 // carries the Netai branding.
 //
+// This is a SERVER component (legal pages are statically prerendered), so it
+// must stay free of event handlers — no onError fallback on the image.
+//
 // The nav and the footer are SEPARATE exports on purpose: pages render the nav
 // at the top and the footer at the bottom. Rendering one combined component
 // twice (the old shape) printed the copyright line directly under the header.
@@ -25,11 +28,7 @@ export default function LegalNav() {
         <Link href="/" className="flex items-center gap-2.5">
           <span className="ally-avatar" style={{ width: 26, height: 26 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/assets/ally/ally-avatar.jpg"
-              alt="Netai"
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
-            />
+            <img src="/assets/ally/ally-avatar.jpg" alt="Netai" />
           </span>
           <span style={{ font: "500 20px/26px var(--font-bricolage)", color: "var(--ink)" }}>
             Netai
