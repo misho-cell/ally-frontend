@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
+import { fetchMessagePage } from "@/lib/messages";
 import { t, tf, stripEmoji, getLocale } from "@/lib/i18n";
 import {
   useThreads,
@@ -14,7 +15,6 @@ import {
   forceLogin,
   mergeMessages,
   prependOlder,
-  toChatMessages,
   PAGE_SIZE,
   DEFAULT_THREAD_STATE,
   type ChatMessage,
@@ -476,7 +476,8 @@ export default function ThreadPage() {
     }
   }
 
-  // Newest page only — a chat with 125 messages used to ship all 125.
+  // Newest page only — with automatic fallback to the full history if this
+  // deployment does not take paging params yet (fetchMessagePage handles it).
   // Cache-first: an already-open thread keeps its content and refreshes behind
   // the scenes. mergeMessages keeps both scrolled-in history and local writes.
   useEffect(() => {
@@ -491,24 +492,16 @@ export default function ThreadPage() {
           if (!cancelled) setLoadPhase((p) => (p === "loading" ? "slow" : p));
         }, 8000);
 
-    fetch(`${BASE_URL}/threads/${threadId}/messages?limit=${PAGE_SIZE}`, {
-      headers: authHeaders(),
-    })
-      .then((r) => {
-        if (r.status === 401) { forceLogin(); throw new Error("401"); }
-        if (!r.ok) throw new Error(String(r.status));
-        return r.json();
-      })
-      .then((json) => {
-        if (cancelled) return;
-        const fresh = toChatMessages(json.data ?? json);
+    fetchMessagePage(threadId)
+      .then((page) => {
+        if (cancelled || !page) return;
         setThreadStates((prev) =>
           updateThreadState(prev, threadId, (ts) => ({
             ...ts,
-            messages: mergeMessages(fresh, ts.messages),
+            messages: mergeMessages(page.messages, ts.messages),
             loaded: true,
-            // A short first page means this is the whole history.
-            hasMoreOlder: fresh.length >= PAGE_SIZE,
+            // A short or unpaged first response means this is the whole history.
+            hasMoreOlder: page.paged && page.messages.length >= PAGE_SIZE,
           }))
         );
         setLoadPhase("done");
@@ -539,26 +532,19 @@ export default function ThreadPage() {
     anchorRef.current = scrollRef.current?.scrollHeight ?? null;
 
     try {
-      const q = new URLSearchParams({
-        limit: String(PAGE_SIZE),
+      const page = await fetchMessagePage(threadId, {
         before: String(oldest.createdAt),
-        before_id: String(oldest.serverId),
+        beforeId: String(oldest.serverId),
       });
-      const res = await fetch(`${BASE_URL}/threads/${threadId}/messages?${q.toString()}`, {
-        headers: authHeaders(),
-      });
-      if (res.status === 401) { forceLogin(); return; }
-      if (!res.ok) throw new Error(String(res.status));
-      const json = await res.json();
-      const older = toChatMessages(json.data ?? json);
+      if (!page) return;
       setThreadStates((prev) =>
         updateThreadState(prev, threadId, (ts) => ({
           ...ts,
-          messages: prependOlder(older, ts.messages),
-          hasMoreOlder: older.length >= PAGE_SIZE,
+          messages: prependOlder(page.messages, ts.messages),
+          hasMoreOlder: page.paged && page.messages.length >= PAGE_SIZE,
         }))
       );
-      if (older.length === 0) anchorRef.current = null;
+      if (page.messages.length === 0) anchorRef.current = null;
     } catch {
       anchorRef.current = null;
     } finally {
