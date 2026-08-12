@@ -11,6 +11,7 @@ import {
   updateThreadState,
   taskStatusOf,
   forceLogin,
+  PAGE_SIZE,
   type Thread,
   type ThreadState,
   type TokenBalance,
@@ -124,6 +125,8 @@ function StatusPill({ status }: { status: TaskStatus }) {
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadsLoaded, setThreadsLoaded] = useState(false);
+  const [threadsHasMore, setThreadsHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [threadStates, setThreadStates] = useState<Record<string, ThreadState>>({});
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const [tokens, setTokens] = useState<TokenBalance | null>(null);
@@ -146,6 +149,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const threadsRef = useRef<Thread[]>([]);
+  const loadingMoreRef = useRef(false);
   pathnameRef.current = pathname;
   threadsRef.current = threads;
 
@@ -161,9 +165,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     toastTimerRef.current = setTimeout(() => setToast(null), 2400);
   }, []);
 
+  // Newest page only. Refreshes MERGE instead of replacing, so pages the user
+  // already scrolled into view are not thrown away.
   const loadThreads = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE_URL}/threads`, { headers: authHeaders() });
+      const res = await fetch(`${BASE_URL}/threads?limit=${PAGE_SIZE}`, { headers: authHeaders() });
       if (!res.ok) {
         if (res.status === 401) { forceLogin(); return; }
         const body = await res.json().catch(() => ({}));
@@ -176,12 +182,49 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       }
       const json = await res.json();
       const fetched: Thread[] = json.data ?? json;
-      setThreads(dedup(fetched));
+      setThreads((prev) => dedup([...fetched, ...prev]));
+      if (fetched.length < PAGE_SIZE) setThreadsHasMore(false);
     } catch {}
     finally {
       setThreadsLoaded(true);
     }
   }, [router]);
+
+  // Older page, keyed on the (updated_at, id) cursor of the last row we hold.
+  const loadMoreThreads = useCallback(async () => {
+    if (loadingMoreRef.current || !threadsHasMore) return;
+    const last = threadsRef.current[threadsRef.current.length - 1];
+    if (!last?.updated_at) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    try {
+      const q = new URLSearchParams({
+        limit: String(PAGE_SIZE),
+        before: last.updated_at,
+        before_id: String(last.id),
+      });
+      const res = await fetch(`${BASE_URL}/threads?${q.toString()}`, { headers: authHeaders() });
+      if (!res.ok) {
+        if (res.status === 401) forceLogin();
+        return;
+      }
+      const json = await res.json();
+      const older: Thread[] = json.data ?? json;
+      if (older.length > 0) setThreads((prev) => dedup([...prev, ...older]));
+      if (older.length < PAGE_SIZE) setThreadsHasMore(false);
+    } catch {}
+    finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [threadsHasMore]);
+
+  function onListScroll(e: React.UIEvent<HTMLDivElement>) {
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 300) {
+      loadMoreThreads();
+    }
+  }
 
   const refreshTokens = useCallback(async () => {
     try {
@@ -341,6 +384,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                               content: line,
                               kind: "step",
                               runId: data.runId ?? null,
+                              pending: true,
                             },
                           ],
                     };
@@ -365,6 +409,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                           content: data.reply ?? "",
                           kind: "message",
                           runId: data.runId ?? null,
+                          pending: true,
                         },
                       ],
                       options: Array.isArray(data.options) ? data.options : [],
@@ -477,8 +522,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         ...prev,
         [String(thread.id)]: trimmed.length > 42 ? trimmed.slice(0, 42) + "…" : trimmed,
       }));
-      // Seed the message and the working state BEFORE navigating, so the thread
-      // screen paints with the text already in place.
       router.push(`/chat/${thread.id}`);
       await sendIntoThread(String(thread.id), trimmed, true);
     } catch {}
@@ -656,7 +699,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto flex flex-col gap-[3px]">
+          <div
+            className="flex-1 overflow-y-auto flex flex-col gap-[3px]"
+            onScroll={onListScroll}
+          >
             {!threadsLoaded ? (
               <div className="flex flex-col gap-2 pt-1">
                 <span className="sk-bar" style={{ width: "84%" }} />
@@ -777,6 +823,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       </Link>
                     ))}
                   </section>
+                )}
+
+                {/* Infinite scroll tail — no "load more" button. */}
+                {loadingMore && (
+                  <div className="flex flex-col gap-2 py-3">
+                    <span className="sk-bar" style={{ width: "72%" }} />
+                    <span className="sk-bar" style={{ width: "58%" }} />
+                  </div>
                 )}
               </>
             )}
