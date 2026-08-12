@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
@@ -12,13 +12,18 @@ import {
   updateThreadState,
   taskStatusOf,
   forceLogin,
-  mergeHydrated,
+  mergeMessages,
+  prependOlder,
+  toChatMessages,
+  PAGE_SIZE,
   DEFAULT_THREAD_STATE,
   type ChatMessage,
   type TaskStatus,
 } from "@/contexts/ThreadsContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+// How close to the top before the next page of history is pulled in.
+const OLDER_TRIGGER_PX = 300;
 
 // Screen-local copy for the send-failure marker.
 const SEND = {
@@ -208,12 +213,13 @@ export default function ThreadPage() {
   } = useThreads();
 
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
-  const { messages, options, choices, loading, error, streaming, progress, result } = st;
+  const { messages, options, choices, loading, error, streaming, progress, hasMoreOlder, result } = st;
   const send = SEND[getLocale()];
 
   const [input, setInput] = useState("");
   const [loadPhase, setLoadPhase] = useState<LoadPhase>(st.loaded ? "done" : "loading");
   const [fetchNonce, setFetchNonce] = useState(0);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [speechSupported, setSpeechSupported] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -225,6 +231,7 @@ export default function ThreadPage() {
   const packagesFetchedRef = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
@@ -233,6 +240,13 @@ export default function ThreadPage() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const balanceRef = useRef<number | null>(null);
+  // scrollHeight captured just before an older page is prepended.
+  const anchorRef = useRef<number | null>(null);
+  const loadingOlderRef = useRef(false);
+  // Last rendered message id — used to tell "new message at the bottom" (scroll
+  // down) apart from "older page at the top" (stay put).
+  const lastIdRef = useRef<string | null>(null);
+  const firstPaintRef = useRef(true);
   // How many messages this thread already has in memory — read inside the fetch
   // effect to decide cache-first vs skeleton.
   const msgCountRef = useRef(0);
@@ -253,6 +267,13 @@ export default function ThreadPage() {
   const lowBalance = remainingPct !== null && remainingPct <= 0.05;
 
   const streamingActive = loading && !!streaming && streaming.text.length > 0;
+
+  // Switching threads resets the scroll bookkeeping.
+  useEffect(() => {
+    lastIdRef.current = null;
+    firstPaintRef.current = true;
+    anchorRef.current = null;
+  }, [threadId]);
 
   // The task engine can write into the thread with no user action —
   // thread_updated bumps this counter and an idle open thread refetches.
@@ -455,10 +476,9 @@ export default function ThreadPage() {
     }
   }
 
-  // Hydrate history. Cache-first: if this thread is already in memory we keep
-  // showing it and refresh in the background — no skeleton flash, no spinner.
-  // The server list is MERGED with local pending messages so a fetch that lands
-  // right after the user hit send never wipes their own bubble.
+  // Newest page only — a chat with 125 messages used to ship all 125.
+  // Cache-first: an already-open thread keeps its content and refreshes behind
+  // the scenes. mergeMessages keeps both scrolled-in history and local writes.
   useEffect(() => {
     if (!threadId) return;
     let cancelled = false;
@@ -471,7 +491,7 @@ export default function ThreadPage() {
           if (!cancelled) setLoadPhase((p) => (p === "loading" ? "slow" : p));
         }, 8000);
 
-    fetch(`${BASE_URL}/threads/${threadId}/messages`, {
+    fetch(`${BASE_URL}/threads/${threadId}/messages?limit=${PAGE_SIZE}`, {
       headers: authHeaders(),
     })
       .then((r) => {
@@ -481,24 +501,14 @@ export default function ThreadPage() {
       })
       .then((json) => {
         if (cancelled) return;
-        const raw: Array<{
-          role: string;
-          content: string;
-          kind?: string;
-          run_id?: string | null;
-        }> = json.data ?? json;
-        const hydrated: ChatMessage[] = (Array.isArray(raw) ? raw : []).map((m) => ({
-          id: crypto.randomUUID(),
-          role: m.role as "user" | "assistant",
-          content: m.content,
-          kind: m.kind === "step" ? "step" : m.kind === "error" ? "error" : "message",
-          runId: m.run_id ?? null,
-        }));
+        const fresh = toChatMessages(json.data ?? json);
         setThreadStates((prev) =>
           updateThreadState(prev, threadId, (ts) => ({
             ...ts,
-            messages: mergeHydrated(hydrated, ts.messages),
+            messages: mergeMessages(fresh, ts.messages),
             loaded: true,
+            // A short first page means this is the whole history.
+            hasMoreOlder: fresh.length >= PAGE_SIZE,
           }))
         );
         setLoadPhase("done");
@@ -517,9 +527,78 @@ export default function ThreadPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId, reconnectNonce, fetchNonce]);
 
+  // Older page, keyed on the (created_at, id) cursor of the oldest row we hold.
+  const loadOlder = useCallback(async () => {
+    if (loadingOlderRef.current || !hasMoreOlder) return;
+    const oldest = messages.find((m) => m.serverId != null && m.createdAt);
+    if (!oldest) return;
+
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    // Remember the height so the view can be pinned after the prepend.
+    anchorRef.current = scrollRef.current?.scrollHeight ?? null;
+
+    try {
+      const q = new URLSearchParams({
+        limit: String(PAGE_SIZE),
+        before: String(oldest.createdAt),
+        before_id: String(oldest.serverId),
+      });
+      const res = await fetch(`${BASE_URL}/threads/${threadId}/messages?${q.toString()}`, {
+        headers: authHeaders(),
+      });
+      if (res.status === 401) { forceLogin(); return; }
+      if (!res.ok) throw new Error(String(res.status));
+      const json = await res.json();
+      const older = toChatMessages(json.data ?? json);
+      setThreadStates((prev) =>
+        updateThreadState(prev, threadId, (ts) => ({
+          ...ts,
+          messages: prependOlder(older, ts.messages),
+          hasMoreOlder: older.length >= PAGE_SIZE,
+        }))
+      );
+      if (older.length === 0) anchorRef.current = null;
+    } catch {
+      anchorRef.current = null;
+    } finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  }, [hasMoreOlder, messages, threadId, setThreadStates]);
+
+  function onMessagesScroll(e: React.UIEvent<HTMLDivElement>) {
+    if (e.currentTarget.scrollTop < OLDER_TRIGGER_PX) loadOlder();
+  }
+
+  // Pin the viewport after older messages are prepended — without this the
+  // content jumps by the height of the new page.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    const before = anchorRef.current;
+    if (el && before != null) {
+      el.scrollTop = el.scrollTop + (el.scrollHeight - before);
+      anchorRef.current = null;
+    }
+  }, [messages]);
+
+  // Follow the bottom only when something NEW arrived at the end. A prepended
+  // page leaves the last id untouched, so the view stays where the user is.
   useEffect(() => {
+    const lastId = messages.length ? messages[messages.length - 1].id : null;
+    if (lastId === lastIdRef.current) return;
+    lastIdRef.current = lastId;
+    if (!lastId) return;
+    messagesEndRef.current?.scrollIntoView({
+      behavior: firstPaintRef.current ? "auto" : "smooth",
+    });
+    firstPaintRef.current = false;
+  }, [messages]);
+
+  useEffect(() => {
+    if (!streaming && !loading) return;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, error, streaming, result]);
+  }, [streaming, loading]);
 
   // Optimistic send: the bubble is on screen before the request leaves. On
   // failure the text STAYS with a "not sent / resend" marker — never deleted.
@@ -772,7 +851,7 @@ export default function ThreadPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" ref={scrollRef} onScroll={onMessagesScroll}>
         {showInitialLoad ? (
           loadPhase === "slow" || loadPhase === "failed" ? (
             <div className="empty h-full">
@@ -802,6 +881,14 @@ export default function ThreadPage() {
             className="messages mx-auto flex flex-col"
             style={{ maxWidth: "720px", padding: "26px 24px", gap: "18px" }}
           >
+            {/* Older history loading in at the top. */}
+            {loadingOlder && (
+              <div className="flex flex-col gap-2">
+                <span className="sk-bar" style={{ width: "58%" }} />
+                <span className="sk-bar" style={{ width: "72%", alignSelf: "flex-end" }} />
+              </div>
+            )}
+
             {taskStatus && messages.length > 0 && (
               <div className="card flex items-center gap-3" style={{ padding: "12px 14px", maxWidth: "520px" }}>
                 <div className="flex-1 min-w-0 flex flex-col gap-1">
