@@ -7,7 +7,7 @@ import NotificationButton from "@/components/NotificationButton";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { fetchMessagePage } from "@/lib/messages";
-import { t, tf, stripEmoji, getLocale } from "@/lib/i18n";
+import { t, tf, stripEmoji, linkifyPhones, getLocale } from "@/lib/i18n";
 import {
   useThreads,
   updateThreadState,
@@ -22,10 +22,8 @@ import {
 } from "@/contexts/ThreadsContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-// How close to the top before the next page of history is pulled in.
 const OLDER_TRIGGER_PX = 300;
 
-// Screen-local copy for the send-failure marker.
 const SEND = {
   en: { failed: "Not sent", resend: "Resend" },
   ka: { failed: "ვერ გაიგზავნა", resend: "ხელახლა" },
@@ -121,6 +119,17 @@ const markdownComponents = {
   strong: ({ children }: { children?: React.ReactNode }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
   em: ({ children }: { children?: React.ReactNode }) => <em>{children}</em>,
   hr: () => <hr style={{ height: "1px", background: "var(--header-border)", border: 0, margin: "12px 0" }} />,
+  // Phone/WhatsApp links from linkifyPhones plus any regular links.
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+    <a
+      href={href}
+      target={href?.startsWith("http") ? "_blank" : undefined}
+      rel="noopener noreferrer"
+      style={{ color: "var(--accent-strong)", textDecoration: "underline", textUnderlineOffset: "2px" }}
+    >
+      {children}
+    </a>
+  ),
   ol: ({ children }: { children?: React.ReactNode }) => <ol style={{ paddingLeft: "20px", marginBottom: "10px", listStyleType: "decimal" }} className="space-y-1 last:mb-0">{children}</ol>,
   ul: ({ children }: { children?: React.ReactNode }) => <ul style={{ paddingLeft: "20px", marginBottom: "10px", listStyleType: "disc" }} className="space-y-1 last:mb-0">{children}</ul>,
   li: ({ children }: { children?: React.ReactNode }) => <li>{children}</li>,
@@ -173,8 +182,6 @@ function extractQuote(text: string): string | null {
   return m ? m[1].trim() : null;
 }
 
-// System-style error block: distinct background, no emoji, never an assistant
-// bubble. Used for BOTH persisted kind:'error' rows and live run_error.
 function ErrorBlock({ text, onRetry }: { text: string; onRetry: (() => void) | null }) {
   return (
     <div className="flex items-start" style={{ gap: "10px" }}>
@@ -208,7 +215,7 @@ export default function ThreadPage() {
   const threadId = params.id as string;
   const router = useRouter();
   const {
-    threads, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens,
+    threads, setThreads, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens,
     titles, resolveRequest, resolvedRequests, threadBumps,
   } = useThreads();
 
@@ -240,15 +247,10 @@ export default function ThreadPage() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const balanceRef = useRef<number | null>(null);
-  // scrollHeight captured just before an older page is prepended.
   const anchorRef = useRef<number | null>(null);
   const loadingOlderRef = useRef(false);
-  // Last rendered message id — used to tell "new message at the bottom" (scroll
-  // down) apart from "older page at the top" (stay put).
   const lastIdRef = useRef<string | null>(null);
   const firstPaintRef = useRef(true);
-  // How many messages this thread already has in memory — read inside the fetch
-  // effect to decide cache-first vs skeleton.
   const msgCountRef = useRef(0);
   msgCountRef.current = messages.length;
 
@@ -256,7 +258,6 @@ export default function ThreadPage() {
   const userInitial = getUserInitial();
   const isRequest = thread?.type === "incoming_request";
   const taskStatus: TaskStatus | null = thread ? taskStatusOf(thread, st) : null;
-  const statusLine = thread?.status_line ?? null;
 
   const tokensEnabled = tokens?.enabled === true;
   const isTrialWallet = tokensEnabled && tokens.grantedThisPeriod === 120;
@@ -268,15 +269,12 @@ export default function ThreadPage() {
 
   const streamingActive = loading && !!streaming && streaming.text.length > 0;
 
-  // Switching threads resets the scroll bookkeeping.
   useEffect(() => {
     lastIdRef.current = null;
     firstPaintRef.current = true;
     anchorRef.current = null;
   }, [threadId]);
 
-  // The task engine can write into the thread with no user action —
-  // thread_updated bumps this counter and an idle open thread refetches.
   const bump = threadBumps[threadId] ?? 0;
   const prevBumpRef = useRef(bump);
   useEffect(() => {
@@ -393,6 +391,47 @@ export default function ThreadPage() {
     }
   }
 
+  // E1: rename — PATCH /threads/:id { title }. thread_updated keeps other
+  // devices in sync; we update the local row right away.
+  async function renameThread() {
+    const current = thread?.title ?? "";
+    const name = window.prompt(t("renamePrompt"), current);
+    if (name == null) return;
+    const trimmed = name.trim().slice(0, 80);
+    if (!trimmed || trimmed === current) return;
+    try {
+      const res = await fetch(`${BASE_URL}/threads/${threadId}`, {
+        method: "PATCH",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ title: trimmed }),
+      });
+      if (res.status === 401) { forceLogin(); return; }
+      if (!res.ok) { showToast(t("renameFailed"), false); return; }
+      setThreads((prev) =>
+        prev.map((th) => (String(th.id) === threadId ? { ...th, title: trimmed } : th))
+      );
+    } catch {
+      showToast(t("renameFailed"), false);
+    }
+  }
+
+  // C1: delete — the server closes any open task itself.
+  async function deleteThread() {
+    if (!window.confirm(t("deleteConfirm"))) return;
+    try {
+      const res = await fetch(`${BASE_URL}/threads/${threadId}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      if (res.status === 401) { forceLogin(); return; }
+      if (!res.ok) { showToast(t("deleteFailed"), false); return; }
+      setThreads((prev) => prev.filter((th) => String(th.id) !== threadId));
+      router.push("/chat");
+    } catch {
+      showToast(t("deleteFailed"), false);
+    }
+  }
+
   useEffect(() => {
     function onVisibilityChange() {
       if (document.hidden && recognitionRef.current) {
@@ -476,10 +515,6 @@ export default function ThreadPage() {
     }
   }
 
-  // Newest page only — with automatic fallback to the full history if this
-  // deployment does not take paging params yet (fetchMessagePage handles it).
-  // Cache-first: an already-open thread keeps its content and refreshes behind
-  // the scenes. mergeMessages keeps both scrolled-in history and local writes.
   useEffect(() => {
     if (!threadId) return;
     let cancelled = false;
@@ -500,7 +535,6 @@ export default function ThreadPage() {
             ...ts,
             messages: mergeMessages(page.messages, ts.messages),
             loaded: true,
-            // A short or unpaged first response means this is the whole history.
             hasMoreOlder: page.paged && page.messages.length >= PAGE_SIZE,
           }))
         );
@@ -520,7 +554,6 @@ export default function ThreadPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId, reconnectNonce, fetchNonce]);
 
-  // Older page, keyed on the (created_at, id) cursor of the oldest row we hold.
   const loadOlder = useCallback(async () => {
     if (loadingOlderRef.current || !hasMoreOlder) return;
     const oldest = messages.find((m) => m.serverId != null && m.createdAt);
@@ -528,7 +561,6 @@ export default function ThreadPage() {
 
     loadingOlderRef.current = true;
     setLoadingOlder(true);
-    // Remember the height so the view can be pinned after the prepend.
     anchorRef.current = scrollRef.current?.scrollHeight ?? null;
 
     try {
@@ -557,8 +589,6 @@ export default function ThreadPage() {
     if (e.currentTarget.scrollTop < OLDER_TRIGGER_PX) loadOlder();
   }
 
-  // Pin the viewport after older messages are prepended — without this the
-  // content jumps by the height of the new page.
   useLayoutEffect(() => {
     const el = scrollRef.current;
     const before = anchorRef.current;
@@ -568,8 +598,6 @@ export default function ThreadPage() {
     }
   }, [messages]);
 
-  // Follow the bottom only when something NEW arrived at the end. A prepended
-  // page leaves the last id untouched, so the view stays where the user is.
   useEffect(() => {
     const lastId = messages.length ? messages[messages.length - 1].id : null;
     if (lastId === lastIdRef.current) return;
@@ -586,8 +614,6 @@ export default function ThreadPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [streaming, loading]);
 
-  // Optimistic send: the bubble is on screen before the request leaves. On
-  // failure the text STAYS with a "not sent / resend" marker — never deleted.
   const sendMessage = useCallback(
     async (text: string, echo: boolean = true) => {
       if (voiceState === "recording") {
@@ -688,7 +714,6 @@ export default function ThreadPage() {
     [threadId, voiceState, setThreadStates, rateLimitedUntil, limitHit, refreshTokens]
   );
 
-  // Resend a failed bubble: drop the old one, send the same text again.
   const resend = useCallback(
     (msg: ChatMessage) => {
       setThreadStates((prev) =>
@@ -713,8 +738,6 @@ export default function ThreadPage() {
   const lastBlock = blocks[blocks.length - 1];
   const trailingSteps =
     lastBlock && lastBlock.type === "steps" && lastBlock.trailing ? lastBlock.steps : [];
-  // While a run is live the trailing steps move into the live panel below, so
-  // they are not rendered twice.
   const renderBlocks = loading && trailingSteps.length > 0 ? blocks.slice(0, -1) : blocks;
 
   const lastMsg = messages[messages.length - 1];
@@ -815,6 +838,34 @@ export default function ThreadPage() {
               {t("stopGoal")}
             </button>
           )}
+          {!isRequest && thread && (
+            <button
+              onClick={renameThread}
+              aria-label={t("renameGoal")}
+              title={t("renameGoal")}
+              className="rounded-lg p-1.5 transition-colors hover:bg-black/5"
+              style={{ color: "var(--ink-soft)" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <path d="M13.5 3.5l3 3L7 16H4v-3l9.5-9.5z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
+          {thread && (
+            <button
+              onClick={deleteThread}
+              aria-label={t("deleteGoal")}
+              title={t("deleteGoal")}
+              className="rounded-lg p-1.5 transition-colors hover:bg-black/5"
+              style={{ color: "var(--ink-soft)" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--danger)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--ink-soft)"; }}
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <path d="M3.5 5.5h13M8 5V3.5h4V5M6 5.5l.7 10.3a1 1 0 001 .95h4.6a1 1 0 001-.95L14 5.5M8.3 8.5v5M11.7 8.5v5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
           {tokensEnabled && (
             <span className={`token-badge${lowBalance ? " low" : ""}`}>
               <i className="dot" style={{ width: 8, height: 8, borderRadius: "50%", background: lowBalance ? "var(--request-accent)" : "var(--accent)", display: "inline-block" }} />
@@ -867,33 +918,10 @@ export default function ThreadPage() {
             className="messages mx-auto flex flex-col"
             style={{ maxWidth: "720px", padding: "26px 24px", gap: "18px" }}
           >
-            {/* Older history loading in at the top. */}
             {loadingOlder && (
               <div className="flex flex-col gap-2">
                 <span className="sk-bar" style={{ width: "58%" }} />
                 <span className="sk-bar" style={{ width: "72%", alignSelf: "flex-end" }} />
-              </div>
-            )}
-
-            {taskStatus && messages.length > 0 && (
-              <div className="card flex items-center gap-3" style={{ padding: "12px 14px", maxWidth: "520px" }}>
-                <div className="flex-1 min-w-0 flex flex-col gap-1">
-                  <span className={`task-pill ${taskStatus}`} style={{ alignSelf: "flex-start" }}>{statusLabel}</span>
-                  {statusLine && taskStatus !== "working" && (
-                    <span className="truncate" style={{ font: "400 12.5px/18px var(--font-system)", color: taskStatus === "needs_you" ? "var(--request-accent)" : "var(--ink-soft)", fontWeight: taskStatus === "needs_you" ? 600 : 400 }}>
-                      {statusLine}
-                    </span>
-                  )}
-                </div>
-                <span className="anim-box" style={{ width: 56, height: 56 }}>
-                  {taskStatus !== "done" && (
-                    <video
-                      autoPlay muted loop playsInline
-                      src={`/assets/ally/anim/${taskStatus === "needs_you" ? "ally-walk" : taskStatus === "failed" ? "ally-error" : "ally-loading"}.mp4`}
-                      onError={(e) => { e.currentTarget.style.display = "none"; }}
-                    />
-                  )}
-                </span>
               </div>
             )}
 
@@ -965,7 +993,7 @@ export default function ThreadPage() {
                     <AllyAvatar />
                     <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)", flex: 1, minWidth: 0 }}>
                       <ReactMarkdown components={markdownComponents}>
-                        {msg.content}
+                        {linkifyPhones(msg.content)}
                       </ReactMarkdown>
                     </div>
                   </div>
@@ -998,15 +1026,12 @@ export default function ThreadPage() {
                 <AllyAvatar />
                 <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)", flex: 1, minWidth: 0 }}>
                   <ReactMarkdown components={markdownComponents}>
-                    {streaming!.text}
+                    {linkifyPhones(streaming!.text)}
                   </ReactMarkdown>
                 </div>
               </div>
             )}
 
-            {/* Live activity — on screen from the moment of send, so the long
-                search is never silent. Steps accumulate here; the pulsing line
-                is the current tool_progress. */}
             {loading && (
               <div className="flex items-start" style={{ gap: "10px" }}>
                 <AllyAvatar />
