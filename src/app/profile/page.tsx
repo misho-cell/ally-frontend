@@ -65,6 +65,16 @@ const L = {
     tapChoose: "Tap below to choose a plan.",
     portalError: "Couldn't open the portal. Please try again.",
     genericError: "Something went wrong",
+    editProfile: "Edit profile",
+    nameLabel: "Name",
+    employerLabel: "Employer",
+    jobLabel: "Position",
+    cityLabel: "City",
+    save: "Save",
+    saved: "Saved",
+    nameRequired: "Name can't be empty",
+    dataRights: "Data & privacy",
+    dataRightsSub: "See what we store, or delete your account",
   },
   ka: {
     backChat: "← ჩეთი",
@@ -116,6 +126,16 @@ const L = {
     tapChoose: "გეგმის ასარჩევად დააჭირე ქვემოთ.",
     portalError: "პორტალი ვერ გაიხსნა. სცადე თავიდან.",
     genericError: "რაღაც შეცდომა მოხდა",
+    editProfile: "პროფილის რედაქტირება",
+    nameLabel: "სახელი",
+    employerLabel: "სამსახური",
+    jobLabel: "თანამდებობა",
+    cityLabel: "ქალაქი",
+    save: "შენახვა",
+    saved: "შენახულია",
+    nameRequired: "სახელი აუცილებელია",
+    dataRights: "მონაცემები და კონფიდენციალურობა",
+    dataRightsSub: "ნახე რას ვინახავთ ან წაშალე ანგარიში",
   },
 };
 
@@ -126,6 +146,9 @@ function useStrings() {
 type Profile = {
   name: string;
   phone: string;
+  employer?: string | null;
+  job_position?: string | null;
+  city?: string | null;
   subscription_tier: "free" | "premium" | "pro" | "enterprise";
   subscription_status: "trialing" | "active" | "past_due" | "canceled" | "inactive";
   trial_ends_at: string | null;
@@ -221,6 +244,90 @@ function InviteFriendsCard({ phone }: { phone: string }) {
       <button type="button" onClick={share} className="btn-primary self-start">
         {s.inviteBtn}
       </button>
+    </div>
+  );
+}
+
+// Edit profile (E9): name / employer / position / city via PATCH /profile.
+// Empty optional fields are sent as null (the contract's "clear" value); name
+// can never be emptied — asks are sent under it. Photo upload has no backend
+// contract yet, so no photo UI here (placeholder initial-avatar stays above).
+// Space for referral_code is reserved pending the D5 decision.
+function EditProfileCard({ profile, onSaved }: { profile: Profile; onSaved: (p: Partial<Profile>) => void }) {
+  const s = useStrings();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(profile.name);
+  const [employer, setEmployer] = useState(profile.employer ?? "");
+  const [job, setJob] = useState(profile.job_position ?? "");
+  const [city, setCity] = useState(profile.city ?? "");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) {
+      setErr(s.nameRequired);
+      return;
+    }
+    setSaving(true);
+    setErr(null);
+    setMsg(null);
+    const body = {
+      name: name.trim(),
+      employer: employer.trim() || null,
+      job_position: job.trim() || null,
+      city: city.trim() || null,
+    };
+    try {
+      await apiFetch("/profile", { method: "PATCH", body });
+      onSaved(body);
+      setMsg(s.saved);
+      setTimeout(() => setMsg(null), 2400);
+    } catch (e2) {
+      setErr(e2 instanceof ApiError ? e2.message : s.genericError);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const field = (label: string, value: string, set: (v: string) => void, required?: boolean) => (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs" style={{ color: "var(--ink-soft)" }}>{label}</label>
+      <input
+        type="text"
+        value={value}
+        required={required}
+        onChange={(e) => set(e.target.value)}
+        className="input-pill"
+      />
+    </div>
+  );
+
+  return (
+    <div className="card flex flex-col gap-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.editProfile}</h2>
+        <span style={{ color: "var(--meta)", fontSize: "12px" }}>{open ? "▾" : "▸"}</span>
+      </button>
+
+      {open && (
+        <form onSubmit={save} className="flex flex-col gap-3">
+          {field(s.nameLabel, name, setName, true)}
+          {field(s.employerLabel, employer, setEmployer)}
+          {field(s.jobLabel, job, setJob)}
+          {field(s.cityLabel, city, setCity)}
+          {err && <p className="text-sm" style={{ color: "var(--danger)" }}>{err}</p>}
+          {msg && <p className="text-sm" style={{ color: "var(--accent-strong)" }}>{msg}</p>}
+          <button type="submit" disabled={saving || !name.trim()} className="btn-primary self-start disabled:opacity-60">
+            {saving ? "…" : s.save}
+          </button>
+        </form>
+      )}
     </div>
   );
 }
@@ -611,6 +718,12 @@ export default function ProfilePage() {
               </div>
             </div>
 
+            {/* Edit profile (E9) */}
+            <EditProfileCard
+              profile={profile}
+              onSaved={(p) => setProfile((prev) => (prev ? { ...prev, ...p } : prev))}
+            />
+
             {/* Invite friends (referral share) */}
             <InviteFriendsCard phone={profile.phone} />
 
@@ -662,6 +775,22 @@ export default function ProfilePage() {
                 </button>
               ) : null}
             </div>
+
+            {/* Data rights (C2) */}
+            <Link
+              href="/profile/data"
+              className="card flex items-center justify-between transition-colors"
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--cta-border)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--sidebar-border)"; }}
+            >
+              <div>
+                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.dataRights}</h2>
+                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
+                  {s.dataRightsSub}
+                </p>
+              </div>
+              <span style={{ color: "var(--meta)" }}>→</span>
+            </Link>
 
             {/* Sign out */}
             <button onClick={signOut} className="btn-destructive py-2 text-center self-center">
