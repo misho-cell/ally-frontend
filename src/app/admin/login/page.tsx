@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
     <div className="flex min-h-full flex-col items-center justify-center bg-white px-4 py-12">
       <div className="w-full max-w-sm">
         <h1 className="mb-8 text-center text-3xl font-bold tracking-tight text-[#23261F]">
-          Ally Admin
+          Netai Admin
         </h1>
 
         <div className="overflow-hidden rounded-2xl border border-[#E4E0D3] bg-white">
@@ -59,7 +59,7 @@ export default function AdminLoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@ally.com"
+                placeholder="admin@netai.guru"
                 className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
               />
             </div>

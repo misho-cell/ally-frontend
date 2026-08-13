@@ -19,10 +19,24 @@ export function stripEmoji(s: string): string {
   }
 }
 
+// Founder rule: phone numbers in assistant messages are tappable. Turns bare
+// international numbers into markdown links — the number dials (tel:), the
+// small WhatsApp link opens a chat. Runs on the markdown SOURCE before
+// rendering, and skips numbers that are already inside a link.
+export function linkifyPhones(text: string): string {
+  return text.replace(
+    /(^|[^\d(\[/+])(\+\d{1,3}[\s\-]?\d(?:[\s\-]?\d){6,12})(?!\d)/g,
+    (_, lead: string, num: string) => {
+      const digits = num.replace(/[^\d]/g, "");
+      return `${lead}[${num.trim()}](tel:+${digits}) [↗︎WhatsApp](https://wa.me/${digits})`;
+    }
+  );
+}
+
 const en = {
   newTask: "New goal",
   presenceWorking: "working on {n} of your goals",
-  presenceReady: "ready to start",
+  presenceReady: "your assistant",
   requestsLabel: "Requests",
   asksLabel: "Questions for you",
   askBadge: "question",
@@ -31,9 +45,11 @@ const en = {
   viewAll: "View all",
   legacyChats: "Old conversations ›",
   homePlaceholder: "What are you working on right now?",
+  searchGoals: "Search goals",
   noTasksYet: "No goals yet",
   requestsHint: "Requests from your circle appear here.",
   threadsHint: "No goals yet — your first ask starts one.",
+  noMatches: "Nothing matches your search.",
   signOut: "Sign out",
   selectThread: "Pick a goal or give me a new one.",
   emptyHome: "Nothing on my desk yet. Set a goal, I'll handle the rest.",
@@ -75,6 +91,12 @@ const en = {
   stFailed: "stuck",
   stopGoal: "Stop",
   stopFailed: "Couldn't stop — try again",
+  renameGoal: "Rename",
+  renamePrompt: "New name for this goal:",
+  renameFailed: "Couldn't rename — try again",
+  deleteGoal: "Delete",
+  deleteConfirm: "Delete this goal? Any open work on it will be stopped.",
+  deleteFailed: "Couldn't delete — try again",
   reqAsksIntro: "asks for an intro through you",
   reqAccept: "Accept",
   reqDeny: "Decline",
@@ -98,7 +120,7 @@ const en = {
 const ka: typeof en = {
   newTask: "ახალი მიზანი",
   presenceWorking: "მუშაობს შენს {n} მიზანზე",
-  presenceReady: "მზადაა დასაწყებად",
+  presenceReady: "შენი ასისტენტი",
   requestsLabel: "მოთხოვნები",
   asksLabel: "შეკითხვები შენთვის",
   askBadge: "შეკითხვა",
@@ -107,9 +129,11 @@ const ka: typeof en = {
   viewAll: "ყველას ნახვა",
   legacyChats: "ძველი მიმოწერა ›",
   homePlaceholder: "რაზე მუშაობ ახლა?",
+  searchGoals: "მოძებნე მიზნებში",
   noTasksYet: "მიზნები ჯერ არ არის",
   requestsHint: "შენი წრიდან თხოვნები აქ გამოჩნდება.",
   threadsHint: "მიზნები ჯერ არ არის, პირველი თხოვნა დაიწყებს ახალს.",
+  noMatches: "ძიებას არაფერი ემთხვევა.",
   signOut: "გასვლა",
   selectThread: "აირჩიე მიზანი ან მომეცი ახალი.",
   emptyHome: "ჯერ არაფერი მაქვს სამუშაო. განმისაზღვრე მიზანი, დანარჩენს მე მივხედავ.",
@@ -151,6 +175,12 @@ const ka: typeof en = {
   stFailed: "ვერ მოხერხდა",
   stopGoal: "გაჩერება",
   stopFailed: "ვერ გაჩერდა, სცადე თავიდან",
+  renameGoal: "გადარქმევა",
+  renamePrompt: "მიზნის ახალი სახელი:",
+  renameFailed: "გადარქმევა ვერ მოხერხდა, სცადე თავიდან",
+  deleteGoal: "წაშლა",
+  deleteConfirm: "წავშალო ეს მიზანი? მასზე მიმდინარე სამუშაო შეჩერდება.",
+  deleteFailed: "წაშლა ვერ მოხერხდა, სცადე თავიდან",
   reqAsksIntro: "გაცნობას ითხოვს შენი დახმარებით",
   reqAccept: "მიიღე",
   reqDeny: "უარი",
