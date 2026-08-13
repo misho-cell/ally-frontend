@@ -11,6 +11,8 @@ import { getLocale } from "@/lib/i18n";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const MCP_URL = "https://api.netai.guru/mcp";
 const SITE_URL = "https://netai.guru";
+const PHOTO_URL = `${BASE_URL}/profile/photo`;
+const PHOTO_MAX_BYTES = 300 * 1024;
 
 // Screen-local strings (phone locale: ka → Georgian, else English).
 // Georgian: no em-dashes, never italic.
@@ -75,6 +77,9 @@ const L = {
     nameRequired: "Name can't be empty",
     dataRights: "Data & privacy",
     dataRightsSub: "See what we store, or delete your account",
+    changePhoto: "Change photo",
+    removePhoto: "Remove",
+    photoError: "Couldn't upload the photo. Try another image.",
   },
   ka: {
     backChat: "← ჩეთი",
@@ -136,6 +141,9 @@ const L = {
     nameRequired: "სახელი აუცილებელია",
     dataRights: "მონაცემები და კონფიდენციალურობა",
     dataRightsSub: "ნახე რას ვინახავთ ან წაშალე ანგარიში",
+    changePhoto: "ფოტოს შეცვლა",
+    removePhoto: "წაშლა",
+    photoError: "ფოტო ვერ აიტვირთა. სცადე სხვა სურათი.",
   },
 };
 
@@ -212,6 +220,160 @@ function priceFromLabel(label: string): string | null {
   return m ? m[0] : null;
 }
 
+// Downscale a picked image on the client (max side 512, JPEG) so the encoded
+// payload fits the backend's 300KB decoded limit. Tries decreasing quality
+// steps; null when even the lowest step doesn't fit (huge flat PNGs etc.).
+async function downscalePhoto(file: File): Promise<{ mime: string; base64: string } | null> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("decode"));
+      img.src = url;
+    });
+    const scale = Math.min(1, 512 / Math.max(img.width, img.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    for (const quality of [0.85, 0.7, 0.5]) {
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", quality)
+      );
+      if (blob && blob.size <= PHOTO_MAX_BYTES) {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+          reader.onerror = () => reject(new Error("read"));
+          reader.readAsDataURL(blob);
+        });
+        return { mime: "image/jpeg", base64 };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// Profile photo avatar: shows GET /profile/photo when present (auth header
+// needed, so it's fetched into a blob URL, never an <img src> straight to the
+// API), otherwise the initial. Upload downsizes client-side, PUTs base64.
+function PhotoAvatar({ name }: { name: string }) {
+  const s = useStrings();
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
+
+  function setBlobUrl(url: string | null) {
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    objectUrlRef.current = url;
+    setPhotoUrl(url);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(PHOTO_URL, { headers: authHeaders() })
+      .then(async (r) => {
+        if (!r.ok || cancelled) return;
+        const blob = await r.blob();
+        if (!cancelled) setBlobUrl(URL.createObjectURL(blob));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    setErr(null);
+    const packed = await downscalePhoto(file);
+    if (!packed) {
+      setErr(s.photoError);
+      setBusy(false);
+      return;
+    }
+    try {
+      await apiFetch("/profile/photo", {
+        method: "PUT",
+        body: { mime: packed.mime, data_base64: packed.base64 },
+      });
+      const bytes = atob(packed.base64);
+      const arr = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+      setBlobUrl(URL.createObjectURL(new Blob([arr], { type: packed.mime })));
+    } catch (e2) {
+      setErr(e2 instanceof ApiError ? e2.message : s.photoError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    setBusy(true);
+    setErr(null);
+    try {
+      await apiFetch("/profile/photo", { method: "DELETE" });
+      setBlobUrl(null);
+    } catch (e2) {
+      setErr(e2 instanceof ApiError ? e2.message : s.genericError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-1.5" style={{ flex: "0 0 auto" }}>
+      {photoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={photoUrl}
+          alt={name}
+          style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover" }}
+        />
+      ) : (
+        <div className="initial-avatar" style={{ width: 48, height: 48, fontSize: "18px" }}>
+          {name.charAt(0).toUpperCase()}
+        </div>
+      )}
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPick} />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => fileRef.current?.click()}
+          style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-strong)" }}
+        >
+          {busy ? "…" : s.changePhoto}
+        </button>
+        {photoUrl && !busy && (
+          <button
+            type="button"
+            onClick={remove}
+            style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger)" }}
+          >
+            {s.removePhoto}
+          </button>
+        )}
+      </div>
+      {err && <p style={{ fontSize: "11px", color: "var(--danger)", textAlign: "center" }}>{err}</p>}
+    </div>
+  );
+}
+
 // Invite friends — referral share, prominent on the profile. The share text
 // carries the site link, a mini how-to and the user's number so the friend
 // has zero follow-up questions.
@@ -250,9 +412,8 @@ function InviteFriendsCard({ phone }: { phone: string }) {
 
 // Edit profile (E9): name / employer / position / city via PATCH /profile.
 // Empty optional fields are sent as null (the contract's "clear" value); name
-// can never be emptied — asks are sent under it. Photo upload has no backend
-// contract yet, so no photo UI here (placeholder initial-avatar stays above).
-// Space for referral_code is reserved pending the D5 decision.
+// can never be emptied — asks are sent under it. Space for referral_code is
+// reserved pending the D5 decision.
 function EditProfileCard({ profile, onSaved }: { profile: Profile; onSaved: (p: Partial<Profile>) => void }) {
   const s = useStrings();
   const [open, setOpen] = useState(false);
@@ -704,9 +865,7 @@ export default function ProfilePage() {
             {/* User card */}
             <div className="card">
               <div className="flex items-center gap-4">
-                <div className="initial-avatar" style={{ width: 48, height: 48, fontSize: "18px" }}>
-                  {profile.name.charAt(0).toUpperCase()}
-                </div>
+                <PhotoAvatar name={profile.name} />
                 <div>
                   <p style={{ fontSize: "16px", fontWeight: 600, color: "var(--ink)" }}>
                     {profile.name}
