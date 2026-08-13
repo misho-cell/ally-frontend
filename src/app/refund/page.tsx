@@ -14,19 +14,19 @@ export default function RefundPage() {
           <h1 className="legal-h1 mb-2">Refund Policy</h1>
           <p className="legal-meta mb-8">Effective Date: January 1, 2026 · Last Updated: June 2026</p>
 
-          <p className="mb-8">Ally subscriptions and purchases are processed by <strong>Paddle (Paddle.com Market Ltd)</strong>, our Merchant of Record — the legal seller of record for all Ally transactions. Paddle handles all billing, payment processing, and refund administration on our behalf.</p>
+          <p className="mb-8">Netai subscriptions and purchases are processed by <strong>Paddle (Paddle.com Market Ltd)</strong>, our Merchant of Record — the legal seller of record for all Netai transactions. Paddle handles all billing, payment processing, and refund administration on our behalf.</p>
 
           <Section title="1. Free Trial">
-            <p>Every new Ally account begins with a <strong>5-day full-feature trial</strong> at no cost. The trial begins on your first assistant conversation — not on registration. If you do not subscribe before the trial ends, your account automatically moves to the free tier. No payment is taken and no refund request is necessary.</p>
+            <p>Every new Netai account begins with a <strong>5-day full-feature trial</strong> at no cost. The trial begins on your first assistant conversation — not on registration. If you do not subscribe before the trial ends, your account automatically moves to the free tier. No payment is taken and no refund request is necessary.</p>
           </Section>
 
           <Section title="2. Subscription Cancellation">
-            <p>You may cancel at any time from <strong>Settings → Subscription</strong>. Cancellation takes effect at the end of your current billing period — you retain full access until that date. Ally does not terminate access mid-period upon cancellation.</p>
+            <p>You may cancel at any time from <strong>Settings → Subscription</strong>. Cancellation takes effect at the end of your current billing period — you retain full access until that date. Netai does not terminate access mid-period upon cancellation.</p>
           </Section>
 
           <Section title="3. Subscription Refunds">
-            <p>Ally does not provide partial refunds for unused subscription time, except where required by applicable law.</p>
-            <p className="mt-3">If the Ally service has not been delivered at all, you may request a full refund within <strong>14 days of payment</strong> by contacting info@allyapp.one.</p>
+            <p>Netai does not provide partial refunds for unused subscription time, except where required by applicable law.</p>
+            <p className="mt-3">If the Netai service has not been delivered at all, you may request a full refund within <strong>14 days of payment</strong> by contacting info@allyapp.one.</p>
             <p className="mt-3">Annual subscription refunds and upgrade/downgrade prorations are handled by Paddle as Merchant of Record.</p>
           </Section>
 

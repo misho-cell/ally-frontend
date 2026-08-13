@@ -15,12 +15,12 @@ export default function TermsPage() {
           <p className="legal-meta mb-8">Effective Date: January 1, 2026 · Last Updated: June 2026</p>
 
           <blockquote className="legal-quote mb-8">
-            Please read these Terms and Conditions carefully before using Ally. By creating an account or using the service, you agree to be bound by these terms in their entirety.
+            Please read these Terms and Conditions carefully before using Netai. By creating an account or using the service, you agree to be bound by these terms in their entirety.
           </blockquote>
 
-          <Section title="1. About Ally and These Terms">
+          <Section title="1. About Netai and These Terms">
             <p><strong>Ally, Inc.</strong> is a Delaware C Corporation (Delaware File Number: 10433763; EIN: 37-2215465). Our registered agent is Corporation Service Company (CSC), 251 Little Falls Drive, Wilmington, New Castle County, Delaware 19808, USA.</p>
-            <p className="mt-3">Ally operates <strong>Ally AI Assistant</strong>, a personal AI assistant accessible at allyapp.one and via our Progressive Web App (PWA). These Terms govern your access to and use of the Ally service.</p>
+            <p className="mt-3">Ally, Inc. operates <strong>Netai</strong>, a personal AI assistant accessible at netai.guru and via our Progressive Web App (PWA). These Terms govern your access to and use of the Netai service.</p>
           </Section>
 
           <Section title="2. Eligibility">
@@ -38,7 +38,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="4. The Service">
-            <p>Ally is a personal AI assistant that learns your contacts, helps identify the right person for a need, enables anonymous problem-routing, and proactively suggests actions. Ally is <strong>not</strong> a professional advisor, guaranteed connection service, background check service, or data broker.</p>
+            <p>Netai is a personal AI assistant that learns your contacts, helps identify the right person for a need, enables anonymous problem-routing, and proactively suggests actions. Netai is <strong>not</strong> a professional advisor, guaranteed connection service, background check service, or data broker.</p>
             <p className="mt-3">AI systems can make mistakes. Exercise independent judgement before acting on any suggestion. Ally, Inc. is not liable for decisions you make based on the assistant&apos;s responses.</p>
           </Section>
 
@@ -70,15 +70,15 @@ export default function TermsPage() {
           </Section>
 
           <Section title="7. Your Responsibilities">
-            <p>You agree to use Ally only for lawful purposes. You must not harass, stalk, or make unwanted contact; import contacts without a genuine pre-existing relationship; attempt to reverse-engineer or scrape Ally; or share your account with any third party.</p>
+            <p>You agree to use Netai only for lawful purposes. You must not harass, stalk, or make unwanted contact; import contacts without a genuine pre-existing relationship; attempt to reverse-engineer or scrape Netai; or share your account with any third party.</p>
           </Section>
 
           <Section title="8. Data and Privacy">
-            <p>Your use of Ally is subject to our <a href="/privacy" className="legal-link">Privacy Policy</a>. Conversation messages are retained for 12 months; summaries for 3 years. You may request deletion at any time from Settings.</p>
+            <p>Your use of Netai is subject to our <a href="/privacy" className="legal-link">Privacy Policy</a>. Conversation messages are retained for 12 months; summaries for 3 years. You may request deletion at any time from Settings.</p>
           </Section>
 
           <Section title="9. Intellectual Property">
-            <p>You retain ownership of your data. By using Ally, you grant us a limited licence to process that data solely to provide the service. We do not claim ownership of your data.</p>
+            <p>You retain ownership of your data. By using Netai, you grant us a limited licence to process that data solely to provide the service. We do not claim ownership of your data.</p>
           </Section>
 
           <Section title="10. Termination">
@@ -86,7 +86,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="11. Disclaimers and Limitation of Liability">
-            <p>We do not guarantee uninterrupted availability. AI responses may contain errors — use them at your own risk. Ally&apos;s total aggregate liability shall not exceed amounts you paid in the 12 months preceding the claim. We are not liable for indirect or consequential damages.</p>
+            <p>We do not guarantee uninterrupted availability. AI responses may contain errors — use them at your own risk. Netai&apos;s total aggregate liability shall not exceed amounts you paid in the 12 months preceding the claim. We are not liable for indirect or consequential damages.</p>
           </Section>
 
           <Section title="12. Governing Law">

@@ -15,8 +15,8 @@ export default function PrivacyPage() {
           <p className="legal-meta mb-8">Effective Date: January 1, 2026 · Last Updated: June 2026</p>
 
           <Section title="1. Who We Are">
-            <p><strong>Ally, Inc.</strong> is a Delaware C Corporation (EIN: 37-2215465) operating Ally AI Assistant at allyapp.one. We are the data controller for all personal data processed through Ally.</p>
-            <p className="mt-3"><strong>Contact:</strong> info@allyapp.one · Data rights portal: allyapp.one/privacy/my-data</p>
+            <p><strong>Ally, Inc.</strong> is a Delaware C Corporation (EIN: 37-2215465) operating the Netai assistant at netai.guru. We are the data controller for all personal data processed through Netai.</p>
+            <p className="mt-3"><strong>Contact:</strong> info@allyapp.one · Data rights portal: netai.guru/privacy/my-data</p>
           </Section>
 
           <Section title="2. What Data We Collect">
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
 
           <Section title="3. How We Use Your Data">
             <ul className="list-disc pl-6 space-y-1">
-              <li>Provide and personalise the Ally AI Assistant</li>
+              <li>Provide and personalise the Netai assistant</li>
               <li>Enable network intelligence features</li>
               <li>Process payments via Paddle (Merchant of Record)</li>
               <li>Detect and prevent fraud</li>
@@ -90,7 +90,7 @@ export default function PrivacyPage() {
               <li>Right to object to processing based on legitimate interests</li>
               <li>Right to withdraw consent at any time</li>
             </ul>
-            <p className="mt-3">Exercise rights at: <a href="https://allyapp.one/privacy/my-data" className="legal-link">allyapp.one/privacy/my-data</a> or email info@allyapp.one. We respond within 30 days.</p>
+            <p className="mt-3">Exercise rights at: <a href="https://netai.guru/privacy/my-data" className="legal-link">netai.guru/privacy/my-data</a> or email info@allyapp.one. We respond within 30 days.</p>
           </Section>
 
           <Section title="7. Security">
@@ -99,7 +99,7 @@ export default function PrivacyPage() {
 
           <Section title="8. Contact">
             <p><strong>Email:</strong> info@allyapp.one<br />
-            <strong>Data rights portal:</strong> allyapp.one/privacy/my-data<br />
+            <strong>Data rights portal:</strong> netai.guru/privacy/my-data<br />
             <strong>Legal:</strong> Ally, Inc. c/o Tornike Abuladze, 1328 Botetourt Gardens, Norfolk, VA 23517, USA</p>
           </Section>
         </div>
