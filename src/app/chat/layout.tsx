@@ -20,6 +20,8 @@ import {
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const REQ_KEY = "netai_req_resolved";
+const READ_KEY = "netai_last_read";
+const COLLAPSE_KEY = "netai_sidebar_collapsed";
 const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
 
 function getToken() {
@@ -65,9 +67,6 @@ function isStaleRun(ts: ThreadState, eventRunId: unknown): boolean {
   return Boolean(ts.runId && eventRunId && String(eventRunId) !== String(ts.runId));
 }
 
-// The backend has used more than one field name for the streamed piece of the
-// answer (chunk / delta / text). Accept all of them — a rename must never turn
-// streaming back into one silent block.
 function readChunk(data: Record<string, unknown>): string | null {
   for (const key of ["chunk", "delta", "text"]) {
     const v = data[key];
@@ -83,6 +82,17 @@ function loadJson<T>(key: string, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function fmtClock(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  return sameDay
+    ? d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -112,13 +122,15 @@ function AnimBox({ status, size }: { status: TaskStatus; size: number }) {
   );
 }
 
+// Badge lives only on needs_you (tester C.1); waiting keeps its quiet pill,
+// working keeps green, done rows carry NO pill — the section already says it.
 function StatusPill({ status }: { status: TaskStatus }) {
+  if (status === "done") return null;
   const label =
     status === "working" ? t("stWorking") :
     status === "waiting" ? t("stWaiting") :
     status === "needs_you" ? t("stNeedsYou") :
-    status === "failed" ? t("stFailed") :
-    t("stDone");
+    t("stFailed");
   return <span className={`task-pill ${status}`}>{label}</span>;
 }
 
@@ -133,6 +145,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [titles, setTitles] = useState<Record<string, string>>({});
   const [threadBumps, setThreadBumps] = useState<Record<string, number>>({});
   const [resolvedRequests, setResolvedRequests] = useState<Record<string, { action: string; at: number }>>({});
+  const [lastRead, setLastRead] = useState<Record<string, string>>({});
+  const [collapsed, setCollapsed] = useState(false);
+  const [searchQ, setSearchQ] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [showAllDone, setShowAllDone] = useState(false);
   const [showLegacy, setShowLegacy] = useState(false);
@@ -150,6 +165,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const recognitionRef = useRef<any>(null);
   const threadsRef = useRef<Thread[]>([]);
   const loadingMoreRef = useRef(false);
+  // Threads that existed at first load — anything newer starts as unread.
+  const knownIdsRef = useRef<Set<string> | null>(null);
   pathnameRef.current = pathname;
   threadsRef.current = threads;
 
@@ -157,7 +174,42 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     setResolvedRequests(loadJson<Record<string, { action: string; at: number }>>(REQ_KEY, {}));
+    setLastRead(loadJson<Record<string, string>>(READ_KEY, {}));
+    setCollapsed(loadJson<boolean>(COLLAPSE_KEY, false));
   }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((v) => {
+      const next = !v;
+      try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }
+
+  // Opening a thread marks it read (up to its current updated_at); stays
+  // marked while it keeps updating on screen.
+  useEffect(() => {
+    const m = pathname.match(/^\/chat\/(.+)$/);
+    if (!m) return;
+    const id = m[1];
+    const th = threads.find((x) => String(x.id) === id);
+    const stamp = th?.updated_at ?? new Date().toISOString();
+    setLastRead((prev) => {
+      if (prev[id] === stamp) return prev;
+      const next = { ...prev, [id]: stamp };
+      try { localStorage.setItem(READ_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [pathname, threads]);
+
+  function isUnread(th: Thread): boolean {
+    const id = String(th.id);
+    if (pathname === `/chat/${id}`) return false;
+    const read = lastRead[id];
+    if (read) return Boolean(th.updated_at && th.updated_at > read);
+    // Never opened: unread only if it appeared after the first load.
+    return knownIdsRef.current ? !knownIdsRef.current.has(id) : false;
+  }
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -165,8 +217,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     toastTimerRef.current = setTimeout(() => setToast(null), 2400);
   }, []);
 
-  // Newest page only. Refreshes MERGE instead of replacing, so pages the user
-  // already scrolled into view are not thrown away.
   const loadThreads = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/threads?limit=${PAGE_SIZE}`, { headers: authHeaders() });
@@ -184,13 +234,15 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       const fetched: Thread[] = json.data ?? json;
       setThreads((prev) => dedup([...fetched, ...prev]));
       if (fetched.length < PAGE_SIZE) setThreadsHasMore(false);
+      if (!knownIdsRef.current) {
+        knownIdsRef.current = new Set(fetched.map((th) => String(th.id)));
+      }
     } catch {}
     finally {
       setThreadsLoaded(true);
     }
   }, [router]);
 
-  // Older page, keyed on the (updated_at, id) cursor of the last row we hold.
   const loadMoreThreads = useCallback(async () => {
     if (loadingMoreRef.current || !threadsHasMore) return;
     const last = threadsRef.current[threadsRef.current.length - 1];
@@ -210,7 +262,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       }
       const json = await res.json();
       const older: Thread[] = json.data ?? json;
-      if (older.length > 0) setThreads((prev) => dedup([...prev, ...older]));
+      if (older.length > 0) {
+        setThreads((prev) => dedup([...prev, ...older]));
+        // Older pages are history — never bold.
+        older.forEach((th) => knownIdsRef.current?.add(String(th.id)));
+      }
       if (older.length < PAGE_SIZE) setThreadsHasMore(false);
     } catch {}
     finally {
@@ -237,7 +293,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     } catch {}
   }, []);
 
-  // Push subscribe: re-register on EVERY app open when permission is granted.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
@@ -295,9 +350,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               }
               break;
 
-            // Partial patch: merge only the fields that arrived. Also bumps the
-            // thread so an open view refetches messages (task engine can write
-            // without any user action — v68 #5).
             case "thread_updated": {
               const patch = data.thread;
               if (patch?.id != null) {
@@ -346,9 +398,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               break;
             }
 
-            // What was streamed so far was not the answer after all. The
-            // backend immediately re-sends the same text as a step_summary, so
-            // the text does not vanish — it moves into the steps panel.
             case "answer_reset":
               if (data.threadId != null) {
                 setThreadStates((prev) =>
@@ -372,7 +421,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     const dup = last && last.kind === "step" && last.content === line;
                     return {
                       ...ts,
-                      // tool_progress also drives the live "doing this now" line.
                       progress: isProgress ? line : ts.progress,
                       messages: dup
                         ? ts.messages
@@ -488,6 +536,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   }, []);
 
   const createThread = useCallback(async () => {
+    setCollapsed(false);
     homeInputRef.current?.focus();
   }, []);
 
@@ -495,8 +544,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     const trimmed = text.trim();
     if (!trimmed || creating) return;
     setCreating(true);
-    // Clear the composer immediately — the tap must feel instant even though
-    // the thread id can only come from the server.
     setHomeInput("");
     try {
       const res = await fetch(`${BASE_URL}/threads`, {
@@ -515,8 +562,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       }
       const json = await res.json();
       const thread: Thread = json.data ?? json;
-      // Row in the list + the user's own words as the title, before any status
-      // event arrives. The generated title replaces it via thread_updated.
+      knownIdsRef.current?.add(String(thread.id));
       setThreads((prev) => dedup([thread, ...prev.filter((th) => String(th.id) !== String(thread.id))]));
       setTitles((prev) => ({
         ...prev,
@@ -630,20 +676,30 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   // ---- Derived lists ----
   const now = Date.now();
+  const q = searchQ.trim().toLowerCase();
+
+  function goalTitle(th: Thread): string {
+    const backend = th.title;
+    if (backend && backend !== "New task" && backend !== "ახალი დავალება" && backend !== "New chat") return backend;
+    return titles[String(th.id)] || backend || t("taskFallback");
+  }
+
+  const matches = (th: Thread) => !q || goalTitle(th).toLowerCase().includes(q) || (th.last_message ?? "").toLowerCase().includes(q);
+
   const visibleRequests = threads.filter((th) => {
-    if (th.type !== "incoming_request") return false;
+    if (th.type !== "incoming_request" || !matches(th)) return false;
     const r = resolvedRequests[String(th.id)];
     if (!r) return true;
     if (r.action === "later") return now - r.at > SNOOZE_MS;
     return false;
   });
 
-  const asks = threads.filter((th) => th.type === "incoming_ask");
+  const asks = threads.filter((th) => th.type === "incoming_ask" && matches(th));
 
   const goalThreads: { thread: Thread; status: TaskStatus }[] = [];
   const legacyThreads: Thread[] = [];
   for (const th of threads) {
-    if (th.type === "incoming_request" || th.type === "incoming_ask") continue;
+    if (th.type === "incoming_request" || th.type === "incoming_ask" || !matches(th)) continue;
     const st = taskStatusOf(th, threadStates[String(th.id)]);
     if (st) goalThreads.push({ thread: th, status: st });
     else legacyThreads.push(th);
@@ -651,16 +707,63 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const active = goalThreads.filter((g) => g.status !== "done");
   const finished = goalThreads.filter((g) => g.status === "done");
   const presenceN = goalThreads.filter((g) => g.status === "working" || g.status === "waiting").length;
+  const nothingFound =
+    q && visibleRequests.length === 0 && asks.length === 0 && active.length === 0 && finished.length === 0 && legacyThreads.length === 0;
 
   const user = getUserInfo();
 
   const sidebarClass = isOnThread ? "hidden md:flex" : "flex w-full md:flex";
   const mainClass = isOnThread ? "flex flex-1 flex-col min-w-0" : "hidden md:flex md:flex-1 md:flex-col";
 
-  function goalTitle(th: Thread): string {
-    const backend = th.title;
-    if (backend && backend !== "New task" && backend !== "ახალი დავალება" && backend !== "New chat") return backend;
-    return titles[String(th.id)] || backend || t("taskFallback");
+  // Collapsed rail (desktop only — the drawer behaviour on phones is the route
+  // split, collapse does not apply there).
+  if (collapsed) {
+    return (
+      <ThreadsContext.Provider
+        value={{
+          threads, setThreads, threadsLoaded, threadStates, setThreadStates,
+          reconnectNonce, tokens, refreshTokens, createThread, createTask,
+          titles, resolveRequest, resolvedRequests, threadBumps,
+        }}
+      >
+        <div className="flex h-full" style={{ background: "var(--bg)" }}>
+          {toast && <div className="toast" role="status" aria-live="polite">{toast}</div>}
+          <aside
+            className={`${sidebarClass} sidebar flex-col items-center shrink-0 w-full md:w-[56px]`}
+            style={{
+              background: "var(--sidebar-bg)",
+              borderRight: "1px solid var(--sidebar-border)",
+              padding: "14px 8px 12px",
+              gap: "14px",
+            }}
+          >
+            <button onClick={toggleCollapsed} aria-label="expand" className="ally-avatar" style={{ width: 30, height: 30, cursor: "pointer" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+            </button>
+            <button
+              onClick={() => { setCollapsed(false); setTimeout(() => homeInputRef.current?.focus(), 50); }}
+              aria-label={t("newTask")}
+              className="flex items-center justify-center rounded-full"
+              style={{ width: 32, height: 32, background: "var(--accent)", color: "#FBFAF4", fontSize: "18px" }}
+            >
+              +
+            </button>
+            <button
+              onClick={toggleCollapsed}
+              aria-label="expand sidebar"
+              className="mt-auto flex items-center justify-center rounded-lg transition-colors hover:bg-black/5"
+              style={{ width: 32, height: 32, color: "var(--ink-soft)" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <path d="M7.5 4l6 6-6 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </aside>
+          <main className={mainClass}>{children}</main>
+        </div>
+      </ThreadsContext.Provider>
+    );
   }
 
   return (
@@ -689,7 +792,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
             </span>
-            <div className="flex flex-col min-w-0">
+            <div className="flex min-w-0 flex-1 flex-col">
               <span style={{ font: "500 20px/24px var(--font-bricolage)", color: "var(--ink)" }}>
                 Netai
               </span>
@@ -697,6 +800,45 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 {presenceN > 0 ? tf("presenceWorking", { n: presenceN }) : t("presenceReady")}
               </span>
             </div>
+            <button
+              onClick={toggleCollapsed}
+              aria-label="collapse sidebar"
+              className="hidden md:flex items-center justify-center rounded-lg transition-colors hover:bg-black/5"
+              style={{ width: 28, height: 28, color: "var(--ink-soft)" }}
+            >
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                <path d="M12.5 4l-6 6 6 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Search over everything already loaded (E2). */}
+          <div
+            className="flex items-center gap-2"
+            style={{
+              background: "#FFFFFF",
+              border: "1px solid var(--header-border)",
+              borderRadius: "var(--radius-pill)",
+              padding: "7px 12px",
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
+              <circle cx="8.5" cy="8.5" r="5.75" stroke="var(--meta)" strokeWidth="1.75" />
+              <path d="M13 13l3.5 3.5" stroke="var(--meta)" strokeWidth="1.75" strokeLinecap="round" />
+            </svg>
+            <input
+              type="text"
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              placeholder={t("searchGoals")}
+              className="flex-1 min-w-0 bg-transparent outline-none"
+              style={{ color: "var(--ink)", fontSize: "13px" }}
+            />
+            {searchQ && (
+              <button onClick={() => setSearchQ("")} aria-label="clear" style={{ color: "var(--meta)", fontSize: "14px", lineHeight: 1 }}>
+                ×
+              </button>
+            )}
           </div>
 
           <div
@@ -711,6 +853,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 <span className="sk-bar" style={{ width: "62%" }} />
                 <span className="sk-bar" style={{ width: "78%" }} />
               </div>
+            ) : nothingFound ? (
+              <p style={{ padding: "8px 6px", fontSize: "12.5px", color: "var(--meta)" }}>
+                {t("noMatches")}
+              </p>
             ) : (
               <>
                 {visibleRequests.length > 0 && (
@@ -744,7 +890,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         onMouseEnter={(e) => { if (pathname !== `/chat/${th.id}`) e.currentTarget.style.background = "var(--request-tint)"; }}
                         onMouseLeave={(e) => { if (pathname !== `/chat/${th.id}`) e.currentTarget.style.background = ""; }}
                       >
-                        <span className="flex-1 truncate" style={{ font: "500 13.5px/18px var(--font-system)", color: "var(--ink)" }}>
+                        <span className="flex-1 truncate" style={{ font: `${isUnread(th) ? 700 : 500} 13.5px/18px var(--font-system)`, color: "var(--ink)" }}>
                           {th.title || "…"}
                         </span>
                         <span className="task-pill needs_you">{t("askBadge")}</span>
@@ -762,9 +908,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       status={status}
                       href={`/chat/${thread.id}`}
                       active={pathname === `/chat/${thread.id}`}
+                      unread={isUnread(thread)}
                     />
                   ))}
-                  {active.length === 0 && (
+                  {active.length === 0 && !q && (
                     <p style={{ padding: "2px 6px", fontSize: "12px", color: "var(--meta)" }}>
                       {t("threadsHint")}
                     </p>
@@ -774,16 +921,17 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 {finished.length > 0 && (
                   <section className="mt-2 flex flex-col gap-[3px]" style={{ opacity: 0.65 }}>
                     <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("finishedLabel")}</p>
-                    {(showAllDone ? finished : finished.slice(0, 5)).map(({ thread, status }) => (
+                    {(showAllDone || q ? finished : finished.slice(0, 5)).map(({ thread, status }) => (
                       <TaskRow
                         key={thread.id}
                         title={goalTitle(thread)}
                         status={status}
                         href={`/chat/${thread.id}`}
                         active={pathname === `/chat/${thread.id}`}
+                        unread={isUnread(thread)}
                       />
                     ))}
-                    {finished.length > 5 && !showAllDone && (
+                    {finished.length > 5 && !showAllDone && !q && (
                       <button
                         onClick={() => setShowAllDone(true)}
                         className="self-start"
@@ -804,7 +952,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     >
                       {t("legacyChats")}
                     </button>
-                    {showLegacy && legacyThreads.map((th) => (
+                    {(showLegacy || !!q) && legacyThreads.map((th) => (
                       <Link
                         key={th.id}
                         href={`/chat/${th.id}`}
@@ -817,7 +965,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                           boxShadow: pathname === `/chat/${th.id}` ? "inset 3px 0 0 var(--accent)" : undefined,
                         }}
                       >
-                        <span className="flex-1 truncate" style={{ font: "400 13px/18px var(--font-system)", color: "var(--ink-soft)" }}>
+                        <span className="flex-1 truncate" style={{ font: `${isUnread(th) ? 600 : 400} 13px/18px var(--font-system)`, color: "var(--ink-soft)" }}>
                           {th.title || "…"}
                         </span>
                       </Link>
@@ -825,7 +973,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   </section>
                 )}
 
-                {/* Infinite scroll tail — no "load more" button. */}
                 {loadingMore && (
                   <div className="flex flex-col gap-2 py-3">
                     <span className="sk-bar" style={{ width: "72%" }} />
@@ -911,7 +1058,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   );
 }
 
-function TaskRow({ title, status, href, active }: { title: string; status: TaskStatus; href: string; active: boolean }) {
+function TaskRow({ title, status, href, active, unread }: { title: string; status: TaskStatus; href: string; active: boolean; unread: boolean }) {
   const edge = status === "needs_you" ? "var(--request-accent)" : "var(--accent)";
   return (
     <Link
@@ -925,9 +1072,12 @@ function TaskRow({ title, status, href, active }: { title: string; status: TaskS
       onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--skeleton)"; }}
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = ""; }}
     >
-      <span className="flex-1 truncate" style={{ font: `${active ? 600 : 500} 13.5px/18px var(--font-system)`, color: "var(--ink)" }}>
+      <span className="flex-1 truncate" style={{ font: `${active || unread ? 700 : 500} 13.5px/18px var(--font-system)`, color: "var(--ink)" }}>
         {title}
       </span>
+      {unread && !active && (
+        <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, background: "var(--accent)" }} />
+      )}
       <StatusPill status={status} />
       <AnimBox status={status} size={40} />
     </Link>
@@ -955,9 +1105,15 @@ function RequestActionRow({
       className="req-card cursor-pointer"
       style={{ boxShadow: active ? "inset 3px 0 0 var(--request-accent)" : undefined, opacity: confirmation ? 0.72 : 1 }}
     >
-      <p style={{ font: "600 14.5px/20px var(--font-system)", color: "var(--ink)" }} className="truncate">
-        {thread.title}
-      </p>
+      <div className="flex items-baseline justify-between gap-2">
+        <p style={{ font: "600 14.5px/20px var(--font-system)", color: "var(--ink)" }} className="truncate">
+          {thread.title}
+        </p>
+        {/* E20: when the request arrived. */}
+        <span className="shrink-0" style={{ font: "400 11px/16px var(--font-system)", color: "var(--meta)" }}>
+          {fmtClock(thread.updated_at)}
+        </span>
+      </div>
       <p style={{ font: "400 13px/19px var(--font-bricolage)", color: "var(--ink-2)" }}>
         {t("reqAsksIntro")}
       </p>
