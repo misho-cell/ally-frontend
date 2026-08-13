@@ -8,6 +8,37 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 const SMS_COOLDOWN = 30;
 
+// Country dial codes for the phone step (D4). Georgia first/default.
+const DIAL_CODES: { code: string; label: string }[] = [
+  { code: "+995", label: "🇬🇪 +995" },
+  { code: "+1", label: "🇺🇸 +1" },
+  { code: "+44", label: "🇬🇧 +44" },
+  { code: "+49", label: "🇩🇪 +49" },
+  { code: "+33", label: "🇫🇷 +33" },
+  { code: "+34", label: "🇪🇸 +34" },
+  { code: "+39", label: "🇮🇹 +39" },
+  { code: "+31", label: "🇳🇱 +31" },
+  { code: "+48", label: "🇵🇱 +48" },
+  { code: "+7", label: "🇷🇺 +7" },
+  { code: "+90", label: "🇹🇷 +90" },
+  { code: "+380", label: "🇺🇦 +380" },
+  { code: "+371", label: "🇱🇻 +371" },
+  { code: "+374", label: "🇦🇲 +374" },
+  { code: "+994", label: "🇦🇿 +994" },
+  { code: "+972", label: "🇮🇱 +972" },
+  { code: "+971", label: "🇦🇪 +971" },
+  { code: "+54", label: "🇦🇷 +54" },
+];
+
+// Compose the E.164-ish phone we send: a raw value that already starts with
+// '+' wins verbatim (power users / old habit); otherwise dial code + digits.
+function composePhone(dial: string, raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("+")) return trimmed.replace(/[\s\-()]/g, "");
+  const digits = trimmed.replace(/\D/g, "").replace(/^0+/, "");
+  return `${dial}${digits}`;
+}
+
 // Screen-local strings (phone locale: ka → Georgian, else English).
 // Georgian: no em-dashes, never italic.
 const L = {
@@ -91,6 +122,10 @@ function clearToken() {
 export default function LoginPage() {
   const s = L[getLocale()];
   const [step, setStep] = useState<Step>("phone");
+  // What the user types (national digits, usually) + the selected dial code.
+  // `phone` is the composed full number actually used by every auth call.
+  const [dial, setDial] = useState("+995");
+  const [phoneRaw, setPhoneRaw] = useState("");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
@@ -226,8 +261,10 @@ export default function LoginPage() {
     otpPassedRef.current = false;
     confirmedReferralRef.current = null;
     setInviteInput("");
+    const full = composePhone(dial, phoneRaw);
+    setPhone(full);
     try {
-      await post("/auth/request-otp", { phone, actionType: "AUTH" });
+      await post("/auth/request-otp", { phone: full, actionType: "AUTH" });
       setStep("otp");
     } catch (err) {
       handleError(err, s.genericError);
@@ -386,14 +423,27 @@ export default function LoginPage() {
             {step === "phone" && (
               <form onSubmit={handlePhoneSubmit} className="flex flex-col gap-4">
                 <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.enterPhone}</p>
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+995555123456"
-                  className="input-pill"
-                />
+                <div className="flex gap-2">
+                  <select
+                    value={dial}
+                    onChange={(e) => setDial(e.target.value)}
+                    aria-label="Country code"
+                    className="input-pill"
+                    style={{ width: 108, flex: "0 0 auto", paddingLeft: 10, paddingRight: 6 }}
+                  >
+                    {DIAL_CODES.map((c) => (
+                      <option key={c.code} value={c.code}>{c.label}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    required
+                    value={phoneRaw}
+                    onChange={(e) => setPhoneRaw(e.target.value)}
+                    placeholder="555 12 34 56"
+                    className="input-pill flex-1 min-w-0"
+                  />
+                </div>
                 <button type="submit" disabled={loading || rateLimited} className="btn-primary h-12">
                   {loading ? <Spinner /> : rateLimited ? s.wait(rlSecs) : s.getCode}
                 </button>
