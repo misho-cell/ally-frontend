@@ -9,25 +9,26 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const SMS_COOLDOWN = 30;
 
 // Country dial codes for the phone step (D4). Georgia first/default.
+// Plain ISO text labels — no emoji in UI (founder rule).
 const DIAL_CODES: { code: string; label: string }[] = [
-  { code: "+995", label: "🇬🇪 +995" },
-  { code: "+1", label: "🇺🇸 +1" },
-  { code: "+44", label: "🇬🇧 +44" },
-  { code: "+49", label: "🇩🇪 +49" },
-  { code: "+33", label: "🇫🇷 +33" },
-  { code: "+34", label: "🇪🇸 +34" },
-  { code: "+39", label: "🇮🇹 +39" },
-  { code: "+31", label: "🇳🇱 +31" },
-  { code: "+48", label: "🇵🇱 +48" },
-  { code: "+7", label: "🇷🇺 +7" },
-  { code: "+90", label: "🇹🇷 +90" },
-  { code: "+380", label: "🇺🇦 +380" },
-  { code: "+371", label: "🇱🇻 +371" },
-  { code: "+374", label: "🇦🇲 +374" },
-  { code: "+994", label: "🇦🇿 +994" },
-  { code: "+972", label: "🇮🇱 +972" },
-  { code: "+971", label: "🇦🇪 +971" },
-  { code: "+54", label: "🇦🇷 +54" },
+  { code: "+995", label: "GE +995" },
+  { code: "+1", label: "US +1" },
+  { code: "+44", label: "UK +44" },
+  { code: "+49", label: "DE +49" },
+  { code: "+33", label: "FR +33" },
+  { code: "+34", label: "ES +34" },
+  { code: "+39", label: "IT +39" },
+  { code: "+31", label: "NL +31" },
+  { code: "+48", label: "PL +48" },
+  { code: "+7", label: "RU +7" },
+  { code: "+90", label: "TR +90" },
+  { code: "+380", label: "UA +380" },
+  { code: "+371", label: "LV +371" },
+  { code: "+374", label: "AM +374" },
+  { code: "+994", label: "AZ +994" },
+  { code: "+972", label: "IL +972" },
+  { code: "+971", label: "AE +971" },
+  { code: "+54", label: "AR +54" },
 ];
 
 // Compose the E.164-ish phone we send: a raw value that already starts with
