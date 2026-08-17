@@ -45,8 +45,46 @@ const L = {
 
 type Dict = Record<string, unknown>;
 
-function prettifyKey(key: string): string {
-  return key.replace(/_/g, " ");
+// Human labels for the erasure-summary table keys (ticket 6 #15) — the raw
+// backend table names must never reach the user. Unknown keys fall back to a
+// prettified form.
+const TABLE_LABELS: Record<string, { ka: string; en: string }> = {
+  conversations: { ka: "საუბრის შეტყობინებები", en: "Conversation messages" },
+  threads: { ka: "საუბრები", en: "Conversations" },
+  tasks: { ka: "მიზნები", en: "Goals" },
+  task_asks: { ka: "გაგზავნილი კითხვები", en: "Sent questions" },
+  user_notes: { ka: "შენი ჩანაწერები", en: "Your notes" },
+  user_private_context: { ka: "პირადი კონტექსტი", en: "Private context" },
+  user_profile_kv: { ka: "პროფილის ველები", en: "Profile fields" },
+  contact_insights: { ka: "კონტაქტების შენიშვნები", en: "Contact notes" },
+  contact_facts: { ka: "კონტაქტების ფაქტები", en: "Contact facts" },
+  contact_exclusions: { ka: "გამონაკლისები", en: "Exclusions" },
+  contact_relationship_scores: { ka: "კავშირის ქულები", en: "Relationship scores" },
+  contact_enrichment: { ka: "გამდიდრებული პროფილები", en: "Enriched profiles" },
+  weak_tie_signals: { ka: "კავშირის სიგნალები", en: "Connection signals" },
+  search_activity: { ka: "ძებნის ისტორია", en: "Search history" },
+  run_prompt_stamps: { ka: "სისტემური აღრიცხვა", en: "System accounting" },
+  pending_updates: { ka: "მოლოდინში მყოფი განახლებები", en: "Pending updates" },
+  user_avatars: { ka: "პროფილის ფოტო", en: "Profile photo" },
+  ai_notification_log: { ka: "შეტყობინებების ჟურნალი", en: "Notification log" },
+  ai_notification_settings: { ka: "შეტყობინებების პარამეტრები", en: "Notification settings" },
+  push_subscriptions: { ka: "Push-გამოწერები", en: "Push subscriptions" },
+  device_fingerprints: { ka: "მოწყობილობები", en: "Devices" },
+  oauth_tokens: { ka: "დაკავშირებული სერვისები", en: "Connected services" },
+  product_events: { ka: "გამოყენების სტატისტიკა", en: "Usage statistics" },
+  introduction_requests: { ka: "გაცნობის მოთხოვნები", en: "Intro requests" },
+  UserAlias: { ka: "შენახული კონტაქტები", en: "Saved contacts" },
+  UserTags: { ka: "კონტაქტების თეგები", en: "Contact tags" },
+  UserBlock: { ka: "დაბლოკილი ნომრები", en: "Blocked numbers" },
+  ContactDeceased: { ka: "გარდაცვლილად მონიშნული კონტაქტები", en: "Contacts marked deceased" },
+  UserPhone: { ka: "შენი ნომერი", en: "Your number" },
+};
+
+function labelFor(key: string): string {
+  const hit = TABLE_LABELS[key];
+  if (hit) return getLocale() === "ka" ? hit.ka : hit.en;
+  // Unknown key — prettify snake_case and CamelCase into words.
+  return key.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
 }
 
 // Render any summary/preview value the backend sends without assuming its
@@ -79,8 +117,8 @@ function Rows({ obj, nested }: { obj: Dict; nested?: boolean }) {
           className="flex items-start justify-between gap-4"
           style={nested ? { fontSize: "12.5px" } : { padding: "9px 0", borderBottom: "1px solid var(--skeleton)" }}
         >
-          <span style={{ fontSize: "12.5px", color: "var(--ink-soft)", textTransform: "capitalize", flex: "0 0 auto" }}>
-            {prettifyKey(k)}
+          <span style={{ fontSize: "12.5px", color: "var(--ink-soft)", flex: "0 0 auto" }}>
+            {labelFor(k)}
           </span>
           <span className="text-right" style={{ fontSize: "13px", color: "var(--ink)", overflowWrap: "anywhere" }}>
             <Value v={v} />
@@ -136,6 +174,7 @@ export default function DataRightsPage() {
         body: { confirm: "DELETE MY ACCOUNT" },
       });
       localStorage.removeItem("token");
+      localStorage.removeItem("netai_profile_name");
       document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
       window.location.href = "/login";
     } catch (err) {
@@ -162,45 +201,53 @@ export default function DataRightsPage() {
           </div>
         )}
 
-        {/* Stored data summary */}
-        <div className="card flex flex-col gap-2">
-          <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.summaryTitle}</h2>
-          {loading ? (
-            <span className="sk-bar" style={{ width: "100%", height: 80 }} />
-          ) : summary && Object.keys(summary).length > 0 ? (
-            <Rows obj={summary} />
-          ) : (
-            <p className="text-sm" style={{ color: "var(--meta)" }}>{s.empty}</p>
-          )}
-        </div>
-
-        {/* Account deletion */}
-        <div className="card flex flex-col gap-3">
-          <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--danger)" }}>{s.deleteTitle}</h2>
-          <p style={{ font: "400 13.5px/21px var(--font-system)", color: "var(--ink-2)" }}>{s.deleteBody}</p>
-
-          {!preview ? (
-            <button type="button" onClick={previewDelete} disabled={busy} className="btn-destructive self-start disabled:opacity-60">
-              {s.deleteBtn}
-            </button>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <div style={{ background: "var(--terra-tint)", borderRadius: "var(--radius-tile)", padding: "12px 14px" }}>
-                <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger)" }}>{s.previewTitle}</p>
-                <p className="mt-0.5 text-xs" style={{ color: "var(--ink-2)" }}>{s.previewNote}</p>
-              </div>
-              <Rows obj={preview} />
-              <div className="flex gap-2">
-                <button type="button" onClick={confirmDelete} disabled={busy} className="btn-destructive disabled:opacity-60">
-                  {s.finalBtn}
-                </button>
-                <button type="button" onClick={() => setPreview(null)} disabled={busy} className="btn-secondary">
-                  {s.cancel}
-                </button>
-              </div>
+        {loading ? (
+          // Full loading state (ticket 6 #15) — the page never stands empty.
+          <div className="flex flex-col gap-3">
+            <span className="sk-bar" style={{ width: "100%", height: 220, borderRadius: "var(--radius-card)" }} />
+            <span className="sk-bar" style={{ width: "100%", height: 120, borderRadius: "var(--radius-card)" }} />
+          </div>
+        ) : (
+          <>
+            {/* Stored data summary */}
+            <div className="card flex flex-col gap-2">
+              <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.summaryTitle}</h2>
+              {summary && Object.keys(summary).length > 0 ? (
+                <Rows obj={summary} />
+              ) : (
+                <p className="text-sm" style={{ color: "var(--meta)" }}>{s.empty}</p>
+              )}
             </div>
-          )}
-        </div>
+
+            {/* Account deletion */}
+            <div className="card flex flex-col gap-3">
+              <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--danger)" }}>{s.deleteTitle}</h2>
+              <p style={{ font: "400 13.5px/21px var(--font-system)", color: "var(--ink-2)" }}>{s.deleteBody}</p>
+
+              {!preview ? (
+                <button type="button" onClick={previewDelete} disabled={busy} className="btn-destructive self-start disabled:opacity-60">
+                  {s.deleteBtn}
+                </button>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div style={{ background: "var(--terra-tint)", borderRadius: "var(--radius-tile)", padding: "12px 14px" }}>
+                    <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger)" }}>{s.previewTitle}</p>
+                    <p className="mt-0.5 text-xs" style={{ color: "var(--ink-2)" }}>{s.previewNote}</p>
+                  </div>
+                  <Rows obj={preview} />
+                  <div className="flex gap-2">
+                    <button type="button" onClick={confirmDelete} disabled={busy} className="btn-destructive disabled:opacity-60">
+                      {s.finalBtn}
+                    </button>
+                    <button type="button" onClick={() => setPreview(null)} disabled={busy} className="btn-secondary">
+                      {s.cancel}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { authHeaders } from "@/lib/deviceId";
-import { getLocale } from "@/lib/i18n";
+import { getLocale, fmtDateLoc } from "@/lib/i18n";
+import ReferralRewardsCard from "@/components/ReferralRewardsCard";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -13,7 +14,7 @@ const L = {
   en: {
     backProfile: "← Profile",
     title: "My earnings",
-    totalEarned: (v: string) => `Total earned: ${v} — share your number to start.`,
+    totalEarned: (v: string) => `Total earned: ${v} — share your referral code to start.`,
     buyTokens: "Buy tokens",
     buySub: "Buy a subscription",
     perMonth: "1 month",
@@ -43,7 +44,7 @@ const L = {
   ka: {
     backProfile: "← პროფილი",
     title: "ჩემი შემოსავალი",
-    totalEarned: (v: string) => `ჯამური შემოსავალი: ${v}. გააზიარე შენი ნომერი დასაწყებად.`,
+    totalEarned: (v: string) => `ჯამური შემოსავალი: ${v}. გააზიარე შენი მოსაწვევი კოდი დასაწყებად.`,
     buyTokens: "ტოკენების ყიდვა",
     buySub: "გამოწერის ყიდვა",
     perMonth: "1 თვე",
@@ -109,12 +110,6 @@ function fmtTokens(n: number): string {
   return Number(n).toLocaleString("en-US");
 }
 
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
 // Strip a trailing price from a package label so the price renders exactly
 // once per row (handover 3.6.4): amount left, price right.
 function amountFromLabel(label: string): string {
@@ -130,6 +125,7 @@ export default function EarningsPage() {
   const s = L[getLocale()];
   const [data, setData] = useState<Referral | null>(null);
   const [packages, setPackages] = useState<TopupPackage[]>([]);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
@@ -154,14 +150,24 @@ export default function EarningsPage() {
     if (Array.isArray(json?.data)) setPackages(json.data as TopupPackage[]);
   }, []);
 
+  // Referral code for the rewards card (ticket 6 #5) — comes with the profile.
+  const loadCode = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/profile`, { headers: authHeaders() });
+      const json = await res.json().catch(() => ({}));
+      const code = json?.data?.referral_code;
+      if (typeof code === "string" && code) setReferralCode(code);
+    } catch {}
+  }, []);
+
   useEffect(() => {
-    Promise.all([loadReferral(), loadPackages()])
+    Promise.all([loadReferral(), loadPackages(), loadCode()])
       .then(([ref]) => {
         if (!ref) setError(true);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [loadReferral, loadPackages]);
+  }, [loadReferral, loadPackages, loadCode]);
 
   function historyLabel(item: HistoryItem): string {
     switch (item.reason) {
@@ -223,7 +229,7 @@ export default function EarningsPage() {
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
       {toast && (
         <div className="toast" role="status" aria-live="polite">
-          {toast.ok && <span>✓</span>}
+          {toast.ok && <span style={{ marginRight: 4 }}>✓</span>}
           {toast.msg}
         </div>
       )}
@@ -268,27 +274,24 @@ export default function EarningsPage() {
               />
             </div>
 
-            {/* Spend: tokens — price rendered exactly once per row */}
+            {/* Spend: tokens — always tappable (ticket 6 #6); the server answers
+                402/insufficient_balance and the toast explains. */}
             {packages.length > 0 && (
               <div className="card flex flex-col gap-3">
                 <h2 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{s.buyTokens}</h2>
                 <div className="flex flex-col gap-2">
-                  {packages.map((pkg) => {
-                    const price = pkg.priceUsd ?? Infinity;
-                    const affordable = balance >= price;
-                    return (
-                      <button
-                        key={pkg.id}
-                        type="button"
-                        disabled={!affordable || busy}
-                        onClick={() => setConfirm({ kind: "tokens", pkg })}
-                        className="price-row disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <span>{amountFromLabel(pkg.label)}</span>
-                        {pkg.priceUsd != null && <b>{usd(pkg.priceUsd)}</b>}
-                      </button>
-                    );
-                  })}
+                  {packages.map((pkg) => (
+                    <button
+                      key={pkg.id}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setConfirm({ kind: "tokens", pkg })}
+                      className="price-row disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <span>{amountFromLabel(pkg.label)}</span>
+                      {pkg.priceUsd != null && <b>{usd(pkg.priceUsd)}</b>}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
@@ -297,25 +300,25 @@ export default function EarningsPage() {
             <div className="card flex flex-col gap-3">
               <h2 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{s.buySub}</h2>
               <div className="grid grid-cols-2 gap-2.5">
-                {SUB_TIERS.map((tier) => {
-                  const affordable = balance >= tier.priceUsd;
-                  return (
-                    <button
-                      key={tier.tier}
-                      type="button"
-                      disabled={!affordable || busy}
-                      onClick={() => setConfirm({ kind: "sub", sub: tier })}
-                      className="tile disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <p style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{tier.name}</p>
-                      <p style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>{usd(tier.priceUsd)} · {s.perMonth}</p>
-                    </button>
-                  );
-                })}
+                {SUB_TIERS.map((tier) => (
+                  <button
+                    key={tier.tier}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setConfirm({ kind: "sub", sub: tier })}
+                    className="tile disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <p style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{tier.name}</p>
+                    <p style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>{usd(tier.priceUsd)} · {s.perMonth}</p>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Withdraw — placeholder until the payout flow ships */}
+            {/* Referral rewards + code (ticket 6 #5) — above Withdraw */}
+            <ReferralRewardsCard code={referralCode} />
+
+            {/* Withdraw — the ONLY button gated on balance (ticket 6 #6) */}
             <div className="card flex flex-col gap-2">
               <button
                 type="button"
@@ -349,7 +352,7 @@ export default function EarningsPage() {
                   >
                     <div>
                       <p style={{ fontSize: "14px", color: "var(--ink)" }}>{historyLabel(item)}</p>
-                      <p style={{ fontSize: "12px", color: "var(--meta)" }}>{fmtDate(item.createdAt)}</p>
+                      <p style={{ fontSize: "12px", color: "var(--meta)" }}>{fmtDateLoc(item.createdAt, { month: "short", day: "numeric", year: "numeric" })}</p>
                     </div>
                     <span
                       style={{
