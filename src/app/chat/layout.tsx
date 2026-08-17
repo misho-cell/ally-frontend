@@ -8,6 +8,7 @@ import { authHeaders, handleAdminTokenMisuse } from "@/lib/deviceId";
 import { t, tf } from "@/lib/i18n";
 import { useUserName, clearUserName } from "@/lib/user";
 import Modal from "@/components/Modal";
+import AddToHomeScreen from "@/components/AddToHomeScreen";
 import {
   ThreadsContext,
   updateThreadState,
@@ -144,7 +145,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [homeInput, setHomeInput] = useState("");
   const [creating, setCreating] = useState(false);
   const [recording, setRecording] = useState(false);
-  // Ticket 6 #7/#14: design-system rename modal, opened by long-press on a row.
+  // Ticket 6 #7/#14: design-system rename modal, opened by long-press or
+  // right-click on a row.
   const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [renameBusy, setRenameBusy] = useState(false);
@@ -465,6 +467,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                           kind: "message",
                           runId: data.runId ?? null,
                           pending: true,
+                          createdAt: new Date().toISOString(),
                         },
                       ],
                       options: Array.isArray(data.options) ? data.options : [],
@@ -516,7 +519,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       updateThreadState(prev, threadId, (ts) => ({
         ...ts,
         messages: echo
-          ? [...ts.messages, { id: crypto.randomUUID(), role: "user" as const, content: text, kind: "message" as const, runId: null, pending: true }]
+          ? [...ts.messages, { id: crypto.randomUUID(), role: "user" as const, content: text, kind: "message" as const, runId: null, pending: true, createdAt: new Date().toISOString() }]
           : ts.messages,
         options: [],
         choices: [],
@@ -845,6 +848,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           </aside>
           <main className={mainClass}>{children}</main>
           {renameModal}
+          <AddToHomeScreen />
         </div>
       </ThreadsContext.Provider>
     );
@@ -1073,14 +1077,15 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           </div>
 
           {/* Mobile home composer only — on desktop the composer lives in the
-              main pane (ticket 6 #1); the sidebar keeps just the search. */}
+              main pane (ticket 6 #1). One slot on the right: mic when empty,
+              send replaces it when text exists (ticket 7 #1). */}
           <form
             onSubmit={(e) => { e.preventDefault(); createTask(homeInput); }}
             className="flex items-center gap-2 md:hidden"
           >
             <div
               className="composer-pill flex flex-1 items-center gap-2 min-w-0"
-              style={{ padding: "6px 6px 6px 14px", borderColor: recording ? "var(--danger)" : undefined }}
+              style={{ padding: "6px 14px", borderColor: recording ? "var(--danger)" : undefined }}
             >
               <input
                 ref={homeInputRef}
@@ -1091,37 +1096,44 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 className="flex-1 min-w-0 bg-transparent outline-none"
                 style={{ color: "var(--ink)", fontSize: "14px", padding: "6px 0" }}
               />
-              {homeInput.trim() && (
-                <button
-                  type="submit"
-                  aria-label={t("send")}
-                  className="flex shrink-0 items-center justify-center rounded-full"
-                  style={{ width: 34, height: 34, background: "var(--accent)", color: "#FBFAF4" }}
-                >
-                  <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-                    <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              )}
             </div>
-            <button
-              type="button"
-              onClick={startHomeMic}
-              aria-label={recording ? t("voiceStop") : t("voiceStart")}
-              className="flex shrink-0 items-center justify-center rounded-full transition-colors"
-              style={{
-                width: 44, height: 44,
-                background: recording ? "var(--danger)" : "var(--accent)",
-                color: "#FBFAF4",
-              }}
-            >
-              <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
-                <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.6" />
-                <path d="M4 10a6 6 0 0012 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                <line x1="7" y1="19" x2="13" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </button>
+            {homeInput.trim() && !recording ? (
+              <button
+                type="submit"
+                aria-label={t("send")}
+                className="flex shrink-0 items-center justify-center rounded-full"
+                style={{ width: 44, height: 44, background: "var(--accent)", color: "#FBFAF4" }}
+              >
+                <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                  <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={startHomeMic}
+                aria-label={recording ? t("voiceStop") : t("voiceStart")}
+                className="flex shrink-0 items-center justify-center rounded-full transition-colors"
+                style={{
+                  width: 44, height: 44,
+                  background: recording ? "var(--danger)" : "var(--accent)",
+                  color: "#FBFAF4",
+                }}
+              >
+                {recording ? (
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                    <rect x="5" y="5" width="10" height="10" rx="1.5" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
+                    <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.6" />
+                    <path d="M4 10a6 6 0 0012 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    <line x1="7" y1="19" x2="13" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                )}
+              </button>
+            )}
           </form>
 
           <div className="flex items-center gap-2.5" style={{ borderTop: "1px solid var(--sidebar-border)", paddingTop: "10px" }}>
@@ -1145,6 +1157,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
         <main className={mainClass}>{children}</main>
         {renameModal}
+        <AddToHomeScreen />
       </div>
     </ThreadsContext.Provider>
   );
@@ -1192,7 +1205,13 @@ function TaskRow({
       onTouchStart={startPress}
       onTouchEnd={cancelPress}
       onTouchMove={cancelPress}
-      onContextMenu={(e) => { if (firedRef.current) e.preventDefault(); }}
+      onContextMenu={(e) => {
+        // Ticket 7 #4: right-click (and the synthetic contextmenu some phones
+        // fire on long-press) opens rename too.
+        e.preventDefault();
+        cancelPress();
+        if (!firedRef.current) onLongPress();
+      }}
       onClick={(e) => {
         if (firedRef.current) {
           e.preventDefault();
