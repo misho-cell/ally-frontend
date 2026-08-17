@@ -15,14 +15,14 @@ const PRICE_IDS: Record<string, string> = {
 const L = {
   en: {
     choosePlan: "Choose your plan",
-    subtitle: "Try Pro free for 5 days — your card won't be charged until the trial ends.",
+    subtitle: "Try Pro free for 5 days. Your card won't be charged until the trial ends.",
     mostPopular: "Most popular",
     trialBadge: "5-day trial",
     trialNote: "First 5 days free",
     tryFree: "Try 5 days free",
     chooseEnterprise: "Choose Enterprise",
     opening: "Opening…",
-    skip: "Skip — continue with the free version",
+    skip: "Skip and continue with the free version",
     features: {
       pro: ["Personal assistant", "Contact analysis", "Priority support", "Advanced reporting"],
       enterprise: ["Everything in Pro", "Dedicated support", "Custom integrations"],
