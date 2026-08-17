@@ -31,6 +31,13 @@ const SEND = {
   ka: { failed: "ვერ გაიგზავნა", resend: "ხელახლა" },
 };
 
+// Ticket 7 #5: the "running low" copy was wrong when the monthly grant is
+// spent but the wallet still holds top-up credit. Georgian: no em-dashes.
+const WALLET = {
+  en: { spentAllowance: "Monthly allowance used up. Now spending from your balance." },
+  ka: { spentAllowance: "თვის პაკეტი ამოიწურა, ახლა ბალანსიდან იხარჯება" },
+};
+
 const SUPPORTED_LANGS = [
   "en-US", "en-GB", "es-ES", "fr-FR", "de-DE",
   "it-IT", "pt-BR", "ja-JP", "ko-KR", "zh-CN",
@@ -69,6 +76,17 @@ function nextRenewalDate(): string {
 
 function fmtTokens(n: number): string {
   return Number(n).toLocaleString("en-US");
+}
+
+// Message timestamps in the stream (ticket 7 #3): same-day → clock, older →
+// date + clock. Quiet meta text, never a full sentence.
+function fmtMsgClock(iso?: string | number | null): string {
+  if (!iso) return "";
+  const d = new Date(String(iso));
+  if (isNaN(d.getTime())) return "";
+  const clock = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const sameDay = d.toDateString() === new Date().toDateString();
+  return sameDay ? clock : `${d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} ${clock}`;
 }
 
 function renderStepText(text: string): React.ReactNode {
@@ -213,6 +231,7 @@ export default function ThreadPage() {
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
   const { messages, options, choices, loading, error, streaming, progress, hasMoreOlder, result } = st;
   const send = SEND[getLocale()];
+  const wallet = WALLET[getLocale()];
 
   const [input, setInput] = useState("");
   const [loadPhase, setLoadPhase] = useState<LoadPhase>(st.loaded ? "done" : "loading");
@@ -258,13 +277,15 @@ export default function ThreadPage() {
 
   const tokensEnabled = tokens?.enabled === true;
   const isTrialWallet = tokensEnabled && tokens.grantedThisPeriod === 120;
-  // Ticket 6 #9: usage ratio comes from spentThisPeriod / grantedThisPeriod
-  // (balance also holds top-ups and manual credits, so it can exceed the grant).
+  const granted = tokensEnabled ? tokens.grantedThisPeriod : 0;
+  // Ticket 7 #5: two distinct wallet states. The grant being spent is NOT the
+  // same as the wallet running dry — balance also holds top-ups and credits.
+  const grantExhausted = tokensEnabled && granted > 0 && tokens.spentThisPeriod >= granted;
+  const balanceLow = tokensEnabled && granted > 0 && Math.max(0, tokens.balance) <= granted * 0.05;
   const remainingPct =
-    tokensEnabled && tokens.grantedThisPeriod > 0
-      ? Math.max(0, 1 - tokens.spentThisPeriod / tokens.grantedThisPeriod)
+    tokensEnabled && granted > 0
+      ? Math.max(0, 1 - tokens.spentThisPeriod / granted)
       : null;
-  const lowBalance = remainingPct !== null && remainingPct <= 0.05;
 
   const streamingActive = loading && !!streaming && streaming.text.length > 0;
 
@@ -656,6 +677,7 @@ export default function ThreadPage() {
                   kind: "message",
                   runId: null,
                   pending: true,
+                  createdAt: new Date().toISOString(),
                 },
               ]
             : ts.messages,
@@ -888,6 +910,17 @@ export default function ThreadPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Ticket 7 #2: on phones the composer lives on the list page — give
+              the open thread a one-tap way to start a new goal. */}
+          <button
+            onClick={() => router.push("/chat")}
+            aria-label={t("newTask")}
+            title={t("newTask")}
+            className="md:hidden flex items-center justify-center rounded-full"
+            style={{ width: 30, height: 30, background: "var(--accent)", color: "#FBFAF4", fontSize: "17px", lineHeight: 1 }}
+          >
+            +
+          </button>
           {thread?.is_task === true && taskStatus && taskStatus !== "done" && (
             <button
               onClick={stopTask}
@@ -929,10 +962,10 @@ export default function ThreadPage() {
             </button>
           )}
           {tokensEnabled && (
-            <span className={`token-badge${lowBalance ? " low" : ""}`}>
-              <i className="dot" style={{ width: 8, height: 8, borderRadius: "50%", background: lowBalance ? "var(--request-accent)" : "var(--accent)", display: "inline-block" }} />
+            <span className={`token-badge${balanceLow ? " low" : ""}`}>
+              <i className="dot" style={{ width: 8, height: 8, borderRadius: "50%", background: balanceLow ? "var(--request-accent)" : "var(--accent)", display: "inline-block" }} />
               <span className="count">
-                {fmtTokens(Math.max(0, tokens.balance))}{lowBalance ? ` · ${t("lowSuffix")}` : ""}
+                {fmtTokens(Math.max(0, tokens.balance))}{balanceLow ? ` · ${t("lowSuffix")}` : ""}
               </span>
             </span>
           )}
@@ -1014,6 +1047,7 @@ export default function ThreadPage() {
                   />
                 );
               }
+              const stamp = fmtMsgClock(msg.createdAt);
               if (msg.role === "user") {
                 return (
                   <div key={msg.id} className="flex flex-col items-end gap-1">
@@ -1031,7 +1065,7 @@ export default function ThreadPage() {
                     >
                       {msg.content}
                     </div>
-                    {msg.failed && (
+                    {msg.failed ? (
                       <div className="flex items-center gap-2">
                         <span style={{ font: "400 11.5px/16px var(--font-system)", color: "var(--request-accent)" }}>
                           {send.failed}
@@ -1044,7 +1078,9 @@ export default function ThreadPage() {
                           {send.resend}
                         </button>
                       </div>
-                    )}
+                    ) : stamp ? (
+                      <span style={{ font: "400 10.5px/14px var(--font-system)", color: "var(--meta)" }}>{stamp}</span>
+                    ) : null}
                   </div>
                 );
               }
@@ -1053,10 +1089,15 @@ export default function ThreadPage() {
                 <div key={msg.id} className="flex flex-col gap-3">
                   <div className="flex items-start" style={{ gap: "10px" }}>
                     <AllyAvatar />
-                    <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)", flex: 1, minWidth: 0 }}>
-                      <ReactMarkdown components={markdownComponents} urlTransform={mdUrlTransform}>
-                        {linkifyPhones(msg.content)}
-                      </ReactMarkdown>
+                    <div className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: "4px" }}>
+                      <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)" }}>
+                        <ReactMarkdown components={markdownComponents} urlTransform={mdUrlTransform}>
+                          {linkifyPhones(msg.content)}
+                        </ReactMarkdown>
+                      </div>
+                      {stamp && (
+                        <span style={{ font: "400 10.5px/14px var(--font-system)", color: "var(--meta)" }}>{stamp}</span>
+                      )}
                     </div>
                   </div>
                   {isFirstAssistant && isRequest && (reqNames || reqQuote) && (
@@ -1210,20 +1251,22 @@ export default function ThreadPage() {
         )}
       </div>
 
-      {!limitHit && lowBalance && (
+      {!limitHit && (balanceLow || grantExhausted) && (
         <div className="px-4 pt-2">
           <div
             className="mx-auto px-4 py-2.5"
             style={{
               maxWidth: "720px",
-              background: "var(--terra-tint)",
-              color: "var(--request-accent)",
+              background: balanceLow ? "var(--terra-tint)" : "var(--accent-tint)",
+              color: balanceLow ? "var(--request-accent)" : "var(--accent-strong)",
               borderRadius: "var(--radius-tile)",
               fontSize: "13.5px",
               fontWeight: 500,
             }}
           >
-            {tf("tokensAlmostGone", { n: fmtTokens(Math.max(0, tokens!.balance)) })}
+            {balanceLow
+              ? tf("tokensAlmostGone", { n: fmtTokens(Math.max(0, tokens!.balance)) })
+              : wallet.spentAllowance}
           </div>
         </div>
       )}
@@ -1318,7 +1361,33 @@ export default function ThreadPage() {
               }}
             />
 
-            {speechSupported && (
+            {/* Ticket 7 #1: ONE slot on the right — mic when the field is
+                empty, send replaces it when text exists. Never side by side. */}
+            {input.trim() && voiceState !== "recording" ? (
+              <button
+                type="button"
+                onClick={() => sendMessage(input)}
+                disabled={composerBlocked}
+                className="flex shrink-0 items-center justify-center rounded-full transition-colors"
+                style={{
+                  width: 38,
+                  height: 38,
+                  background: !composerBlocked ? "var(--accent)" : "var(--skeleton)",
+                  color: !composerBlocked ? "#FBFAF4" : "var(--meta)",
+                }}
+                onMouseEnter={(e) => {
+                  if (!composerBlocked) e.currentTarget.style.background = "var(--accent-strong)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!composerBlocked) e.currentTarget.style.background = "var(--accent)";
+                }}
+                aria-label={t("send")}
+              >
+                <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                  <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            ) : speechSupported ? (
               <button
                 type="button"
                 onClick={handleMicClick}
@@ -1352,33 +1421,7 @@ export default function ThreadPage() {
                   </svg>
                 )}
               </button>
-            )}
-
-            {voiceState !== "recording" && (
-              <button
-                type="button"
-                onClick={() => sendMessage(input)}
-                disabled={!input.trim() || composerBlocked}
-                className="flex shrink-0 items-center justify-center rounded-full transition-colors"
-                style={{
-                  width: 38,
-                  height: 38,
-                  background: input.trim() && !composerBlocked ? "var(--accent)" : "var(--skeleton)",
-                  color: input.trim() && !composerBlocked ? "#FBFAF4" : "var(--meta)",
-                }}
-                onMouseEnter={(e) => {
-                  if (input.trim() && !composerBlocked) e.currentTarget.style.background = "var(--accent-strong)";
-                }}
-                onMouseLeave={(e) => {
-                  if (input.trim() && !composerBlocked) e.currentTarget.style.background = "var(--accent)";
-                }}
-                aria-label={t("send")}
-              >
-                <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-                  <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
