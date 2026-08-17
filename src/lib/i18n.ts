@@ -10,6 +10,21 @@ export function getLocale(): Locale {
   return navigator.language?.toLowerCase().startsWith("ka") ? "ka" : "en";
 }
 
+// Dates shown to the user follow the UI locale (ticket 6 #11) — never
+// hardcoded en-US month names in a Georgian UI.
+export function fmtDateLoc(
+  input: Date | string,
+  opts: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" }
+): string {
+  const d = typeof input === "string" ? new Date(input) : input;
+  if (isNaN(d.getTime())) return "";
+  try {
+    return d.toLocaleDateString(getLocale() === "ka" ? "ka-GE" : "en-US", opts);
+  } catch {
+    return d.toLocaleDateString("en-US", opts);
+  }
+}
+
 // Steps render as ✓ + text only — strip emoji the backend may include.
 export function stripEmoji(s: string): string {
   try {
@@ -23,6 +38,8 @@ export function stripEmoji(s: string): string {
 // international numbers into markdown links — the number dials (tel:), the
 // small WhatsApp link opens a chat. Runs on the markdown SOURCE before
 // rendering, and skips numbers that are already inside a link.
+// NOTE: the markdown renderer must allow the tel: protocol via urlTransform,
+// otherwise the anchor renders with a null href (ticket 6 #3).
 export function linkifyPhones(text: string): string {
   return text.replace(
     /(^|[^\d(\[/+])(\+\d{1,3}[\s\-]?\d(?:[\s\-]?\d){6,12})(?!\d)/g,
@@ -97,6 +114,16 @@ const en = {
   deleteGoal: "Delete",
   deleteConfirm: "Delete this goal? Any open work on it will be stopped.",
   deleteFailed: "Couldn't delete — try again",
+  modalRenameTitle: "Rename goal",
+  modalDeleteTitle: "Delete goal",
+  cancel: "Cancel",
+  save: "Save",
+  meFallback: "Me",
+  send: "Send",
+  voiceStart: "Start voice input",
+  voiceStop: "Stop recording",
+  backLabel: "Back",
+  profileLink: "Profile",
   reqAsksIntro: "asks for an intro through you",
   reqAccept: "Accept",
   reqDeny: "Decline",
@@ -167,7 +194,7 @@ const ka: typeof en = {
   netRequired: "საჭიროა ინტერნეტთან კავშირი",
   paymentWindowFailed: "გადახდის ფანჯარა ვერ გაიხსნა",
   genericError: "რაღაც შეცდომა მოხდა. სცადე თავიდან.",
-  lowSuffix: "low",
+  lowSuffix: "ცოტაღა დარჩა",
   stWorking: "მუშაობს",
   stWaiting: "ველოდები პასუხს",
   stNeedsYou: "საჭიროა შენი პასუხი",
@@ -181,6 +208,16 @@ const ka: typeof en = {
   deleteGoal: "წაშლა",
   deleteConfirm: "წავშალო ეს მიზანი? მასზე მიმდინარე სამუშაო შეჩერდება.",
   deleteFailed: "წაშლა ვერ მოხერხდა, სცადე თავიდან",
+  modalRenameTitle: "მიზნის გადარქმევა",
+  modalDeleteTitle: "მიზნის წაშლა",
+  cancel: "გაუქმება",
+  save: "შენახვა",
+  meFallback: "მე",
+  send: "გაგზავნა",
+  voiceStart: "ხმით ჩაწერა",
+  voiceStop: "ჩაწერის გაჩერება",
+  backLabel: "უკან",
+  profileLink: "პროფილი",
   reqAsksIntro: "გაცნობას ითხოვს შენი დახმარებით",
   reqAccept: "მიიღე",
   reqDeny: "უარი",
