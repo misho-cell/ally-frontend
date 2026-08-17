@@ -6,11 +6,12 @@ import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
 import { authHeaders } from "@/lib/deviceId";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
-import { getLocale } from "@/lib/i18n";
+import { getLocale, fmtDateLoc } from "@/lib/i18n";
+import { clearUserName } from "@/lib/user";
+import ReferralRewardsCard from "@/components/ReferralRewardsCard";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const MCP_URL = "https://api.netai.guru/mcp";
-const SITE_URL = "https://netai.guru";
 const PHOTO_URL = `${BASE_URL}/profile/photo`;
 const PHOTO_MAX_BYTES = 300 * 1024;
 
@@ -20,18 +21,9 @@ const L = {
   en: {
     backChat: "← Chat",
     title: "Profile",
-    inviteTitle: "Invite friends",
-    inviteBody:
-      "When a friend signs up, they enter your number in the invite field. You earn a share of their first subscription — and of subscriptions from the people they invite, up to 6 levels deep.",
-    inviteBtn: "Invite friend",
-    inviteCopied: "Invite copied to clipboard",
-    shareText: (phone: string) =>
-      `Hey! I'm using Netai — an assistant that works your own network to get things done. Join me:\n\n` +
-      `1. Open ${SITE_URL} and sign in with your phone number\n` +
-      `2. On the sign-up step, put my number in the “Invited by” field: ${phone}\n\n` +
-      `That's it — see you inside!`,
     tokens: "Tokens",
     renews: (d: string) => `Renews ${d}`,
+    usedOf: (spent: string, granted: string) => `${spent} of ${granted} used this period`,
     trialBalance: "Trial balance — subscribe to keep going",
     addTokens: "Add tokens",
     tokensAdded: "Tokens added",
@@ -84,18 +76,9 @@ const L = {
   ka: {
     backChat: "← ჩეთი",
     title: "პროფილი",
-    inviteTitle: "დაპატიჟე მეგობრები",
-    inviteBody:
-      "როცა მეგობარი დარეგისტრირდება, მოსაწვევის ველში შენს ნომერს ჩაწერს. შენ მიიღებ წილს მისი პირველი გამოწერიდან და მის მიერ დაპატიჟებულების გამოწერებიდანაც, 6 დონემდე.",
-    inviteBtn: "მეგობრის დაპატიჟება",
-    inviteCopied: "მოსაწვევი დაკოპირდა",
-    shareText: (phone: string) =>
-      `გამარჯობა! ვიყენებ Netai-ს, ასისტენტს, რომელიც შენივე ქსელის დახმარებით აგვარებს საქმეებს. შემომიერთდი:\n\n` +
-      `1. გახსენი ${SITE_URL} და შედი შენი ნომრით\n` +
-      `2. რეგისტრაციისას „Invited by“ ველში ჩაწერე ჩემი ნომერი: ${phone}\n\n` +
-      `სულ ეს არის, შიგნით გნახავ!`,
     tokens: "ტოკენები",
     renews: (d: string) => `განახლდება: ${d}`,
+    usedOf: (spent: string, granted: string) => `ამ პერიოდში დახარჯულია ${spent} / ${granted}`,
     trialBalance: "საცდელი ბალანსი. გასაგრძელებლად გამოიწერე.",
     addTokens: "ტოკენების დამატება",
     tokensAdded: "ტოკენები დაემატა",
@@ -157,6 +140,7 @@ type Profile = {
   employer?: string | null;
   job_position?: string | null;
   city?: string | null;
+  referral_code?: string | null;
   subscription_tier: "free" | "premium" | "pro" | "enterprise";
   subscription_status: "trialing" | "active" | "past_due" | "canceled" | "inactive";
   trial_ends_at: string | null;
@@ -188,18 +172,9 @@ function daysUntil(dateStr: string): number {
   return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000));
 }
 
-function fmt(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
 function nextRenewalDate(): string {
   const now = new Date();
-  const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  return fmtDateLoc(new Date(now.getFullYear(), now.getMonth() + 1, 1));
 }
 
 function fmtTokens(n: number): string {
@@ -374,46 +349,9 @@ function PhotoAvatar({ name }: { name: string }) {
   );
 }
 
-// Invite friends — referral share, prominent on the profile. The share text
-// carries the site link, a mini how-to and the user's number so the friend
-// has zero follow-up questions.
-function InviteFriendsCard({ phone }: { phone: string }) {
-  const s = useStrings();
-  const [toast, setToast] = useState<string | null>(null);
-
-  async function share() {
-    const text = s.shareText(phone);
-    try {
-      if (navigator.share) {
-        await navigator.share({ text });
-      } else {
-        await navigator.clipboard.writeText(text);
-        setToast(s.inviteCopied);
-        setTimeout(() => setToast(null), 2400);
-      }
-    } catch {}
-  }
-
-  return (
-    <div className="card flex flex-col gap-3">
-      {toast && (
-        <div className="toast" role="status" aria-live="polite"><span>✓</span>{toast}</div>
-      )}
-      <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.inviteTitle}</h2>
-      <p style={{ font: "400 13.5px/21px var(--font-system)", color: "var(--ink-2)" }}>
-        {s.inviteBody}
-      </p>
-      <button type="button" onClick={share} className="btn-primary self-start">
-        {s.inviteBtn}
-      </button>
-    </div>
-  );
-}
-
 // Edit profile (E9): name / employer / position / city via PATCH /profile.
 // Empty optional fields are sent as null (the contract's "clear" value); name
-// can never be emptied — asks are sent under it. Space for referral_code is
-// reserved pending the D5 decision.
+// can never be emptied — asks are sent under it.
 function EditProfileCard({ profile, onSaved }: { profile: Profile; onSaved: (p: Partial<Profile>) => void }) {
   const s = useStrings();
   const [open, setOpen] = useState(false);
@@ -443,6 +381,8 @@ function EditProfileCard({ profile, onSaved }: { profile: Profile; onSaved: (p: 
     try {
       await apiFetch("/profile", { method: "PATCH", body });
       onSaved(body);
+      // Keep the cached sidebar name in sync with the new profile name.
+      try { localStorage.setItem("netai_profile_name", body.name); } catch {}
       setMsg(s.saved);
       setTimeout(() => setMsg(null), 2400);
     } catch (e2) {
@@ -572,8 +512,9 @@ function AllyInClaudeCard() {
   );
 }
 
-// Token wallet card (handover 3.5.4/3.5.5) + top-up price tiles.
-// Hidden entirely when the backend kill-switch is off (enabled:false).
+// Token wallet card. Ticket 6 #9: the headline number is `balance` alone
+// (top-ups and manual credits live there, so it can exceed the grant); the
+// bar shows spentThisPeriod / grantedThisPeriod, capped at 100%.
 function TokensWidget() {
   const s = useStrings();
   const [tokens, setTokens] = useState<TokenBalance | null>(null);
@@ -638,10 +579,11 @@ function TokensWidget() {
 
   const balance = tokens ? Math.max(0, tokens.balance) : null;
   const granted = tokens?.grantedThisPeriod ?? 0;
+  const spent = tokens ? Math.max(0, tokens.spentThisPeriod) : 0;
   const isTrial = granted === 120;
-  const remainingPct = tokens && granted > 0 ? balance! / granted : null;
+  const usedPct = tokens && granted > 0 ? Math.min(1, spent / granted) : null;
   const fillColor =
-    remainingPct !== null && remainingPct <= 0.05
+    usedPct !== null && usedPct >= 0.95
       ? "var(--request-accent)"
       : "var(--accent)";
   // Top-up is for subscribers only — trial wallets get the subscribe CTA elsewhere.
@@ -657,7 +599,7 @@ function TokensWidget() {
   return (
     <div className="card flex flex-col gap-3">
       {toast && (
-        <div className="toast" role="status" aria-live="polite"><span>✓</span>{toast}</div>
+        <div className="toast" role="status" aria-live="polite"><span style={{ marginRight: 4 }}>✓</span>{toast}</div>
       )}
       <div className="flex items-baseline justify-between">
         <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.tokens}</h2>
@@ -667,30 +609,32 @@ function TokensWidget() {
       </div>
 
       {failed || !tokens ? (
-        <p className="text-sm" style={{ color: "var(--meta)" }}>—</p>
+        <p className="text-sm" style={{ color: "var(--meta)" }}>-</p>
       ) : (
         <>
           <div className="flex items-baseline gap-1.5">
             <span style={{ font: "600 28px/34px var(--font-system)", letterSpacing: "-0.3px", color: "var(--ink-strong)" }}>
               {fmtTokens(balance!)}
             </span>
-            {granted > 0 && (
-              <span style={{ font: "400 14px/20px var(--font-system)", color: "var(--meta)" }}>/ {fmtTokens(granted)}</span>
-            )}
           </div>
 
           {granted > 0 && (
-            <div className="w-full overflow-hidden" style={{ height: "6px", borderRadius: "3px", background: "var(--skeleton)" }}>
-              <div
-                className="h-full"
-                style={{
-                  width: `${Math.round((remainingPct ?? 0) * 100)}%`,
-                  borderRadius: "3px",
-                  background: fillColor,
-                  transition: "width 0.4s",
-                }}
-              />
-            </div>
+            <>
+              <div className="w-full overflow-hidden" style={{ height: "6px", borderRadius: "3px", background: "var(--skeleton)" }}>
+                <div
+                  className="h-full"
+                  style={{
+                    width: `${Math.round((usedPct ?? 0) * 100)}%`,
+                    borderRadius: "3px",
+                    background: fillColor,
+                    transition: "width 0.4s",
+                  }}
+                />
+              </div>
+              <p className="text-xs" style={{ color: "var(--meta)" }}>
+                {s.usedOf(fmtTokens(Math.min(spent, granted)), fmtTokens(granted))}
+              </p>
+            </>
           )}
 
           {isTrial && (
@@ -742,7 +686,7 @@ function SubscriptionBadge({ profile }: { profile: Profile }) {
       "var(--accent)",
       s.trialLabel(TIER_LABELS[subscription_tier]),
       "var(--accent-strong)",
-      `${s.daysLeft(days)} · ${s.autoCharge(fmt(trial_ends_at))}`
+      `${s.daysLeft(days)} · ${s.autoCharge(fmtDateLoc(trial_ends_at))}`
     );
   }
 
@@ -751,7 +695,7 @@ function SubscriptionBadge({ profile }: { profile: Profile }) {
       "var(--accent)",
       s.activeLabel(TIER_LABELS[subscription_tier]),
       "var(--accent-strong)",
-      current_period_ends_at ? s.nextPayment(fmt(current_period_ends_at)) : null
+      current_period_ends_at ? s.nextPayment(fmtDateLoc(current_period_ends_at)) : null
     );
   }
 
@@ -764,7 +708,7 @@ function SubscriptionBadge({ profile }: { profile: Profile }) {
       "var(--request-accent)",
       s.canceled,
       "var(--request-accent)",
-      s.continuesUntil(TIER_LABELS[subscription_tier], fmt(current_period_ends_at)),
+      s.continuesUntil(TIER_LABELS[subscription_tier], fmtDateLoc(current_period_ends_at)),
       "var(--request-tint)"
     );
   }
@@ -810,6 +754,7 @@ export default function ProfilePage() {
   }
 
   function signOut() {
+    clearUserName();
     localStorage.removeItem("token");
     document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
     router.replace("/login");
@@ -883,8 +828,8 @@ export default function ProfilePage() {
               onSaved={(p) => setProfile((prev) => (prev ? { ...prev, ...p } : prev))}
             />
 
-            {/* Invite friends (referral share) */}
-            <InviteFriendsCard phone={profile.phone} />
+            {/* Referral rewards + code (ticket 6 #5, closes E8/E10) */}
+            <ReferralRewardsCard code={profile.referral_code ?? null} />
 
             {/* Token wallet */}
             <TokensWidget />
