@@ -2,7 +2,7 @@ import LegalNav, { LegalFooter } from "@/components/LegalNav";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Netai",
+  title: "Privacy Policy | Netai",
 };
 
 export default function PrivacyPage() {
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
 
           <Section title="1. Who We Are">
             <p><strong>Ally, Inc.</strong> is a Delaware C Corporation (EIN: 37-2215465) operating the Netai assistant at netai.guru. We are the data controller for all personal data processed through Netai.</p>
-            <p className="mt-3"><strong>Contact:</strong> info@allyapp.one · Data rights portal: netai.guru/privacy/my-data</p>
+            <p className="mt-3"><strong>Contact:</strong> info@allyapp.one · Data rights portal: netai.guru/profile/data</p>
           </Section>
 
           <Section title="2. What Data We Collect">
@@ -59,10 +59,10 @@ export default function PrivacyPage() {
               <table className="legal-table">
                 <thead><tr><th>Processor</th><th>Purpose</th></tr></thead>
                 <tbody>
-                  <tr><td>Anthropic (Claude API)</td><td>AI conversation processing — no data retained beyond the API call</td></tr>
+                  <tr><td>Anthropic (Claude API)</td><td>AI conversation processing; no data retained beyond the API call</td></tr>
                   <tr><td>Supabase (Frankfurt, Germany)</td><td>Database hosting</td></tr>
                   <tr><td>Railway (Frankfurt, Germany)</td><td>Backend hosting</td></tr>
-                  <tr><td>Paddle (Paddle.com Market Ltd)</td><td>Merchant of Record — billing, payments, tax</td></tr>
+                  <tr><td>Paddle (Paddle.com Market Ltd)</td><td>Merchant of Record: billing, payments, tax</td></tr>
                   <tr><td>Bridge (USA)</td><td>USDT payout processing and KYC for withdrawals</td></tr>
                 </tbody>
               </table>
@@ -90,7 +90,7 @@ export default function PrivacyPage() {
               <li>Right to object to processing based on legitimate interests</li>
               <li>Right to withdraw consent at any time</li>
             </ul>
-            <p className="mt-3">Exercise rights at: <a href="https://netai.guru/privacy/my-data" className="legal-link">netai.guru/privacy/my-data</a> or email info@allyapp.one. We respond within 30 days.</p>
+            <p className="mt-3">Exercise rights at: <a href="https://netai.guru/profile/data" className="legal-link">netai.guru/profile/data</a> or email info@allyapp.one. We respond within 30 days.</p>
           </Section>
 
           <Section title="7. Security">
@@ -99,7 +99,7 @@ export default function PrivacyPage() {
 
           <Section title="8. Contact">
             <p><strong>Email:</strong> info@allyapp.one<br />
-            <strong>Data rights portal:</strong> netai.guru/privacy/my-data<br />
+            <strong>Data rights portal:</strong> netai.guru/profile/data<br />
             <strong>Legal:</strong> Ally, Inc. c/o Tornike Abuladze, 1328 Botetourt Gardens, Norfolk, VA 23517, USA</p>
           </Section>
         </div>

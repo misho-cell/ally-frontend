@@ -2,7 +2,7 @@ import LegalNav, { LegalFooter } from "@/components/LegalNav";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Refund Policy — Netai",
+  title: "Refund Policy | Netai",
 };
 
 export default function RefundPage() {
@@ -14,14 +14,14 @@ export default function RefundPage() {
           <h1 className="legal-h1 mb-2">Refund Policy</h1>
           <p className="legal-meta mb-8">Effective Date: January 1, 2026 · Last Updated: June 2026</p>
 
-          <p className="mb-8">Netai subscriptions and purchases are processed by <strong>Paddle (Paddle.com Market Ltd)</strong>, our Merchant of Record — the legal seller of record for all Netai transactions. Paddle handles all billing, payment processing, and refund administration on our behalf.</p>
+          <p className="mb-8">Netai subscriptions and purchases are processed by <strong>Paddle (Paddle.com Market Ltd)</strong>, our Merchant of Record, the legal seller of record for all Netai transactions. Paddle handles all billing, payment processing, and refund administration on our behalf.</p>
 
           <Section title="1. Free Trial">
-            <p>Every new Netai account begins with a <strong>5-day full-feature trial</strong> at no cost. The trial begins on your first assistant conversation — not on registration. If you do not subscribe before the trial ends, your account automatically moves to the free tier. No payment is taken and no refund request is necessary.</p>
+            <p>Every new Netai account begins with a <strong>5-day full-feature trial</strong> at no cost. The trial begins on your first assistant conversation, not on registration. If you do not subscribe before the trial ends, your account automatically moves to the free tier. No payment is taken and no refund request is necessary.</p>
           </Section>
 
           <Section title="2. Subscription Cancellation">
-            <p>You may cancel at any time from <strong>Settings → Subscription</strong>. Cancellation takes effect at the end of your current billing period — you retain full access until that date. Netai does not terminate access mid-period upon cancellation.</p>
+            <p>You may cancel at any time from <strong>Settings → Subscription</strong>. Cancellation takes effect at the end of your current billing period; you retain full access until that date. Netai does not terminate access mid-period upon cancellation.</p>
           </Section>
 
           <Section title="3. Subscription Refunds">
@@ -44,7 +44,7 @@ export default function RefundPage() {
 
           <Section title="7. How to Request a Refund">
             <p><strong>Email:</strong> info@allyapp.one<br />
-            <strong>Subject:</strong> Refund Request — [your registered phone number]</p>
+            <strong>Subject:</strong> Refund Request: [your registered phone number]</p>
             <p className="mt-3">Include the date of purchase and reason. We respond within 5 business days. You may also contact Paddle directly at paddle.com/support as the Merchant of Record.</p>
           </Section>
 

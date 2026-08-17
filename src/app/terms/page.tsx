@@ -2,7 +2,7 @@ import LegalNav, { LegalFooter } from "@/components/LegalNav";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms and Conditions — Netai",
+  title: "Terms and Conditions | Netai",
 };
 
 export default function TermsPage() {
@@ -60,7 +60,7 @@ export default function TermsPage() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-4">Every new account begins with a <strong>5-day full-feature trial</strong>. The trial begins on your first assistant conversation — not on registration. Payment is processed by <strong>Paddle (Paddle.com Market Ltd)</strong>, our Merchant of Record.</p>
+            <p className="mt-4">Every new account begins with a <strong>5-day full-feature trial</strong>. The trial begins on your first assistant conversation, not on registration. Payment is processed by <strong>Paddle (Paddle.com Market Ltd)</strong>, our Merchant of Record.</p>
             <p className="mt-3">Subscriptions renew automatically until cancelled. You may cancel at any time from Settings. No partial refunds for unused subscription time, except where required by law.</p>
           </Section>
 
@@ -86,7 +86,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="11. Disclaimers and Limitation of Liability">
-            <p>We do not guarantee uninterrupted availability. AI responses may contain errors — use them at your own risk. Netai&apos;s total aggregate liability shall not exceed amounts you paid in the 12 months preceding the claim. We are not liable for indirect or consequential damages.</p>
+            <p>We do not guarantee uninterrupted availability. AI responses may contain errors; use them at your own risk. Netai&apos;s total aggregate liability shall not exceed amounts you paid in the 12 months preceding the claim. We are not liable for indirect or consequential damages.</p>
           </Section>
 
           <Section title="12. Governing Law">
