@@ -2,12 +2,14 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
+import Modal from "@/components/Modal";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { fetchMessagePage } from "@/lib/messages";
-import { t, tf, stripEmoji, linkifyPhones, getLocale } from "@/lib/i18n";
+import { t, tf, stripEmoji, linkifyPhones, getLocale, fmtDateLoc } from "@/lib/i18n";
+import { useUserName } from "@/lib/user";
 import {
   useThreads,
   updateThreadState,
@@ -60,26 +62,9 @@ type TopupPackage = {
   label: string;
 };
 
-function getToken() {
-  return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
-}
-
-function getUserInitial(): string {
-  try {
-    const token = getToken();
-    if (!token) return "M";
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    const name: string = payload.name || payload.phone || "M";
-    return name.charAt(0).toUpperCase();
-  } catch {
-    return "M";
-  }
-}
-
 function nextRenewalDate(): string {
   const now = new Date();
-  const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  return fmtDateLoc(new Date(now.getFullYear(), now.getMonth() + 1, 1));
 }
 
 function fmtTokens(n: number): string {
@@ -112,6 +97,12 @@ function toBlocks(messages: ChatMessage[]): RenderBlock[] {
     }
   }
   return blocks;
+}
+
+// react-markdown strips non-http protocols by default, which nulled the tel:
+// anchors from linkifyPhones (ticket 6 #3) — allow tel: explicitly.
+function mdUrlTransform(url: string): string {
+  return url.startsWith("tel:") ? url : defaultUrlTransform(url);
 }
 
 const markdownComponents = {
@@ -235,6 +226,12 @@ export default function ThreadPage() {
   const [limitHit, setLimitHit] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [packages, setPackages] = useState<TopupPackage[]>([]);
+  // Ticket 6 #7: design-system modals instead of window.prompt/confirm.
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameBusy, setRenameBusy] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const packagesFetchedRef = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -255,15 +252,17 @@ export default function ThreadPage() {
   msgCountRef.current = messages.length;
 
   const thread = threads.find((th) => String(th.id) === threadId);
-  const userInitial = getUserInitial();
+  const { initial: userInitial } = useUserName();
   const isRequest = thread?.type === "incoming_request";
   const taskStatus: TaskStatus | null = thread ? taskStatusOf(thread, st) : null;
 
   const tokensEnabled = tokens?.enabled === true;
   const isTrialWallet = tokensEnabled && tokens.grantedThisPeriod === 120;
+  // Ticket 6 #9: usage ratio comes from spentThisPeriod / grantedThisPeriod
+  // (balance also holds top-ups and manual credits, so it can exceed the grant).
   const remainingPct =
     tokensEnabled && tokens.grantedThisPeriod > 0
-      ? Math.max(0, tokens.balance) / tokens.grantedThisPeriod
+      ? Math.max(0, 1 - tokens.spentThisPeriod / tokens.grantedThisPeriod)
       : null;
   const lowBalance = remainingPct !== null && remainingPct <= 0.05;
 
@@ -367,9 +366,20 @@ export default function ThreadPage() {
     toastTimerRef.current = setTimeout(() => setToast(null), 2400);
   }
 
+  // Ticket 6 #10: one share mechanism everywhere — the native share sheet,
+  // clipboard as fallback.
   async function handleShare() {
+    const url = window.location.href;
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      if (navigator.share) {
+        await navigator.share({ url });
+        return;
+      }
+    } catch {
+      return; // user closed the sheet
+    }
+    try {
+      await navigator.clipboard.writeText(url);
       showToast(t("linkCopied"), true);
     } catch {}
   }
@@ -391,14 +401,16 @@ export default function ThreadPage() {
     }
   }
 
-  // E1: rename — PATCH /threads/:id { title }. thread_updated keeps other
-  // devices in sync; we update the local row right away.
-  async function renameThread() {
+  // E1: rename — PATCH /threads/:id { title } via the design-system modal.
+  async function saveRename() {
+    if (renameBusy) return;
     const current = thread?.title ?? "";
-    const name = window.prompt(t("renamePrompt"), current);
-    if (name == null) return;
-    const trimmed = name.trim().slice(0, 80);
-    if (!trimmed || trimmed === current) return;
+    const trimmed = renameValue.trim().slice(0, 80);
+    if (!trimmed || trimmed === current) {
+      setRenameOpen(false);
+      return;
+    }
+    setRenameBusy(true);
     try {
       const res = await fetch(`${BASE_URL}/threads/${threadId}`, {
         method: "PATCH",
@@ -410,14 +422,18 @@ export default function ThreadPage() {
       setThreads((prev) =>
         prev.map((th) => (String(th.id) === threadId ? { ...th, title: trimmed } : th))
       );
+      setRenameOpen(false);
     } catch {
       showToast(t("renameFailed"), false);
+    } finally {
+      setRenameBusy(false);
     }
   }
 
   // C1: delete — the server closes any open task itself.
-  async function deleteThread() {
-    if (!window.confirm(t("deleteConfirm"))) return;
+  async function confirmDelete() {
+    if (deleteBusy) return;
+    setDeleteBusy(true);
     try {
       const res = await fetch(`${BASE_URL}/threads/${threadId}`, {
         method: "DELETE",
@@ -429,6 +445,9 @@ export default function ThreadPage() {
       router.push("/chat");
     } catch {
       showToast(t("deleteFailed"), false);
+    } finally {
+      setDeleteBusy(false);
+      setDeleteOpen(false);
     }
   }
 
@@ -751,7 +770,7 @@ export default function ThreadPage() {
 
   const firstAssistant = isRequest ? messages.find((m) => m.kind === "message" && m.role === "assistant") : undefined;
   const reqQuote = firstAssistant ? extractQuote(firstAssistant.content) : null;
-  const reqNames = isRequest && thread?.title.includes("→")
+  const reqNames = isRequest && thread?.title?.includes("→")
     ? thread.title.split("→").map((s) => s.trim())
     : null;
   const reqResolved = resolvedRequests[threadId]?.action;
@@ -779,9 +798,52 @@ export default function ThreadPage() {
     <div className="flex h-full flex-col" style={{ background: "var(--bg)" }}>
       {toast && (
         <div className="toast" role="status" aria-live="polite">
-          {toast.ok && <span>✓</span>}
+          {toast.ok && <span style={{ marginRight: 4 }}>✓</span>}
           {toast.msg}
         </div>
+      )}
+
+      {renameOpen && (
+        <Modal onClose={() => setRenameOpen(false)}>
+          <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--ink)" }}>{t("modalRenameTitle")}</p>
+          <input
+            type="text"
+            autoFocus
+            value={renameValue}
+            maxLength={80}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") saveRename(); }}
+            className="input-pill"
+            placeholder={t("renamePrompt")}
+          />
+          <div className="flex justify-end gap-3">
+            <button type="button" disabled={renameBusy} onClick={() => setRenameOpen(false)} className="btn-secondary disabled:opacity-50">
+              {t("cancel")}
+            </button>
+            <button type="button" disabled={renameBusy || !renameValue.trim()} onClick={saveRename} className="btn-primary disabled:opacity-60">
+              {t("save")}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {deleteOpen && (
+        <Modal onClose={() => setDeleteOpen(false)}>
+          <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--ink)" }}>{t("modalDeleteTitle")}</p>
+          <p style={{ font: "400 14px/22px var(--font-system)", color: "var(--ink-2)" }}>{t("deleteConfirm")}</p>
+          <div className="flex justify-end gap-3">
+            <button type="button" disabled={deleteBusy} onClick={() => setDeleteOpen(false)} className="btn-secondary disabled:opacity-50">
+              {t("cancel")}
+            </button>
+            <button type="button" disabled={deleteBusy} onClick={confirmDelete} className="btn-destructive disabled:opacity-60">
+              {deleteBusy ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              ) : (
+                t("deleteGoal")
+              )}
+            </button>
+          </div>
+        </Modal>
       )}
 
       <header
@@ -797,7 +859,7 @@ export default function ThreadPage() {
         <button
           onClick={() => router.push("/chat")}
           className="md:hidden rounded-lg p-1.5 transition-colors hover:bg-black/5"
-          aria-label="back"
+          aria-label={t("backLabel")}
           style={{ color: "var(--ink-muted)" }}
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -840,7 +902,7 @@ export default function ThreadPage() {
           )}
           {!isRequest && thread && (
             <button
-              onClick={renameThread}
+              onClick={() => { setRenameValue(thread?.title ?? ""); setRenameOpen(true); }}
               aria-label={t("renameGoal")}
               title={t("renameGoal")}
               className="rounded-lg p-1.5 transition-colors hover:bg-black/5"
@@ -853,7 +915,7 @@ export default function ThreadPage() {
           )}
           {thread && (
             <button
-              onClick={deleteThread}
+              onClick={() => setDeleteOpen(true)}
               aria-label={t("deleteGoal")}
               title={t("deleteGoal")}
               className="rounded-lg p-1.5 transition-colors hover:bg-black/5"
@@ -992,7 +1054,7 @@ export default function ThreadPage() {
                   <div className="flex items-start" style={{ gap: "10px" }}>
                     <AllyAvatar />
                     <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)", flex: 1, minWidth: 0 }}>
-                      <ReactMarkdown components={markdownComponents}>
+                      <ReactMarkdown components={markdownComponents} urlTransform={mdUrlTransform}>
                         {linkifyPhones(msg.content)}
                       </ReactMarkdown>
                     </div>
@@ -1025,7 +1087,7 @@ export default function ThreadPage() {
               <div className="flex items-start" style={{ gap: "10px" }}>
                 <AllyAvatar />
                 <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)", flex: 1, minWidth: 0 }}>
-                  <ReactMarkdown components={markdownComponents}>
+                  <ReactMarkdown components={markdownComponents} urlTransform={mdUrlTransform}>
                     {linkifyPhones(streaming!.text)}
                   </ReactMarkdown>
                 </div>
@@ -1261,7 +1323,7 @@ export default function ThreadPage() {
                 type="button"
                 onClick={handleMicClick}
                 disabled={voiceState === "processing" || composerBlocked}
-                aria-label={voiceState === "recording" ? "Stop recording" : "Start voice input"}
+                aria-label={voiceState === "recording" ? t("voiceStop") : t("voiceStart")}
                 className="flex shrink-0 items-center justify-center rounded-full transition-all"
                 style={{
                   width: 38,
@@ -1310,7 +1372,7 @@ export default function ThreadPage() {
                 onMouseLeave={(e) => {
                   if (input.trim() && !composerBlocked) e.currentTarget.style.background = "var(--accent)";
                 }}
-                aria-label="Send"
+                aria-label={t("send")}
               >
                 <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
                   <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
