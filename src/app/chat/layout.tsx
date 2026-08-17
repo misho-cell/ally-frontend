@@ -6,6 +6,8 @@ import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { authHeaders, handleAdminTokenMisuse } from "@/lib/deviceId";
 import { t, tf } from "@/lib/i18n";
+import { useUserName, clearUserName } from "@/lib/user";
+import Modal from "@/components/Modal";
 import {
   ThreadsContext,
   updateThreadState,
@@ -26,18 +28,6 @@ const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
-}
-
-function getUserInfo(): { name: string; initial: string } {
-  try {
-    const token = getToken();
-    if (!token) return { name: "Me", initial: "M" };
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    const name: string = payload.name || payload.phone || "Me";
-    return { name, initial: name.charAt(0).toUpperCase() };
-  } catch {
-    return { name: "Me", initial: "M" };
-  }
 }
 
 function dedup(arr: Thread[]): Thread[] {
@@ -154,6 +144,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [homeInput, setHomeInput] = useState("");
   const [creating, setCreating] = useState(false);
   const [recording, setRecording] = useState(false);
+  // Ticket 6 #7/#14: design-system rename modal, opened by long-press on a row.
+  const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameBusy, setRenameBusy] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const abortRef = useRef<AbortController | null>(null);
@@ -165,12 +159,15 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const recognitionRef = useRef<any>(null);
   const threadsRef = useRef<Thread[]>([]);
   const loadingMoreRef = useRef(false);
-  // Threads that existed at first load — anything newer starts as unread.
-  const knownIdsRef = useRef<Set<string> | null>(null);
+  // Unread baseline (ticket 6 #13): updated_at of every thread when it was
+  // first seen. A thread is unread when its updated_at moves past what the
+  // user last read (or past the baseline for never-opened threads).
+  const knownIdsRef = useRef<Map<string, string> | null>(null);
   pathnameRef.current = pathname;
   threadsRef.current = threads;
 
   const isOnThread = pathname !== "/chat";
+  const user = useUserName();
 
   useEffect(() => {
     setResolvedRequests(loadJson<Record<string, { action: string; at: number }>>(REQ_KEY, {}));
@@ -206,9 +203,15 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     const id = String(th.id);
     if (pathname === `/chat/${id}`) return false;
     const read = lastRead[id];
-    if (read) return Boolean(th.updated_at && th.updated_at > read);
-    // Never opened: unread only if it appeared after the first load.
-    return knownIdsRef.current ? !knownIdsRef.current.has(id) : false;
+    const baseline = knownIdsRef.current?.get(id);
+    // The read watermark: whatever is newest between "opened it" and "it was
+    // already there when the list first loaded".
+    const watermark = [read, baseline].filter((x): x is string => Boolean(x)).sort().pop();
+    if (watermark === undefined) {
+      // Never opened, not in the first load: it arrived live — unread.
+      return knownIdsRef.current !== null;
+    }
+    return Boolean(th.updated_at && th.updated_at > watermark);
   }
 
   const showToast = useCallback((msg: string) => {
@@ -235,7 +238,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       setThreads((prev) => dedup([...fetched, ...prev]));
       if (fetched.length < PAGE_SIZE) setThreadsHasMore(false);
       if (!knownIdsRef.current) {
-        knownIdsRef.current = new Set(fetched.map((th) => String(th.id)));
+        knownIdsRef.current = new Map(fetched.map((th) => [String(th.id), th.updated_at ?? ""]));
       }
     } catch {}
     finally {
@@ -265,7 +268,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       if (older.length > 0) {
         setThreads((prev) => dedup([...prev, ...older]));
         // Older pages are history — never bold.
-        older.forEach((th) => knownIdsRef.current?.add(String(th.id)));
+        older.forEach((th) => knownIdsRef.current?.set(String(th.id), th.updated_at ?? ""));
       }
       if (older.length < PAGE_SIZE) setThreadsHasMore(false);
     } catch {}
@@ -353,11 +356,15 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             case "thread_updated": {
               const patch = data.thread;
               if (patch?.id != null) {
+                // Stamp updated_at so unread detection sees the change even when
+                // the SSE patch doesn't carry a timestamp (ticket 6 #13).
+                const stamp = patch.updated_at ?? new Date().toISOString();
                 setThreads((prev) =>
                   prev.map((th) => {
                     if (String(th.id) !== String(patch.id)) return th;
                     return {
                       ...th,
+                      updated_at: stamp,
                       ...(patch.status !== undefined ? { status: patch.status } : null),
                       ...(patch.status_line !== undefined ? { status_line: patch.status_line } : null),
                       ...(patch.is_task !== undefined ? { is_task: patch.is_task } : null),
@@ -538,6 +545,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const createThread = useCallback(async () => {
     setCollapsed(false);
     homeInputRef.current?.focus();
+    // Desktop composer lives in the main pane (ticket 6 #1) — ask it to focus.
+    window.dispatchEvent(new Event("netai:focus-composer"));
   }, []);
 
   const createTask = useCallback(async (text: string) => {
@@ -562,7 +571,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       }
       const json = await res.json();
       const thread: Thread = json.data ?? json;
-      knownIdsRef.current?.add(String(thread.id));
+      knownIdsRef.current?.set(String(thread.id), thread.updated_at ?? new Date().toISOString());
       setThreads((prev) => dedup([thread, ...prev.filter((th) => String(th.id) !== String(thread.id))]));
       setTitles((prev) => ({
         ...prev,
@@ -637,6 +646,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       } catch {}
       localStorage.removeItem("push_endpoint");
     }
+    clearUserName();
     localStorage.removeItem("token");
     document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
     router.replace("/login");
@@ -674,6 +684,41 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     rec.start();
   }
 
+  function openRename(th: Thread, fallbackTitle: string) {
+    setRenameTarget({ id: String(th.id), title: th.title || fallbackTitle });
+    setRenameValue(th.title || fallbackTitle);
+  }
+
+  async function saveRename() {
+    if (!renameTarget || renameBusy) return;
+    const trimmed = renameValue.trim().slice(0, 80);
+    if (!trimmed || trimmed === renameTarget.title) {
+      setRenameTarget(null);
+      return;
+    }
+    setRenameBusy(true);
+    try {
+      const res = await fetch(`${BASE_URL}/threads/${renameTarget.id}`, {
+        method: "PATCH",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ title: trimmed }),
+      });
+      if (res.status === 401) { forceLogin(); return; }
+      if (!res.ok) {
+        showToast(t("renameFailed"));
+        return;
+      }
+      setThreads((prev) =>
+        prev.map((th) => (String(th.id) === renameTarget.id ? { ...th, title: trimmed } : th))
+      );
+      setRenameTarget(null);
+    } catch {
+      showToast(t("renameFailed"));
+    } finally {
+      setRenameBusy(false);
+    }
+  }
+
   // ---- Derived lists ----
   const now = Date.now();
   const q = searchQ.trim().toLowerCase();
@@ -706,17 +751,45 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   }
   const active = goalThreads.filter((g) => g.status !== "done");
   const finished = goalThreads.filter((g) => g.status === "done");
-  const presenceN = goalThreads.filter((g) => g.status === "working" || g.status === "waiting").length;
+  // Ticket 6 #8: the presence line counts SERVER-owned open goals only —
+  // is_task true and status working/waiting. Live answer runs and needs_you
+  // do not count.
+  const presenceN = threads.filter(
+    (th) => th.is_task === true && (th.status === "working" || th.status === "waiting")
+  ).length;
   const nothingFound =
     q && visibleRequests.length === 0 && asks.length === 0 && active.length === 0 && finished.length === 0 && legacyThreads.length === 0;
-
-  const user = getUserInfo();
 
   const sidebarClass = isOnThread ? "hidden md:flex" : "flex w-full md:flex";
   const mainClass = isOnThread ? "flex flex-1 flex-col min-w-0" : "hidden md:flex md:flex-1 md:flex-col";
 
+  const renameModal = renameTarget && (
+    <Modal onClose={() => setRenameTarget(null)}>
+      <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--ink)" }}>{t("modalRenameTitle")}</p>
+      <input
+        type="text"
+        autoFocus
+        value={renameValue}
+        maxLength={80}
+        onChange={(e) => setRenameValue(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") saveRename(); }}
+        className="input-pill"
+        placeholder={t("renamePrompt")}
+      />
+      <div className="flex justify-end gap-3">
+        <button type="button" disabled={renameBusy} onClick={() => setRenameTarget(null)} className="btn-secondary disabled:opacity-50">
+          {t("cancel")}
+        </button>
+        <button type="button" disabled={renameBusy || !renameValue.trim()} onClick={saveRename} className="btn-primary disabled:opacity-60">
+          {t("save")}
+        </button>
+      </div>
+    </Modal>
+  );
+
   // Collapsed rail (desktop only — the drawer behaviour on phones is the route
-  // split, collapse does not apply there).
+  // split, collapse does not apply there). Keeps + AND the profile link
+  // (ticket 6 #1); the composer itself lives in the main pane.
   if (collapsed) {
     return (
       <ThreadsContext.Provider
@@ -742,17 +815,27 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
             </button>
             <button
-              onClick={() => { setCollapsed(false); setTimeout(() => homeInputRef.current?.focus(), 50); }}
+              onClick={() => { router.push("/chat"); window.dispatchEvent(new Event("netai:focus-composer")); }}
               aria-label={t("newTask")}
               className="flex items-center justify-center rounded-full"
               style={{ width: 32, height: 32, background: "var(--accent)", color: "#FBFAF4", fontSize: "18px" }}
             >
               +
             </button>
+            <Link
+              href="/profile"
+              prefetch
+              aria-label={t("profileLink")}
+              title={t("profileLink")}
+              className="initial-avatar mt-auto transition-opacity hover:opacity-80"
+              style={{ width: 28, height: 28, fontSize: "12px" }}
+            >
+              {user.initial}
+            </Link>
             <button
               onClick={toggleCollapsed}
               aria-label="expand sidebar"
-              className="mt-auto flex items-center justify-center rounded-lg transition-colors hover:bg-black/5"
+              className="flex items-center justify-center rounded-lg transition-colors hover:bg-black/5"
               style={{ width: 32, height: 32, color: "var(--ink-soft)" }}
             >
               <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
@@ -761,6 +844,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </button>
           </aside>
           <main className={mainClass}>{children}</main>
+          {renameModal}
         </div>
       </ThreadsContext.Provider>
     );
@@ -882,7 +966,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         key={th.id}
                         href={`/chat/${th.id}`}
                         prefetch
-                        className="task-row thread-row"
+                        className={`task-row thread-row${isUnread(th) ? " unread" : ""}`}
                         style={{
                           background: pathname === `/chat/${th.id}` ? "var(--thread-active-bg)" : undefined,
                           boxShadow: pathname === `/chat/${th.id}` ? "inset 3px 0 0 var(--request-accent)" : undefined,
@@ -892,6 +976,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       >
                         <span className="flex-1 truncate" style={{ font: `${isUnread(th) ? 700 : 500} 13.5px/18px var(--font-system)`, color: "var(--ink)" }}>
                           {th.title || "…"}
+                        </span>
+                        <span className="shrink-0" style={{ font: "400 11px/16px var(--font-system)", color: "var(--meta)" }}>
+                          {fmtClock(th.updated_at)}
                         </span>
                         <span className="task-pill needs_you">{t("askBadge")}</span>
                       </Link>
@@ -909,6 +996,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       href={`/chat/${thread.id}`}
                       active={pathname === `/chat/${thread.id}`}
                       unread={isUnread(thread)}
+                      onLongPress={() => openRename(thread, goalTitle(thread))}
                     />
                   ))}
                   {active.length === 0 && !q && (
@@ -929,6 +1017,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         href={`/chat/${thread.id}`}
                         active={pathname === `/chat/${thread.id}`}
                         unread={isUnread(thread)}
+                        onLongPress={() => openRename(thread, goalTitle(thread))}
                       />
                     ))}
                     {finished.length > 5 && !showAllDone && !q && (
@@ -957,7 +1046,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         key={th.id}
                         href={`/chat/${th.id}`}
                         prefetch
-                        className="thread-row flex items-center transition-colors"
+                        className={`thread-row flex items-center transition-colors${isUnread(th) ? " unread" : ""}`}
                         style={{
                           padding: "7px 10px",
                           borderRadius: "var(--radius-row)",
@@ -983,9 +1072,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             )}
           </div>
 
+          {/* Mobile home composer only — on desktop the composer lives in the
+              main pane (ticket 6 #1); the sidebar keeps just the search. */}
           <form
             onSubmit={(e) => { e.preventDefault(); createTask(homeInput); }}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 md:hidden"
           >
             <div
               className="composer-pill flex flex-1 items-center gap-2 min-w-0"
@@ -1003,7 +1094,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               {homeInput.trim() && (
                 <button
                   type="submit"
-                  aria-label={t("newTask")}
+                  aria-label={t("send")}
                   className="flex shrink-0 items-center justify-center rounded-full"
                   style={{ width: 34, height: 34, background: "var(--accent)", color: "#FBFAF4" }}
                 >
@@ -1016,7 +1107,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             <button
               type="button"
               onClick={startHomeMic}
-              aria-label="voice"
+              aria-label={recording ? t("voiceStop") : t("voiceStart")}
               className="flex shrink-0 items-center justify-center rounded-full transition-colors"
               style={{
                 width: 44, height: 44,
@@ -1053,24 +1144,61 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         </aside>
 
         <main className={mainClass}>{children}</main>
+        {renameModal}
       </div>
     </ThreadsContext.Provider>
   );
 }
 
-function TaskRow({ title, status, href, active, unread }: { title: string; status: TaskStatus; href: string; active: boolean; unread: boolean }) {
+function TaskRow({
+  title, status, href, active, unread, onLongPress,
+}: {
+  title: string;
+  status: TaskStatus;
+  href: string;
+  active: boolean;
+  unread: boolean;
+  onLongPress: () => void;
+}) {
   const edge = status === "needs_you" ? "var(--request-accent)" : "var(--accent)";
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const firedRef = useRef(false);
+
+  // Ticket 6 #14: long-press (550ms) on a row opens rename; the click that
+  // follows the release is swallowed so the thread doesn't open.
+  const startPress = () => {
+    firedRef.current = false;
+    timer.current = setTimeout(() => {
+      firedRef.current = true;
+      onLongPress();
+    }, 550);
+  };
+  const cancelPress = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+  };
+
   return (
     <Link
       href={href}
       prefetch
-      className="task-row thread-row"
+      className={`task-row thread-row${unread && !active ? " unread" : ""}`}
       style={{
         background: active ? "var(--thread-active-bg)" : undefined,
         boxShadow: active ? `inset 3px 0 0 ${edge}` : undefined,
       }}
       onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--skeleton)"; }}
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = ""; }}
+      onTouchStart={startPress}
+      onTouchEnd={cancelPress}
+      onTouchMove={cancelPress}
+      onContextMenu={(e) => { if (firedRef.current) e.preventDefault(); }}
+      onClick={(e) => {
+        if (firedRef.current) {
+          e.preventDefault();
+          firedRef.current = false;
+        }
+      }}
     >
       <span className="flex-1 truncate" style={{ font: `${active || unread ? 700 : 500} 13.5px/18px var(--font-system)`, color: "var(--ink)" }}>
         {title}
