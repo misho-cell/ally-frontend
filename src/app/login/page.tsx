@@ -54,14 +54,14 @@ const L = {
     smsSent: "Code sent via SMS",
     back: "← Back",
     inviteOnly: "Netai is invite-only",
-    inviteOnlyBody: "Enter the number of the friend who invited you — they must be a Netai subscriber",
-    referralPlaceholder: "e.g. 5XX XX XX XX",
-    referralNotFound: "This number wasn't found or has no active subscription. Try another number",
+    inviteOnlyBody: "Enter your friend's invite code or phone number — they must be a Netai subscriber",
+    referralPlaceholder: "Code or number (e.g. KC8FC24P)",
+    referralNotFound: "This code or number wasn't found or has no active subscription. Try another one",
     continueBtn: "Continue",
     firstTime: "First time here — enter your name",
     namePlaceholder: "Name Surname",
     invitedBy: "Invited by (optional)",
-    invitedByPlaceholder: "Friend's phone number",
+    invitedByPlaceholder: "Friend's code or number",
     signUp: "Sign up",
     genericError: "Something went wrong",
     invalidCode: "Invalid code",
@@ -84,14 +84,14 @@ const L = {
     smsSent: "კოდი გაიგზავნა SMS-ით",
     back: "← უკან",
     inviteOnly: "Netai მხოლოდ მოწვევით შემოდიხარ",
-    inviteOnlyBody: "შეიყვანე იმ მეგობრის ნომერი, ვინც მოგიწვია. მას უნდა რქონდეს Netai-ს აქტიური გამოწერა",
-    referralPlaceholder: "მაგ. 5XX XX XX XX",
-    referralNotFound: "ეს ნომერი ვერ მოიძებნა ან აქტიური გამოწერა არ აქვს. სცადე სხვა ნომერი",
+    inviteOnlyBody: "შეიყვანე მეგობრის მოსაწვევი კოდი ან ნომერი. მას უნდა ჰქონდეს Netai-ს აქტიური გამოწერა",
+    referralPlaceholder: "კოდი ან ნომერი (მაგ. KC8FC24P)",
+    referralNotFound: "ეს კოდი ან ნომერი ვერ მოიძებნა ან აქტიური გამოწერა არ აქვს. სცადე სხვა",
     continueBtn: "გაგრძელება",
     firstTime: "პირველად ხარ აქ? შეიყვანე სახელი",
     namePlaceholder: "სახელი გვარი",
     invitedBy: "ვინ მოგიწვია? (არასავალდებულო)",
-    invitedByPlaceholder: "მეგობრის ნომერი",
+    invitedByPlaceholder: "მეგობრის კოდი ან ნომერი",
     signUp: "რეგისტრაცია",
     genericError: "რაღაც შეცდომა მოხდა",
     invalidCode: "არასწორი კოდი",
@@ -135,14 +135,14 @@ export default function LoginPage() {
   const [smsLoading, setSmsLoading] = useState(false);
   const [smsToast, setSmsToast] = useState<string | null>(null);
   const [smsCooldown, setSmsCooldown] = useState(SMS_COOLDOWN);
-  // Invite gate: referral screen state. confirmedReferralRef holds the referral
-  // phone that passed eligibility — it MUST be sent with /auth/register (the
-  // server re-checks it there).
+  // Invite gate: referral screen state. confirmedReferralRef holds the value
+  // (code OR phone) that passed eligibility — it MUST be sent with
+  // /auth/register (the server re-checks it there).
   const [referralInput, setReferralInput] = useState("");
   const [referralError, setReferralError] = useState("");
   const confirmedReferralRef = useRef<string | null>(null);
   // Optional referrer on the name step: builds the referral chain in ALL modes
-  // (gate off included). No validation — unknown numbers register fine without
+  // (gate off included). No validation — unknown values register fine without
   // a link, and the backend ignores self-referrals.
   const [inviteInput, setInviteInput] = useState("");
   // OTP is single-use: once verify-otp + complete-login succeed we must not
@@ -333,13 +333,17 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
+      // One input, both params (backend decision 17 Aug): the server tries the
+      // value as a code first, then as a phone — garbage in either is harmless.
+      const val = referralInput.trim();
       const elig = await post<Eligibility>("/auth/eligibility", {
         phone,
-        referralPhone: referralInput,
+        referralPhone: val,
+        referralCode: val,
       });
       if (elig.eligible) {
         // Remember the validated referral — register re-checks it server-side.
-        confirmedReferralRef.current = referralInput;
+        confirmedReferralRef.current = val;
         setStep("name");
       } else {
         setReferralError(s.referralNotFound);
@@ -362,12 +366,14 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const body: { phone: string; name: string; referralPhone?: string } = { phone, name };
+      const body: { phone: string; name: string; referralPhone?: string; referralCode?: string } = { phone, name };
       // Gate flow value wins; otherwise the optional "Invited by" field. Always
-      // sent when present — this is what builds the referral chain.
+      // sent when present — this is what builds the referral chain. The same
+      // value goes in BOTH params (code or number, server sorts it out).
       const referral = confirmedReferralRef.current ?? (inviteInput.trim() || null);
       if (referral) {
         body.referralPhone = referral;
+        body.referralCode = referral;
       }
       const res = await post<{ token: string }>("/auth/register", body);
       saveToken(res.token);
@@ -507,7 +513,7 @@ export default function LoginPage() {
                   <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.inviteOnlyBody}</p>
                 </div>
                 <input
-                  type="tel"
+                  type="text"
                   required
                   autoFocus
                   value={referralInput}
@@ -546,7 +552,7 @@ export default function LoginPage() {
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs" style={{ color: "var(--ink-soft)" }}>{s.invitedBy}</label>
                     <input
-                      type="tel"
+                      type="text"
                       value={inviteInput}
                       onChange={(e) => setInviteInput(e.target.value)}
                       placeholder={s.invitedByPlaceholder}
