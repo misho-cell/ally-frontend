@@ -28,9 +28,26 @@ export function clearUserName() {
   try { localStorage.removeItem(NAME_KEY); } catch {}
 }
 
+// Everything in localStorage that belongs to ONE account. Purged on every
+// fresh login so a user switch on the same device never shows the previous
+// account's leftovers (stale-content bug, 18 Aug). Device-scoped keys
+// (device_id, sidebar collapse, A2HS dismissal) survive on purpose.
+export function clearUserScopedStorage() {
+  clearUserName();
+  try {
+    localStorage.removeItem("netai_last_read");
+    localStorage.removeItem("netai_req_resolved");
+    localStorage.removeItem("push_endpoint");
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("token_warn")) localStorage.removeItem(key);
+    }
+  } catch {}
+}
+
 // The ONE source for the signed-in user's display name (ticket 6 #2): the
-// profile's `name` field, cached in memory + localStorage. Never derived from
-// the JWT and never the phone number.
+// profile's `name` field. The cache is only the first paint — the hook ALWAYS
+// revalidates against /profile, so a stale name from a previous session can
+// never stick.
 export function useUserName(): { name: string; initial: string } {
   const [name, setName] = useState<string>(() => {
     if (cached) return cached;
@@ -45,10 +62,6 @@ export function useUserName(): { name: string; initial: string } {
   });
 
   useEffect(() => {
-    if (cached) {
-      setName(cached);
-      return;
-    }
     if (!inflight) inflight = fetchName();
     let alive = true;
     inflight.then((n) => {
