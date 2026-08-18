@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getLocale } from "@/lib/i18n";
+import { clearUserScopedStorage } from "@/lib/user";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -118,6 +119,10 @@ type Eligibility = {
 function clearToken() {
   localStorage.removeItem("token");
   document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+  // Account switch on the same device: purge everything user-scoped so the
+  // next account never inherits the previous one's cached name/read-state
+  // (stale-content bug, 18 Aug).
+  clearUserScopedStorage();
 }
 
 export default function LoginPage() {
@@ -205,8 +210,8 @@ export default function LoginPage() {
   }
 
   function saveToken(token: string) {
-    // Always wipe any prior token first so a stale admin/other-account JWT can
-    // never resurface — a fresh login fully overwrites.
+    // Always wipe any prior token + user-scoped cache first so a stale
+    // admin/other-account session can never resurface.
     clearToken();
     localStorage.setItem("token", token);
     const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
