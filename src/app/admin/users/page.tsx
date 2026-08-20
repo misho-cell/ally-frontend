@@ -87,6 +87,12 @@ export default function AdminUsersPage() {
           <a href="/admin" className="text-sm text-gray-400 hover:text-gray-600 transition">← ადმინი</a>
           <h1 className="text-lg font-bold text-[#23261F]">მომხმარებლები</h1>
         </div>
+        <a
+          href="/admin/premium"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#23261F] text-white text-sm hover:opacity-80 transition"
+        >
+          პრემიუმის მართვა →
+        </a>
       </header>
 
       <div className="mx-auto max-w-4xl px-4 py-8 flex flex-col gap-4">
