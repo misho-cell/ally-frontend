@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import InstallPrompt from "@/components/InstallPrompt";
+import BuildTag from "@/components/BuildTag";
 
 export const metadata: Metadata = {
   title: "Netai",
@@ -37,6 +38,7 @@ export default function RootLayout({
       <body className="h-full antialiased">
         {children}
         <InstallPrompt />
+        <BuildTag />
       </body>
     </html>
   );
