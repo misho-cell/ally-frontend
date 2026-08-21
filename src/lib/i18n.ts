@@ -10,18 +10,26 @@ export function getLocale(): Locale {
   return navigator.language?.toLowerCase().startsWith("ka") ? "ka" : "en";
 }
 
-// Dates shown to the user follow the UI locale (ticket 6 #11) — never
-// hardcoded en-US month names in a Georgian UI.
+// Dates shown to the user follow the UI locale (ticket 6 #11, task 22 b).
+// Georgian month names are spelled out by hand — some devices ship without
+// ka ICU data and silently fall back to English via toLocaleDateString.
+const KA_MONTHS = ["იანვარი", "თებერვალი", "მარტი", "აპრილი", "მაისი", "ივნისი", "ივლისი", "აგვისტო", "სექტემბერი", "ოქტომბერი", "ნოემბერი", "დეკემბერი"];
+const KA_MONTHS_SHORT = ["იან", "თებ", "მარ", "აპრ", "მაი", "ივნ", "ივლ", "აგვ", "სექ", "ოქტ", "ნოე", "დეკ"];
+
 export function fmtDateLoc(
   input: Date | string,
   opts: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" }
 ): string {
   const d = typeof input === "string" ? new Date(input) : input;
   if (isNaN(d.getTime())) return "";
+  if (getLocale() === "ka") {
+    const month = opts.month === "short" ? KA_MONTHS_SHORT[d.getMonth()] : KA_MONTHS[d.getMonth()];
+    return `${d.getDate()} ${month}, ${d.getFullYear()}`;
+  }
   try {
-    return d.toLocaleDateString(getLocale() === "ka" ? "ka-GE" : "en-US", opts);
-  } catch {
     return d.toLocaleDateString("en-US", opts);
+  } catch {
+    return d.toDateString();
   }
 }
 
@@ -48,6 +56,13 @@ export function linkifyPhones(text: string): string {
       return `${lead}[${num.trim()}](tel:+${digits}) [↗︎WhatsApp](https://wa.me/${digits})`;
     }
   );
+}
+
+// Markdown renderers swallow single newlines (task 22 j). Convert a lone \n
+// into a markdown hard break (two trailing spaces) so list-like assistant
+// replies keep their line structure. Blank lines (paragraphs) stay untouched.
+export function preserveLineBreaks(text: string): string {
+  return text.replace(/([^\n])\n(?!\n)/g, "$1  \n");
 }
 
 const en = {
