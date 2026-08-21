@@ -17,10 +17,20 @@ export type MessagePage = {
   messages: ChatMessage[];
   // false = this is the whole history, not a page — stop asking for older.
   paged: boolean;
+  // Choices attached to the newest message (task 22 k) — the server persists
+  // them on the message row so they survive a reload.
+  choices?: string[];
 };
 
 async function get(url: string): Promise<Response> {
   return fetch(url, { headers: authHeaders() });
+}
+
+// The newest message's persisted choices, if any (task 22 k).
+function lastChoices(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const last = raw[raw.length - 1] as { choices?: unknown };
+  return Array.isArray(last?.choices) ? (last.choices as string[]) : undefined;
 }
 
 // Returns null when the session is gone (a redirect to /login is under way).
@@ -62,7 +72,8 @@ export async function fetchMessagePage(
     }
     if (res.ok) {
       const json = await res.json();
-      return { messages: toChatMessages(json.data ?? json), paged: true };
+      const raw = json.data ?? json;
+      return { messages: toChatMessages(raw), paged: true, choices: lastChoices(raw) };
     }
     pagingSupported = false;
   }
@@ -74,5 +85,6 @@ export async function fetchMessagePage(
   }
   if (!res.ok) throw new Error(String(res.status));
   const json = await res.json();
-  return { messages: toChatMessages(json.data ?? json), paged: false };
+  const raw = json.data ?? json;
+  return { messages: toChatMessages(raw), paged: false, choices: lastChoices(raw) };
 }
