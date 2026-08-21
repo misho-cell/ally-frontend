@@ -8,7 +8,7 @@ import Modal from "@/components/Modal";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { fetchMessagePage } from "@/lib/messages";
-import { t, tf, stripEmoji, linkifyPhones, getLocale, fmtDateLoc } from "@/lib/i18n";
+import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import { useUserName } from "@/lib/user";
 import {
   useThreads,
@@ -87,6 +87,12 @@ function fmtMsgClock(iso?: string | number | null): string {
   const clock = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   const sameDay = d.toDateString() === new Date().toDateString();
   return sameDay ? clock : `${d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} ${clock}`;
+}
+
+// Assistant markdown pipeline: tappable phone links + single-\n preservation
+// (task 22 j — markdown swallows lone newlines otherwise).
+function mdSource(text: string): string {
+  return preserveLineBreaks(linkifyPhones(text));
 }
 
 function renderStepText(text: string): React.ReactNode {
@@ -576,6 +582,12 @@ export default function ThreadPage() {
             messages: mergeMessages(page.messages, ts.messages),
             loaded: true,
             hasMoreOlder: page.paged && page.messages.length >= PAGE_SIZE,
+            // Task 22 k: persisted choices survive reloads — restore them from
+            // the newest message unless a live run is mid-flight.
+            choices:
+              !ts.loading && Array.isArray(page.choices) && page.choices.length > 0
+                ? page.choices
+                : ts.choices,
           }))
         );
         setLoadPhase("done");
@@ -1092,7 +1104,7 @@ export default function ThreadPage() {
                     <div className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: "4px" }}>
                       <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)" }}>
                         <ReactMarkdown components={markdownComponents} urlTransform={mdUrlTransform}>
-                          {linkifyPhones(msg.content)}
+                          {mdSource(msg.content)}
                         </ReactMarkdown>
                       </div>
                       {stamp && (
@@ -1129,7 +1141,7 @@ export default function ThreadPage() {
                 <AllyAvatar />
                 <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)", flex: 1, minWidth: 0 }}>
                   <ReactMarkdown components={markdownComponents} urlTransform={mdUrlTransform}>
-                    {linkifyPhones(streaming!.text)}
+                    {mdSource(streaming!.text)}
                   </ReactMarkdown>
                 </div>
               </div>
