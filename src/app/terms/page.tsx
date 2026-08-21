@@ -34,7 +34,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="3. Your Account">
-            <p>You register using your phone number. You are responsible for maintaining the security of your account. Contact us immediately at info@allyapp.one if you suspect unauthorised access.</p>
+            <p>You register using your phone number. You are responsible for maintaining the security of your account. Contact us immediately at contact@netai.guru if you suspect unauthorised access.</p>
           </Section>
 
           <Section title="4. The Service">
@@ -98,7 +98,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="14. Contact">
-            <p><strong>Email:</strong> info@allyapp.one<br />
+            <p><strong>Email:</strong> contact@netai.guru<br />
             <strong>Legal:</strong> Ally, Inc. c/o Tornike Abuladze, 1328 Botetourt Gardens, Norfolk, VA 23517, USA</p>
           </Section>
         </div>

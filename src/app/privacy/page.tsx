@@ -16,7 +16,7 @@ export default function PrivacyPage() {
 
           <Section title="1. Who We Are">
             <p><strong>Ally, Inc.</strong> is a Delaware C Corporation (EIN: 37-2215465) operating the Netai assistant at netai.guru. We are the data controller for all personal data processed through Netai.</p>
-            <p className="mt-3"><strong>Contact:</strong> info@allyapp.one · Data rights portal: netai.guru/profile/data</p>
+            <p className="mt-3"><strong>Contact:</strong> contact@netai.guru · Data rights portal: netai.guru/profile/data</p>
           </Section>
 
           <Section title="2. What Data We Collect">
@@ -90,7 +90,7 @@ export default function PrivacyPage() {
               <li>Right to object to processing based on legitimate interests</li>
               <li>Right to withdraw consent at any time</li>
             </ul>
-            <p className="mt-3">Exercise rights at: <a href="https://netai.guru/profile/data" className="legal-link">netai.guru/profile/data</a> or email info@allyapp.one. We respond within 30 days.</p>
+            <p className="mt-3">Exercise rights at: <a href="https://netai.guru/profile/data" className="legal-link">netai.guru/profile/data</a> or email contact@netai.guru. We respond within 30 days.</p>
           </Section>
 
           <Section title="7. Security">
@@ -98,7 +98,7 @@ export default function PrivacyPage() {
           </Section>
 
           <Section title="8. Contact">
-            <p><strong>Email:</strong> info@allyapp.one<br />
+            <p><strong>Email:</strong> contact@netai.guru<br />
             <strong>Data rights portal:</strong> netai.guru/profile/data<br />
             <strong>Legal:</strong> Ally, Inc. c/o Tornike Abuladze, 1328 Botetourt Gardens, Norfolk, VA 23517, USA</p>
           </Section>

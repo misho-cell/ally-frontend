@@ -26,7 +26,7 @@ export default function RefundPage() {
 
           <Section title="3. Subscription Refunds">
             <p>Netai does not provide partial refunds for unused subscription time, except where required by applicable law.</p>
-            <p className="mt-3">If the Netai service has not been delivered at all, you may request a full refund within <strong>14 days of payment</strong> by contacting info@allyapp.one.</p>
+            <p className="mt-3">If the Netai service has not been delivered at all, you may request a full refund within <strong>14 days of payment</strong> by contacting contact@netai.guru.</p>
             <p className="mt-3">Annual subscription refunds and upgrade/downgrade prorations are handled by Paddle as Merchant of Record.</p>
           </Section>
 
@@ -43,13 +43,13 @@ export default function RefundPage() {
           </Section>
 
           <Section title="7. How to Request a Refund">
-            <p><strong>Email:</strong> info@allyapp.one<br />
+            <p><strong>Email:</strong> contact@netai.guru<br />
             <strong>Subject:</strong> Refund Request: [your registered phone number]</p>
             <p className="mt-3">Include the date of purchase and reason. We respond within 5 business days. You may also contact Paddle directly at paddle.com/support as the Merchant of Record.</p>
           </Section>
 
           <Section title="8. Contact">
-            <p><strong>Email:</strong> info@allyapp.one<br />
+            <p><strong>Email:</strong> contact@netai.guru<br />
             <strong>Ally, Inc.</strong> · 1328 Botetourt Gardens, Norfolk, VA 23517, USA</p>
           </Section>
         </div>
