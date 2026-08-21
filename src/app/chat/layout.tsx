@@ -8,7 +8,6 @@ import { authHeaders, handleAdminTokenMisuse } from "@/lib/deviceId";
 import { t, tf } from "@/lib/i18n";
 import { useUserName, clearUserName } from "@/lib/user";
 import Modal from "@/components/Modal";
-import AddToHomeScreen from "@/components/AddToHomeScreen";
 import {
   ThreadsContext,
   updateThreadState,
@@ -848,7 +847,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           </aside>
           <main className={mainClass}>{children}</main>
           {renameModal}
-          <AddToHomeScreen />
         </div>
       </ThreadsContext.Provider>
     );
@@ -888,6 +886,21 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 {presenceN > 0 ? tf("presenceWorking", { n: presenceN }) : t("presenceReady")}
               </span>
             </div>
+            {/* Task 22 (d): new-goal button in the EXPANDED sidebar too — desktop
+                and phone list alike. */}
+            <button
+              onClick={() => {
+                router.push("/chat");
+                homeInputRef.current?.focus();
+                window.dispatchEvent(new Event("netai:focus-composer"));
+              }}
+              aria-label={t("newTask")}
+              title={t("newTask")}
+              className="flex items-center justify-center rounded-full"
+              style={{ width: 28, height: 28, background: "var(--accent)", color: "#FBFAF4", fontSize: "16px", lineHeight: 1 }}
+            >
+              +
+            </button>
             <button
               onClick={toggleCollapsed}
               aria-label="collapse sidebar"
@@ -1157,7 +1170,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
         <main className={mainClass}>{children}</main>
         {renameModal}
-        <AddToHomeScreen />
       </div>
     </ThreadsContext.Provider>
   );
