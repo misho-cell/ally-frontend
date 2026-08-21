@@ -16,7 +16,7 @@ const L = {
     summaryTitle: "What we store",
     empty: "Nothing to show yet",
     deleteTitle: "Delete my account",
-    deleteBody: "This permanently removes your account and data. First you'll see a preview of what gets deleted and what we must retain (for example payment records required by law).",
+    deleteBody: "This permanently removes your account and data. First you'll see a preview of what gets deleted and what we must retain (for example payment history required by law).",
     deleteBtn: "Delete my account",
     previewTitle: "Deletion preview",
     previewNote: "Nothing has been deleted yet. Review the lists below.",
@@ -32,7 +32,7 @@ const L = {
     summaryTitle: "რას ვინახავთ",
     empty: "ჯერ არაფერია საჩვენებელი",
     deleteTitle: "ანგარიშის წაშლა",
-    deleteBody: "ეს სამუდამოდ შლის შენს ანგარიშს და მონაცემებს. ჯერ ნახავ, რა წაიშლება და რა დარჩება (მაგალითად გადახდის ჩანაწერები, რომლებსაც კანონი ითხოვს).",
+    deleteBody: "ეს სამუდამოდ შლის შენს ანგარიშს და მონაცემებს. ჯერ ნახავ, რა წაიშლება და რა დარჩება (მაგალითად გადახდის ისტორია, რომელსაც კანონი ითხოვს).",
     deleteBtn: "ანგარიშის წაშლა",
     previewTitle: "წაშლის გადახედვა",
     previewNote: "ჯერ არაფერი წაშლილა. გადახედე სიებს ქვემოთ.",
@@ -88,9 +88,14 @@ function labelFor(key: string): string {
 }
 
 // Render any summary/preview value the backend sends without assuming its
-// exact shape: primitives inline, arrays as lists, objects as nested rows.
+// exact shape: counts get a human unit (task 22 i), arrays render as lists,
+// objects as nested rows.
 function Value({ v }: { v: unknown }) {
   if (v === null || v === undefined || v === "") return <span style={{ color: "var(--meta)" }}>-</span>;
+  if (typeof v === "number") {
+    const unit = getLocale() === "ka" ? "ჩანაწერი" : v === 1 ? "record" : "records";
+    return <span>{v.toLocaleString("en-US")} {unit}</span>;
+  }
   if (Array.isArray(v)) {
     if (v.length === 0) return <span style={{ color: "var(--meta)" }}>0</span>;
     return (
