@@ -6,16 +6,25 @@ import { t } from "./i18n";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const NAME_KEY = "netai_profile_name";
+const LOCALE_KEY = "netai_locale";
 
 let cached: string | null = null;
 let inflight: Promise<string | null> | null = null;
 
-async function fetchName(): Promise<string | null> {
+async function fetchProfileBits(): Promise<string | null> {
   try {
     const res = await fetch(`${BASE_URL}/profile`, { headers: authHeaders() });
     if (!res.ok) return null;
     const json = await res.json().catch(() => ({}));
-    const name = String(json?.data?.name ?? json?.name ?? "").trim();
+    const data = json?.data ?? json ?? {};
+    // 23 Aug #2: the product language follows the ACCOUNT, not the browser —
+    // a Georgian number pins the UI to ka even on an English browser. Other
+    // numbers keep the browser default (no override written).
+    const phone = String(data.phone ?? "");
+    try {
+      if (phone.startsWith("+995")) localStorage.setItem(LOCALE_KEY, "ka");
+    } catch {}
+    const name = String(data.name ?? "").trim();
     return name || null;
   } catch {
     return null;
@@ -38,6 +47,7 @@ export function clearUserScopedStorage() {
     localStorage.removeItem("netai_last_read");
     localStorage.removeItem("netai_req_resolved");
     localStorage.removeItem("push_endpoint");
+    localStorage.removeItem(LOCALE_KEY);
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith("token_warn")) localStorage.removeItem(key);
     }
@@ -62,7 +72,7 @@ export function useUserName(): { name: string; initial: string } {
   });
 
   useEffect(() => {
-    if (!inflight) inflight = fetchName();
+    if (!inflight) inflight = fetchProfileBits();
     let alive = true;
     inflight.then((n) => {
       inflight = null;
