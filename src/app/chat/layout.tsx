@@ -171,6 +171,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const sawFirstOpenRef = useRef(false);
   const pathnameRef = useRef(pathname);
   const homeInputRef = useRef<HTMLInputElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
@@ -191,6 +192,21 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     setLastRead(loadJson<Record<string, string>>(READ_KEY, {}));
     setCollapsed(loadJson<boolean>(COLLAPSE_KEY, false));
   }, []);
+
+  // 23 Aug #1: select-all must survive touch/long-press opening — onFocus
+  // alone was collapsed by the events that follow the press.
+  useEffect(() => {
+    if (!renameTarget) return;
+    const tm = setTimeout(() => {
+      const el = renameInputRef.current;
+      if (el) {
+        el.focus();
+        el.select();
+        el.setSelectionRange(0, el.value.length);
+      }
+    }, 60);
+    return () => clearTimeout(tm);
+  }, [renameTarget]);
 
   function toggleCollapsed() {
     setCollapsed((v) => {
@@ -799,6 +815,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     <Modal onClose={() => setRenameTarget(null)}>
       <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--ink)" }}>{t("modalRenameTitle")}</p>
       <input
+        ref={renameInputRef}
         type="text"
         autoFocus
         onFocus={(e) => e.currentTarget.select()}
