@@ -7,11 +7,15 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { unwrap, fmtN, type PromptBlock } from "../shared";
 
 const NAME_RE = /^[a-z0-9_]{2,40}$/;
-const BLOCK_LIMIT = 20000;
+// Fallback only — the live limit comes from GET /admin/prompt-blocks
+// (mode_totals.budget_chars); hardcoding it stranded a valid 20,515-char
+// block when the backend budget moved to 30,000 (22 Aug).
+const FALLBACK_BLOCK_LIMIT = 20000;
 
 type ListData = {
   blocks: PromptBlock[];
   modes: string[];
+  mode_totals?: { mode: string; enabled_chars: number; budget_chars: number }[];
 };
 
 type HistoryEntry = {
@@ -40,6 +44,7 @@ export default function PromptBlockEditorPage() {
 
   const [tab, setTab] = useState<"edit" | "history">("edit");
   const [modes, setModes] = useState<string[]>([]);
+  const [blockLimit, setBlockLimit] = useState(FALLBACK_BLOCK_LIMIT);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +72,10 @@ export default function PromptBlockEditorPage() {
       const res = await apiFetch<unknown>("/admin/prompt-blocks", { admin: true });
       const data = unwrap<ListData>(res);
       setModes(data.modes ?? []);
+      const budgets = (data.mode_totals ?? [])
+        .map((mt) => mt.budget_chars)
+        .filter((n) => Number.isFinite(n) && n > 0);
+      if (budgets.length > 0) setBlockLimit(Math.max(...budgets));
       if (!isNew) {
         const b = data.blocks.find((x) => x.name === rawName);
         if (!b) {
@@ -271,8 +280,8 @@ export default function PromptBlockEditorPage() {
                   rows={16}
                   className="rounded-xl border border-gray-200 px-4 py-3 font-mono text-xs leading-relaxed outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
                 />
-                <p className={`text-xs ${chars > BLOCK_LIMIT ? "font-semibold text-red-600" : "text-gray-400"}`}>
-                  {fmtN(chars)} სიმბოლო · ≈{fmtN(Math.round(chars / 3))} ტოკენი · ლიმიტი {fmtN(BLOCK_LIMIT)}
+                <p className={`text-xs ${chars > blockLimit ? "font-semibold text-red-600" : "text-gray-400"}`}>
+                  {fmtN(chars)} სიმბოლო · ≈{fmtN(Math.round(chars / 3))} ტოკენი · ლიმიტი {fmtN(blockLimit)}
                 </p>
               </div>
 
