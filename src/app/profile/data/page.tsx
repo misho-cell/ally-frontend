@@ -5,16 +5,19 @@ import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
 import { getLocale } from "@/lib/i18n";
 
-// Data rights (C2): show what we store (GET /privacy/my-data/summary) and the
-// two-step account deletion (dry_run preview → final delete → logout).
+// Data rights (C2): show what we store (GET /privacy/my-data/summary), export
+// everything (GET /privacy/my-data/export, 22 Aug #6) and the two-step account
+// deletion (dry_run preview → final delete → logout).
 // Georgian: no em-dashes, never italic.
 const L = {
   en: {
     back: "← Profile",
     title: "My data",
-    intro: "Here is what Netai stores about you. You can request full deletion below.",
+    intro: "Here is what Netai stores about you. You can download everything or request full deletion below.",
     summaryTitle: "What we store",
     empty: "Nothing to show yet",
+    exportBtn: "Download my data",
+    exportError: "Export failed. Try again.",
     deleteTitle: "Delete my account",
     deleteBody: "This permanently removes your account and data. First you'll see a preview of what gets deleted and what we must retain (for example payment history required by law).",
     deleteBtn: "Delete my account",
@@ -28,9 +31,11 @@ const L = {
   ka: {
     back: "← პროფილი",
     title: "ჩემი მონაცემები",
-    intro: "აქ ხედავ, რას ინახავს Netai შენზე. ქვემოთ შეგიძლია სრული წაშლა მოითხოვო.",
+    intro: "აქ ხედავ, რას ინახავს Netai შენზე. ქვემოთ შეგიძლია ყველაფრის გადმოწერა ან სრული წაშლა.",
     summaryTitle: "რას ვინახავთ",
     empty: "ჯერ არაფერია საჩვენებელი",
+    exportBtn: "მონაცემების გადმოწერა",
+    exportError: "გადმოწერა ვერ მოხერხდა. სცადე თავიდან.",
     deleteTitle: "ანგარიშის წაშლა",
     deleteBody: "ეს სამუდამოდ შლის შენს ანგარიშს და მონაცემებს. ჯერ ნახავ, რა წაიშლება და რა დარჩება (მაგალითად გადახდის ისტორია, რომელსაც კანონი ითხოვს).",
     deleteBtn: "ანგარიშის წაშლა",
@@ -56,7 +61,7 @@ const TABLE_LABELS: Record<string, { ka: string; en: string }> = {
   user_notes: { ka: "შენი ჩანაწერები", en: "Your notes" },
   user_private_context: { ka: "პირადი კონტექსტი", en: "Private context" },
   user_profile_kv: { ka: "პროფილის ველები", en: "Profile fields" },
-  contact_insights: { ka: "კონტაქტების შენიშვნები", en: "Contact notes" },
+  contact_insights: { ka: "კონტაქტების შენიშნები", en: "Contact notes" },
   contact_facts: { ka: "კონტაქტების ფაქტები", en: "Contact facts" },
   contact_exclusions: { ka: "გამონაკლისები", en: "Exclusions" },
   contact_relationship_scores: { ka: "კავშირის ქულები", en: "Relationship scores" },
@@ -141,6 +146,7 @@ export default function DataRightsPage() {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Dict | null>(null);
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     apiFetch<{ success?: boolean; data?: Dict } & Dict>("/privacy/my-data/summary")
@@ -149,6 +155,30 @@ export default function DataRightsPage() {
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 22 Aug #6: full data export — saved as a local JSON file.
+  async function exportData() {
+    if (exporting) return;
+    setExporting(true);
+    setError(null);
+    try {
+      const res = await apiFetch<{ success?: boolean; data?: unknown } & Dict>("/privacy/my-data/export");
+      const payload = (res as Dict).data ?? res;
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "netai-export.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : s.exportError);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   // Step 1: dry-run preview. Nothing is deleted; the server returns what would
   // be removed and what it must retain.
@@ -216,7 +246,22 @@ export default function DataRightsPage() {
           <>
             {/* Stored data summary */}
             <div className="card flex flex-col gap-2">
-              <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.summaryTitle}</h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.summaryTitle}</h2>
+                <button
+                  type="button"
+                  onClick={exportData}
+                  disabled={exporting}
+                  className="btn-secondary shrink-0 disabled:opacity-60"
+                  style={{ padding: "8px 16px", fontSize: "12px" }}
+                >
+                  {exporting ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2" style={{ borderColor: "var(--cta-border)", borderTopColor: "var(--accent-strong)" }} />
+                  ) : (
+                    s.exportBtn
+                  )}
+                </button>
+              </div>
               {summary && Object.keys(summary).length > 0 ? (
                 <Rows obj={summary} />
               ) : (
