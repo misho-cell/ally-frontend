@@ -34,7 +34,7 @@ const L = {
   ka: {
     back: "← პროფილი",
     title: "ჩემი მონაცემები",
-    intro: "აქ ხედავ, რას ინახავს Netai შენზე. ქვემოთ შეგიძლია ყველაფრის გადმოწერა ან სრული წაშლა.",
+    intro: "აქ ხედავ, რას ინახავს Netai შენზე. ქველა შეგიძლია ყველაფრის გადმოწერა ან სრული წაშლა.",
     summaryTitle: "რას ვინახავთ",
     empty: "ჯერ არაფერია საჩვენებელი",
     exportBtn: "მონაცემების გადმოწერა",
@@ -57,8 +57,9 @@ const L = {
 type Dict = Record<string, unknown>;
 
 // Human labels for the erasure-summary table keys (ticket 6 #15) — the raw
-// backend table names must never reach the user. Unknown keys fall back to a
-// prettified form.
+// backend table names must never reach the user. Kept as a fallback for when
+// the backend sends only the legacy `records`/bare object shape; the current
+// contract's `labels` map (Part H #4) is preferred whenever present.
 const TABLE_LABELS: Record<string, { ka: string; en: string }> = {
   conversations: { ka: "საუბრის შეტყობინებები", en: "Conversation messages" },
   threads: { ka: "საუბრები", en: "Conversations" },
@@ -79,7 +80,7 @@ const TABLE_LABELS: Record<string, { ka: string; en: string }> = {
   user_avatars: { ka: "პროფილის ფოტო", en: "Profile photo" },
   ai_notification_log: { ka: "შეტყობინებების ჟურნალი", en: "Notification log" },
   ai_notification_settings: { ka: "შეტყობინებების პარამეტრები", en: "Notification settings" },
-  push_subscriptions: { ka: "Push-გამოწერები", en: "Push subscriptions" },
+  push_subscriptions: { ka: "შეტყობინებების გამოწერები", en: "Push subscriptions" },
   device_fingerprints: { ka: "მოწყობილობები", en: "Devices" },
   oauth_tokens: { ka: "დაკავშირებული სერვისები", en: "Connected services" },
   product_events: { ka: "გამოყენების სტატისტიკა", en: "Usage statistics" },
@@ -122,7 +123,11 @@ function Value({ v }: { v: unknown }) {
   return <span>{String(v)}</span>;
 }
 
-function Rows({ obj, nested }: { obj: Dict; nested?: boolean }) {
+// labelMap: Part H #4 — the backend's own `labels` map (table key → human
+// name) wins over the client-side dictionary whenever present, so a label we
+// don't recognise (or haven't translated) still never falls back to a raw
+// key. deletion-preview objects have no labels map, so they use labelFor().
+function Rows({ obj, nested, labelMap }: { obj: Dict; nested?: boolean; labelMap?: Record<string, string> }) {
   const entries = Object.entries(obj);
   if (entries.length === 0) return <span style={{ color: "var(--meta)" }}>-</span>;
   return (
@@ -134,7 +139,7 @@ function Rows({ obj, nested }: { obj: Dict; nested?: boolean }) {
           style={nested ? { fontSize: "12.5px" } : { padding: "9px 0", borderBottom: "1px solid var(--skeleton)" }}
         >
           <span style={{ fontSize: "12.5px", color: "var(--ink-soft)", flex: "0 0 auto" }}>
-            {labelFor(k)}
+            {labelMap?.[k] ?? labelFor(k)}
           </span>
           <span className="text-right" style={{ fontSize: "13px", color: "var(--ink)", overflowWrap: "anywhere" }}>
             <Value v={v} />
@@ -148,6 +153,7 @@ function Rows({ obj, nested }: { obj: Dict; nested?: boolean }) {
 export default function DataRightsPage() {
   const s = L[getLocale()];
   const [summary, setSummary] = useState<Dict | null>(null);
+  const [summaryLabels, setSummaryLabels] = useState<Record<string, string> | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Dict | null>(null);
@@ -156,7 +162,24 @@ export default function DataRightsPage() {
 
   useEffect(() => {
     apiFetch<{ success?: boolean; data?: Dict } & Dict>("/privacy/my-data/summary")
-      .then((res) => setSummary((res.data ?? res) as Dict))
+      .then((res) => {
+        const body = (res.data ?? res) as Dict;
+        // Part H #4: the contract now sends `counts` (the data, same shape as
+        // the legacy `records`) plus `labels` (table key → Georgian name).
+        // Prefer that pair so a raw table key never reaches the screen; fall
+        // back to the legacy bare-object shape (`records`, or the object
+        // itself) for older backends.
+        const counts = body.counts as Dict | undefined;
+        const labels = body.labels as Record<string, string> | undefined;
+        if (counts && typeof counts === "object") {
+          setSummary(counts);
+          setSummaryLabels(labels);
+        } else if (body.records && typeof body.records === "object") {
+          setSummary(body.records as Dict);
+        } else {
+          setSummary(body);
+        }
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : s.genericError))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -269,7 +292,7 @@ export default function DataRightsPage() {
                 </button>
               </div>
               {summary && Object.keys(summary).length > 0 ? (
-                <Rows obj={summary} />
+                <Rows obj={summary} labelMap={summaryLabels} />
               ) : (
                 <p className="text-sm" style={{ color: "var(--meta)" }}>{s.empty}</p>
               )}
