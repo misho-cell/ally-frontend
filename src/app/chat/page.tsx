@@ -13,8 +13,8 @@ function getSpeechRecognition(): any {
 }
 
 // Desktop right pane, no goal selected: dogs clip + one line + the goal
-// composer (ticket 6 #1). One slot on the right: mic when empty, send when
-// text exists (ticket 7 #1).
+// composer (ticket 6 #1). D20 (22 Aug): mic AND send are both available while
+// text exists.
 export default function ChatIndexPage() {
   const { threads, threadsLoaded, threadStates, createTask } = useThreads();
   const [input, setInput] = useState("");
@@ -108,7 +108,31 @@ export default function ChatIndexPage() {
               style={{ color: "var(--ink)", fontSize: "15px", padding: "7px 0" }}
             />
           </div>
-          {input.trim() && !recording ? (
+          <button
+            type="button"
+            onClick={startMic}
+            aria-label={recording ? t("voiceStop") : t("voiceStart")}
+            className="flex shrink-0 items-center justify-center rounded-full transition-colors"
+            style={{
+              width: 46, height: 46,
+              background: recording ? "var(--danger)" : "var(--accent)",
+              color: "#FBFAF4",
+            }}
+          >
+            {recording ? (
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                <rect x="5" y="5" width="10" height="10" rx="1.5" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
+                <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.6" />
+                <path d="M4 10a6 6 0 0012 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <line x1="7" y1="19" x2="13" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            )}
+          </button>
+          {input.trim() && !recording && (
             <button
               type="submit"
               aria-label={t("send")}
@@ -118,31 +142,6 @@ export default function ChatIndexPage() {
               <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
                 <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={startMic}
-              aria-label={recording ? t("voiceStop") : t("voiceStart")}
-              className="flex shrink-0 items-center justify-center rounded-full transition-colors"
-              style={{
-                width: 46, height: 46,
-                background: recording ? "var(--danger)" : "var(--accent)",
-                color: "#FBFAF4",
-              }}
-            >
-              {recording ? (
-                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                  <rect x="5" y="5" width="10" height="10" rx="1.5" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
-                  <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.6" />
-                  <path d="M4 10a6 6 0 0012 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  <line x1="7" y1="19" x2="13" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-              )}
             </button>
           )}
         </form>

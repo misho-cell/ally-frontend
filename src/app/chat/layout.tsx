@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
@@ -93,7 +93,11 @@ function getSpeechRecognition(): any {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
 
-function AnimBox({ status, size }: { status: TaskStatus; size: number }) {
+// Row animation box. Memoized (22 Aug #7): list re-renders were recreating the
+// <video> element (readyState back to 0, AbortError on play), freezing the
+// character. With memo the element survives re-renders unless status/size
+// change. The poster <img> underneath is the ANIM-rule fallback pair.
+const AnimBox = memo(function AnimBox({ status, size }: { status: TaskStatus; size: number }) {
   const clip =
     status === "needs_you" ? "ally-walk" :
     status === "failed" ? "ally-error" :
@@ -101,16 +105,25 @@ function AnimBox({ status, size }: { status: TaskStatus; size: number }) {
     "ally-loading";
   if (!clip) return null;
   return (
-    <span className="anim-box" style={{ width: size, height: size }}>
+    <span className="anim-box" style={{ width: size, height: size, position: "relative" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        className="anim-fallback"
+        src={`/assets/ally/anim/${clip}-poster.jpg`}
+        alt=""
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+        onError={(e) => { e.currentTarget.style.display = "none"; }}
+      />
       <video
         autoPlay muted loop playsInline
         src={`/assets/ally/anim/${clip}.mp4`}
         poster={`/assets/ally/anim/${clip}-poster.jpg`}
+        style={{ position: "relative", zIndex: 1 }}
         onError={(e) => { e.currentTarget.style.display = "none"; }}
       />
     </span>
   );
-}
+});
 
 // Badge lives only on needs_you (tester C.1); waiting keeps its quiet pill,
 // working keeps green, done rows carry NO pill — the section already says it.
@@ -144,6 +157,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [homeInput, setHomeInput] = useState("");
   const [creating, setCreating] = useState(false);
   const [recording, setRecording] = useState(false);
+  // 22 Aug #5: the header counter comes from GET /tasks/summary (open_goals) —
+  // the same number the assistant reports. Local count stays as fallback only.
+  const [openGoals, setOpenGoals] = useState<number | null>(null);
   // Ticket 6 #7/#14: design-system rename modal, opened by long-press or
   // right-click on a row.
   const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
@@ -219,6 +235,16 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     setToast(msg);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setToast(null), 2400);
+  }, []);
+
+  const fetchSummary = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/tasks/summary`, { headers: authHeaders() });
+      if (!res.ok) return;
+      const json = await res.json().catch(() => ({}));
+      const n = json?.data?.open_goals ?? json?.open_goals;
+      if (typeof n === "number") setOpenGoals(n);
+    } catch {}
   }, []);
 
   const loadThreads = useCallback(async () => {
@@ -326,6 +352,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     loadThreads();
     refreshTokens();
+    fetchSummary();
 
     abortRef.current = new AbortController();
     const ctrl = abortRef.current;
@@ -351,6 +378,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 setThreads((prev) =>
                   dedup([data.thread, ...prev.filter((th) => String(th.id) !== String(data.thread.id))])
                 );
+                fetchSummary();
               }
               break;
 
@@ -378,6 +406,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   ...prev,
                   [String(patch.id)]: (prev[String(patch.id)] ?? 0) + 1,
                 }));
+                fetchSummary();
               }
               break;
             }
@@ -481,6 +510,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   })
                 );
                 loadThreads();
+                fetchSummary();
               }
               break;
 
@@ -510,7 +540,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     });
 
     return () => ctrl.abort();
-  }, [loadThreads, refreshTokens]);
+  }, [loadThreads, refreshTokens, fetchSummary]);
 
   const sendIntoThread = useCallback(async (threadId: string, text: string, echo: boolean) => {
     const sentinel = `pending-${crypto.randomUUID()}`;
@@ -753,12 +783,12 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   }
   const active = goalThreads.filter((g) => g.status !== "done");
   const finished = goalThreads.filter((g) => g.status === "done");
-  // Ticket 6 #8: the presence line counts SERVER-owned open goals only —
-  // is_task true and status working/waiting. Live answer runs and needs_you
-  // do not count.
-  const presenceN = threads.filter(
+  // Header counter: /tasks/summary open_goals when available (22 Aug #5),
+  // otherwise the local server-status count (ticket 6 #8).
+  const localPresenceN = threads.filter(
     (th) => th.is_task === true && (th.status === "working" || th.status === "waiting")
   ).length;
+  const presenceN = openGoals ?? localPresenceN;
   const nothingFound =
     q && visibleRequests.length === 0 && asks.length === 0 && active.length === 0 && finished.length === 0 && legacyThreads.length === 0;
 
@@ -771,6 +801,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       <input
         type="text"
         autoFocus
+        onFocus={(e) => e.currentTarget.select()}
         value={renameValue}
         maxLength={80}
         onChange={(e) => setRenameValue(e.target.value)}
@@ -1089,9 +1120,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             )}
           </div>
 
-          {/* Mobile home composer only — on desktop the composer lives in the
-              main pane (ticket 6 #1). One slot on the right: mic when empty,
-              send replaces it when text exists (ticket 7 #1). */}
+          {/* Mobile home composer — D20 (22 Aug): mic AND send together while
+              text exists; mic stays available during typing. */}
           <form
             onSubmit={(e) => { e.preventDefault(); createTask(homeInput); }}
             className="flex items-center gap-2 md:hidden"
@@ -1110,7 +1140,31 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 style={{ color: "var(--ink)", fontSize: "14px", padding: "6px 0" }}
               />
             </div>
-            {homeInput.trim() && !recording ? (
+            <button
+              type="button"
+              onClick={startHomeMic}
+              aria-label={recording ? t("voiceStop") : t("voiceStart")}
+              className="flex shrink-0 items-center justify-center rounded-full transition-colors"
+              style={{
+                width: 44, height: 44,
+                background: recording ? "var(--danger)" : "var(--accent)",
+                color: "#FBFAF4",
+              }}
+            >
+              {recording ? (
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                  <rect x="5" y="5" width="10" height="10" rx="1.5" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
+                  <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="M4 10a6 6 0 0012 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <line x1="7" y1="19" x2="13" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              )}
+            </button>
+            {homeInput.trim() && !recording && (
               <button
                 type="submit"
                 aria-label={t("send")}
@@ -1120,31 +1174,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
                   <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={startHomeMic}
-                aria-label={recording ? t("voiceStop") : t("voiceStart")}
-                className="flex shrink-0 items-center justify-center rounded-full transition-colors"
-                style={{
-                  width: 44, height: 44,
-                  background: recording ? "var(--danger)" : "var(--accent)",
-                  color: "#FBFAF4",
-                }}
-              >
-                {recording ? (
-                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                    <rect x="5" y="5" width="10" height="10" rx="1.5" />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
-                    <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.6" />
-                    <path d="M4 10a6 6 0 0012 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    <line x1="7" y1="19" x2="13" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
-                )}
               </button>
             )}
           </form>
