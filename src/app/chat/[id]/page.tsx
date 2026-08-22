@@ -31,12 +31,28 @@ const SEND = {
   ka: { failed: "ვერ გაიგზავნა", resend: "ხელახლა" },
 };
 
-// Ticket 7 #5: the "running low" copy was wrong when the monthly grant is
-// spent but the wallet still holds top-up credit. Georgian: no em-dashes.
-const WALLET = {
-  en: { spentAllowance: "Monthly allowance used up. Now spending from your balance." },
-  ka: { spentAllowance: "თვის პაკეტი ამოიწურა, ახლა ბალანსიდან იხარჯება" },
+// 23 Aug #5: the two client-side strings inside the conversation follow the
+// THREAD's language (last message), like the backend's step lines do.
+type ThreadLang = "ka" | "en" | "ru" | "es";
+const CHROME: Record<ThreadLang, { steps: string; spent: string }> = {
+  ka: { steps: "ნაბიჯები ({n})", spent: "თვის პაკეტი ამოიწურა, ახლა ბალანსიდან იხარჯება" },
+  en: { steps: "Steps ({n})", spent: "Monthly allowance used up. Now spending from your balance." },
+  ru: { steps: "Шаги ({n})", spent: "Месячный пакет израсходован. Теперь списывается с баланса." },
+  es: { steps: "Pasos ({n})", spent: "El paquete mensual se ha agotado. Ahora se descuenta de tu saldo." },
 };
+
+function detectThreadLang(messages: ChatMessage[]): ThreadLang {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.kind !== "message" || !m.content) continue;
+    const text = m.content;
+    if (/[ა-ჰ]/.test(text)) return "ka";
+    if (/[а-яё]/i.test(text)) return "ru";
+    if (/[¿¡ñáéíóú]/i.test(text)) return "es";
+    return "en";
+  }
+  return getLocale();
+}
 
 const SUPPORTED_LANGS = [
   "en-US", "en-GB", "es-ES", "fr-FR", "de-DE",
@@ -237,7 +253,6 @@ export default function ThreadPage() {
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
   const { messages, options, choices, loading, error, streaming, progress, hasMoreOlder, result } = st;
   const send = SEND[getLocale()];
-  const wallet = WALLET[getLocale()];
 
   const [input, setInput] = useState("");
   const [loadPhase, setLoadPhase] = useState<LoadPhase>(st.loaded ? "done" : "loading");
@@ -262,6 +277,7 @@ export default function ThreadPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const inputBeforeRecordingRef = useRef("");
@@ -294,12 +310,29 @@ export default function ThreadPage() {
       : null;
 
   const streamingActive = loading && !!streaming && streaming.text.length > 0;
+  // 23 Aug #5: in-thread chrome follows the conversation's language.
+  const chrome = CHROME[detectThreadLang(messages)];
 
   useEffect(() => {
     lastIdRef.current = null;
     firstPaintRef.current = true;
     anchorRef.current = null;
   }, [threadId]);
+
+  // 23 Aug #1: select-all must survive touch/long-press opening — onFocus
+  // alone was collapsed by the events that follow the press.
+  useEffect(() => {
+    if (!renameOpen) return;
+    const tm = setTimeout(() => {
+      const el = renameInputRef.current;
+      if (el) {
+        el.focus();
+        el.select();
+        el.setSelectionRange(0, el.value.length);
+      }
+    }, 60);
+    return () => clearTimeout(tm);
+  }, [renameOpen]);
 
   const bump = threadBumps[threadId] ?? 0;
   const prevBumpRef = useRef(bump);
@@ -841,6 +874,7 @@ export default function ThreadPage() {
         <Modal onClose={() => setRenameOpen(false)}>
           <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--ink)" }}>{t("modalRenameTitle")}</p>
           <input
+            ref={renameInputRef}
             type="text"
             autoFocus
             onFocus={(e) => e.currentTarget.select()}
@@ -1048,7 +1082,13 @@ export default function ThreadPage() {
 
             {renderBlocks.map((block, bi) => {
               if (block.type === "steps") {
-                return <StepGroup key={`steps-${bi}`} steps={block.steps} />;
+                return (
+                  <StepGroup
+                    key={`steps-${bi}`}
+                    steps={block.steps}
+                    label={chrome.steps.replace("{n}", String(block.steps.length))}
+                  />
+                );
               }
               const msg = block.msg;
               if (msg.kind === "error") {
@@ -1279,7 +1319,7 @@ export default function ThreadPage() {
           >
             {balanceLow
               ? tf("tokensAlmostGone", { n: fmtTokens(Math.max(0, tokens!.balance)) })
-              : wallet.spentAllowance}
+              : chrome.spent}
           </div>
         </div>
       )}
@@ -1445,7 +1485,7 @@ export default function ThreadPage() {
   );
 }
 
-function StepGroup({ steps }: { steps: ChatMessage[] }) {
+function StepGroup({ steps, label }: { steps: ChatMessage[]; label: string }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -1458,7 +1498,7 @@ function StepGroup({ steps }: { steps: ChatMessage[] }) {
           className="steps-toggle"
         >
           <span style={{ fontSize: "10px" }}>{open ? "▾" : "▸"}</span>
-          {tf("stepsToggle", { n: steps.length })}
+          {label}
         </button>
         {open && (
           <div className="steps-list">
