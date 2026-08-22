@@ -843,6 +843,7 @@ export default function ThreadPage() {
           <input
             type="text"
             autoFocus
+            onFocus={(e) => e.currentTarget.select()}
             value={renameValue}
             maxLength={80}
             onChange={(e) => setRenameValue(e.target.value)}
@@ -1373,33 +1374,10 @@ export default function ThreadPage() {
               }}
             />
 
-            {/* Ticket 7 #1: ONE slot on the right — mic when the field is
-                empty, send replaces it when text exists. Never side by side. */}
-            {input.trim() && voiceState !== "recording" ? (
-              <button
-                type="button"
-                onClick={() => sendMessage(input)}
-                disabled={composerBlocked}
-                className="flex shrink-0 items-center justify-center rounded-full transition-colors"
-                style={{
-                  width: 38,
-                  height: 38,
-                  background: !composerBlocked ? "var(--accent)" : "var(--skeleton)",
-                  color: !composerBlocked ? "#FBFAF4" : "var(--meta)",
-                }}
-                onMouseEnter={(e) => {
-                  if (!composerBlocked) e.currentTarget.style.background = "var(--accent-strong)";
-                }}
-                onMouseLeave={(e) => {
-                  if (!composerBlocked) e.currentTarget.style.background = "var(--accent)";
-                }}
-                aria-label={t("send")}
-              >
-                <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-                  <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            ) : speechSupported ? (
+            {/* D20 (22 Aug): mic AND send are BOTH available while typing —
+                mic on the left, send rightmost. Send hides only while the mic
+                is actively recording. */}
+            {speechSupported && (
               <button
                 type="button"
                 onClick={handleMicClick}
@@ -1433,7 +1411,33 @@ export default function ThreadPage() {
                   </svg>
                 )}
               </button>
-            ) : null}
+            )}
+
+            {voiceState !== "recording" && (
+              <button
+                type="button"
+                onClick={() => sendMessage(input)}
+                disabled={!input.trim() || composerBlocked}
+                className="flex shrink-0 items-center justify-center rounded-full transition-colors"
+                style={{
+                  width: 38,
+                  height: 38,
+                  background: input.trim() && !composerBlocked ? "var(--accent)" : "var(--skeleton)",
+                  color: input.trim() && !composerBlocked ? "#FBFAF4" : "var(--meta)",
+                }}
+                onMouseEnter={(e) => {
+                  if (input.trim() && !composerBlocked) e.currentTarget.style.background = "var(--accent-strong)";
+                }}
+                onMouseLeave={(e) => {
+                  if (input.trim() && !composerBlocked) e.currentTarget.style.background = "var(--accent)";
+                }}
+                aria-label={t("send")}
+              >
+                <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                  <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </div>
