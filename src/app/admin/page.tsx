@@ -124,6 +124,12 @@ export default function AdminPage() {
             პრომპტის ბლოკები →
           </a>
           <a
+            href="/admin/question-bank"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
+          >
+            კითხვათა ბანკი →
+          </a>
+          <a
             href="/admin/netai-info"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
           >
