@@ -6,8 +6,8 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { getLocale } from "@/lib/i18n";
 
 // Data rights (C2): show what we store (GET /privacy/my-data/summary), export
-// everything (GET /privacy/my-data/export, 22 Aug #6) and the two-step account
-// deletion (dry_run preview → final delete → logout).
+// everything (GET /privacy/my-data/export, 22 Aug #6), re-import contacts
+// (23 Aug #3, task 53) and the two-step account deletion.
 // Georgian: no em-dashes, never italic.
 const L = {
   en: {
@@ -18,6 +18,9 @@ const L = {
     empty: "Nothing to show yet",
     exportBtn: "Download my data",
     exportError: "Export failed. Try again.",
+    contactsTitle: "Contacts",
+    contactsBody: "Add or refresh your imported contacts at any time. Your device will ask for permission again.",
+    contactsBtn: "Add / update contacts",
     deleteTitle: "Delete my account",
     deleteBody: "This permanently removes your account and data. First you'll see a preview of what gets deleted and what we must retain (for example payment history required by law).",
     deleteBtn: "Delete my account",
@@ -36,6 +39,9 @@ const L = {
     empty: "ჯერ არაფერია საჩვენებელი",
     exportBtn: "მონაცემების გადმოწერა",
     exportError: "გადმოწერა ვერ მოხერხდა. სცადე თავიდან.",
+    contactsTitle: "კონტაქტები",
+    contactsBody: "დაამატე ან გაანახლე შენი კონტაქტები ნებისმიერ დროს. მოწყობილობა ნებართვას თავიდან გკითხავს.",
+    contactsBtn: "კონტაქტების დამატება/განახლება",
     deleteTitle: "ანგარიშის წაშლა",
     deleteBody: "ეს სამუდამოდ შლის შენს ანგარიშს და მონაცემებს. ჯერ ნახავ, რა წაიშლება და რა დარჩება (მაგალითად გადახდის ისტორია, რომელსაც კანონი ითხოვს).",
     deleteBtn: "ანგარიშის წაშლა",
@@ -267,6 +273,16 @@ export default function DataRightsPage() {
               ) : (
                 <p className="text-sm" style={{ color: "var(--meta)" }}>{s.empty}</p>
               )}
+            </div>
+
+            {/* Contacts re-import (23 Aug #3, task 53) — the same flow as
+                onboarding; the OS asks for permission again. */}
+            <div className="card flex flex-col gap-3">
+              <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.contactsTitle}</h2>
+              <p style={{ font: "400 13.5px/21px var(--font-system)", color: "var(--ink-2)" }}>{s.contactsBody}</p>
+              <Link href="/onboarding/contacts" className="btn-primary self-start">
+                {s.contactsBtn}
+              </Link>
             </div>
 
             {/* Account deletion */}
