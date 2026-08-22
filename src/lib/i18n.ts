@@ -6,6 +6,14 @@
 export type Locale = "ka" | "en";
 
 export function getLocale(): Locale {
+  // 23 Aug #2: an account-level override (set from the profile phone) beats
+  // the browser language — the product language is the app's, not Chrome's.
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("netai_locale");
+      if (stored === "ka" || stored === "en") return stored;
+    } catch {}
+  }
   if (typeof navigator === "undefined") return "en";
   return navigator.language?.toLowerCase().startsWith("ka") ? "ka" : "en";
 }
