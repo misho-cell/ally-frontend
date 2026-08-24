@@ -189,7 +189,7 @@ export default function QuestionBankAdminPage() {
 
       <div className="mx-auto max-w-3xl px-4 py-6 flex flex-col gap-3">
         <p className="text-xs text-gray-500">
-          კითხვის არცევა ახსნის დეტალებს. შენახვა მხოლოდ ამ კითხვას აზუსტავს, დეპლოის გარეშე დღევანდელია.
+          კითხვის არჩევა ახსნის დეტალებს. შენახვა მხოლოდ ამ კითხვას აზუსტავს, დეპლოის გარეშე დღევანდელია.
         </p>
 
         {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 whitespace-pre-wrap">{error}</div>}
