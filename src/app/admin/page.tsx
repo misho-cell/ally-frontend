@@ -115,7 +115,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-full bg-gray-50">
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
-        <h1 className="text-lg font-bold text-[#23261F]">Admin — Insight Fields</h1>
+        <h1 className="text-lg font-bold text-[#23261F]">Admin</h1>
         <div className="flex items-center gap-2">
           <a
             href="/admin/prompt-blocks"

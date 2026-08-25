@@ -632,7 +632,7 @@ function TokensWidget() {
                 />
               </div>
               <p className="text-xs" style={{ color: "var(--meta)" }}>
-                {s.usedOf(fmtTokens(Math.min(spent, granted)), fmtTokens(granted))}
+                {s.usedOf(fmtTokens(spent), fmtTokens(granted))}
               </p>
             </>
           )}

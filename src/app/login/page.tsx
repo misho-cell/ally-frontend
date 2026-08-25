@@ -186,6 +186,16 @@ export default function LoginPage() {
     };
   }, []);
 
+  // /join?ref=CODE lands here — carry the code through to registration
+  // without making the visitor retype it.
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) {
+      setInviteInput(ref.trim());
+      setReferralInput(ref.trim());
+    }
+  }, []);
+
   // Block submit + resend for `secs` seconds (429 Retry-After).
   function startRateLimit(secs: number) {
     setRlSecs(secs);
