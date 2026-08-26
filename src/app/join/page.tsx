@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+
 // Invite landing page (get_invite_link points here). Content is ours, not
 // the backend's — English only until this ships, per the 25 Aug task. Once
 // live, backend flips the invite_link_ready app_flag.
@@ -10,7 +12,16 @@ export default function JoinPage() {
   const [ref, setRef] = useState<string | null>(null);
 
   useEffect(() => {
-    setRef(new URLSearchParams(window.location.search).get("ref"));
+    const code = new URLSearchParams(window.location.search).get("ref");
+    setRef(code);
+    // T3 (26 Aug): fire-and-forget open event — public endpoint, no auth.
+    if (code) {
+      fetch(`${BASE_URL}/auth/referral/opened`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referralCode: code }),
+      }).catch(() => {});
+    }
   }, []);
 
   const href = ref ? `/login?ref=${encodeURIComponent(ref)}` : "/login";

@@ -19,6 +19,9 @@ const L = {
     uploadVcf: "Upload .vcf file",
     skip: "Skip",
     importError: "Couldn't import contacts",
+    alreadyHereTitle: "Already here waiting for you",
+    alreadyHereBody: "These people from your contacts are already on Netai:",
+    continueImport: "Continue",
   },
   ka: {
     uploaded: "კონტაქტები აიტვირთა!",
@@ -31,10 +34,14 @@ const L = {
     uploadVcf: "ატვირთე .vcf ფაილი",
     skip: "გამოტოვება",
     importError: "კონტაქტები ვერ აიტვირთა",
+    alreadyHereTitle: "აქ უკვე გელოდებიან",
+    alreadyHereBody: "შენი კონტაქტებიდან ეს ადამიანები უკვე Netai-ზეა:",
+    continueImport: "გაგრძელება",
   },
 };
 
 type ImportResult = { imported: number; skipped: number };
+type PendingContact = { name: string; phones: string[]; email?: string; city?: string };
 
 export default function OnboardingContactsPage() {
   const s = L[getLocale()];
@@ -43,12 +50,33 @@ export default function OnboardingContactsPage() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState("");
   const [hasContactsApi, setHasContactsApi] = useState(false);
+  // T4 (26 Aug): between permission grant and the actual import, show who
+  // from the picked contacts already has a Netai account.
+  const [matchedNames, setMatchedNames] = useState<string[] | null>(null);
+  const [pendingContacts, setPendingContacts] = useState<PendingContact[] | null>(null);
 
   useEffect(() => {
     setHasContactsApi(
       typeof navigator !== "undefined" && "contacts" in navigator
     );
   }, []);
+
+  async function doImport(contacts: PendingContact[]) {
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE_URL}/contacts/import`, {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ contacts }),
+      });
+      const json = await res.json();
+      setResult(json.data ?? json);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : s.importError);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function importAndroid() {
     setError("");
@@ -60,7 +88,7 @@ export default function OnboardingContactsPage() {
         { multiple: true }
       );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const contacts = raw.map((c: any) => ({
+      const contacts: PendingContact[] = raw.map((c: any) => ({
         name: c.name?.[0] ?? "",
         phones: (c.tel ?? []) as string[],
         email: c.email?.[0] as string | undefined,
@@ -68,16 +96,28 @@ export default function OnboardingContactsPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       })).filter((c: any) => c.name && c.phones.length > 0);
 
-      const res = await fetch(`${BASE_URL}/contacts/import`, {
-        method: "POST",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ contacts }),
-      });
-      const json = await res.json();
-      setResult(json.data ?? json);
+      // T4: check who's already on Netai before the real import. Best-effort
+      // — if the match call fails, just import straight away.
+      try {
+        const phones = contacts.flatMap((c) => c.phones);
+        const matchRes = await fetch(`${BASE_URL}/profile/match-existing-contacts`, {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ phones }),
+        });
+        const matchJson = await matchRes.json();
+        const names: string[] = matchJson?.data?.names ?? matchJson?.names ?? [];
+        if (matchRes.ok && names.length > 0) {
+          setMatchedNames(names);
+          setPendingContacts(contacts);
+          setLoading(false);
+          return;
+        }
+      } catch {}
+
+      await doImport(contacts);
     } catch (err) {
       setError(err instanceof Error ? err.message : s.importError);
-    } finally {
       setLoading(false);
     }
   }
@@ -99,6 +139,40 @@ export default function OnboardingContactsPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (matchedNames && pendingContacts) {
+    return (
+      <div className="flex min-h-full flex-col items-center justify-center px-4" style={{ background: "var(--bg)" }}>
+        <div className="card w-full max-w-sm p-8 flex flex-col gap-5">
+          <div className="flex flex-col gap-1">
+            <h1 style={{ font: "500 22px/28px var(--font-bricolage)", color: "var(--ink)" }}>{s.alreadyHereTitle}</h1>
+            <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.alreadyHereBody}</p>
+          </div>
+          <ul className="flex flex-col gap-2">
+            {matchedNames.map((name) => (
+              <li
+                key={name}
+                className="flex items-center gap-2.5 px-3 py-2"
+                style={{ background: "var(--sidebar-bg)", borderRadius: "var(--radius-tile)" }}
+              >
+                <span className="initial-avatar" style={{ width: 28, height: 28, fontSize: "12px" }}>
+                  {name.charAt(0).toUpperCase()}
+                </span>
+                <span style={{ fontSize: "14px", color: "var(--ink)" }}>{name}</span>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => doImport(pendingContacts)}
+            disabled={loading}
+            className="btn-primary h-12"
+          >
+            {loading ? <Spinner /> : s.continueImport}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (result) {
