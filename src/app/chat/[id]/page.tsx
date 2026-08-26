@@ -34,12 +34,47 @@ const SEND = {
 // 23 Aug #5: the two client-side strings inside the conversation follow the
 // THREAD's language (last message), like the backend's step lines do.
 type ThreadLang = "ka" | "en" | "ru" | "es";
-const CHROME: Record<ThreadLang, { steps: string; spent: string }> = {
-  ka: { steps: "ნაბიჯები ({n})", spent: "თვის პაკეტი ამოიწურა, ახლა ბალანსიდან იხარჯება" },
-  en: { steps: "Steps ({n})", spent: "Monthly allowance used up. Now spending from your balance." },
-  ru: { steps: "Шаги ({n})", spent: "Месячный пакет израсходован. Теперь списывается с баланса." },
-  es: { steps: "Pasos ({n})", spent: "El paquete mensual se ha agotado. Ahora se descuenta de tu saldo." },
+const CHROME: Record<ThreadLang, { steps: string; spent: string; share: string }> = {
+  ka: { steps: "ნაბიჯები ({n})", spent: "თვის პაკეტი ამოიწურა, ახლა ბალანსიდან იხარჯება", share: "გაზიარება" },
+  en: { steps: "Steps ({n})", spent: "Monthly allowance used up. Now spending from your balance.", share: "Share" },
+  ru: { steps: "Шаги ({n})", spent: "Месячный пакет израсходован. Теперь списывается с баланса.", share: "Поделиться" },
+  es: { steps: "Pasos ({n})", spent: "El paquete mensual se ha agotado. Ahora se descuenta de tu saldo.", share: "Compartir" },
 };
+
+// T3 (26 Aug): get_invite_link drops a plain /join?ref=CODE URL into the
+// assistant's reply text. Detect it so we can offer a native share-sheet
+// button instead of leaving the user to copy the raw link by hand.
+const INVITE_LINK_RE = /https?:\/\/[^\s)]*\/join\?ref=[A-Za-z0-9_-]+/;
+
+function extractInviteLink(text: string): string | null {
+  return text.match(INVITE_LINK_RE)?.[0] ?? null;
+}
+
+function ShareInviteButton({ url, label }: { url: string; label: string }) {
+  async function share() {
+    try {
+      if (navigator.share) {
+        await navigator.share({ url });
+        return;
+      }
+    } catch {
+      return; // user canceled the native sheet — not an error
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {}
+  }
+  return (
+    <button
+      type="button"
+      onClick={share}
+      className="btn-secondary self-start"
+      style={{ padding: "8px 16px", fontSize: "12.5px", marginLeft: "36px" }}
+    >
+      {label}
+    </button>
+  );
+}
 
 function detectThreadLang(messages: ChatMessage[]): ThreadLang {
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -1153,6 +1188,9 @@ export default function ThreadPage() {
                       )}
                     </div>
                   </div>
+                  {extractInviteLink(msg.content) && (
+                    <ShareInviteButton url={extractInviteLink(msg.content)!} label={chrome.share} />
+                  )}
                   {isFirstAssistant && isRequest && (reqNames || reqQuote) && (
                     <div style={{ marginLeft: "36px" }} className="flex flex-col gap-2">
                       <div className="request-card">
