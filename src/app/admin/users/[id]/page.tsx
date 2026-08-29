@@ -20,6 +20,12 @@ const INTRO_LABELS: Record<string, string> = {
   accepted: "დადასტურებული",
   declined: "უარყოფილი",
 };
+const TIER_COLOUR_LABELS: Record<string, string> = {
+  green: "მწვანე", blue: "ლურჯი", yellow: "ყვითელი", red: "წითელი",
+};
+const TIER_COLOUR_HEX: Record<string, string> = {
+  green: "#3E7A56", blue: "#2F5FA0", yellow: "#B08A1E", red: "#B3402E",
+};
 const TIMELINE_LABELS: Record<string, string> = {
   signup: "დარეგისტრირდა",
   first_import: "პირველი კონტაქტები აიტვირთა",
@@ -43,6 +49,7 @@ type UserProfile = {
   network: {
     contactsCount: number; tagsCount: number; blockedCount: number;
     deceasedCount: number; firstDegree: number | null; secondDegree: number | null;
+    tiersByColour?: Record<string, number>;
   };
   activity: {
     threadsCount: number; messageCount: number;
@@ -52,11 +59,15 @@ type UserProfile = {
   searches: {
     totalSearches: number; byType: { label: string; count: number }[];
     flaggedCount: number; successfulSearches: number;
-    recent: { query: string; tool: string; resultCount: number | null; flagged: boolean; createdAt: string | null }[];
+    recent: {
+      query: string; tool: string; resultCount: number | null; flagged: boolean; createdAt: string | null;
+      outcome?: string | null; outcomeReason?: string | null; outcomeWorked?: boolean | null;
+    }[];
   };
   outcomes: {
     introRequestsMade: number; introRequestsByStatus: { label: string; count: number }[];
     introRequestsMediated: number; insightsSaved: number; factsSubmitted: number;
+    searchOutcomesByRung?: { label: string; count: number }[];
   };
   memory: {
     profile: { key: string; value: string; updatedAt: string | null }[];
@@ -148,14 +159,14 @@ export default function AdminUserDetailPage() {
           <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">მომხმარებელი ვერ მოიძებნა</div>
         ) : error ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-10 flex flex-col items-center gap-4 text-center">
-            <p className="text-sm text-gray-500">მონაცემების ჩატვირთვა ვერ მოხერხდა</p>
+            <p className="text-sm text-gray-500">მონაცემების ჭატვირთვა ვერ მოხერხდა</p>
             <button type="button" onClick={load} className="rounded-xl bg-[#23261F] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90">ხელახლა ცდა</button>
           </div>
         ) : data ? (
           <>
             {data.diagnostics && data.diagnostics.length > 0 && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                ⚠ ნაწილი მონაცემი ვერ ჩაიტვირთა
+                ⚠ ნაწილი მონაცემი ვერ ჭაიტვირთა
               </div>
             )}
             <AccountBlock a={data.account} />
@@ -205,6 +216,7 @@ function AccountBlock({ a }: { a: UserProfile["account"] }) {
 
 /* ---------- Block 2: Network ---------- */
 function NetworkBlock({ n }: { n: UserProfile["network"] }) {
+  const tiers = n.tiersByColour ? Object.entries(n.tiersByColour) : [];
   return (
     <Card title="ქსელი">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -215,6 +227,22 @@ function NetworkBlock({ n }: { n: UserProfile["network"] }) {
         <Kpi value={numOrDash(n.firstDegree)} label="1-ლი დონე" />
         <Kpi value={numOrDash(n.secondDegree)} label="მე-2 დონე" />
       </div>
+      {tiers.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {tiers.map(([colour, count]) => (
+            <span
+              key={colour}
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold"
+            >
+              <i
+                className="inline-block h-2.5 w-2.5 rounded-full"
+                style={{ background: TIER_COLOUR_HEX[colour] ?? "#8E8A7A" }}
+              />
+              {TIER_COLOUR_LABELS[colour] ?? colour}: {count}
+            </span>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
@@ -265,10 +293,15 @@ function SearchesBlock({ s }: { s: UserProfile["searches"] }) {
             <div key={i} className="flex items-center justify-between gap-3 py-2 text-sm">
               <div className="min-w-0 flex-1">
                 <p className="break-words text-gray-700">{r.query || "—"}</p>
-                <p className="text-xs text-gray-400">{SEARCH_LABELS[r.tool] ?? r.tool} · {fmtRelative(r.createdAt)}</p>
+                <p className="text-xs text-gray-400">
+                  {SEARCH_LABELS[r.tool] ?? r.tool} · {fmtRelative(r.createdAt)}
+                  {r.outcome && ` · ${r.outcome}${r.outcomeReason ? ` (${r.outcomeReason})` : ""}`}
+                </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {r.flagged && <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">flagged</span>}
+                {r.outcomeWorked === true && <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-700">გამოვიდა</span>}
+                {r.outcomeWorked === false && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">არ გამოვიდა</span>}
                 <span className="text-xs text-gray-500">{r.resultCount === null ? "—" : `${r.resultCount} შდგ.`}</span>
               </div>
             </div>
@@ -294,6 +327,12 @@ function OutcomesBlock({ o }: { o: UserProfile["outcomes"] }) {
       ) : (
         <Empty />
       )}
+      {o.searchOutcomesByRung && o.searchOutcomesByRung.length > 0 && (
+        <div className="mt-4">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">ძებნის შედეგი საფეხურით</h3>
+          <HBars items={o.searchOutcomesByRung} />
+        </div>
+      )}
     </Card>
   );
 }
@@ -308,7 +347,7 @@ function MemoryBlock({ m }: { m: UserProfile["memory"] }) {
       {(distress || paused) && (
         <div className="mb-4 flex flex-wrap gap-2">
           {distress && <span className="rounded-lg bg-red-100 px-3 py-1.5 text-xs font-bold text-red-700">⚠ distress — ფრთხილად</span>}
-          {paused && <span className="rounded-lg bg-orange-100 px-3 py-1.5 text-xs font-semibold text-orange-700">nudge შეჩერებულია</span>}
+          {paused && <span className="rounded-lg bg-orange-100 px-3 py-1.5 text-xs font-semibold text-orange-700">nudge შეჭერებულია</span>}
         </div>
       )}
 
@@ -332,7 +371,7 @@ function MemoryBlock({ m }: { m: UserProfile["memory"] }) {
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-amber-800">🔒 კონფიდენციალური კონტექსტი</span>
           <button type="button" onClick={() => setShowPrivate((v) => !v)} className="text-xs font-medium text-amber-700 underline">
-            {showPrivate ? "დამალვა" : "გამოაჩინე"}
+            {showPrivate ? "დამალვა" : "გამოაჭინე"}
           </button>
         </div>
         {showPrivate && (
