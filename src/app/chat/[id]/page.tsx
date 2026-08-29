@@ -50,11 +50,31 @@ function extractInviteLink(text: string): string | null {
   return text.match(INVITE_LINK_RE)?.[0] ?? null;
 }
 
+// F3 (27 Aug): bare URLs aren't auto-linked (no remark-gfm) — wrap the invite
+// link in markdown link syntax like linkifyPhones already does for numbers.
+function linkifyInviteLink(text: string): string {
+  return text.replace(INVITE_LINK_RE, (url) => `[${url}](${url})`);
+}
+
+// F2 (27 Aug): issued (assistant handed out the link) vs sent (the user
+// actually shared it) are now separate funnel events — record `sent` only on
+// a real share action, once per click.
+async function recordShared() {
+  try {
+    await fetch(`${BASE_URL}/auth/referral/shared`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({}),
+    });
+  } catch {}
+}
+
 function ShareInviteButton({ url, label }: { url: string; label: string }) {
   async function share() {
     try {
       if (navigator.share) {
         await navigator.share({ url });
+        recordShared();
         return;
       }
     } catch {
@@ -62,6 +82,7 @@ function ShareInviteButton({ url, label }: { url: string; label: string }) {
     }
     try {
       await navigator.clipboard.writeText(url);
+      recordShared();
     } catch {}
   }
   return (
@@ -143,7 +164,7 @@ function fmtMsgClock(iso?: string | number | null): string {
 // Assistant markdown pipeline: tappable phone links + single-\n preservation
 // (task 22 j — markdown swallows lone newlines otherwise).
 function mdSource(text: string): string {
-  return preserveLineBreaks(linkifyPhones(text));
+  return preserveLineBreaks(linkifyInviteLink(linkifyPhones(text)));
 }
 
 function renderStepText(text: string): React.ReactNode {
