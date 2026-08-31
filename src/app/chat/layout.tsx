@@ -373,192 +373,220 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     refreshTokens();
     fetchSummary();
 
-    abortRef.current = new AbortController();
-    const ctrl = abortRef.current;
+    // Push notifications (31 Aug): the server only knows to push once it
+    // sees the SSE connection actually close. openWhenHidden used to keep
+    // it open in the background indefinitely, so a backgrounded/closed tab
+    // still looked "connected" and no push went out. Now the client closes
+    // the connection itself the moment the tab is hidden, and reopens it
+    // the moment it's visible again — the server sees a real disconnect
+    // within the same tick, not after some idle timeout.
+    function connect() {
+      abortRef.current = new AbortController();
+      const ctrl = abortRef.current;
 
-    fetchEventSource(`${BASE_URL}/threads/stream`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-      signal: ctrl.signal,
-      openWhenHidden: true,
-      onopen: async () => {
-        if (sawFirstOpenRef.current) {
-          setReconnectNonce((n) => n + 1);
-        } else {
-          sawFirstOpenRef.current = true;
-        }
-      },
-      onmessage(ev) {
-        if (!ev.data) return;
-        try {
-          const data = JSON.parse(ev.data);
-          switch (data.event) {
-            case "thread_created":
-              if (data.thread) {
-                setThreads((prev) =>
-                  dedup([data.thread, ...prev.filter((th) => String(th.id) !== String(data.thread.id))])
-                );
-                fetchSummary();
-              }
-              break;
-
-            case "thread_updated": {
-              const patch = data.thread;
-              if (patch?.id != null) {
-                // Stamp updated_at so unread detection sees the change even when
-                // the SSE patch doesn't carry a timestamp (ticket 6 #13).
-                const stamp = patch.updated_at ?? new Date().toISOString();
-                setThreads((prev) =>
-                  prev.map((th) => {
-                    if (String(th.id) !== String(patch.id)) return th;
-                    return {
-                      ...th,
-                      updated_at: stamp,
-                      ...(patch.status !== undefined ? { status: patch.status } : null),
-                      ...(patch.status_line !== undefined ? { status_line: patch.status_line } : null),
-                      ...(patch.is_task !== undefined ? { is_task: patch.is_task } : null),
-                      ...(patch.request_ref !== undefined ? { request_ref: patch.request_ref } : null),
-                      ...(patch.title ? { title: patch.title } : null),
-                    };
-                  })
-                );
-                setThreadBumps((prev) => ({
-                  ...prev,
-                  [String(patch.id)]: (prev[String(patch.id)] ?? 0) + 1,
-                }));
-                fetchSummary();
-              }
-              break;
-            }
-
-            case "tokens_debited":
-              refreshTokens();
-              break;
-
-            case "answer_delta": {
-              const chunk = readChunk(data);
-              if (data.threadId != null && chunk) {
-                setThreadStates((prev) =>
-                  updateThreadState(prev, data.threadId, (ts) => {
-                    if (isStaleRun(ts, data.runId)) return ts;
-                    const sameRun = ts.streaming && ts.streaming.runId === (data.runId ?? null);
-                    return {
-                      ...ts,
-                      streaming: {
-                        runId: data.runId ?? null,
-                        text: sameRun ? ts.streaming!.text + chunk : chunk,
-                      },
-                    };
-                  })
-                );
-              }
-              break;
-            }
-
-            case "answer_reset":
-              if (data.threadId != null) {
-                setThreadStates((prev) =>
-                  updateThreadState(prev, data.threadId, (ts) => {
-                    if (isStaleRun(ts, data.runId)) return ts;
-                    return { ...ts, streaming: null };
-                  })
-                );
-              }
-              break;
-
-            case "tool_progress":
-            case "step_summary": {
-              const line: string | undefined = data.text ?? data.message;
-              if (data.threadId != null && line) {
-                const isProgress = data.event === "tool_progress";
-                setThreadStates((prev) =>
-                  updateThreadState(prev, data.threadId, (ts) => {
-                    if (isStaleRun(ts, data.runId)) return ts;
-                    const last = ts.messages[ts.messages.length - 1];
-                    const dup = last && last.kind === "step" && last.content === line;
-                    return {
-                      ...ts,
-                      progress: isProgress ? line : ts.progress,
-                      messages: dup
-                        ? ts.messages
-                        : [
-                            ...ts.messages,
-                            {
-                              id: crypto.randomUUID(),
-                              role: "assistant",
-                              content: line,
-                              kind: "step",
-                              runId: data.runId ?? null,
-                              pending: true,
-                            },
-                          ],
-                    };
-                  })
-                );
-              }
-              break;
-            }
-
-            case "run_complete":
-              if (data.threadId != null) {
-                setThreadStates((prev) =>
-                  updateThreadState(prev, data.threadId, (ts) => {
-                    if (isStaleRun(ts, data.runId)) return ts;
-                    return {
-                      ...ts,
-                      messages: [
-                        ...ts.messages,
-                        {
-                          id: crypto.randomUUID(),
-                          role: "assistant",
-                          content: data.reply ?? "",
-                          kind: "message",
-                          runId: data.runId ?? null,
-                          pending: true,
-                          createdAt: new Date().toISOString(),
-                        },
-                      ],
-                      options: Array.isArray(data.options) ? data.options : [],
-                      choices: Array.isArray(data.choices) ? data.choices : [],
-                      loading: false,
-                      runId: null,
-                      error: null,
-                      streaming: null,
-                      progress: null,
-                      result: data.result && typeof data.result === "object" ? data.result : null,
-                    };
-                  })
-                );
-                loadThreads();
-                fetchSummary();
-              }
-              break;
-
-            case "run_error":
-              if (data.threadId != null) {
-                setThreadStates((prev) =>
-                  updateThreadState(prev, data.threadId, (ts) => {
-                    if (isStaleRun(ts, data.runId)) return ts;
-                    return {
-                      ...ts,
-                      loading: false,
-                      runId: null,
-                      error: data.message ?? "Something went wrong.",
-                      streaming: null,
-                      progress: null,
-                    };
-                  })
-                );
-              }
-              break;
+      fetchEventSource(`${BASE_URL}/threads/stream`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+        signal: ctrl.signal,
+        openWhenHidden: true,
+        onopen: async () => {
+          if (sawFirstOpenRef.current) {
+            setReconnectNonce((n) => n + 1);
+          } else {
+            sawFirstOpenRef.current = true;
           }
-        } catch {}
-      },
-      onerror() {
-        return 4000;
-      },
-    });
+        },
+        onmessage(ev) {
+          if (!ev.data) return;
+          try {
+            const data = JSON.parse(ev.data);
+            switch (data.event) {
+              case "thread_created":
+                if (data.thread) {
+                  setThreads((prev) =>
+                    dedup([data.thread, ...prev.filter((th) => String(th.id) !== String(data.thread.id))])
+                  );
+                  fetchSummary();
+                }
+                break;
 
-    return () => ctrl.abort();
+              case "thread_updated": {
+                const patch = data.thread;
+                if (patch?.id != null) {
+                  // Stamp updated_at so unread detection sees the change even when
+                  // the SSE patch doesn't carry a timestamp (ticket 6 #13).
+                  const stamp = patch.updated_at ?? new Date().toISOString();
+                  setThreads((prev) =>
+                    prev.map((th) => {
+                      if (String(th.id) !== String(patch.id)) return th;
+                      return {
+                        ...th,
+                        updated_at: stamp,
+                        ...(patch.status !== undefined ? { status: patch.status } : null),
+                        ...(patch.status_line !== undefined ? { status_line: patch.status_line } : null),
+                        ...(patch.is_task !== undefined ? { is_task: patch.is_task } : null),
+                        ...(patch.request_ref !== undefined ? { request_ref: patch.request_ref } : null),
+                        ...(patch.title ? { title: patch.title } : null),
+                      };
+                    })
+                  );
+                  setThreadBumps((prev) => ({
+                    ...prev,
+                    [String(patch.id)]: (prev[String(patch.id)] ?? 0) + 1,
+                  }));
+                  fetchSummary();
+                }
+                break;
+              }
+
+              case "tokens_debited":
+                refreshTokens();
+                break;
+
+              case "answer_delta": {
+                const chunk = readChunk(data);
+                if (data.threadId != null && chunk) {
+                  setThreadStates((prev) =>
+                    updateThreadState(prev, data.threadId, (ts) => {
+                      if (isStaleRun(ts, data.runId)) return ts;
+                      const sameRun = ts.streaming && ts.streaming.runId === (data.runId ?? null);
+                      return {
+                        ...ts,
+                        streaming: {
+                          runId: data.runId ?? null,
+                          text: sameRun ? ts.streaming!.text + chunk : chunk,
+                        },
+                      };
+                    })
+                  );
+                }
+                break;
+              }
+
+              case "answer_reset":
+                if (data.threadId != null) {
+                  setThreadStates((prev) =>
+                    updateThreadState(prev, data.threadId, (ts) => {
+                      if (isStaleRun(ts, data.runId)) return ts;
+                      return { ...ts, streaming: null };
+                    })
+                  );
+                }
+                break;
+
+              case "tool_progress":
+              case "step_summary": {
+                const line: string | undefined = data.text ?? data.message;
+                if (data.threadId != null && line) {
+                  const isProgress = data.event === "tool_progress";
+                  setThreadStates((prev) =>
+                    updateThreadState(prev, data.threadId, (ts) => {
+                      if (isStaleRun(ts, data.runId)) return ts;
+                      const last = ts.messages[ts.messages.length - 1];
+                      const dup = last && last.kind === "step" && last.content === line;
+                      return {
+                        ...ts,
+                        progress: isProgress ? line : ts.progress,
+                        messages: dup
+                          ? ts.messages
+                          : [
+                              ...ts.messages,
+                              {
+                                id: crypto.randomUUID(),
+                                role: "assistant",
+                                content: line,
+                                kind: "step",
+                                runId: data.runId ?? null,
+                                pending: true,
+                              },
+                            ],
+                      };
+                    })
+                  );
+                }
+                break;
+              }
+
+              case "run_complete":
+                if (data.threadId != null) {
+                  setThreadStates((prev) =>
+                    updateThreadState(prev, data.threadId, (ts) => {
+                      if (isStaleRun(ts, data.runId)) return ts;
+                      return {
+                        ...ts,
+                        messages: [
+                          ...ts.messages,
+                          {
+                            id: crypto.randomUUID(),
+                            role: "assistant",
+                            content: data.reply ?? "",
+                            kind: "message",
+                            runId: data.runId ?? null,
+                            pending: true,
+                            createdAt: new Date().toISOString(),
+                          },
+                        ],
+                        options: Array.isArray(data.options) ? data.options : [],
+                        choices: Array.isArray(data.choices) ? data.choices : [],
+                        loading: false,
+                        runId: null,
+                        error: null,
+                        streaming: null,
+                        progress: null,
+                        result: data.result && typeof data.result === "object" ? data.result : null,
+                      };
+                    })
+                  );
+                  loadThreads();
+                  fetchSummary();
+                }
+                break;
+
+              case "run_error":
+                if (data.threadId != null) {
+                  setThreadStates((prev) =>
+                    updateThreadState(prev, data.threadId, (ts) => {
+                      if (isStaleRun(ts, data.runId)) return ts;
+                      return {
+                        ...ts,
+                        loading: false,
+                        runId: null,
+                        error: data.message ?? "Something went wrong.",
+                        streaming: null,
+                        progress: null,
+                      };
+                    })
+                  );
+                }
+                break;
+            }
+          } catch {}
+        },
+        onerror() {
+          return 4000;
+        },
+      });
+    }
+
+    connect();
+
+    function onVisibilityChange() {
+      if (document.hidden) {
+        // Tear down now — an aborted signal is a clean close, not an error,
+        // so fetchEventSource won't try to retry it.
+        abortRef.current?.abort();
+      } else {
+        connect();
+        loadThreads();
+        refreshTokens();
+        fetchSummary();
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      abortRef.current?.abort();
+    };
   }, [loadThreads, refreshTokens, fetchSummary]);
 
   const sendIntoThread = useCallback(async (threadId: string, text: string, echo: boolean) => {
