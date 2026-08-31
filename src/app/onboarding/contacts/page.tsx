@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authHeaders } from "@/lib/deviceId";
 import { getLocale } from "@/lib/i18n";
+import { markOnboardingDone } from "@/lib/user";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -71,6 +72,7 @@ export default function OnboardingContactsPage() {
       });
       const json = await res.json();
       setResult(json.data ?? json);
+      markOnboardingDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : s.importError);
     } finally {
@@ -134,6 +136,7 @@ export default function OnboardingContactsPage() {
       });
       const json = await res.json();
       setResult(json.data ?? json);
+      markOnboardingDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : s.importError);
     } finally {
@@ -255,7 +258,7 @@ export default function OnboardingContactsPage() {
 
           <button
             type="button"
-            onClick={() => router.replace("/chat")}
+            onClick={() => { markOnboardingDone(); router.replace("/chat"); }}
             className="text-sm py-2 transition-colors hover:text-[var(--ink)]"
             style={{ color: "var(--ink-soft)" }}
           >

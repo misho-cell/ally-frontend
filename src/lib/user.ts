@@ -7,6 +7,25 @@ import { t } from "./i18n";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const NAME_KEY = "netai_profile_name";
 const LOCALE_KEY = "netai_locale";
+// FT-6 (31 Aug): marks that this account has been through (or explicitly
+// skipped) the post-registration contacts onboarding — set once, checked on
+// every app entry so an interrupted onboarding (payment popup, refresh,
+// closed tab) isn't silently lost.
+const ONBOARDING_DONE_KEY = "netai_onboarding_done";
+
+export function isOnboardingDone(): boolean {
+  try {
+    return localStorage.getItem(ONBOARDING_DONE_KEY) === "1";
+  } catch {
+    return true; // fail open — never trap a user in a redirect loop
+  }
+}
+
+export function markOnboardingDone() {
+  try {
+    localStorage.setItem(ONBOARDING_DONE_KEY, "1");
+  } catch {}
+}
 
 let cached: string | null = null;
 let inflight: Promise<string | null> | null = null;
@@ -48,6 +67,7 @@ export function clearUserScopedStorage() {
     localStorage.removeItem("netai_req_resolved");
     localStorage.removeItem("push_endpoint");
     localStorage.removeItem(LOCALE_KEY);
+    localStorage.removeItem(ONBOARDING_DONE_KEY);
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith("token_warn")) localStorage.removeItem(key);
     }
