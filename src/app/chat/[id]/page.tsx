@@ -726,8 +726,31 @@ export default function ThreadPage() {
     }
   }, [hasMoreOlder, messages, threadId, setThreadStates]);
 
+  // FE-1 (30 Aug): sticky-bottom — only auto-scroll while the user is already
+  // near the bottom. Scrolling up to reread mid-stream must not get yanked
+  // back down on every token.
+  const NEAR_BOTTOM_PX = 80;
+  const nearBottomRef = useRef(true);
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+
+  function updateNearBottom() {
+    const el = scrollRef.current;
+    if (!el) return;
+    const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const near = dist < NEAR_BOTTOM_PX;
+    nearBottomRef.current = near;
+    setShowJumpToBottom(!near);
+  }
+
   function onMessagesScroll(e: React.UIEvent<HTMLDivElement>) {
     if (e.currentTarget.scrollTop < OLDER_TRIGGER_PX) loadOlder();
+    updateNearBottom();
+  }
+
+  function jumpToBottom() {
+    nearBottomRef.current = true;
+    setShowJumpToBottom(false);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
   useLayoutEffect(() => {
@@ -744,14 +767,17 @@ export default function ThreadPage() {
     if (lastId === lastIdRef.current) return;
     lastIdRef.current = lastId;
     if (!lastId) return;
-    messagesEndRef.current?.scrollIntoView({
-      behavior: firstPaintRef.current ? "auto" : "smooth",
-    });
+    if (nearBottomRef.current || firstPaintRef.current) {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: firstPaintRef.current ? "auto" : "smooth",
+      });
+    }
     firstPaintRef.current = false;
   }, [messages]);
 
   useEffect(() => {
     if (!streaming && !loading) return;
+    if (!nearBottomRef.current) return;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [streaming, loading]);
 
@@ -762,6 +788,11 @@ export default function ThreadPage() {
       }
       const trimmed = text.trim();
       if (!trimmed || rateLimitedUntil > Date.now() || limitHit) return;
+
+      // Sending implies wanting to see the reply — resume auto-scroll even
+      // if the user had scrolled up to reread something.
+      nearBottomRef.current = true;
+      setShowJumpToBottom(false);
 
       const localId = crypto.randomUUID();
       const sentinel = `pending-${crypto.randomUUID()}`;
@@ -1086,7 +1117,8 @@ export default function ThreadPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto" ref={scrollRef} onScroll={onMessagesScroll}>
+      <div className="relative flex-1 min-h-0">
+      <div className="h-full overflow-y-auto" ref={scrollRef} onScroll={onMessagesScroll}>
         {showInitialLoad ? (
           loadPhase === "slow" || loadPhase === "failed" ? (
             <div className="empty h-full">
@@ -1247,6 +1279,19 @@ export default function ThreadPage() {
               </div>
             )}
 
+            {/* FE-3 (30 Aug): the streamed text can look finished while the run
+                is still open (choices/options only land on run_complete) —
+                show a quiet thinking indicator exactly where those buttons
+                will appear, so it doesn't read as "done". Swapped out the
+                instant run_complete delivers them. */}
+            {loading && streamingActive && (
+              <div className="flex items-center gap-1.5" style={{ marginLeft: "36px" }}>
+                <span className="sk-dot" style={{ width: 6, height: 6 }} />
+                <span className="sk-dot" style={{ width: 6, height: 6, animationDelay: "0.15s" }} />
+                <span className="sk-dot" style={{ width: 6, height: 6, animationDelay: "0.3s" }} />
+              </div>
+            )}
+
             {loading && (
               <div className="flex items-start" style={{ gap: "10px" }}>
                 <AllyAvatar />
@@ -1361,6 +1406,32 @@ export default function ThreadPage() {
             <div ref={messagesEndRef} />
           </div>
         )}
+      </div>
+
+      {/* FE-1 (30 Aug): reappears once the user scrolls away from the
+          bottom during an active stream — tap to resume auto-scroll. */}
+      {showJumpToBottom && (
+        <button
+          type="button"
+          onClick={jumpToBottom}
+          className="absolute left-1/2 flex items-center gap-1.5 rounded-full transition-colors"
+          style={{
+            bottom: "16px",
+            transform: "translateX(-50%)",
+            padding: "7px 14px",
+            background: "var(--ink-strong)",
+            color: "var(--bg)",
+            fontSize: "12.5px",
+            fontWeight: 600,
+            boxShadow: "var(--shadow-pop)",
+          }}
+        >
+          <svg viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5">
+            <path d="M5 8l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {t("jumpToBottom")}
+        </button>
+      )}
       </div>
 
       {!limitHit && (balanceLow || grantExhausted) && (
