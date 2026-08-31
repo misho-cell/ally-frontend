@@ -298,7 +298,8 @@ export default function LoginPage() {
       confirmedReferralRef.current = null;
       setStep("name");
     } else if (elig.reason === "referral_required") {
-      setReferralInput("");
+      // FT-4 (31 Aug): don't blank the field — it may already hold the
+      // ?ref= prefill from /join, and clearing it here erased that.
       setReferralError("");
       setStep("referral");
     } else {
@@ -404,7 +405,8 @@ export default function LoginPage() {
         setLoading(false);
         setReferralError(e2 instanceof Error ? e2.message : s.genericError);
         confirmedReferralRef.current = null;
-        setReferralInput("");
+        // FT-4 (31 Aug): don't blank the field here either — same ?ref
+        // prefill issue as the eligibility branch above.
         setStep("referral");
         return;
       }
