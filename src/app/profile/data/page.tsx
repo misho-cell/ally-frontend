@@ -18,6 +18,7 @@ const L = {
     empty: "Nothing to show yet",
     exportBtn: "Download my data",
     exportError: "Export failed. Try again.",
+    tiersTitle: "Network tiers",
     contactsTitle: "Contacts",
     contactsBody: "Add or refresh your imported contacts at any time. Your device will ask for permission again.",
     contactsBtn: "Add / update contacts",
@@ -33,22 +34,23 @@ const L = {
   },
   ka: {
     back: "← პროფილი",
-    title: "ჩემი მონაცემები",
-    intro: "აქ ხედავ, რას ინახავს Netai შენზე. შეგიძლია ყველაფრის გადმოწერა ან სრული წაშლა.",
+    title: "ჭემი მონაცემები",
+    intro: "აქ ხედავ, რას ინახავს Netai შენზე. შეგიძლია ყველაფერის გადმოწერა ან სრული წაშლა.",
     summaryTitle: "რას ვინახავთ",
-    empty: "ჯერ არაფერია საჩვენებელი",
+    empty: "ჯერ არაფერია საჭვენებელი",
     exportBtn: "მონაცემების გადმოწერა",
     exportError: "გადმოწერა ვერ მოხერხდა. სცადე თავიდან.",
+    tiersTitle: "ქსელის იარუსები",
     contactsTitle: "კონტაქტები",
     contactsBody: "დაამატე ან გაანახლე შენი კონტაქტები ნებისმიერ დროს. მოწყობილობა ნებართვას თავიდან გკითხავს.",
     contactsBtn: "კონტაქტების დამატება/განახლება",
     deleteTitle: "ანგარიშის წაშლა",
-    deleteBody: "ეს სამუდამოდ შლის შენს ანგარიშს და მონაცემებს. ჯერ ნახავ, რა წაიშლება და რა დარჩება (მაგალითად გადახდის ისტორია, რომელსაც კანონი ითხოვს).",
+    deleteBody: "ეს სამუდამოდ შლის შენს ანგარიშს და მონაცემებს. ჯერ ნახავ, რა წაიშლება და რა დარწება (მაგალითად გადახდის ისტორია, რომელსაც კანონი ითხოვს).",
     deleteBtn: "ანგარიშის წაშლა",
     previewTitle: "წაშლის გადახედვა",
     previewNote: "ჯერ არაფერი წაშლილა. გადახედე სიებს ქვემოთ.",
     finalBtn: "წაშალე სამუდამოდ",
-    finalConfirm: "ამის დაბრუნება შეუძლებელია. წავშალო ანგარიში სამუდამოდ?",
+    finalConfirm: "ამის დაბრუნება შეუძლებეია. წავშალო ანგარიში სამუდამოდ?",
     cancel: "გაუქმება",
     genericError: "რაღაც შეცდომა მოხდა",
   },
@@ -61,24 +63,24 @@ type Dict = Record<string, unknown>;
 // the backend sends only the legacy `records`/bare object shape; the current
 // contract's `labels` map (Part H #4) is preferred whenever present.
 const TABLE_LABELS: Record<string, { ka: string; en: string }> = {
-  conversations: { ka: "საუბრის შეტყობინებები", en: "Conversation messages" },
+  conversations: { ka: "საუბრის შეტყობინები", en: "Conversation messages" },
   threads: { ka: "საუბრები", en: "Conversations" },
   tasks: { ka: "მიზნები", en: "Goals" },
   task_asks: { ka: "გაგზავნილი კითხვები", en: "Sent questions" },
-  user_notes: { ka: "შენი ჩანაწერები", en: "Your notes" },
+  user_notes: { ka: "შენი ჭანაწერები", en: "Your notes" },
   user_private_context: { ka: "პირადი კონტექსტი", en: "Private context" },
   user_profile_kv: { ka: "პროფილის ველები", en: "Profile fields" },
   contact_insights: { ka: "კონტაქტების შენიშნები", en: "Contact notes" },
   contact_facts: { ka: "კონტაქტების ფაქტები", en: "Contact facts" },
-  contact_exclusions: { ka: "გამონაკლისები", en: "Exclusions" },
-  contact_relationship_scores: { ka: "კავშირის ქულები", en: "Relationship scores" },
+  contact_exclusions: { ka: "გამონაკითები", en: "Exclusions" },
+  contact_relationship_scores: { ka: "კავშირის ქუვები", en: "Relationship scores" },
   contact_enrichment: { ka: "გამდიდრებული პროფილები", en: "Enriched profiles" },
   weak_tie_signals: { ka: "კავშირის სიგნალები", en: "Connection signals" },
   search_activity: { ka: "ძებნის ისტორია", en: "Search history" },
-  run_prompt_stamps: { ka: "სისტემური აღრიცხვა", en: "System accounting" },
-  pending_updates: { ka: "მოლოდინში მყოფი განახლებები", en: "Pending updates" },
+  run_prompt_stamps: { ka: "სისტემური აღრიცხა", en: "System accounting" },
+  pending_updates: { ka: "მოლოდინში მყოვი განახლებები", en: "Pending updates" },
   user_avatars: { ka: "პროფილის ფოტო", en: "Profile photo" },
-  ai_notification_log: { ka: "შეტყობინებების ჟურნალი", en: "Notification log" },
+  ai_notification_log: { ka: "შეტყობინებების ჯურნალი", en: "Notification log" },
   ai_notification_settings: { ka: "შეტყობინებების პარამეტრები", en: "Notification settings" },
   push_subscriptions: { ka: "შეტყობინებების გამოწერები", en: "Push subscriptions" },
   device_fingerprints: { ka: "მოწყობილობები", en: "Devices" },
@@ -87,10 +89,64 @@ const TABLE_LABELS: Record<string, { ka: string; en: string }> = {
   introduction_requests: { ka: "გაცნობის მოთხოვნები", en: "Intro requests" },
   UserAlias: { ka: "შენახული კონტაქტები", en: "Saved contacts" },
   UserTags: { ka: "კონტაქტების თეგები", en: "Contact tags" },
-  UserBlock: { ka: "დაბლოკილი ნომრები", en: "Blocked numbers" },
-  ContactDeceased: { ka: "გარდაცვლილად მონიშნული კონტაქტები", en: "Contacts marked deceased" },
+  UserBlock: { ka: "დაბლოკილი ნომერები", en: "Blocked numbers" },
+  ContactDeceased: { ka: "გარდაცვლიად მონიშნული კონტაქტები", en: "Contacts marked deceased" },
   UserPhone: { ka: "შენი ნომერი", en: "Your number" },
 };
+
+type NetworkTier = { label: string; count: number };
+
+const TIER_COLOUR_LABELS: Record<string, { ka: string; en: string }> = {
+  green: { ka: "მწვანე", en: "Green" },
+  blue: { ka: "ლურჯი", en: "Blue" },
+  yellow: { ka: "ყვითელი", en: "Yellow" },
+  red: { ka: "წითელი", en: "Red" },
+};
+const TIER_COLOUR_HEX: Record<string, string> = {
+  green: "#3E7A56", blue: "#2F5FA0", yellow: "#B08A1E", red: "#B3402E",
+};
+
+function tierLabel(colour: string): string {
+  const hit = TIER_COLOUR_LABELS[colour];
+  if (hit) return getLocale() === "ka" ? hit.ka : hit.en;
+  return colour;
+}
+
+// F6 (30 Aug): colour-tier counts from the old Ally network, GET
+// /profile/network-tiers. An empty array is legitimate (fresh accounts have
+// no legacy sort) — the whole section is skipped, not shown empty.
+function NetworkTiersCard({ title }: { title: string }) {
+  const [tiers, setTiers] = useState<NetworkTier[] | null>(null);
+
+  useEffect(() => {
+    apiFetch<{ success?: boolean; data?: { tiers?: NetworkTier[] } }>("/profile/network-tiers")
+      .then((res) => setTiers(res.data?.tiers ?? []))
+      .catch(() => setTiers([]));
+  }, []);
+
+  if (!tiers || tiers.length === 0) return null;
+
+  return (
+    <div className="card flex flex-col gap-2">
+      <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{title}</h2>
+      <div className="flex flex-wrap gap-2">
+        {tiers.map((t) => (
+          <span
+            key={t.label}
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1"
+            style={{ background: "var(--sidebar-bg)", border: "1px solid var(--sidebar-border)", fontSize: "12.5px", fontWeight: 600, color: "var(--ink)" }}
+          >
+            <i
+              className="inline-block h-2.5 w-2.5 rounded-full"
+              style={{ background: TIER_COLOUR_HEX[t.label] ?? "var(--meta)" }}
+            />
+            {tierLabel(t.label)}: {t.count.toLocaleString("en-US")}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function labelFor(key: string): string {
   const hit = TABLE_LABELS[key];
@@ -105,7 +161,7 @@ function labelFor(key: string): string {
 function Value({ v }: { v: unknown }) {
   if (v === null || v === undefined || v === "") return <span style={{ color: "var(--meta)" }}>-</span>;
   if (typeof v === "number") {
-    const unit = getLocale() === "ka" ? "ჩანაწერი" : v === 1 ? "record" : "records";
+    const unit = getLocale() === "ka" ? "ჭანაცერი" : v === 1 ? "record" : "records";
     return <span>{v.toLocaleString("en-US")} {unit}</span>;
   }
   if (Array.isArray(v)) {
@@ -297,6 +353,9 @@ export default function DataRightsPage() {
                 <p className="text-sm" style={{ color: "var(--meta)" }}>{s.empty}</p>
               )}
             </div>
+
+            {/* Network tiers (F6, 30 Aug) — hidden entirely if empty. */}
+            <NetworkTiersCard title={s.tiersTitle} />
 
             {/* Contacts re-import (23 Aug #3, task 53) — the same flow as
                 onboarding; the OS asks for permission again. */}
