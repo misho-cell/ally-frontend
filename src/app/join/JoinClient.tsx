@@ -57,7 +57,7 @@ export default function JoinClient() {
         <span style={{ font: "700 22px/1 var(--font-system)", color: "var(--ink-strong)" }}>Netai</span>
 
         {phase === "loading" && (
-          <p className="text-sm" style={{ color: "var(--meta)" }}>ითვირთება...</p>
+          <p className="text-sm" style={{ color: "var(--meta)" }}>იტვირთება...</p>
         )}
 
         {phase === "error" && (
@@ -87,7 +87,7 @@ export default function JoinClient() {
             </Link>
 
             <p className="text-xs" style={{ color: "var(--meta)" }}>
-              რეგისტრაციას 1 წუთი სხირდება. მოწვევის კოდი ავტომატურად ივსება.
+              რეგისტრაციას 1 წუთი სჭირდება. მოწვევის კოდი ავტომატურად ივსება.
             </p>
 
             <p className="text-xs" style={{ color: "var(--meta)" }}>
