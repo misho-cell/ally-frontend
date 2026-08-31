@@ -156,20 +156,22 @@ body {
 .token-badge.low .count { color: var(--request-accent); }
 
 /* ============ Steps block ============ */
+/* FE-4 (30 Aug): a quiet left-rule instead of a filled card — steps are
+   secondary to the eventual answer and shouldn't compete for attention. */
 .steps {
-  margin-left: 36px; max-width: 560px; background: var(--sidebar-bg);
-  border-radius: var(--radius-tile); padding: 12px 14px;
+  margin-left: 36px; max-width: 560px; background: transparent;
+  border-left: 2px solid var(--sidebar-border); padding: 2px 0 2px 12px;
 }
 .steps-toggle {
   display: flex; align-items: center; gap: 6px; border: 0; background: none;
-  padding: 0; font: 600 12.5px/18px var(--font-system); color: var(--ink-soft); cursor: pointer;
+  padding: 0; font: 500 11.5px/16px var(--font-system); color: var(--meta); cursor: pointer;
 }
-.steps-toggle:hover { color: var(--ink); }
-.steps-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.steps-toggle:hover { color: var(--ink-soft); }
+.steps-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .step { display: flex; gap: 8px; }
-.step > span { color: var(--accent); flex: none; font-size: 13px; }
-.step p { margin: 0; font: 400 13px/20px var(--font-system); color: var(--ink-soft); }
-.step p strong { font-weight: 600; color: var(--ink-muted); }
+.step > span { color: var(--meta); flex: none; font-size: 11.5px; }
+.step p { margin: 0; font: 400 12px/18px var(--font-system); color: var(--meta); }
+.step p strong { font-weight: 600; color: var(--ink-soft); }
 
 /* ============ Request rows / card (terracotta) ============ */
 .row-request {
@@ -322,8 +324,10 @@ body {
 .empty p { margin: 0; font: 400 13.5px/21px var(--font-system); color: var(--ink-soft); max-width: 340px; }
 
 /* ============ Character animations ============ */
-.ally-anim { width: 140px; mix-blend-mode: multiply; pointer-events: none; }
-.ally-anim-fallback { display: none; width: 140px; mix-blend-mode: multiply; }
+/* FE-2 (30 Aug): square aspect-ratio reserves height before video metadata
+   loads, so the surrounding layout doesn't jump when it appears mid-stream. */
+.ally-anim { width: 140px; aspect-ratio: 1 / 1; mix-blend-mode: multiply; pointer-events: none; }
+.ally-anim-fallback { display: none; width: 140px; aspect-ratio: 1 / 1; mix-blend-mode: multiply; }
 .ally-anim.size-thinking, .ally-anim-fallback.size-thinking { width: 96px; }
 .ally-anim.size-e3, .ally-anim-fallback.size-e3 { width: 130px; }
 /* Inline working indicator (founder review item 9): 56-64px tall, next to the label */
@@ -400,6 +404,10 @@ body {
 .composer-pill textarea:focus-visible {
   border: 0; outline: 0; box-shadow: none;
 }
+
+/* FE-2 (30 Aug): reserve one line's height so the assistant bubble doesn't
+   pop from 0 to full height the instant the first streamed token arrives. */
+.msg-ally { min-height: 27px; }
 
 /* ============ Responsive ============ */
 @media (max-width: 767px) {
