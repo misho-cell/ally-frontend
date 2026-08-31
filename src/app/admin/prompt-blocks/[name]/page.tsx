@@ -45,6 +45,11 @@ export default function PromptBlockEditorPage() {
   const [tab, setTab] = useState<"edit" | "history">("edit");
   const [modes, setModes] = useState<string[]>([]);
   const [blockLimit, setBlockLimit] = useState(FALLBACK_BLOCK_LIMIT);
+  // Task 31 Aug: the block limit (per-block content) and the mode limit
+  // (sum of all enabled blocks in that mode) are two DIFFERENT counters that
+  // happen to share the same number today — labeled separately so a future
+  // divergence doesn't read as a bug.
+  const [modeTotals, setModeTotals] = useState<{ mode: string; enabled_chars: number; budget_chars: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +77,7 @@ export default function PromptBlockEditorPage() {
       const res = await apiFetch<unknown>("/admin/prompt-blocks", { admin: true });
       const data = unwrap<ListData>(res);
       setModes(data.modes ?? []);
+      setModeTotals(data.mode_totals ?? []);
       const budgets = (data.mode_totals ?? [])
         .map((mt) => mt.budget_chars)
         .filter((n) => Number.isFinite(n) && n > 0);
@@ -281,8 +287,24 @@ export default function PromptBlockEditorPage() {
                   className="rounded-xl border border-gray-200 px-4 py-3 font-mono text-xs leading-relaxed outline-none transition-colors focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
                 />
                 <p className={`text-xs ${chars > blockLimit ? "font-semibold text-red-600" : "text-gray-400"}`}>
-                  {fmtN(chars)} სიმბოლო · ≈{fmtN(Math.round(chars / 3))} ტოკენი · ლიმიტი {fmtN(blockLimit)}
+                  ბლოკი {fmtN(chars)} / {fmtN(blockLimit)} · ≈{fmtN(Math.round(chars / 3))} ტოკენი
                 </p>
+                {/* Separate from the block limit above — this is the MODE's total
+                    across every enabled block in it, not this block alone. */}
+                {blockModes.length > 0 && modeTotals.length > 0 && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {blockModes.map((m) => {
+                      const mt = modeTotals.find((x) => x.mode === m);
+                      if (!mt) return null;
+                      const over = mt.enabled_chars > mt.budget_chars;
+                      return (
+                        <p key={m} className={`text-xs ${over ? "font-semibold text-red-600" : "text-gray-400"}`}>
+                          რეჟიმი <span className="font-mono">{m}</span> {fmtN(mt.enabled_chars)} / {fmtN(mt.budget_chars)}
+                        </p>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col gap-1.5">
