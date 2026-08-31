@@ -25,6 +25,9 @@ const REQ_KEY = "netai_req_resolved";
 const READ_KEY = "netai_last_read";
 const COLLAPSE_KEY = "netai_sidebar_collapsed";
 const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
+// FE-5 (30 Aug): the backend's snooze status_line, pushed via thread_updated
+// to every device — the cross-device signal to hide a snoozed request.
+const SNOOZE_STATUS_LINE = "გადადებულია";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
@@ -781,6 +784,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   const visibleRequests = threads.filter((th) => {
     if (th.type !== "incoming_request" || !matches(th)) return false;
+    // FE-5 (30 Aug): the backend now pushes the same thread_updated SSE event
+    // (status_line "გადადებულია") to every open device on snooze, so hiding
+    // on that server-driven field — not just the local resolvedRequests map
+    // — is what keeps phone and desktop in sync.
+    if (th.status_line === SNOOZE_STATUS_LINE) return false;
     const r = resolvedRequests[String(th.id)];
     if (!r) return true;
     if (r.action === "later") return now - r.at > SNOOZE_MS;
