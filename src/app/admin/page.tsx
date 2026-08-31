@@ -148,6 +148,24 @@ export default function AdminPage() {
             რეპორტინგი →
           </a>
           <a
+            href="/admin/goals"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
+          >
+            მიზნები →
+          </a>
+          <a
+            href="/admin/identity"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
+          >
+            იდენტობა →
+          </a>
+          <a
+            href="/admin/contacts/raw-labels"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
+          >
+            ნედლი ლეიბლები →
+          </a>
+          <a
             href="/admin/lab"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
           >
