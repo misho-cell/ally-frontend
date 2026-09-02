@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { isOnboardingDone } from "@/lib/user";
+import { fetchOnboardingStatus } from "@/lib/user";
 
 export default function Home() {
   const router = useRouter();
@@ -13,11 +13,15 @@ export default function Home() {
       router.replace("/login");
       return;
     }
-    // FT-6 (31 Aug): onboarding was a one-shot gate — interrupted by a
-    // payment popup, a refresh, or a closed tab, it was gone for good and
-    // the user never got a contacts sync. Route back into it until it's
-    // completed or explicitly skipped.
-    router.replace(isOnboardingDone() ? "/chat" : "/onboarding/contacts");
+    // FT-6 (2 Sept): onboarding status now comes from the server
+    // (GET /profile/onboarding) — the same rule the backend itself uses to
+    // decide how to talk to the user, so a refresh, a second device, or an
+    // incognito window can never disagree with it the way a local flag did.
+    // A failed check fails toward /chat rather than trapping the user in a
+    // redirect loop.
+    fetchOnboardingStatus().then((status) => {
+      router.replace(status?.isOnboarding ? "/onboarding/contacts" : "/chat");
+    });
   }, [router]);
 
   return (

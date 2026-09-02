@@ -4,9 +4,15 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { authHeaders } from "@/lib/deviceId";
 import { getLocale } from "@/lib/i18n";
-import { markOnboardingDone } from "@/lib/user";
+import { skipOnboarding } from "@/lib/user";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+// FT-6 (2 Sept): "which step am I on" (as opposed to "is onboarding done at
+// all") is purely client-side UI state — the backend confirmed this is the
+// right place for it. Without it, a refresh during the matched-contacts
+// screen lost the already-picked contacts and dropped the user back to the
+// very start, even though the server-side onboarding status hadn't changed.
+const PENDING_KEY = "netai_onboarding_pending";
 
 const L = {
   en: {
@@ -60,7 +66,29 @@ export default function OnboardingContactsPage() {
     setHasContactsApi(
       typeof navigator !== "undefined" && "contacts" in navigator
     );
+    // Restore the matched-contacts step across a refresh — the OS picker
+    // can't be replayed, but the names/contacts it already returned can be.
+    try {
+      const raw = sessionStorage.getItem(PENDING_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as { matchedNames: string[]; pendingContacts: PendingContact[] };
+        if (saved.matchedNames?.length && saved.pendingContacts?.length) {
+          setMatchedNames(saved.matchedNames);
+          setPendingContacts(saved.pendingContacts);
+        }
+      }
+    } catch {}
   }, []);
+
+  function rememberPending(names: string[], contacts: PendingContact[]) {
+    setMatchedNames(names);
+    setPendingContacts(contacts);
+    try { sessionStorage.setItem(PENDING_KEY, JSON.stringify({ matchedNames: names, pendingContacts: contacts })); } catch {}
+  }
+
+  function forgetPending() {
+    try { sessionStorage.removeItem(PENDING_KEY); } catch {}
+  }
 
   async function doImport(contacts: PendingContact[]) {
     setLoading(true);
@@ -72,7 +100,7 @@ export default function OnboardingContactsPage() {
       });
       const json = await res.json();
       setResult(json.data ?? json);
-      markOnboardingDone();
+      forgetPending();
     } catch (err) {
       setError(err instanceof Error ? err.message : s.importError);
     } finally {
@@ -110,8 +138,7 @@ export default function OnboardingContactsPage() {
         const matchJson = await matchRes.json();
         const names: string[] = matchJson?.data?.names ?? matchJson?.names ?? [];
         if (matchRes.ok && names.length > 0) {
-          setMatchedNames(names);
-          setPendingContacts(contacts);
+          rememberPending(names, contacts);
           setLoading(false);
           return;
         }
@@ -136,7 +163,7 @@ export default function OnboardingContactsPage() {
       });
       const json = await res.json();
       setResult(json.data ?? json);
-      markOnboardingDone();
+      forgetPending();
     } catch (err) {
       setError(err instanceof Error ? err.message : s.importError);
     } finally {
@@ -258,7 +285,7 @@ export default function OnboardingContactsPage() {
 
           <button
             type="button"
-            onClick={() => { markOnboardingDone(); router.replace("/chat"); }}
+            onClick={() => { forgetPending(); skipOnboarding(); router.replace("/chat"); }}
             className="text-sm py-2 transition-colors hover:text-[var(--ink)]"
             style={{ color: "var(--ink-soft)" }}
           >

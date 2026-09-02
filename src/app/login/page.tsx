@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getLocale } from "@/lib/i18n";
-import { clearUserScopedStorage, markOnboardingDone } from "@/lib/user";
+import { clearUserScopedStorage } from "@/lib/user";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -323,9 +323,6 @@ export default function LoginPage() {
         );
         if (!res.isNewUser) {
           saveToken(res.token);
-          // FT-6: an existing account never goes through onboarding — mark
-          // it done so the FT-6 redirect in / doesn't send it there.
-          markOnboardingDone();
           redirectTo("/chat");
           return;
         }

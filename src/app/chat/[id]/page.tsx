@@ -356,9 +356,13 @@ export default function ThreadPage() {
   const tokensEnabled = tokens?.enabled === true;
   const isTrialWallet = tokensEnabled && tokens.grantedThisPeriod === 120;
   const granted = tokensEnabled ? tokens.grantedThisPeriod : 0;
-  // Ticket 7 #5: two distinct wallet states. The grant being spent is NOT the
-  // same as the wallet running dry — balance also holds top-ups and credits.
-  const grantExhausted = tokensEnabled && granted > 0 && tokens.spentThisPeriod >= granted;
+  // FT-11 (2 Sept): grantedThisPeriod/spentThisPeriod are calendar-month
+  // stats for display only — NOT the run gate. The backend confirmed the
+  // only real limit is `balance > 0`; both stats sit at 0 at the start of
+  // every calendar month (and for any subscriber whose grant hasn't landed
+  // yet), which made `spent >= granted` fire as "exhausted" for people who
+  // still had thousands of tokens. Read the actual limit from `balance`.
+  const grantExhausted = tokensEnabled && tokens.balance <= 0;
   const balanceLow = tokensEnabled && granted > 0 && Math.max(0, tokens.balance) <= granted * 0.05;
   const remainingPct =
     tokensEnabled && granted > 0

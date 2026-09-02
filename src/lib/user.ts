@@ -7,23 +7,51 @@ import { t } from "./i18n";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const NAME_KEY = "netai_profile_name";
 const LOCALE_KEY = "netai_locale";
-// FT-6 (31 Aug): marks that this account has been through (or explicitly
-// skipped) the post-registration contacts onboarding — set once, checked on
-// every app entry so an interrupted onboarding (payment popup, refresh,
-// closed tab) isn't silently lost.
-const ONBOARDING_DONE_KEY = "netai_onboarding_done";
+// Legacy key from the 31 Aug FT-6 attempt (a local-only "done" flag). No
+// longer written; only cleaned up on sign-out so a stale value never lingers.
+const LEGACY_ONBOARDING_DONE_KEY = "netai_onboarding_done";
 
-export function isOnboardingDone(): boolean {
+export type OnboardingStatus = {
+  isOnboarding: boolean;
+  contactsImported: boolean;
+  contactsCount: number;
+  skippedAt: string | null;
+};
+
+// FT-6 (2 Sept): the 31 Aug fix trusted a local "done" flag, which a
+// refresh/second device/incognito window never had — so onboarding either
+// vanished or came back for people who'd already finished it. The backend
+// now tracks this itself (GET /profile/onboarding) and applies the exact
+// same rule server-side when deciding how to talk to the user, so client and
+// server can no longer disagree. Returns null on failure — callers should
+// fail toward /chat, never trap someone in a redirect loop.
+export async function fetchOnboardingStatus(): Promise<OnboardingStatus | null> {
   try {
-    return localStorage.getItem(ONBOARDING_DONE_KEY) === "1";
+    const res = await fetch(`${BASE_URL}/profile/onboarding`, { headers: authHeaders() });
+    if (!res.ok) return null;
+    const json = await res.json().catch(() => ({}));
+    const data = json?.data ?? json ?? {};
+    if (typeof data.is_onboarding !== "boolean") return null;
+    return {
+      isOnboarding: data.is_onboarding,
+      contactsImported: Boolean(data.contacts_imported),
+      contactsCount: Number(data.contacts_count ?? 0),
+      skippedAt: data.skipped_at ?? null,
+    };
   } catch {
-    return true; // fail open — never trap a user in a redirect loop
+    return null;
   }
 }
 
-export function markOnboardingDone() {
+// Records that the user explicitly declined contacts import. Idempotent on
+// the backend (keeps the first skip time) — safe to call every time Skip is
+// pressed.
+export async function skipOnboarding(): Promise<void> {
   try {
-    localStorage.setItem(ONBOARDING_DONE_KEY, "1");
+    await fetch(`${BASE_URL}/profile/onboarding/skip`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
   } catch {}
 }
 
@@ -67,7 +95,7 @@ export function clearUserScopedStorage() {
     localStorage.removeItem("netai_req_resolved");
     localStorage.removeItem("push_endpoint");
     localStorage.removeItem(LOCALE_KEY);
-    localStorage.removeItem(ONBOARDING_DONE_KEY);
+    localStorage.removeItem(LEGACY_ONBOARDING_DONE_KEY);
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith("token_warn")) localStorage.removeItem(key);
     }
