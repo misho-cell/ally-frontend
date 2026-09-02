@@ -14,10 +14,10 @@ export default function JoinClient() {
   const [phase, setPhase] = useState<Phase>("loading");
 
   useEffect(() => {
+    // FE-C (2 Sept): this page's copy is always Georgian regardless of the
+    // visitor's app locale, so it always claims ka — no revert on unmount.
+    // The root layout's LocaleHtml owns lang everywhere else.
     document.documentElement.lang = "ka";
-    return () => {
-      document.documentElement.lang = "en";
-    };
   }, []);
 
   useEffect(() => {

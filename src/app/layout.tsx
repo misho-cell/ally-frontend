@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import InstallPrompt from "@/components/InstallPrompt";
 import BuildTag from "@/components/BuildTag";
+import LocaleHtml from "@/components/LocaleHtml";
 
 export const metadata: Metadata = {
   title: "Netai",
@@ -34,8 +35,9 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="ka" className="h-full">
       <body className="h-full antialiased">
+        <LocaleHtml />
         {children}
         <InstallPrompt />
         <BuildTag />
