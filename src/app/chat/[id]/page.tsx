@@ -369,6 +369,39 @@ export default function ThreadPage() {
   // 23 Aug #5: in-thread chrome follows the conversation's language.
   const chrome = CHROME[detectThreadLang(messages)];
 
+  // FT-10 (2 Sept): the server pushes answer_delta in uneven, sentence-sized
+  // bursts, so rendering streaming.text as-is makes the reply "jump" in
+  // blocks. Smooth it on the client: reveal characters at a steady drip
+  // instead of snapping straight to whatever just arrived. Resets whenever a
+  // new run starts streaming.
+  const [revealedLen, setRevealedLen] = useState(0);
+  const streamRunIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!streaming) {
+      streamRunIdRef.current = null;
+      setRevealedLen(0);
+      return;
+    }
+    if (streamRunIdRef.current !== streaming.runId) {
+      streamRunIdRef.current = streaming.runId;
+      setRevealedLen(0);
+    }
+  }, [streaming]);
+
+  useEffect(() => {
+    if (!streaming) return;
+    const total = streaming.text.length;
+    if (revealedLen >= total) return;
+    // Catch up faster the further behind we are, so a long burst doesn't
+    // leave the reveal trailing the actual stream for seconds.
+    const behind = total - revealedLen;
+    const step = behind > 120 ? 6 : behind > 40 ? 3 : 1;
+    const id = setTimeout(() => setRevealedLen((n) => Math.min(total, n + step)), 12);
+    return () => clearTimeout(id);
+  }, [streaming, revealedLen]);
+
+  const revealedStreamText = streaming ? streaming.text.slice(0, revealedLen) : "";
+
   useEffect(() => {
     lastIdRef.current = null;
     firstPaintRef.current = true;
@@ -1273,7 +1306,7 @@ export default function ThreadPage() {
                 <AllyAvatar />
                 <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)", flex: 1, minWidth: 0 }}>
                   <ReactMarkdown components={markdownComponents} urlTransform={mdUrlTransform}>
-                    {mdSource(streaming!.text)}
+                    {mdSource(revealedStreamText)}
                   </ReactMarkdown>
                 </div>
               </div>

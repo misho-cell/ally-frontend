@@ -172,6 +172,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const abortRef = useRef<AbortController | null>(null);
   const sawFirstOpenRef = useRef(false);
+  // FT-8 (2 Sept): ts.runId goes back to null the instant a run completes, so
+  // isStaleRun() can no longer tell a genuine new run from the SAME
+  // run_complete arriving twice (a reconnect replay, or the backend resending
+  // after a dropped ack). A second delivery used to re-apply
+  // data.choices/data.options verbatim — and when the replay's payload didn't
+  // carry them, that wiped the buttons the user had just seen. Track the last
+  // run_complete actually applied per thread and ignore an exact repeat.
+  const lastCompletedRunIdRef = useRef<Record<string, string>>({});
   const pathnameRef = useRef(pathname);
   const homeInputRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -508,6 +516,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
               case "run_complete":
                 if (data.threadId != null) {
+                  const tKey = String(data.threadId);
+                  const rKey = data.runId != null ? String(data.runId) : null;
+                  if (rKey && lastCompletedRunIdRef.current[tKey] === rKey) break;
+                  if (rKey) lastCompletedRunIdRef.current[tKey] = rKey;
                   setThreadStates((prev) =>
                     updateThreadState(prev, data.threadId, (ts) => {
                       if (isStaleRun(ts, data.runId)) return ts;

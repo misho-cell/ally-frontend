@@ -16,6 +16,8 @@ const L = {
     intro: "Here is what Netai stores about you. You can download everything or request full deletion below.",
     summaryTitle: "What we store",
     empty: "Nothing to show yet",
+    uncountedTitle: "Could not be checked right now:",
+    uncountedNote: "This does not mean they are empty.",
     exportBtn: "Download my data",
     exportError: "Export failed. Try again.",
     tiersTitle: "Network tiers",
@@ -38,6 +40,8 @@ const L = {
     intro: "აქ ხედავ, რას ინახავს Netai შენზე. შეგიძლია ყველაფერის გადმოწერა ან სრული წაშლა.",
     summaryTitle: "რას ვინახავთ",
     empty: "ჯერ არაფერია საჭვენებელი",
+    uncountedTitle: "ამ კატეგორიების შემოწმება ამჟამად ვერ მოხერხდა:",
+    uncountedNote: "ეს არ ნიშნავს, რომ ისინი ცარიელია.",
     exportBtn: "მონაცემების გადმოწერა",
     exportError: "გადმოწერა ვერ მოხერხდა. სცადე თავიდან.",
     tiersTitle: "ქსელის იარუსები",
@@ -92,6 +96,8 @@ const TABLE_LABELS: Record<string, { ka: string; en: string }> = {
   UserBlock: { ka: "დაბლოკილი ნომერები", en: "Blocked numbers" },
   ContactDeceased: { ka: "გარდაცვლიად მონიშნული კონტაქტები", en: "Contacts marked deceased" },
   UserPhone: { ka: "შენი ნომერი", en: "Your number" },
+  rowsDeleted: { ka: "წაიშლება", en: "Will be deleted" },
+  retained: { ka: "დარჩება (კანონით)", en: "Retained (by law)" },
 };
 
 type NetworkTier = { label: string; count: number };
@@ -210,6 +216,11 @@ export default function DataRightsPage() {
   const s = L[getLocale()];
   const [summary, setSummary] = useState<Dict | null>(null);
   const [summaryLabels, setSummaryLabels] = useState<Record<string, string> | undefined>(undefined);
+  // FE-B (2 Sept): categories the backend could not read at all — distinct
+  // from categories that are genuinely empty. Must not be silently dropped,
+  // here or in the deletion preview above it, since users decide whether to
+  // delete based on this list.
+  const [uncounted, setUncounted] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Dict | null>(null);
@@ -227,6 +238,8 @@ export default function DataRightsPage() {
         // itself) for older backends.
         const counts = body.counts as Dict | undefined;
         const labels = body.labels as Record<string, string> | undefined;
+        const uncountedKeys = Array.isArray(body.uncounted) ? (body.uncounted as string[]) : [];
+        setUncounted(uncountedKeys);
         if (counts && typeof counts === "object") {
           setSummary(counts);
           setSummaryLabels(labels);
@@ -351,6 +364,17 @@ export default function DataRightsPage() {
                 <Rows obj={summary} labelMap={summaryLabels} />
               ) : (
                 <p className="text-sm" style={{ color: "var(--meta)" }}>{s.empty}</p>
+              )}
+              {uncounted.length > 0 && (
+                <div style={{ background: "var(--sidebar-bg)", borderRadius: "var(--radius-tile)", padding: "10px 12px", marginTop: "2px" }}>
+                  <p style={{ fontSize: "12.5px", color: "var(--ink-2)" }}>
+                    {s.uncountedTitle}{" "}
+                    <b style={{ color: "var(--ink)" }}>
+                      {uncounted.map((k) => summaryLabels?.[k] ?? labelFor(k)).join(", ")}
+                    </b>
+                    . {s.uncountedNote}
+                  </p>
+                </div>
               )}
             </div>
 
