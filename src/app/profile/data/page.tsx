@@ -36,10 +36,10 @@ const L = {
   },
   ka: {
     back: "← პროფილი",
-    title: "ჭემი მონაცემები",
-    intro: "აქ ხედავ, რას ინახავს Netai შენზე. შეგიძლია ყველაფერის გადმოწერა ან სრული წაშლა.",
+    title: "ჩემი მონაცემები",
+    intro: "აქ ხედავ, რას ინახავს Netai შენზე. შეგიძლია ყველაფრის გადმოწერა ან სრული წაშლა.",
     summaryTitle: "რას ვინახავთ",
-    empty: "ჯერ არაფერია საჭვენებელი",
+    empty: "ჯერ არაფერია საჩვენებელი",
     uncountedTitle: "ამ კატეგორიების შემოწმება ამჟამად ვერ მოხერხდა:",
     uncountedNote: "ეს არ ნიშნავს, რომ ისინი ცარიელია.",
     exportBtn: "მონაცემების გადმოწერა",
@@ -49,7 +49,7 @@ const L = {
     contactsBody: "დაამატე ან გაანახლე შენი კონტაქტები ნებისმიერ დროს. მოწყობილობა ნებართვას თავიდან გკითხავს.",
     contactsBtn: "კონტაქტების დამატება/განახლება",
     deleteTitle: "ანგარიშის წაშლა",
-    deleteBody: "ეს სამუდამოდ შლის შენს ანგარიშს და მონაცემებს. ჯერ ნახავ, რა წაიშლება და რა დარწება (მაგალითად გადახდის ისტორია, რომელსაც კანონი ითხოვს).",
+    deleteBody: "ეს სამუდამოდ შლის შენს ანგარიშს და მონაცემებს. ჯერ ნახავ, რა წაიშლება და რა დარჩება (მაგალითად გადახდის ისტორია, რომელსაც კანონი ითხოვს).",
     deleteBtn: "ანგარიშის წაშლა",
     previewTitle: "წაშლის გადახედვა",
     previewNote: "ჯერ არაფერი წაშლილა. გადახედე სიებს ქვემოთ.",
@@ -71,7 +71,7 @@ const TABLE_LABELS: Record<string, { ka: string; en: string }> = {
   threads: { ka: "საუბრები", en: "Conversations" },
   tasks: { ka: "მიზნები", en: "Goals" },
   task_asks: { ka: "გაგზავნილი კითხვები", en: "Sent questions" },
-  user_notes: { ka: "შენი ჭანაწერები", en: "Your notes" },
+  user_notes: { ka: "შენი ჩანაწერები", en: "Your notes" },
   user_private_context: { ka: "პირადი კონტექსტი", en: "Private context" },
   user_profile_kv: { ka: "პროფილის ველები", en: "Profile fields" },
   contact_insights: { ka: "კონტაქტების შენიშნები", en: "Contact notes" },
@@ -167,7 +167,7 @@ function labelFor(key: string): string {
 function Value({ v }: { v: unknown }) {
   if (v === null || v === undefined || v === "") return <span style={{ color: "var(--meta)" }}>-</span>;
   if (typeof v === "number") {
-    const unit = getLocale() === "ka" ? "ჭანაცერი" : v === 1 ? "record" : "records";
+    const unit = getLocale() === "ka" ? "ჩანაწერი" : v === 1 ? "record" : "records";
     return <span>{v.toLocaleString("en-US")} {unit}</span>;
   }
   if (Array.isArray(v)) {

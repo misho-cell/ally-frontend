@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start -p ${PORT:-3000}",
-    "lint": "eslint"
+    "lint": "eslint && node scripts/check-georgian.mjs",
+    "lint:ka": "node scripts/check-georgian.mjs"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",

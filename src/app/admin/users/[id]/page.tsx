@@ -166,7 +166,7 @@ export default function AdminUserDetailPage() {
           <>
             {data.diagnostics && data.diagnostics.length > 0 && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                ⚠ ნაწილი მონაცემი ვერ ჭაიტვირთა
+                ⚠ ნაწილი მონაცემი ვერ ჩაიტვირთა
               </div>
             )}
             <AccountBlock a={data.account} />
