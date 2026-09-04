@@ -41,6 +41,22 @@ export function fmtDateLoc(
   }
 }
 
+// Short "day month" with no year — thread-list timestamps (FE-3, 4 Sept: the
+// asks list was calling toLocaleDateString("en-GB", ...) directly, so a
+// Georgian-locale user saw English month names in an otherwise Georgian UI).
+export function fmtDateShort(input: Date | string): string {
+  const d = typeof input === "string" ? new Date(input) : input;
+  if (isNaN(d.getTime())) return "";
+  if (getLocale() === "ka") {
+    return `${d.getDate()} ${KA_MONTHS_SHORT[d.getMonth()]}`;
+  }
+  try {
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  } catch {
+    return d.toDateString();
+  }
+}
+
 // Steps render as ✓ + text only — strip emoji the backend may include.
 export function stripEmoji(s: string): string {
   try {

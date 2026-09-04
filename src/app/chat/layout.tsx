@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { authHeaders, handleAdminTokenMisuse } from "@/lib/deviceId";
-import { t, tf } from "@/lib/i18n";
+import { t, tf, fmtDateShort } from "@/lib/i18n";
 import { useUserName, clearUserName } from "@/lib/user";
 import Modal from "@/components/Modal";
 import {
@@ -85,7 +85,7 @@ function fmtClock(iso?: string): string {
   const sameDay = d.toDateString() === now.toDateString();
   return sameDay
     ? d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
-    : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+    : fmtDateShort(d);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -835,7 +835,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     return false;
   });
 
-  const asks = threads.filter((th) => th.type === "incoming_ask" && matches(th));
+  // FE-3 (4 Sept): this list used to show every incoming_ask thread
+  // regardless of status — a thread the assistant had already answered
+  // (status: "done") stayed here forever with an "unanswered" badge, out of
+  // sync with the API's own status field. done means it no longer needs you.
+  const asks = threads.filter((th) => th.type === "incoming_ask" && th.status !== "done" && matches(th));
 
   const goalThreads: { thread: Thread; status: TaskStatus }[] = [];
   const legacyThreads: Thread[] = [];

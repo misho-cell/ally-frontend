@@ -202,7 +202,13 @@ export function taskStatusOf(
   thread: Thread,
   ts: ThreadState | undefined
 ): TaskStatus | null {
-  if (thread.type !== "regular") return null;
+  // FE-2 (4 Sept): campaign_invite carries the same is_task/status/
+  // status_line shape as a regular goal (see the Thread type comment above)
+  // and was meant to fall through to this same goal/legacy split — but this
+  // gate only allowed "regular", so every campaign_invite thread (including
+  // ones needing the user's reply) landed in the collapsed legacy bucket
+  // instead of the main list.
+  if (thread.type !== "regular" && thread.type !== "campaign_invite") return null;
   if (!thread.is_task && !thread.status) return null;
   if (ts?.loading) return "working";
   const s = thread.status;
