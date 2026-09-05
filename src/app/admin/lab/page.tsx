@@ -18,7 +18,25 @@ const TABS: Tab[] = [
   { key: "campaigns", label: "Chorus campaigns (T8)", path: "/admin/chorus/campaigns" },
   { key: "unmet-needs", label: "Unmet needs (T6)", path: "/admin/unmet-needs" },
   { key: "lab-report", label: "Lab report (T16)", path: "/admin/lab-report" },
+  // F-1 (5 Sept): four read-only target-list/wake-up endpoints.
+  { key: "gates", label: "ჭიშკრები (რამ ამოაგდო)", path: "/admin/target-list/gates" },
+  { key: "history", label: "ქულის ისტორია", path: "/admin/target-list/history" },
+  { key: "wake-up", label: "გასაღვიძებელი ანგარიშები", path: "/admin/wake-up" },
+  { key: "decisions", label: "ფაუნდერის გადაწყვეტილებები", path: "/admin/target-list/decisions" },
 ];
+
+// F-1 (5 Sept): top-level scalars of a body that ALSO carries arrays used to
+// vanish — extractTables only falls back to them when no array exists. For
+// /gates those scalars are the headline (865 in → 489 survived → 22 listed),
+// so they get their own summary strip above the tables.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractScalars(raw: any): [string, unknown][] {
+  const d = raw?.data ?? raw;
+  if (!d || typeof d !== "object" || Array.isArray(d)) return [];
+  const hasArray = Object.values(d).some((v) => Array.isArray(v));
+  if (!hasArray) return []; // the single-row fallback table already shows them
+  return Object.entries(d).filter(([, v]) => typeof v !== "object" || v === null);
+}
 
 // Friendlier titles for known nested arrays; anything else falls back to a
 // prettified version of its object key.
@@ -117,14 +135,17 @@ export default function LabPage() {
   const router = useRouter();
   const [active, setActive] = useState<Tab>(TABS[0]);
   const [tables, setTables] = useState<Table[] | null>(null);
+  const [scalars, setScalars] = useState<[string, unknown][]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (tab: Tab) => {
     setTables(null);
+    setScalars([]);
     setError(null);
     try {
       const res = await apiFetch<unknown>(tab.path, { admin: true });
       setTables(extractTables(res));
+      setScalars(extractScalars(res));
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
         router.replace("/admin/login");
@@ -176,6 +197,17 @@ export default function LabPage() {
 
         {tables && tables.length === 0 && !error && (
           <p className="py-8 text-center text-sm text-gray-400">მონაცემები ვერ მოიძებნა</p>
+        )}
+
+        {scalars.length > 0 && (
+          <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+            {scalars.map(([k, v]) => (
+              <div key={k} className="flex flex-col">
+                <span className="text-[11px] uppercase tracking-wide text-gray-400">{prettifyKey(k)}</span>
+                <span className="text-sm font-semibold text-[#23261F]">{cell(v, k, "—")}</span>
+              </div>
+            ))}
+          </div>
         )}
 
         {tables && tables.length > 0 && (

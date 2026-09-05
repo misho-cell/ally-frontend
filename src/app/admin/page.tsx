@@ -166,6 +166,12 @@ export default function AdminPage() {
             ნედლი ლეიბლები →
           </a>
           <a
+            href="/admin/target-list/review"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
+          >
+            სამიზნე სია →
+          </a>
+          <a
             href="/admin/lab"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
           >
