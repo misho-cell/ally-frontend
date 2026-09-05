@@ -302,6 +302,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   const loadMoreThreads = useCallback(async () => {
     if (loadingMoreRef.current || !threadsHasMore) return;
+    // The cursor must be a regular conversation, never an open goal: the
+    // first page is [open goals, any age] + [conversations], so the last row
+    // is only a goal when the user has no conversations at all (then there
+    // is nothing to page). If goals ever get mixed in elsewhere, pick the
+    // last non-goal row here instead of the raw tail.
     const last = threadsRef.current[threadsRef.current.length - 1];
     if (!last?.updated_at) return;
     loadingMoreRef.current = true;
