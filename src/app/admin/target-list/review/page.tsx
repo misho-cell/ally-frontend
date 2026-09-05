@@ -33,6 +33,14 @@ type Candidate = {
     pull: number;
     subscribed_holders: number;
     person_confirmed: boolean;
+    // FE-7 (5 Sept): score multiplier, 1 or 0.3. 0.3 = we already asked
+    // someone about this person in the last 90 days — the low score is
+    // deliberate, not a judgement on the person.
+    freshness?: number;
+    // FE-9 (5 Sept): D103 states. own_contacts/opens only on ally_account.
+    state?: "phonebook_contact" | "ally_account" | "netai_user";
+    own_contacts?: number | null;
+    opens?: number | null;
     bubble: { savers: number; edges: number; density: number } | null;
   };
 };
@@ -54,6 +62,17 @@ const FIT_CLS: Record<Fit, string> = {
   not_yet: "bg-gray-50 text-gray-400",
 };
 
+const STATE_LABEL: Record<string, string> = {
+  phonebook_contact: "ტელეფონის წიგნში",
+  ally_account: "ძველი Ally ანგარიში",
+  netai_user: "Netai მომხმარებელი",
+};
+const STATE_CLS: Record<string, string> = {
+  phonebook_contact: "bg-gray-100 text-gray-600",
+  ally_account: "bg-blue-50 text-blue-700",
+  netai_user: "bg-red-50 text-red-600",
+};
+
 function num(v: number | null | undefined, digits = 0): string {
   if (v == null) return "—";
   return digits ? v.toFixed(digits) : String(v);
@@ -65,6 +84,10 @@ export default function TargetListReviewPage() {
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
   const [days, setDays] = useState(30);
   const [error, setError] = useState<string | null>(null);
+  // FE-6 (5 Sept): the first build of a new `days` window takes ~45s on the
+  // backend (cached per window afterwards). Past 3s a bare spinner reads as
+  // "the page broke" — say what is happening instead.
+  const [slow, setSlow] = useState(false);
   const [busyPhone, setBusyPhone] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -82,6 +105,8 @@ export default function TargetListReviewPage() {
   const load = useCallback(async () => {
     setRows(null);
     setError(null);
+    setSlow(false);
+    const slowTimer = setTimeout(() => setSlow(true), 3000);
     try {
       const [list, dec] = await Promise.all([
         apiFetch<{ data?: unknown } & Record<string, unknown>>(`/admin/target-list?days=${days}`, { admin: true }),
@@ -96,6 +121,9 @@ export default function TargetListReviewPage() {
       setDecisions(Object.fromEntries(ds.map((d) => [d.phone, d])));
     } catch (err) {
       bail(err);
+    } finally {
+      clearTimeout(slowTimer);
+      setSlow(false);
     }
   }, [days, bail]);
 
@@ -171,8 +199,13 @@ export default function TargetListReviewPage() {
         {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 whitespace-pre-wrap">{error}</div>}
 
         {!error && rows === null && (
-          <div className="flex justify-center py-12">
+          <div className="flex flex-col items-center gap-3 py-12">
             <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#23261F]" />
+            {slow && (
+              <p className="max-w-sm text-center text-sm text-gray-500">
+                სია პირველად იგება ამ პერიოდისთვის. შეიძლება წუთამდე გასტანოს.
+              </p>
+            )}
           </div>
         )}
 
@@ -208,10 +241,26 @@ export default function TargetListReviewPage() {
                     >
                       <td className="px-4 py-3">
                         <div className="font-semibold text-[#23261F]">{c.label || c.phone}</div>
+                        {/* FE-8: city is information, never a gate — no
+                            colour, no filter, nothing at all when null. */}
                         <div className="text-xs text-gray-400">
                           {c.phone}{c.city ? ` · ${c.city}` : ""}
                           {c.parts?.person_confirmed && <span className="ml-1 text-green-600">✓</span>}
                         </div>
+                        {/* FE-9: D103 state. netai_user should never be in
+                            the list; if it is, it shows so it can be spotted. */}
+                        {c.parts?.state && (
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span className={`rounded-full px-2 py-0.5 font-semibold ${STATE_CLS[c.parts.state] ?? "bg-gray-50 text-gray-400"}`}>
+                              {STATE_LABEL[c.parts.state] ?? c.parts.state}
+                            </span>
+                            {c.parts.state === "ally_account" && (
+                              <span className="text-gray-500">
+                                {num(c.parts.own_contacts)} კონტაქტი · {num(c.parts.opens)} გახსნა
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {ev.length > 0 && (
                           <button
                             type="button"
@@ -227,7 +276,19 @@ export default function TargetListReviewPage() {
                           </ul>
                         )}
                       </td>
-                      <td className="px-3 py-3 text-[#23261F]">{num(c.score, 3)}</td>
+                      <td className="px-3 py-3 text-[#23261F]">
+                        {num(c.score, 3)}
+                        {/* FE-7: freshness < 1 means the score was pulled
+                            down on purpose — say so, or the row lies. */}
+                        {c.parts?.freshness != null && c.parts.freshness < 1 && (
+                          <div
+                            className="mt-0.5 whitespace-nowrap text-[11px] text-amber-700"
+                            title="ბოლო 90 დღეში ამ ადამიანზე უკვე ვკითხეთ — ქულა განზრახ დაწეულია"
+                          >
+                            ცოტა ხნის წინ მივმართეთ
+                          </div>
+                        )}
+                      </td>
                       <td className="px-3 py-3">
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${FIT_CLS[c.parts?.fit] ?? "bg-gray-50 text-gray-400"}`}>
                           {FIT_LABEL[c.parts?.fit] ?? c.parts?.fit ?? "—"}
