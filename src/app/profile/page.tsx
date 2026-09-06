@@ -8,6 +8,7 @@ import { authHeaders } from "@/lib/deviceId";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { getLocale, fmtDateLoc } from "@/lib/i18n";
 import { clearUserName } from "@/lib/user";
+import { openStripePortal, portalErrorText } from "@/lib/stripe";
 import ReferralRewardsCard from "@/components/ReferralRewardsCard";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -52,7 +53,9 @@ const L = {
     activeLabel: (tier: string) => `${tier} — Active`,
     nextPayment: (d: string) => `Next payment: ${d}`,
     paymentIssue: "Payment issue",
-    paymentFailedBody: "The payment failed — update your payment method via the Paddle portal.",
+    paymentFailedBody: "We couldn't charge your card. Update it to keep your access.",
+    changeCard: "Update card",
+    trialEndsBanner: (d: string) => `Free trial ends ${d}`,
     canceled: "Canceled",
     continuesUntil: (tier: string, d: string) => `${tier} continues until ${d}`,
     freePlan: "Free plan",
@@ -107,7 +110,9 @@ const L = {
     activeLabel: (tier: string) => `${tier}: აქტიური`,
     nextPayment: (d: string) => `შემდეგი გადახდა: ${d}`,
     paymentIssue: "გადახდის პრობლემა",
-    paymentFailedBody: "გადახდა ვერ შესრულდა. გაანახლე გადახდის მეთოდი Paddle-ის პორტალიდან.",
+    paymentFailedBody: "ბარათიდან თანხის ჩამოჭრა ვერ მოხერხდა. განაახლე ბარათი, რომ წვდომა შეინარჩუნო.",
+    changeCard: "ბარათის შეცვლა",
+    trialEndsBanner: (d: string) => `უფასო პერიოდი მთავრდება ${d}`,
     canceled: "გაუქმებული",
     continuesUntil: (tier: string, d: string) => `${tier} გაგრძელდება ${d}-მდე`,
     freePlan: "უფასო გეგმა",
@@ -142,9 +147,10 @@ type Profile = {
   city?: string | null;
   referral_code?: string | null;
   subscription_tier: "free" | "premium" | "pro" | "enterprise";
-  subscription_status: "trialing" | "active" | "past_due" | "canceled" | "inactive";
+  subscription_status: "trialing" | "active" | "past_due" | "canceled" | "unpaid" | "inactive" | "";
   trial_ends_at: string | null;
   current_period_ends_at: string | null;
+  subscription_status_changed_at?: string | null;
 };
 
 type TokenBalance = {
@@ -733,24 +739,16 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Stripe (6 Sept): same-tab redirect to the Stripe portal (card change,
+  // cancel, invoices). 404 = no Stripe customer yet, so no button at all.
   async function openPortal() {
     setPortalLoading(true);
     setError(null);
-    try {
-      const res = await apiFetch<{ success: boolean; data: { url: string } }>(
-        "/billing/customer-portal",
-        { method: "POST" }
-      );
-      window.open(res.data.url, "_blank");
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 404) {
-        setShowPortal(false);
-      } else {
-        setError(s.portalError);
-      }
-    } finally {
-      setPortalLoading(false);
-    }
+    const out = await openStripePortal();
+    if (out === "redirected") return;
+    setPortalLoading(false);
+    if (out === "none") setShowPortal(false);
+    else setError(portalErrorText());
   }
 
   function signOut() {
@@ -760,10 +758,11 @@ export default function ProfilePage() {
     router.replace("/login");
   }
 
-  const isFreeOrInactive =
-    !profile ||
-    profile.subscription_status === "inactive" ||
-    profile.subscription_tier === "free";
+  // Which button (6 Sept): trialing/active → manage; past_due → change card
+  // (same portal); canceled/unpaid/inactive/empty → subscribe.
+  const status = profile?.subscription_status ?? "";
+  const isPastDue = status === "past_due";
+  const isFreeOrInactive = !(status === "trialing" || status === "active" || isPastDue);
 
   if (loading) {
     return (
@@ -869,10 +868,12 @@ export default function ProfilePage() {
                 <button
                   onClick={openPortal}
                   disabled={portalLoading}
-                  className="btn-secondary w-full disabled:opacity-60"
+                  className={`${isPastDue ? "btn-destructive" : "btn-secondary"} w-full disabled:opacity-60`}
                 >
                   {portalLoading ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2" style={{ borderColor: "var(--cta-border)", borderTopColor: "var(--accent-strong)" }} />
+                  ) : isPastDue ? (
+                    s.changeCard
                   ) : (
                     s.manageSub
                   )}

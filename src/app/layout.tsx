@@ -3,6 +3,8 @@ import "./globals.css";
 import InstallPrompt from "@/components/InstallPrompt";
 import BuildTag from "@/components/BuildTag";
 import LocaleHtml from "@/components/LocaleHtml";
+import PastDueBanner from "@/components/PastDueBanner";
+import CheckoutReturn from "@/components/CheckoutReturn";
 
 export const metadata: Metadata = {
   title: "Netai",
@@ -38,6 +40,8 @@ export default function RootLayout({
     <html lang="ka" className="h-full">
       <body className="h-full antialiased">
         <LocaleHtml />
+        <PastDueBanner />
+        <CheckoutReturn />
         {children}
         <InstallPrompt />
         <BuildTag />
