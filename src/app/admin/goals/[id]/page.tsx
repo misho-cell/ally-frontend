@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
-import { unwrapData } from "@/lib/payload";
+import { unwrapData, pickArray, recordItems, isRecord, type UnknownRecord } from "@/lib/payload";
 
 // Task 8 (8 Sept, D127): one goal's full detail — stage, blocker, payer,
 // outcome at the top; a chronological action timeline below. Read-only.
@@ -93,6 +93,10 @@ export default function AdminGoalDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Task extra (8 Sept): the 14-day test table, GET /admin/goals/:id/days.
+  const [tab, setTab] = useState<"detail" | "days">("detail");
+  const [days, setDays] = useState<{ rows: UnknownRecord[]; silent: number | null; active: number | null } | null>(null);
+  const [daysError, setDaysError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -118,6 +122,27 @@ export default function AdminGoalDetailPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const loadDays = useCallback(async () => {
+    if (days) return;
+    setDaysError(null);
+    try {
+      const q = new URLSearchParams({ days: "14", ...(userId ? { user_id: userId } : {}) });
+      const res = await apiFetch<unknown>(`/admin/goals/${encodeURIComponent(taskId)}/days?${q}`, { admin: true });
+      const d = unwrapData(res);
+      const body = isRecord(d) ? d : {};
+      setDays({
+        rows: recordItems(pickArray(d, ["days"])),
+        silent: typeof body.silent_days === "number" ? body.silent_days : null,
+        active: typeof body.active_days === "number" ? body.active_days : null,
+      });
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) { router.replace("/admin/login"); return; }
+      setDaysError(err instanceof ApiError ? err.message : "ჩატვირთვა ვერ მოხერხდა");
+    }
+  }, [days, taskId, userId, router]);
+
+  useEffect(() => { if (tab === "days") loadDays(); }, [tab, loadDays]);
+
   const backHref = `/admin/goals${userId ? `?user_id=${encodeURIComponent(userId)}` : ""}`;
 
   return (
@@ -128,7 +153,61 @@ export default function AdminGoalDetailPage() {
       </header>
 
       <div className="mx-auto max-w-3xl px-4 py-6 flex flex-col gap-4">
-        {loading ? (
+        <div className="flex gap-2">
+          {(["detail", "days"] as const).map((tk) => (
+            <button
+              key={tk}
+              type="button"
+              onClick={() => setTab(tk)}
+              className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+                tab === tk ? "bg-[#23261F] text-white" : "border border-gray-200 text-[#23261F] hover:bg-gray-100"
+              }`}
+            >
+              {tk === "detail" ? "დეტალები" : "14 დღე"}
+            </button>
+          ))}
+        </div>
+
+        {tab === "days" ? (
+          daysError ? (
+            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 whitespace-pre-wrap">{daysError}</div>
+          ) : !days ? (
+            <div className="flex justify-center py-12"><span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#23261F]" /></div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <p className="text-xs text-gray-500">
+                აქტიური დღეები: {days.active ?? "—"} · ჩუმი: {days.silent ?? "—"}
+              </p>
+              {days.rows.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">მონაცემი არ არის</p>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+                  <table className="w-full text-left text-sm">
+                    <thead><tr className="border-b border-gray-100 text-gray-500">
+                      {Object.keys(days.rows[0]).map((col) => (
+                        <th key={col} className="whitespace-nowrap px-4 py-2.5 font-semibold">{col}</th>
+                      ))}
+                    </tr></thead>
+                    <tbody>
+                      {days.rows.map((row, i) => (
+                        <tr key={i} className="border-b border-gray-50 last:border-0">
+                          {Object.keys(days.rows[0]).map((col) => {
+                            const v = row[col];
+                            return (
+                              <td key={col} className="whitespace-nowrap px-4 py-2.5 text-[#23261F]">
+                                {v == null ? "—" : typeof v === "boolean" ? (v ? "✓" : "—") : typeof v === "object" ? JSON.stringify(v) : String(v)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )
+        ) : loading ? (
           <div className="flex justify-center py-12"><span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#23261F]" /></div>
         ) : notFound ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">მიზანი ვერ მოიძებნა ან სხვისია</div>

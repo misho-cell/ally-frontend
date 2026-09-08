@@ -225,17 +225,10 @@ export default function TargetListReviewPage() {
     setError(null);
     const clear = () => setDecisions((prev) => { const n = { ...prev }; delete n[c.phone]; return n; });
     try {
-      // Contract moved between briefs: try the per-phone path first, fall back
-      // to the collection endpoint with the phone in the body.
-      try {
-        await apiFetch(`/admin/target-list/decisions/${encodeURIComponent(c.phone)}`, { method: "DELETE", admin: true });
-      } catch (e) {
-        if (e instanceof ApiError && (e.status === 404 || e.status === 405)) {
-          await apiFetch("/admin/target-list/decisions", { method: "DELETE", admin: true, body: { phone: c.phone } });
-        } else {
-          throw e;
-        }
-      }
+      // The one endpoint (confirmed 8 Sept): phone in the path, sent as it
+      // comes in the list (+995…). removed:false just means there was no
+      // decision to clear — not an error, and clearing locally is still right.
+      await apiFetch(`/admin/target-list/decisions/${encodeURIComponent(c.phone)}`, { method: "DELETE", admin: true });
       clear();
     } catch (err) {
       bail(err);

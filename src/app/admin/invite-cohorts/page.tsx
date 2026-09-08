@@ -14,10 +14,11 @@ type Cohort = {
   name?: string | null;
   trial_days?: number | null;
   tier?: string | null;
+  active?: boolean | null;
   note?: string | null;
   registered?: number | null;
+  created_by?: string | null;
   created_at?: string | null;
-  closed_at?: string | null;
 };
 
 type Member = {
@@ -150,7 +151,7 @@ export default function InviteCohortsPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {cohorts.map((c) => {
-              const closed = !!c.closed_at;
+              const closed = c.active === false;
               const isOpen = openCode === c.code;
               const ms = members[c.code];
               return (
