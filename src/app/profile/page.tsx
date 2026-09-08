@@ -72,6 +72,8 @@ const L = {
     nameRequired: "Name can't be empty",
     dataRights: "Data & privacy",
     dataRightsSub: "See what we store, or delete your account",
+    answerRules: "Automatic answers",
+    answerRulesSub: "Rules the assistant uses to answer for you",
     changePhoto: "Change photo",
     removePhoto: "Remove",
     photoError: "Couldn't upload the photo. Try another image.",
@@ -129,6 +131,8 @@ const L = {
     nameRequired: "სახელი აუცილებელია",
     dataRights: "მონაცემები და კონფიდენციალურობა",
     dataRightsSub: "ნახე რას ვინახავთ ან წაშალე ანგარიში",
+    answerRules: "ავტომატური პასუხები",
+    answerRulesSub: "წესები, რომლითაც ასისტენტი შენ ნაცვლად პასუხობს",
     changePhoto: "ფოტოს შეცვლა",
     removePhoto: "წაშლა",
     photoError: "ფოტო ვერ აიტვირთა. სცადე სხვა სურათი.",
@@ -892,6 +896,22 @@ export default function ProfilePage() {
                 <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.dataRights}</h2>
                 <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
                   {s.dataRightsSub}
+                </p>
+              </div>
+              <span style={{ color: "var(--meta)" }}>→</span>
+            </Link>
+
+            {/* Answer rules (Task 7, D120) */}
+            <Link
+              href="/profile/answer-rules"
+              className="card flex items-center justify-between transition-colors"
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--cta-border)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--sidebar-border)"; }}
+            >
+              <div>
+                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.answerRules}</h2>
+                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
+                  {s.answerRulesSub}
                 </p>
               </div>
               <span style={{ color: "var(--meta)" }}>→</span>

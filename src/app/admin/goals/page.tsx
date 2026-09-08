@@ -16,11 +16,17 @@ type Goal = {
   user_id?: number | string;
   title?: string | null;
   status?: string | null;
+  // Task 8 (8 Sept): stage can now be "waiting_topup" (wallet on, balance 0).
+  stage?: string | null;
   brief?: string | null;
   blocked_question?: string | null;
   wakes?: Wake[];
   created_at?: string | null;
   updated_at?: string | null;
+};
+
+const STAGE_LABEL: Record<string, string> = {
+  waiting_topup: "ტოპ-აპის მოლოდინში",
 };
 
 function fmtN(n: number): string {
@@ -43,11 +49,16 @@ export default function AdminGoalsPage() {
   const [goals, setGoals] = useState<Goal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  // Q-43 (8 Sept): the goals list still needs a user-id filter.
+  const [userId, setUserId] = useState("");
+  const [uidInput, setUidInput] = useState("");
 
   const load = useCallback(async () => {
     setError(null);
+    setGoals(null);
     try {
-      const res = await apiFetch<unknown>("/admin/goals", { admin: true });
+      const q = userId.trim() ? `?user_id=${encodeURIComponent(userId.trim())}` : "";
+      const res = await apiFetch<unknown>(`/admin/goals${q}`, { admin: true });
       setGoals(normalize(res));
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
@@ -57,7 +68,7 @@ export default function AdminGoalsPage() {
       setError(err instanceof ApiError ? err.message : "ჩატვირთვა ვერ მოხერხდა");
       setGoals([]);
     }
-  }, [router]);
+  }, [router, userId]);
 
   useEffect(() => {
     load();
@@ -70,9 +81,20 @@ export default function AdminGoalsPage() {
           <a href="/admin" className="text-sm text-gray-400 hover:text-gray-600 transition">← ადმინი</a>
           <h1 className="text-lg font-bold text-[#23261F]">მიზნები (goals)</h1>
         </div>
-        <button type="button" onClick={load} className="rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50">
-          განახლება
-        </button>
+        <form
+          onSubmit={(e) => { e.preventDefault(); setUserId(uidInput); }}
+          className="flex items-center gap-2"
+        >
+          <input
+            value={uidInput}
+            onChange={(e) => setUidInput(e.target.value)}
+            placeholder="user_id"
+            className="w-28 rounded-xl border border-gray-200 px-3 py-2 text-sm text-[#23261F]"
+          />
+          <button type="submit" className="rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50">
+            ჩვენება
+          </button>
+        </form>
       </header>
 
       <div className="mx-auto max-w-4xl px-4 py-6 flex flex-col gap-3">
@@ -100,6 +122,11 @@ export default function AdminGoalsPage() {
                       <span className="font-mono text-xs font-bold text-[#23261F]">#{id}</span>
                       {g.status && (
                         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">{g.status}</span>
+                      )}
+                      {g.stage && (
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${g.stage === "waiting_topup" ? "bg-amber-50 text-amber-700" : "bg-gray-100 text-gray-500"}`}>
+                          {STAGE_LABEL[g.stage] ?? g.stage}
+                        </span>
                       )}
                       {g.blocked_question && (
                         <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">დაბლოკილია კითხვით</span>
@@ -144,6 +171,12 @@ export default function AdminGoalsPage() {
                       {g.created_at && <span>შექმნილია {fmtDate(g.created_at)}</span>}
                       {g.updated_at && <span>განახლდა {fmtDate(g.updated_at)}</span>}
                     </div>
+                    <a
+                      href={`/admin/goals/${encodeURIComponent(id)}${g.user_id != null ? `?user_id=${encodeURIComponent(String(g.user_id))}` : userId.trim() ? `?user_id=${encodeURIComponent(userId.trim())}` : ""}`}
+                      className="self-start rounded-lg bg-[#23261F] px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
+                    >
+                      დეტალები →
+                    </a>
                   </div>
                 )}
               </div>
