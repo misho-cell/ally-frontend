@@ -42,6 +42,18 @@ type Goal = {
 
 const STAGE_LABEL: Record<string, string> = { waiting_topup: "ტოპ-აპის მოლოდინში" };
 
+// 14-day test table (§3): fixed column order, Georgian headers, booleans as
+// ✓/— marks. silent:true rows are the failed test days and get highlighted.
+const DAY_COLUMNS: { key: string; label: string; bool?: boolean }[] = [
+  { key: "day", label: "დღე" },
+  { key: "asks_sent", label: "კითხვები გავიდა" },
+  { key: "replies_in", label: "პასუხები მოვიდა" },
+  { key: "circle_widened", label: "წრე გაფართოვდა", bool: true },
+  { key: "method_changed", label: "მეთოდი შეიცვალა", bool: true },
+  { key: "status_lines", label: "სტატუსი მომხმარებელს" },
+  { key: "silent", label: "ჩუმი დღე", bool: true },
+];
+
 const ACTION_LABEL: Record<string, string> = {
   goal_created: "მიზანი შეიქმნა",
   plan_approved: "გეგმა დამტკიცდა",
@@ -95,7 +107,7 @@ export default function AdminGoalDetailPage() {
   const [loading, setLoading] = useState(true);
   // Task extra (8 Sept): the 14-day test table, GET /admin/goals/:id/days.
   const [tab, setTab] = useState<"detail" | "days">("detail");
-  const [days, setDays] = useState<{ rows: UnknownRecord[]; silent: number | null; active: number | null } | null>(null);
+  const [days, setDays] = useState<{ rows: UnknownRecord[]; silent: number | null; active: number | null; from: string | null; to: string | null } | null>(null);
   const [daysError, setDaysError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -134,6 +146,8 @@ export default function AdminGoalDetailPage() {
         rows: recordItems(pickArray(d, ["days"])),
         silent: typeof body.silent_days === "number" ? body.silent_days : null,
         active: typeof body.active_days === "number" ? body.active_days : null,
+        from: typeof body.from === "string" ? body.from : null,
+        to: typeof body.to === "string" ? body.to : null,
       });
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) { router.replace("/admin/login"); return; }
@@ -176,7 +190,7 @@ export default function AdminGoalDetailPage() {
           ) : (
             <div className="flex flex-col gap-3">
               <p className="text-xs text-gray-500">
-                აქტიური დღეები: {days.active ?? "—"} · ჩუმი: {days.silent ?? "—"}
+                {days.from && days.to ? `${days.from} — ${days.to} · ` : ""}აქტიური დღეები: {days.active ?? "—"} · ჩუმი: {days.silent ?? "—"}
               </p>
               {days.rows.length === 0 ? (
                 <p className="py-8 text-center text-sm text-gray-400">მონაცემი არ არის</p>
@@ -184,23 +198,33 @@ export default function AdminGoalDetailPage() {
                 <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
                   <table className="w-full text-left text-sm">
                     <thead><tr className="border-b border-gray-100 text-gray-500">
-                      {Object.keys(days.rows[0]).map((col) => (
-                        <th key={col} className="whitespace-nowrap px-4 py-2.5 font-semibold">{col}</th>
+                      {DAY_COLUMNS.map((col) => (
+                        <th key={col.key} className="whitespace-nowrap px-4 py-2.5 font-semibold">{col.label}</th>
                       ))}
                     </tr></thead>
                     <tbody>
-                      {days.rows.map((row, i) => (
-                        <tr key={i} className="border-b border-gray-50 last:border-0">
-                          {Object.keys(days.rows[0]).map((col) => {
-                            const v = row[col];
-                            return (
-                              <td key={col} className="whitespace-nowrap px-4 py-2.5 text-[#23261F]">
-                                {v == null ? "—" : typeof v === "boolean" ? (v ? "✓" : "—") : typeof v === "object" ? JSON.stringify(v) : String(v)}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
+                      {days.rows.map((row, i) => {
+                        const silent = row.silent === true;
+                        return (
+                          <tr
+                            key={i}
+                            className="border-b border-gray-50 last:border-0"
+                            // silent day = the test failed that day; call it out.
+                            style={silent ? { background: "#FEF2F2", color: "#B91C1C" } : undefined}
+                          >
+                            {DAY_COLUMNS.map((col) => {
+                              const v = row[col.key];
+                              return (
+                                <td key={col.key} className="whitespace-nowrap px-4 py-2.5">
+                                  {col.bool
+                                    ? (v === true ? "✓" : "—")
+                                    : v == null ? "—" : String(v)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
