@@ -24,7 +24,15 @@ const TABS: Tab[] = [
   { key: "history", label: "ქულის ისტორია", path: "/admin/target-list/history" },
   { key: "wake-up", label: "გასაღვიძებელი ანგარიშები", path: "/admin/wake-up" },
   { key: "decisions", label: "ფაუნდერის გადაწყვეტილებები", path: "/admin/target-list/decisions" },
+  // Task 11 (8 Sept): chorus asks carry a technique tag as WORDS (technique.*);
+  // the numeric technique_* fields are hidden so a 0 doesn't read as a count.
+  { key: "chorus-asks", label: "Chorus კითხვები", path: "/admin/chorus/asks" },
+  { key: "asks", label: "კითხვები (წევრებს შორის)", path: "/admin/asks" },
 ];
+
+// Numeric technique_* columns are the same data as the technique object but as
+// codes; 0 there means "no", not a count, so we hide them and show the words.
+const HIDE_COLUMNS = new Set(["technique_when", "technique_how", "technique_reason"]);
 
 // F-1 (5 Sept): top-level scalars of a body that ALSO carries arrays used to
 // vanish — extractTables only falls back to them when no array exists. For
@@ -90,12 +98,18 @@ function cell(v: unknown, colKey: string, nullLabel: string): string {
     return nullLabel;
   }
   if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2);
-  if (typeof v === "object") return JSON.stringify(v);
+  if (typeof v === "object") {
+    // technique: { when, how, reason } — show the words, not raw JSON.
+    if (isRecord(v) && ("when" in v || "how" in v || "reason" in v)) {
+      return [v.when, v.how, v.reason].filter((x) => x != null && x !== "").join(" · ") || "—";
+    }
+    return JSON.stringify(v);
+  }
   return String(v);
 }
 
 function DataTable({ table }: { table: Table }) {
-  const columns = table.rows.length > 0 ? Object.keys(table.rows[0]) : [];
+  const columns = (table.rows.length > 0 ? Object.keys(table.rows[0]) : []).filter((c) => !HIDE_COLUMNS.has(c));
   const nullLabel = UNKNOWN_LABEL_TABLES.has(table.key) ? "უცნობი" : "—";
   return (
     <div className="flex flex-col gap-2">

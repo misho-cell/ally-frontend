@@ -82,6 +82,33 @@ type UserProfile = {
   };
   timeline: { type: string; at: string }[];
   diagnostics?: { block: string; message: string }[];
+  // Task 5 (8 Sept): four account-state flags shown as badges up top.
+  states?: {
+    account_state?: string | null;
+    netai_subscriber?: boolean | null;
+    old_ally_paid?: boolean | null;
+    staff?: boolean | null;
+    old_ally_paid_source?: string | null;
+  };
+  // Task 9 (8 Sept): usage summary. May be absent (diagnostics says why).
+  usage?: {
+    first_real_task?: { task_id: number | string; title?: string | null; created_at?: string | null; first_action_at?: string | null } | null;
+    own_tasks?: number | null;
+    tasks_with_action?: number | null;
+    helped_on?: { asks_received?: number | null; asks_answered?: number | null; tasks_helped?: number | null } | null;
+    feedback_answers?: number | null;
+    payments?: {
+      first_payments?: { provider?: string; kind?: string; amount_usd?: number; currency?: string; paid_at?: string | null }[];
+      recorded_total?: number | null;
+      inferred?: { at?: string | null; source?: string }[];
+    } | null;
+  };
+};
+
+const ACCOUNT_STATE_LABEL: Record<string, string> = {
+  phonebook_contact: "ტელეფონის წიგნში",
+  ally_account: "ძველი Ally ანგარიში",
+  netai_user: "Netai მომხმარებელი",
 };
 
 function fillDays(data: DayCount[], days = 30): DayCount[] {
@@ -169,7 +196,8 @@ export default function AdminUserDetailPage() {
                 ⚠ ნაწილი მონაცემი ვერ ჩაიტვირთა
               </div>
             )}
-            <AccountBlock a={data.account} />
+            <AccountBlock a={data.account} states={data.states} />
+            {data.usage && <UsageBlock u={data.usage} />}
             <NetworkBlock n={data.network} />
             <ActivityBlock a={data.activity} />
             <SearchesBlock s={data.searches} />
@@ -185,7 +213,7 @@ export default function AdminUserDetailPage() {
 }
 
 /* ---------- Block 1: Account ---------- */
-function AccountBlock({ a }: { a: UserProfile["account"] }) {
+function AccountBlock({ a, states }: { a: UserProfile["account"]; states?: UserProfile["states"] }) {
   return (
     <Card title="ანგარიში">
       <div className="flex flex-wrap items-center gap-3">
@@ -193,6 +221,26 @@ function AccountBlock({ a }: { a: UserProfile["account"] }) {
         <SubBadge status={a.subscriptionStatus} tier={a.subscriptionTier} />
         {a.deletedAt && <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">წაშლილი</span>}
       </div>
+      {states && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {states.account_state && (
+            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+              {ACCOUNT_STATE_LABEL[states.account_state] ?? states.account_state}
+            </span>
+          )}
+          {states.netai_subscriber && (
+            <span className="rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-semibold text-green-700">იხდის (Netai)</span>
+          )}
+          {states.old_ally_paid && (
+            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700" title={states.old_ally_paid_source ?? undefined}>
+              ძველ Ally-ში იხდიდა
+            </span>
+          )}
+          {states.staff && (
+            <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">staff</span>
+          )}
+        </div>
+      )}
       {a.phones.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {a.phones.map((p) => (
@@ -210,6 +258,67 @@ function AccountBlock({ a }: { a: UserProfile["account"] }) {
         <KV k="პერიოდი სრულდება" v={fmtDate(a.currentPeriodEndsAt)} />
         <KV k="Paddle Customer" v={a.paddleCustomerId ?? "—"} />
       </div>
+    </Card>
+  );
+}
+
+/* ---------- Block 1b: Usage (Task 9) ---------- */
+function UsageBlock({ u }: { u: NonNullable<UserProfile["usage"]> }) {
+  const frt = u.first_real_task;
+  const helped = u.helped_on;
+  const pay = u.payments;
+  return (
+    <Card title="გამოყენება">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Kpi value={numOrDash(u.own_tasks)} label="საკუთარი მიზნები" />
+        <Kpi value={numOrDash(u.tasks_with_action)} label="ქმედებით" />
+        <Kpi value={numOrDash(helped?.asks_answered)} label="უპასუხა კითხვას" />
+        <Kpi value={numOrDash(u.feedback_answers)} label="უკუკავშირი" />
+      </div>
+
+      <div className="mt-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">პირველი რეალური მიზანი</p>
+        {frt ? (
+          <p className="mt-1 text-sm text-gray-700">
+            #{frt.task_id} {frt.title ? `— ${frt.title}` : ""}
+            <span className="text-xs text-gray-400"> · შექმნა {fmtDate(frt.created_at)}{frt.first_action_at ? ` · ქმედება ${fmtDate(frt.first_action_at)}` : ""}</span>
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-gray-400">ჯერ არ არის</p>
+        )}
+      </div>
+
+      {helped && (
+        <p className="mt-3 text-xs text-gray-500">
+          დახმარება სხვებზე: {numOrDash(helped.asks_received)} მიღებული · {numOrDash(helped.asks_answered)} ნაპასუხები · {numOrDash(helped.tasks_helped)} მიზანი
+        </p>
+      )}
+
+      {pay && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">გადახდები ({numOrDash(pay.recorded_total)})</p>
+          {(pay.first_payments ?? []).length > 0 ? (
+            <div className="mt-1 flex flex-col gap-1">
+              {pay.first_payments!.map((p, i) => (
+                <p key={i} className="text-sm text-gray-700">
+                  {p.provider} · {p.kind} · {p.amount_usd != null ? `$${p.amount_usd}` : "—"}
+                  <span className="text-xs text-gray-400"> · {fmtDate(p.paid_at)}</span>
+                </p>
+              ))}
+            </div>
+          ) : (pay.inferred ?? []).length > 0 ? (
+            <div className="mt-1 flex flex-col gap-1">
+              {pay.inferred!.map((p, i) => (
+                <p key={i} className="text-sm text-gray-500">
+                  {fmtDate(p.at)} · {p.source} <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">სავარაუდო</span>
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-gray-400">ჩანაწერი არ არის</p>
+          )}
+        </div>
+      )}
     </Card>
   );
 }
