@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
 
@@ -11,12 +11,16 @@ import { apiFetch, ApiError } from "@/lib/api";
 // row.
 //
 // Rules the UI must not break (from the backend brief):
-//   1. "არა" is a real deletion — the person leaves every future list. Confirm.
+//   1. "no" is a real deletion — the person leaves every future list. Confirm.
 //   2. "neither" is a fully valid answer. Rows may stay undecided; the server
-//      leaves anything that is not კი/არა untouched.
+//      leaves anything that is not decided untouched.
 //   3. parts.bubble may be null = "not measured", NOT zero. Draw a dash.
+//   4. (8 Sept) the server stores decisions as "yes"/"no" — Georgian is only
+//      the display. Send and compare "yes"/"no", render კი/არა.
 
 type Fit = "strong" | "moderate" | "weak" | "not_yet";
+type Tier = "BEST" | "GOOD" | "NOT_YET";
+type Plus = { code: string; note?: string | null };
 
 type Candidate = {
   phone: string;
@@ -33,15 +37,16 @@ type Candidate = {
     pull: number;
     subscribed_holders: number;
     person_confirmed: boolean;
-    // FE-7 (5 Sept): score multiplier, 1 or 0.3. 0.3 = we already asked
-    // someone about this person in the last 90 days — the low score is
-    // deliberate, not a judgement on the person.
     freshness?: number;
-    // FE-9 (5 Sept): D103 states. own_contacts/opens only on ally_account.
     state?: "phonebook_contact" | "ally_account" | "netai_user";
     own_contacts?: number | null;
     opens?: number | null;
     bubble: { savers: number; edges: number; density: number } | null;
+    // Task 5 (8 Sept):
+    tier?: Tier;
+    pluses?: Plus[];
+    doors?: { in_georgia: boolean | null; findable: boolean } | null;
+    city_source?: "facts" | "asker" | null;
   };
 };
 
@@ -49,17 +54,25 @@ type Decision = { phone: string; decision: string; note: string | null; decided_
 
 type Pending = { kind: "no"; c: Candidate } | { kind: "undo"; c: Candidate };
 
-const FIT_LABEL: Record<Fit, string> = {
-  strong: "ძლიერი",
-  moderate: "საშუალო",
-  weak: "სუსტი",
-  not_yet: "ჯერ არა",
-};
+const FIT_LABEL: Record<Fit, string> = { strong: "ძლიერი", moderate: "საშუალო", weak: "სუსტი", not_yet: "ჯერ არა" };
 const FIT_CLS: Record<Fit, string> = {
   strong: "bg-green-50 text-green-700",
   moderate: "bg-amber-50 text-amber-700",
   weak: "bg-gray-100 text-gray-600",
   not_yet: "bg-gray-50 text-gray-400",
+};
+
+const TIER_LABEL: Record<Tier, string> = { BEST: "საუკეთესო", GOOD: "კარგი", NOT_YET: "ჯერ არა" };
+const TIER_CLS: Record<Tier, string> = {
+  BEST: "bg-green-600 text-white",
+  GOOD: "bg-blue-50 text-blue-700",
+  NOT_YET: "bg-gray-100 text-gray-500",
+};
+
+// Plus-code meanings (F = founder's explicit yes). Note text comes from the
+// server per row; this is the fallback caption for the chip itself.
+const PLUS_LABEL: Record<string, string> = {
+  R1: "R1", R9: "R9", R10: "R10", R11: "R11", M: "M", F: "ფაუნდერი",
 };
 
 const STATE_LABEL: Record<string, string> = {
@@ -78,20 +91,31 @@ function num(v: number | null | undefined, digits = 0): string {
   return digits ? v.toFixed(digits) : String(v);
 }
 
+// Server stores yes/no; tolerate legacy Georgian just in case.
+function isNoDecision(d?: Decision): boolean {
+  return d?.decision === "no" || d?.decision === "არა";
+}
+function decisionLabel(d: Decision): string {
+  if (d.decision === "yes" || d.decision === "კი") return "კი";
+  if (d.decision === "no" || d.decision === "არა") return "არა";
+  return d.decision;
+}
+
 export default function TargetListReviewPage() {
   const router = useRouter();
   const [rows, setRows] = useState<Candidate[] | null>(null);
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
   const [days, setDays] = useState(30);
   const [error, setError] = useState<string | null>(null);
-  // FE-6 (5 Sept): the first build of a new `days` window takes ~45s on the
-  // backend (cached per window afterwards). Past 3s a bare spinner reads as
-  // "the page broke" — say what is happening instead.
-  const [slow, setSlow] = useState(false);
+  // FE-6 / task 1 (8 Sept): a new window is built server-side and can take a
+  // while. wait=false returns 202 immediately with state "building"; we then
+  // poll /status every 5s. Show that plainly instead of a dead spinner.
+  const [building, setBuilding] = useState(false);
   const [busyPhone, setBusyPhone] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const bail = useCallback((err: unknown) => {
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
@@ -102,34 +126,79 @@ export default function TargetListReviewPage() {
     return false;
   }, [router]);
 
+  // Returns the candidate rows, or null when the list is still building.
+  const fetchList = useCallback(async (): Promise<Candidate[] | null> => {
+    const res = await apiFetch<{ data?: unknown } & Record<string, unknown>>(
+      `/admin/target-list?days=${days}&wait=false`,
+      { admin: true },
+    );
+    const body = (res.data ?? res) as unknown;
+    if (Array.isArray(body)) return body as Candidate[];
+    // Wrapper object: either { rows/candidates: [...] } (ready) or a building
+    // state descriptor.
+    const obj = body as Record<string, unknown>;
+    const arr = Object.values(obj).find((v) => Array.isArray(v)) as unknown[] | undefined;
+    if (arr && !obj.state) return arr as Candidate[];
+    return null; // building / not ready
+  }, [days]);
+
+  const loadDecisions = useCallback(async () => {
+    const dec = await apiFetch<{ data?: { decisions?: Decision[] }; decisions?: Decision[] }>(
+      "/admin/target-list/decisions",
+      { admin: true },
+    );
+    const ds = dec.data?.decisions ?? dec.decisions ?? [];
+    setDecisions(Object.fromEntries(ds.map((d) => [d.phone, d])));
+  }, []);
+
+  const poll = useCallback(async () => {
+    try {
+      const res = await apiFetch<{ data?: { state?: string; last_error?: { message?: string } } } & Record<string, unknown>>(
+        `/admin/target-list/status?days=${days}`,
+        { admin: true },
+      );
+      const body = (res.data ?? res) as { state?: string; last_error?: { message?: string } };
+      const state = body.state;
+      if (state === "ready") {
+        const list = await fetchList();
+        if (list) { setRows(list); setBuilding(false); return; }
+      }
+      if (state === "failed") {
+        setBuilding(false);
+        setError(body.last_error?.message ?? "სიის აგება ვერ მოხერხდა");
+        return;
+      }
+      // building / not_built → keep waiting
+      pollRef.current = setTimeout(poll, 5000);
+    } catch (err) {
+      setBuilding(false);
+      bail(err);
+    }
+  }, [days, fetchList, bail]);
+
   const load = useCallback(async () => {
     setRows(null);
     setError(null);
-    setSlow(false);
-    const slowTimer = setTimeout(() => setSlow(true), 3000);
+    setBuilding(false);
+    if (pollRef.current) clearTimeout(pollRef.current);
     try {
-      const [list, dec] = await Promise.all([
-        apiFetch<{ data?: unknown } & Record<string, unknown>>(`/admin/target-list?days=${days}`, { admin: true }),
-        apiFetch<{ data?: { decisions?: Decision[] }; decisions?: Decision[] }>("/admin/target-list/decisions", { admin: true }),
-      ]);
-      const body = (list.data ?? list) as Record<string, unknown>;
-      const arr = Array.isArray(body)
-        ? body
-        : (Object.values(body).find((v) => Array.isArray(v)) as unknown[] | undefined) ?? [];
-      setRows(arr as Candidate[]);
-      const ds = dec.data?.decisions ?? dec.decisions ?? [];
-      setDecisions(Object.fromEntries(ds.map((d) => [d.phone, d])));
+      await loadDecisions();
+      const list = await fetchList();
+      if (list) { setRows(list); return; }
+      // Still building — start polling.
+      setBuilding(true);
+      pollRef.current = setTimeout(poll, 5000);
     } catch (err) {
       bail(err);
-    } finally {
-      clearTimeout(slowTimer);
-      setSlow(false);
     }
-  }, [days, bail]);
+  }, [loadDecisions, fetchList, poll, bail]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    return () => { if (pollRef.current) clearTimeout(pollRef.current); };
+  }, [load]);
 
-  async function decide(c: Candidate, decision: "კი" | "არა") {
+  async function decide(c: Candidate, decision: "yes" | "no") {
     setBusyPhone(c.phone);
     setError(null);
     try {
@@ -154,13 +223,20 @@ export default function TargetListReviewPage() {
   async function undo(c: Candidate) {
     setBusyPhone(c.phone);
     setError(null);
+    const clear = () => setDecisions((prev) => { const n = { ...prev }; delete n[c.phone]; return n; });
     try {
-      await apiFetch(`/admin/target-list/decisions/${encodeURIComponent(c.phone)}`, { method: "DELETE", admin: true });
-      setDecisions((prev) => {
-        const next = { ...prev };
-        delete next[c.phone];
-        return next;
-      });
+      // Contract moved between briefs: try the per-phone path first, fall back
+      // to the collection endpoint with the phone in the body.
+      try {
+        await apiFetch(`/admin/target-list/decisions/${encodeURIComponent(c.phone)}`, { method: "DELETE", admin: true });
+      } catch (e) {
+        if (e instanceof ApiError && (e.status === 404 || e.status === 405)) {
+          await apiFetch("/admin/target-list/decisions", { method: "DELETE", admin: true, body: { phone: c.phone } });
+        } else {
+          throw e;
+        }
+      }
+      clear();
     } catch (err) {
       bail(err);
     } finally {
@@ -201,9 +277,9 @@ export default function TargetListReviewPage() {
         {!error && rows === null && (
           <div className="flex flex-col items-center gap-3 py-12">
             <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#23261F]" />
-            {slow && (
+            {building && (
               <p className="max-w-sm text-center text-sm text-gray-500">
-                სია პირველად იგება ამ პერიოდისთვის. შეიძლება წუთამდე გასტანოს.
+                სია იგება ამ პერიოდისთვის. შეიძლება წუთამდე გასტანოს — შემოწმება ავტომატურად გრძელდება.
               </p>
             )}
           </div>
@@ -234,21 +310,41 @@ export default function TargetListReviewPage() {
                   const busy = busyPhone === c.phone;
                   const isOpen = !!open[c.phone];
                   const ev = c.parts?.fit_evidence ?? [];
+                  const tier = c.parts?.tier;
+                  const pluses = c.parts?.pluses ?? [];
                   return (
                     <tr
                       key={c.phone}
-                      className={`border-b border-gray-50 last:border-0 align-top ${d?.decision === "არა" ? "opacity-50" : ""}`}
+                      className={`border-b border-gray-50 last:border-0 align-top ${isNoDecision(d) ? "opacity-50" : ""}`}
                     >
                       <td className="px-4 py-3">
-                        <div className="font-semibold text-[#23261F]">{c.label || c.phone}</div>
-                        {/* FE-8: city is information, never a gate — no
-                            colour, no filter, nothing at all when null. */}
+                        <div className="flex items-center gap-2">
+                          {tier && (
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${TIER_CLS[tier] ?? "bg-gray-100 text-gray-500"}`}>
+                              {TIER_LABEL[tier] ?? tier}
+                            </span>
+                          )}
+                          <span className="font-semibold text-[#23261F]">{c.label || c.phone}</span>
+                        </div>
+                        {/* FE-8 / Task 5: city is information, never a gate. */}
                         <div className="text-xs text-gray-400">
                           {c.phone}{c.city ? ` · ${c.city}` : ""}
                           {c.parts?.person_confirmed && <span className="ml-1 text-green-600">✓</span>}
+                          {c.parts?.doors?.in_georgia === false && <span className="ml-1 text-gray-400">· საზღვარგარეთ</span>}
                         </div>
-                        {/* FE-9: D103 state. netai_user should never be in
-                            the list; if it is, it shows so it can be spotted. */}
+                        {pluses.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {pluses.map((p) => (
+                              <span
+                                key={p.code}
+                                title={p.note ?? undefined}
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${p.code === "F" ? "bg-green-600 text-white" : "bg-gray-100 text-gray-600"}`}
+                              >
+                                {PLUS_LABEL[p.code] ?? p.code}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         {c.parts?.state && (
                           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
                             <span className={`rounded-full px-2 py-0.5 font-semibold ${STATE_CLS[c.parts.state] ?? "bg-gray-50 text-gray-400"}`}>
@@ -278,8 +374,6 @@ export default function TargetListReviewPage() {
                       </td>
                       <td className="px-3 py-3 text-[#23261F]">
                         {num(c.score, 3)}
-                        {/* FE-7: freshness < 1 means the score was pulled
-                            down on purpose — say so, or the row lies. */}
                         {c.parts?.freshness != null && c.parts.freshness < 1 && (
                           <div
                             className="mt-0.5 whitespace-nowrap text-[11px] text-amber-700"
@@ -307,8 +401,8 @@ export default function TargetListReviewPage() {
                       <td className="px-4 py-3 text-right">
                         {d ? (
                           <div className="flex flex-col items-end gap-1">
-                            <span className={`text-sm font-semibold ${d.decision === "არა" ? "text-red-600" : "text-green-700"}`}>
-                              {d.decision}
+                            <span className={`text-sm font-semibold ${isNoDecision(d) ? "text-red-600" : "text-green-700"}`}>
+                              {decisionLabel(d)}
                             </span>
                             {d.note && <span className="max-w-[160px] truncate text-xs text-gray-400" title={d.note}>{d.note}</span>}
                             <button
@@ -326,7 +420,7 @@ export default function TargetListReviewPage() {
                               <button
                                 type="button"
                                 disabled={busy}
-                                onClick={() => decide(c, "კი")}
+                                onClick={() => decide(c, "yes")}
                                 className="rounded-lg bg-[#23261F] px-3 py-1 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
                               >
                                 კი
@@ -385,7 +479,7 @@ export default function TargetListReviewPage() {
               <button
                 type="button"
                 disabled={!!busyPhone}
-                onClick={() => (pending.kind === "no" ? decide(pending.c, "არა") : undo(pending.c))}
+                onClick={() => (pending.kind === "no" ? decide(pending.c, "no") : undo(pending.c))}
                 className={`flex w-32 items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60 ${pending.kind === "no" ? "bg-red-600" : "bg-[#23261F]"}`}
               >
                 {busyPhone ? (

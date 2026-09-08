@@ -25,8 +25,7 @@ const L = {
 export default function InstallPrompt() {
   const s = L[getLocale()];
   const [platform, setPlatform] = useState<Platform>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -34,8 +33,7 @@ export default function InstallPrompt() {
 
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (navigator as any).standalone === true;
+      navigator.standalone === true;
 
     if (isStandalone) return;
 
@@ -46,7 +44,7 @@ export default function InstallPrompt() {
       return;
     }
 
-    const handler = (e: Event) => {
+    const handler = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
       setDeferredPrompt(e);
       setPlatform("android");

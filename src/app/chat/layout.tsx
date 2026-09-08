@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { authHeaders, handleAdminTokenMisuse } from "@/lib/deviceId";
+import { getSpeechRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { t, tf, fmtDateShort } from "@/lib/i18n";
 import { useUserName, clearUserName } from "@/lib/user";
 import Modal from "@/components/Modal";
@@ -86,14 +87,6 @@ function fmtClock(iso?: string): string {
   return sameDay
     ? d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
     : fmtDateShort(d);
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getSpeechRecognition(): any {
-  if (typeof window === "undefined") return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const w = window as any;
-  return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
 
 // Row animation box. Memoized (22 Aug #7): list re-renders were recreating the
@@ -184,8 +177,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const homeInputRef = useRef<HTMLInputElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const threadsRef = useRef<Thread[]>([]);
   const loadingMoreRef = useRef(false);
   // Unread baseline (ticket 6 #13): updated_at of every thread when it was
@@ -282,7 +274,12 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         const body = await res.json().catch(() => ({}));
         if (handleAdminTokenMisuse(res.status, body)) return;
         if (isSubscriptionError(res.status, body)) {
-          router.replace("/pricing");
+          // Task 4 (8 Sept): an expired account can still open a single
+          // incoming_ask thread by deep link, even though GET /threads is
+          // gated. Don't bounce to /pricing just because the sidebar list
+          // 403'd — only when the user is on the list itself. The thread
+          // page decides for its own thread.
+          if (pathnameRef.current === "/chat") router.replace("/pricing");
           return;
         }
         return;
@@ -765,8 +762,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     recognitionRef.current = rec;
     setRecording(true);
     let finalText = "";
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onresult = (e: any) => {
+    rec.onresult = (e) => {
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const tr = e.results[i][0].transcript;

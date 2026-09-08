@@ -3,14 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useThreads, taskStatusOf } from "@/contexts/ThreadsContext";
 import { t } from "@/lib/i18n";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getSpeechRecognition(): any {
-  if (typeof window === "undefined") return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const w = window as any;
-  return w.SpeechRecognition || w.webkitSpeechRecognition || null;
-}
+import { getSpeechRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 
 // Desktop right pane, no goal selected: dogs clip + one line + the goal
 // composer (ticket 6 #1). D20 (22 Aug): mic AND send are both available while
@@ -20,8 +13,7 @@ export default function ChatIndexPage() {
   const [input, setInput] = useState("");
   const [recording, setRecording] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   const hasGoals = threads.some((th) =>
     taskStatusOf(th, threadStates[String(th.id)]) !== null
@@ -50,8 +42,7 @@ export default function ChatIndexPage() {
     recognitionRef.current = rec;
     setRecording(true);
     let finalText = "";
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rec.onresult = (e: any) => {
+    rec.onresult = (e) => {
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const tr = e.results[i][0].transcript;

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
+import { isRecord, recordItems, unwrapData } from "@/lib/payload";
 
 // Product-facts editor (task 57): the nine texts the assistant serves via
 // get_netai_info. GET /admin/netai-info lists them; PUT /admin/netai-info/:topic
@@ -23,26 +24,24 @@ function fmtDateFull(iso: string | null): string {
 
 // The endpoint shape is young — accept an array, {topics: []}, or an object
 // map, wrapped in {success,data} or bare.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalize(raw: any): InfoTopic[] {
-  const d = raw?.data ?? raw;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let arr: any[] = [];
+function normalize(raw: unknown): InfoTopic[] {
+  const d = unwrapData(raw);
+  let arr: unknown[] = [];
   if (Array.isArray(d)) arr = d;
-  else if (Array.isArray(d?.topics)) arr = d.topics;
-  else if (d && typeof d === "object") {
+  else if (isRecord(d) && Array.isArray(d.topics)) arr = d.topics;
+  else if (isRecord(d)) {
     arr = Object.entries(d)
       .filter(([k]) => k !== "success")
       .map(([topic, v]) =>
-        v && typeof v === "object" ? { topic, ...(v as object) } : { topic, content: String(v ?? "") }
+        isRecord(v) ? { topic, ...v } : { topic, content: String(v ?? "") }
       );
   }
-  return arr
-    .filter((x) => x && x.topic)
+  return recordItems(arr)
+    .filter((x) => Boolean(x.topic))
     .map((x) => ({
       topic: String(x.topic),
       content: String(x.content ?? ""),
-      updated_at: x.updated_at ?? null,
+      updated_at: typeof x.updated_at === "string" ? x.updated_at : null,
     }));
 }
 

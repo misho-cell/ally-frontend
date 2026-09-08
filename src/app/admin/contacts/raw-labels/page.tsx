@@ -3,15 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
+import { pickArray, recordItems, unwrapData } from "@/lib/payload";
 
 // Raw contact labels (31 Aug, D40): GET /admin/contacts/raw-labels.
 // Read-only — no write endpoint exists for this.
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rows(raw: any): Record<string, unknown>[] {
-  const d = raw?.data ?? raw;
-  const arr = Array.isArray(d) ? d : Array.isArray(d?.rows) ? d.rows : Array.isArray(d?.labels) ? d.labels : [];
-  return arr.filter((x: unknown) => x && typeof x === "object");
+function rows(raw: unknown): Record<string, unknown>[] {
+  return recordItems(pickArray(unwrapData(raw), ["rows", "labels"]));
 }
 
 function cell(v: unknown): string {

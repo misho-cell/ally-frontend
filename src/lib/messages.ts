@@ -55,6 +55,7 @@ export async function fetchMessagePage(
       forceLogin();
       return null;
     }
+    if (res.status === 403) throw new Error("subscription_required");
     if (!res.ok) {
       pagingSupported = false;
       return { messages: [], paged: false };
@@ -70,6 +71,7 @@ export async function fetchMessagePage(
       forceLogin();
       return null;
     }
+    if (res.status === 403) throw new Error("subscription_required");
     if (res.ok) {
       const json = await res.json();
       const raw = json.data ?? json;
@@ -83,6 +85,7 @@ export async function fetchMessagePage(
     forceLogin();
     return null;
   }
+  if (res.status === 403) throw new Error("subscription_required");
   if (!res.ok) throw new Error(String(res.status));
   const json = await res.json();
   const raw = json.data ?? json;

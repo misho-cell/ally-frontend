@@ -25,11 +25,9 @@ const L = {
 
 function isStandalone(): boolean {
   if (typeof window === "undefined") return true;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const nav = navigator as any;
   return (
     window.matchMedia?.("(display-mode: standalone)").matches === true ||
-    nav.standalone === true
+    navigator.standalone === true
   );
 }
 

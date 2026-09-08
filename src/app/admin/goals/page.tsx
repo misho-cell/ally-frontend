@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
+import { pickArray, recordItems, unwrapData } from "@/lib/payload";
 
 // Goals (31 Aug): GET /admin/goals — each row is a task/goal with its brief,
 // scheduled wake-ups, and any goal_question it's blocked on. Read-only; no
@@ -33,11 +34,8 @@ function fmtDate(iso?: string | null): string {
   return d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalize(raw: any): Goal[] {
-  const d = raw?.data ?? raw;
-  const arr = Array.isArray(d) ? d : Array.isArray(d?.goals) ? d.goals : Array.isArray(d?.rows) ? d.rows : [];
-  return arr.filter((x: unknown) => x && typeof x === "object");
+function normalize(raw: unknown): Goal[] {
+  return recordItems(pickArray(unwrapData(raw), ["goals", "rows"])) as unknown as Goal[];
 }
 
 export default function AdminGoalsPage() {

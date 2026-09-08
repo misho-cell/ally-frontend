@@ -112,19 +112,19 @@ export default function OnboardingContactsPage() {
     setError("");
     setLoading(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const raw = await (navigator as any).contacts.select(
+      if (!navigator.contacts) throw new Error(s.importError);
+      const raw = await navigator.contacts.select(
         ["name", "tel", "email", "address"],
         { multiple: true }
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const contacts: PendingContact[] = raw.map((c: any) => ({
-        name: c.name?.[0] ?? "",
-        phones: (c.tel ?? []) as string[],
-        email: c.email?.[0] as string | undefined,
-        city: c.address?.[0]?.city as string | undefined,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      })).filter((c: any) => c.name && c.phones.length > 0);
+      const contacts: PendingContact[] = raw
+        .map((c): PendingContact => ({
+          name: c.name?.[0] ?? "",
+          phones: c.tel ?? [],
+          email: c.email?.[0],
+          city: c.address?.[0]?.city,
+        }))
+        .filter((c) => c.name && c.phones.length > 0);
 
       // T4: check who's already on Netai before the real import. Best-effort
       // — if the match call fails, just import straight away.

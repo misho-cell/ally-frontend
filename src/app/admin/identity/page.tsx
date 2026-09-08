@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
+import { isRecord, pickArray, recordItems, unwrapData } from "@/lib/payload";
 
 // Identity (31 Aug, D35): GET /admin/identity/summary (KPIs) + GET
 // /admin/identity/candidates (the approval queue). Approve/reject call
@@ -32,17 +33,13 @@ function prettifyKey(key: string): string {
   return key.replace(/_/g, " ");
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeCandidates(raw: any): Candidate[] {
-  const d = raw?.data ?? raw;
-  const arr = Array.isArray(d) ? d : Array.isArray(d?.candidates) ? d.candidates : Array.isArray(d?.rows) ? d.rows : [];
-  return arr.filter((x: unknown) => x && typeof x === "object");
+function normalizeCandidates(raw: unknown): Candidate[] {
+  return recordItems(pickArray(unwrapData(raw), ["candidates", "rows"])) as unknown as Candidate[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeSummary(raw: any): Summary {
-  const d = raw?.data ?? raw;
-  if (!d || typeof d !== "object") return {};
+function normalizeSummary(raw: unknown): Summary {
+  const d = unwrapData(raw);
+  if (!isRecord(d)) return {};
   const out: Summary = {};
   for (const [k, v] of Object.entries(d)) {
     if (typeof v === "number" || typeof v === "string") out[k] = v;

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
+import { pickArray, recordItems, unwrapData } from "@/lib/payload";
 
 // Question-bank editor (task 25, Part H #1): 43 rows that drive the profile
 // enrichment questions. GET lists everything; PUT does a PARTIAL update per
@@ -65,12 +66,9 @@ function toDraft(q: Question): Draft {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalize(raw: any): Question[] {
-  const d = raw?.data ?? raw;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const arr: any[] = Array.isArray(d) ? d : Array.isArray(d?.questions) ? d.questions : [];
-  return arr.filter((x) => x && x.question_id);
+function normalize(raw: unknown): Question[] {
+  const arr = recordItems(pickArray(unwrapData(raw), ["questions"]));
+  return arr.filter((x) => Boolean(x.question_id)) as unknown as Question[];
 }
 
 export default function QuestionBankAdminPage() {

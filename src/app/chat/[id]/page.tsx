@@ -6,6 +6,7 @@ import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
 import Modal from "@/components/Modal";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
+import { getSpeechRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { fetchMessagePage } from "@/lib/messages";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
@@ -122,14 +123,6 @@ function detectLang(): string {
   if (SUPPORTED_LANGS.includes(nav)) return nav;
   const base = nav.split("-")[0];
   return SUPPORTED_LANGS.find((l) => l.startsWith(base)) ?? "en-US";
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getSpeechRecognition(): any {
-  if (typeof window === "undefined") return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const w = window as any;
-  return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
 
 type VoiceState = "idle" | "recording" | "processing";
@@ -320,6 +313,9 @@ export default function ThreadPage() {
   const [rateLimitedUntil, setRateLimitedUntil] = useState(0);
   const rateLimited = rateLimitedUntil > Date.now();
   const [limitHit, setLimitHit] = useState(false);
+  // Task 12 (8 Sept): the exact 402 error text from the server (it changes
+  // wording per window — calendar_month vs calendar_week). Shown verbatim.
+  const [limitMsg, setLimitMsg] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
   const [packages, setPackages] = useState<TopupPackage[]>([]);
   // Ticket 6 #7: design-system modals instead of window.prompt/confirm.
@@ -334,8 +330,7 @@ export default function ThreadPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const inputBeforeRecordingRef = useRef("");
   const confirmedTranscriptRef = useRef("");
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -637,8 +632,7 @@ export default function ThreadPage() {
     recognitionRef.current = recognition;
     setVoiceState("recording");
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    recognition.onresult = (e: any) => {
+    recognition.onresult = (e) => {
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const tr = e.results[i][0].transcript;
@@ -663,8 +657,7 @@ export default function ThreadPage() {
       setTimeout(() => inputRef.current?.focus(), 50);
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    recognition.onerror = (e: any) => {
+    recognition.onerror = (e) => {
       recognitionRef.current = null;
       setVoiceState("idle");
       if (e.error === "not-allowed") {
@@ -718,8 +711,17 @@ export default function ThreadPage() {
         );
         setLoadPhase("done");
       })
-      .catch(() => {
-        if (!cancelled) setLoadPhase(msgCountRef.current > 0 ? "done" : "failed");
+      .catch((err) => {
+        if (cancelled) return;
+        // Deep link into an incoming_ask on an expired account (8 Sept): the
+        // thread itself is reachable, only GET /threads is gated. So we only
+        // send the user to /pricing when THIS thread returns 403 — not just
+        // because the sidebar list did.
+        if (err instanceof Error && err.message === "subscription_required") {
+          router.replace("/pricing");
+          return;
+        }
+        setLoadPhase(msgCountRef.current > 0 ? "done" : "failed");
       })
       .finally(() => {
         if (slowTimer) clearTimeout(slowTimer);
@@ -888,6 +890,7 @@ export default function ThreadPage() {
           const body = await res.json().catch(() => ({}));
           if (body.reason === "insufficient_tokens") {
             setLimitHit(true);
+            setLimitMsg(typeof body.error === "string" ? body.error : null);
             refreshTokens();
             setThreadStates((prev) =>
               updateThreadState(prev, threadId, (ts) => ({ ...ts, loading: false, runId: null, progress: null }))
@@ -1498,7 +1501,11 @@ export default function ThreadPage() {
               {isTrialWallet ? t("trialUsedUp") : t("monthlyUsedUp")}
             </p>
             <p style={{ fontSize: "13.5px", color: "var(--ink-soft)" }}>
-              {isTrialWallet
+              {/* Task 12: prefer the server's own 402 text (it names the right
+                  window); fall back to the derived wording when absent. */}
+              {limitMsg
+                ? limitMsg
+                : isTrialWallet
                 ? t("subscribeToContinue")
                 : packages.length > 0
                 ? tf("renewsOrTopup", { date: nextRenewalDate() })

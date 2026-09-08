@@ -21,8 +21,7 @@ const listeners = new Set<() => void>();
 let loadPromise: Promise<void> | null = null;
 
 function paddle(): PaddleGlobal | undefined {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any).Paddle as PaddleGlobal | undefined;
+  return (window as Window & { Paddle?: PaddleGlobal }).Paddle;
 }
 
 export function ensurePaddle(): Promise<void> {

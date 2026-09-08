@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
+import { isRecord, recordItems, unwrapData } from "@/lib/payload";
 
 // Lab: a single viewer for the raw-JSON-only admin endpoints (25 Aug round —
 // target-list T7, chorus/campaigns T8, unmet-needs T6, lab-report T16). No
@@ -29,10 +30,9 @@ const TABS: Tab[] = [
 // vanish — extractTables only falls back to them when no array exists. For
 // /gates those scalars are the headline (865 in → 489 survived → 22 listed),
 // so they get their own summary strip above the tables.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractScalars(raw: any): [string, unknown][] {
-  const d = raw?.data ?? raw;
-  if (!d || typeof d !== "object" || Array.isArray(d)) return [];
+function extractScalars(raw: unknown): [string, unknown][] {
+  const d = unwrapData(raw);
+  if (!isRecord(d)) return [];
   const hasArray = Object.values(d).some((v) => Array.isArray(v));
   if (!hasArray) return []; // the single-row fallback table already shows them
   return Object.entries(d).filter(([, v]) => typeof v !== "object" || v === null);
@@ -53,14 +53,13 @@ function prettifyKey(key: string): string {
   return key.replace(/_/g, " ");
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractTables(raw: any): Table[] {
-  const d = raw?.data ?? raw;
+function extractTables(raw: unknown): Table[] {
+  const d = unwrapData(raw);
   if (Array.isArray(d)) {
-    const rows = d.filter((x) => x && typeof x === "object");
+    const rows = recordItems(d);
     return rows.length > 0 ? [{ key: "main", title: "", rows }] : [];
   }
-  if (!d || typeof d !== "object") return [];
+  if (!isRecord(d)) return [];
 
   const tables: Table[] = [];
   // A wrapper array under a conventional key (rows/items/<tab-key>) is the
@@ -69,7 +68,7 @@ function extractTables(raw: any): Table[] {
   const primaryKeys = ["rows", "items", "results", "list"];
   for (const [key, value] of Object.entries(d)) {
     if (!Array.isArray(value) || value.length === 0) continue;
-    const rows = value.filter((x) => x && typeof x === "object");
+    const rows = recordItems(value);
     if (rows.length === 0) continue;
     tables.push({
       key,
