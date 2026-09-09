@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
 import { getLocale } from "@/lib/i18n";
+import ToneCard from "@/components/ToneCard";
 
 // Data rights (C2): show what we store (GET /privacy/my-data/summary), export
 // everything (GET /privacy/my-data/export, 22 Aug #6), re-import contacts
@@ -380,6 +381,9 @@ export default function DataRightsPage() {
 
             {/* Network tiers (F6, 30 Aug) — hidden entirely if empty. */}
             <NetworkTiersCard title={s.tiersTitle} />
+
+            {/* How Netai talks to me (Task 2, 9 Sept) */}
+            <ToneCard />
 
             {/* Contacts re-import (23 Aug #3, task 53) — the same flow as
                 onboarding; the OS asks for permission again. */}
