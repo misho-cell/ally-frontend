@@ -28,6 +28,12 @@ const FUNNEL_LABELS: Record<string, string> = {
   searched: "მოძებნა",
   requested_intro: "გაცნობა მოითხოვა",
   subscribed: "გამოიწერა",
+  // Referral funnel steps (Task 66, 9 Sept): `issued` was renamed to
+  // `link_shown`; showing a link is not "sent" — `shared` is.
+  link_shown: "ბმული ნახა",
+  shared: "გააზიარა",
+  opened: "გახსნა",
+  registered: "დარეგისტრირდა ბმულით",
 };
 
 const SEARCH_LABELS: Record<string, string> = {
