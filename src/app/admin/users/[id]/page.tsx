@@ -91,6 +91,8 @@ type UserProfile = {
     staff?: boolean | null;
     old_ally_paid_source?: string | null;
   };
+  // Task 12 (9 Sept): invite cohort the account registered through, or null.
+  cohort?: { code: string; name?: string | null; day: number; trial_days: number; trial_ends_at?: string | null } | null;
   // Task 9 (8 Sept): usage summary. May be absent (diagnostics says why).
   usage?: {
     first_real_task?: { task_id: number | string; title?: string | null; created_at?: string | null; first_action_at?: string | null } | null;
@@ -197,7 +199,7 @@ export default function AdminUserDetailPage() {
                 ⚠ ნაწილი მონაცემი ვერ ჩაიტვირთა
               </div>
             )}
-            <AccountBlock a={data.account} states={data.states} />
+            <AccountBlock a={data.account} states={data.states} cohort={data.cohort ?? null} />
             <PilotThreadsCard userId={id} />
             {data.usage && <UsageBlock u={data.usage} />}
             <NetworkBlock n={data.network} />
@@ -215,7 +217,7 @@ export default function AdminUserDetailPage() {
 }
 
 /* ---------- Block 1: Account ---------- */
-function AccountBlock({ a, states }: { a: UserProfile["account"]; states?: UserProfile["states"] }) {
+function AccountBlock({ a, states, cohort }: { a: UserProfile["account"]; states?: UserProfile["states"]; cohort?: UserProfile["cohort"] }) {
   return (
     <Card title="ანგარიში">
       <div className="flex flex-wrap items-center gap-3">
@@ -242,6 +244,12 @@ function AccountBlock({ a, states }: { a: UserProfile["account"]; states?: UserP
             <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">staff</span>
           )}
         </div>
+      )}
+      {cohort && (
+        <p className="mt-3 text-sm text-gray-700" title={cohort.name ?? undefined}>
+          ჯგუფი: <span className="font-mono font-semibold">{cohort.code}</span>, დღე {cohort.day}/{cohort.trial_days}
+          {cohort.trial_ends_at && <span className="text-xs text-gray-400"> · ტრიალი სრულდება {fmtDate(cohort.trial_ends_at)}</span>}
+        </p>
       )}
       {a.phones.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
