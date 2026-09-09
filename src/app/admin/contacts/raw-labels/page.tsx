@@ -20,13 +20,20 @@ function cell(v: unknown): string {
 
 export default function AdminContactsRawLabelsPage() {
   const router = useRouter();
-  const [data, setData] = useState<Record<string, unknown>[] | null>(null);
+  const [data, setData] = useState<Record<string, unknown>[] | null>([]);
   const [error, setError] = useState<string | null>(null);
+  // Task 44 (9 Sept): the route wants a phone / contact id — no blind fetch.
+  const [input, setInput] = useState("");
+  const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
+    const q = query.trim();
+    if (!q) return;
     setError(null);
+    setData(null);
     try {
-      const res = await apiFetch<unknown>("/admin/contacts/raw-labels", { admin: true });
+      const key = /^\+?\d[\d\s-]*$/.test(q) ? "phone" : "contact_id";
+      const res = await apiFetch<unknown>(`/admin/contacts/raw-labels?${key}=${encodeURIComponent(q)}`, { admin: true });
       setData(rows(res));
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
@@ -36,7 +43,7 @@ export default function AdminContactsRawLabelsPage() {
       setError(err instanceof ApiError ? err.message : "ჩატვირთვა ვერ მოხერხდა");
       setData([]);
     }
-  }, [router]);
+  }, [router, query]);
 
   useEffect(() => {
     load();
@@ -51,9 +58,17 @@ export default function AdminContactsRawLabelsPage() {
           <a href="/admin" className="text-sm text-gray-400 hover:text-gray-600 transition">← ადმინი</a>
           <h1 className="text-lg font-bold text-[#23261F]">კონტაქტების ნედლი ლეიბლები</h1>
         </div>
-        <button type="button" onClick={load} className="rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-600 transition hover:bg-gray-50">
-          განახლება
-        </button>
+        <form onSubmit={(e) => { e.preventDefault(); setQuery(input); }} className="flex items-center gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="ტელეფონი ან კონტაქტის id"
+            className="w-52 rounded-xl border border-gray-200 px-3 py-2 text-sm text-[#23261F]"
+          />
+          <button type="submit" disabled={!input.trim()} className="rounded-xl bg-[#23261F] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
+            ძებნა
+          </button>
+        </form>
       </header>
 
       <div className="mx-auto max-w-5xl px-4 py-6 flex flex-col gap-4">
@@ -64,7 +79,7 @@ export default function AdminContactsRawLabelsPage() {
             <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#23261F]" />
           </div>
         ) : data.length === 0 && !error ? (
-          <p className="py-8 text-center text-sm text-gray-400">მონაცემები ვერ მოიძებნა</p>
+          <p className="py-8 text-center text-sm text-gray-400">{query.trim() ? "მონაცემები ვერ მოიძებნა" : "შეიყვანე ტელეფონი ან კონტაქტის id"}</p>
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
             <table className="w-full text-left text-sm">

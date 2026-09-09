@@ -74,7 +74,9 @@ function ShareInviteButton({ url, label }: { url: string; label: string }) {
   async function share() {
     try {
       if (navigator.share) {
-        await navigator.share({ url });
+        // Task 39 (D54): text AND url in the sheet, so WhatsApp gets a
+        // ready-to-send message, not a bare link.
+        await navigator.share({ text: label, url });
         recordShared();
         return;
       }

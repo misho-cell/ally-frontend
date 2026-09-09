@@ -212,6 +212,9 @@ export default function TargetListReviewPage() {
         ...prev,
         [c.phone]: { phone: c.phone, decision, note: note || null, decided_by: null, updated_at: new Date().toISOString() },
       }));
+      // Task 24: the server clears its list cache on a decision — re-read
+      // quietly (no spinner) so the row order/pluses reflect it.
+      fetchList().then((l) => { if (l) setRows(l); }).catch(() => {});
     } catch (err) {
       bail(err);
     } finally {
@@ -230,6 +233,7 @@ export default function TargetListReviewPage() {
       // decision to clear — not an error, and clearing locally is still right.
       await apiFetch(`/admin/target-list/decisions/${encodeURIComponent(c.phone)}`, { method: "DELETE", admin: true });
       clear();
+      fetchList().then((l) => { if (l) setRows(l); }).catch(() => {});
     } catch (err) {
       bail(err);
     } finally {
@@ -366,7 +370,7 @@ export default function TargetListReviewPage() {
                         )}
                       </td>
                       <td className="px-3 py-3 text-[#23261F]">
-                        {num(c.score, 3)}
+                        {num(c.score, 2)}
                         {c.parts?.freshness != null && c.parts.freshness < 1 && (
                           <div
                             className="mt-0.5 whitespace-nowrap text-[11px] text-amber-700"

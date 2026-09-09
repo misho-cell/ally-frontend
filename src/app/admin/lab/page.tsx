@@ -108,7 +108,7 @@ function cell(v: unknown, colKey: string, nullLabel: string): string {
   return String(v);
 }
 
-function DataTable({ table }: { table: Table }) {
+function DataTable({ table, onUndo }: { table: Table; onUndo?: (row: Record<string, unknown>) => void }) {
   const columns = (table.rows.length > 0 ? Object.keys(table.rows[0]) : []).filter((c) => !HIDE_COLUMNS.has(c));
   const nullLabel = UNKNOWN_LABEL_TABLES.has(table.key) ? "უცნობი" : "—";
   return (
@@ -125,6 +125,7 @@ function DataTable({ table }: { table: Table }) {
                   {col}
                 </th>
               ))}
+              {onUndo && <th className="px-4 py-2.5" />}
             </tr>
           </thead>
           <tbody>
@@ -132,9 +133,14 @@ function DataTable({ table }: { table: Table }) {
               <tr key={i} className="border-b border-gray-50 last:border-0">
                 {columns.map((col) => (
                   <td key={col} className="whitespace-nowrap px-4 py-2.5 text-[#23261F]">
-                    {cell(row[col], col, nullLabel)}
+                    {col === "decision" ? (row[col] === "yes" || row[col] === "კი" ? "კი" : row[col] === "no" || row[col] === "არა" ? "არა" : cell(row[col], col, nullLabel)) : cell(row[col], col, nullLabel)}
                   </td>
                 ))}
+                {onUndo && (
+                  <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                    <button type="button" onClick={() => onUndo(row)} className="text-xs text-gray-500 hover:text-red-600">უკან წაღება</button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -226,7 +232,22 @@ export default function LabPage() {
         {tables && tables.length > 0 && (
           <div className="flex flex-col gap-6">
             {tables.map((table) => (
-              <DataTable key={table.key} table={table} />
+              <DataTable
+                key={table.key}
+                table={table}
+                // Task 24 (9 Sept): a "no" must be reversible from the decisions
+                // tab too — DELETE the phone, then reload the list.
+                onUndo={active.key === "decisions" ? async (row) => {
+                  const phone = String(row.phone ?? "");
+                  if (!phone) return;
+                  try {
+                    await apiFetch(`/admin/target-list/decisions/${encodeURIComponent(phone)}`, { method: "DELETE", admin: true });
+                    load(active);
+                  } catch (err) {
+                    setError(err instanceof ApiError ? err.message : "ვერ შესრულდა");
+                  }
+                } : undefined}
+              />
             ))}
           </div>
         )}

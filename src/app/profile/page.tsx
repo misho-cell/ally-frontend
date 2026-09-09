@@ -24,6 +24,8 @@ const L = {
     title: "Profile",
     tokens: "Tokens",
     renews: (d: string) => `Renews ${d}`,
+    perWeek: "weekly",
+    perMonth: "monthly",
     usedOf: (spent: string, granted: string) => `${spent} of ${granted} used this period`,
     trialBalance: "Trial balance — subscribe to keep going",
     addTokens: "Add tokens",
@@ -83,6 +85,8 @@ const L = {
     title: "პროფილი",
     tokens: "ტოკენები",
     renews: (d: string) => `განახლდება: ${d}`,
+    perWeek: "კვირაში",
+    perMonth: "თვეში",
     usedOf: (spent: string, granted: string) => `ამ პერიოდში დახარჯულია ${spent} / ${granted}`,
     trialBalance: "საცდელი ბალანსი. გასაგრძელებლად გამოიწერე.",
     addTokens: "ტოკენების დამატება",
@@ -162,6 +166,10 @@ type TokenBalance = {
   balance: number;
   grantedThisPeriod: number;
   spentThisPeriod: number;
+  // Task 34 (9 Sept, D133): the server owns the reset date and the window;
+  // the client no longer computes "first of next month" itself.
+  window?: "calendar_week" | "calendar_month" | string;
+  resetsAt?: string | null;
 };
 
 type TopupPackage = {
@@ -613,8 +621,11 @@ function TokensWidget() {
       )}
       <div className="flex items-baseline justify-between">
         <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.tokens}</h2>
-        {tokens && !isTrial && granted > 0 && (
-          <span style={{ fontSize: "12px", color: "var(--meta)" }}>{s.renews(nextRenewalDate())}</span>
+        {tokens && !isTrial && granted > 0 && tokens.resetsAt && (
+          <span style={{ fontSize: "12px", color: "var(--meta)" }}>
+            {s.renews(fmtDateLoc(tokens.resetsAt))}
+            {tokens.window === "calendar_week" ? ` (${s.perWeek})` : tokens.window === "calendar_month" ? ` (${s.perMonth})` : ""}
+          </span>
         )}
       </div>
 

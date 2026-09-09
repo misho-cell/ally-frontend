@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { adminAuthHeaders } from "@/lib/deviceId";
 import { fmtDate, fmtDateTime, fmtRelative, isFuture } from "@/lib/date";
+import PilotThreadsCard from "@/components/PilotThreadsCard";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const ACCENT = "#23261F";
@@ -49,7 +50,7 @@ type UserProfile = {
   network: {
     contactsCount: number; tagsCount: number; blockedCount: number;
     deceasedCount: number; firstDegree: number | null; secondDegree: number | null;
-    tiersByColour?: Record<string, number>;
+    tiersByColour?: Record<string, number> | { label: string; count: number }[];
   };
   activity: {
     threadsCount: number; messageCount: number;
@@ -197,6 +198,7 @@ export default function AdminUserDetailPage() {
               </div>
             )}
             <AccountBlock a={data.account} states={data.states} />
+            <PilotThreadsCard userId={id} />
             {data.usage && <UsageBlock u={data.usage} />}
             <NetworkBlock n={data.network} />
             <ActivityBlock a={data.activity} />
@@ -325,7 +327,16 @@ function UsageBlock({ u }: { u: NonNullable<UserProfile["usage"]> }) {
 
 /* ---------- Block 2: Network ---------- */
 function NetworkBlock({ n }: { n: UserProfile["network"] }) {
-  const tiers = n.tiersByColour ? Object.entries(n.tiersByColour) : [];
+  // Task 79 (P0, 9 Sept): the server sends tiersByColour as an ARRAY of
+  // { label, count }; Object.entries() on it produced ["0", {…}] pairs and the
+  // render blew up on every account with a non-empty tier list. Accept both
+  // the array and the legacy object shape.
+  const raw = n.tiersByColour;
+  const tiers: [string, number][] = Array.isArray(raw)
+    ? raw.map((t) => [String(t.label), Number(t.count)] as [string, number])
+    : raw
+    ? Object.entries(raw).map(([k, v]) => [k, Number(v)] as [string, number])
+    : [];
   return (
     <Card title="ქსელი">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

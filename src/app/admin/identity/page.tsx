@@ -78,6 +78,25 @@ export default function AdminIdentityPage() {
     load();
   }, [load]);
 
+  // Task 24 (9 Sept): undo the last approve/reject — POST /admin/identity/unmerge
+  // { id } puts the pair back into pending.
+  const [lastActed, setLastActed] = useState<string | null>(null);
+  async function unmerge() {
+    if (!lastActed) return;
+    setBusyId(lastActed);
+    setError(null);
+    try {
+      await apiFetch<unknown>("/admin/identity/unmerge", { method: "POST", admin: true, body: { id: lastActed } });
+      setNotice(`დაბრუნდა pending-ში (#${lastActed})`);
+      setLastActed(null);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "ვერ შესრულდა");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function act(id: string | number, action: "approve" | "reject") {
     const key = String(id);
     setBusyId(key);
@@ -89,6 +108,7 @@ export default function AdminIdentityPage() {
         admin: true,
       });
       setNotice(action === "approve" ? `დამტკიცდა ✓ (#${key})` : `უარყოფილია (#${key})`);
+      setLastActed(key);
       setCandidates((prev) => (prev ? prev.filter((c) => String(c.id) !== key) : prev));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "ვერ შესრუცდა");
@@ -111,7 +131,16 @@ export default function AdminIdentityPage() {
 
       <div className="mx-auto max-w-4xl px-4 py-6 flex flex-col gap-4">
         {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 whitespace-pre-wrap">{error}</div>}
-        {notice && <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">{notice}</div>}
+        {notice && (
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
+            <span>{notice}</span>
+            {lastActed && (
+              <button type="button" disabled={!!busyId} onClick={unmerge} className="text-xs font-semibold underline disabled:opacity-50">
+                უკან წაღება
+              </button>
+            )}
+          </div>
+        )}
 
         {summary && Object.keys(summary).length > 0 && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
