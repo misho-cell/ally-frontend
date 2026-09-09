@@ -57,7 +57,7 @@ export default function PromptBlocksPage() {
   // სვიჩი სიიდანვე — გამორთვაზე დადასტურება (საავარიო მუხრუჭი).
   async function toggleBlock(block: PromptBlock) {
     if (block.enabled) {
-      const ok = window.confirm(`ბლოკი ყველა იუზერზე გამოირთვება — გავაგრძელო?\n\n(${block.name})`);
+      const ok = window.confirm(`ბლოკი ყველა იუზერზე გამოირთვება, გავაგრძელო?\n\n(${block.name})`);
       if (!ok) return;
     }
     setError(null);

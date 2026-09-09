@@ -46,6 +46,7 @@ export default function InviteCohortsPage() {
   const [trialDays, setTrialDays] = useState(20);
   const [note, setNote] = useState("");
   const [members, setMembers] = useState<Record<string, Member[]>>({});
+  const [memberError, setMemberError] = useState<Record<string, string>>({});
   const [openCode, setOpenCode] = useState<string | null>(null);
   const [busyCode, setBusyCode] = useState<string | null>(null);
 
@@ -107,11 +108,16 @@ export default function InviteCohortsPage() {
   async function toggleMembers(c: Cohort) {
     if (openCode === c.code) { setOpenCode(null); return; }
     setOpenCode(c.code);
-    if (members[c.code]) return;
+    if (members[c.code] || memberError[c.code]) return;
     try {
       const res = await apiFetch<unknown>(`/admin/invite-cohorts/${encodeURIComponent(c.code)}/members`, { admin: true });
       setMembers((prev) => ({ ...prev, [c.code]: recordItems(pickArray(unwrapData(res), ["members", "rows"])) as Member[] }));
     } catch (err) {
+      // 404 = no such cohort — show the server's text, not an empty table.
+      if (err instanceof ApiError && err.status === 404) {
+        setMemberError((prev) => ({ ...prev, [c.code]: err.message || "ასეთი კოჰორტა არ არის" }));
+        return;
+      }
       bail(err, setError);
     }
   }
@@ -154,6 +160,10 @@ export default function InviteCohortsPage() {
               const closed = c.active === false;
               const isOpen = openCode === c.code;
               const ms = members[c.code];
+              const mErr = memberError[c.code];
+              // Synthetic launch-window cohort (D137): lives in env vars, not a
+              // DB row — it can't be closed (DELETE 404s), so hide the button.
+              const synthetic = (c.created_by ?? "").includes("D137");
               return (
                 <div key={c.code} className="rounded-2xl border border-gray-200 bg-white shadow-sm">
                   <div className="flex items-center justify-between gap-3 px-5 py-3.5">
@@ -163,6 +173,7 @@ export default function InviteCohortsPage() {
                         {c.name && <span className="text-sm text-[#23261F]">{c.name}</span>}
                         {c.trial_days != null && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">{c.trial_days} დღე</span>}
                         {closed && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">დახურული</span>}
+                        {synthetic && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">launch window</span>}
                       </div>
                       {c.note && <p className="mt-1 truncate text-xs text-gray-500">{c.note}</p>}
                     </div>
@@ -171,7 +182,7 @@ export default function InviteCohortsPage() {
                       <button type="button" onClick={() => toggleMembers(c)} className="text-xs text-gray-500 hover:text-gray-700">
                         {isOpen ? "▾" : "▸"} წევრები
                       </button>
-                      {!closed && (
+                      {!closed && !synthetic && (
                         <button type="button" disabled={busyCode === c.code} onClick={() => closeDoor(c)} className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50">
                           დახურვა
                         </button>
@@ -180,7 +191,9 @@ export default function InviteCohortsPage() {
                   </div>
                   {isOpen && (
                     <div className="border-t border-gray-100 px-5 py-3">
-                      {!ms ? (
+                      {mErr ? (
+                        <p className="text-xs text-red-600">{mErr}</p>
+                      ) : !ms ? (
                         <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-[#23261F] inline-block" />
                       ) : ms.length === 0 ? (
                         <p className="text-xs text-gray-400">წევრი ჯერ არ არის</p>

@@ -272,7 +272,7 @@ export default function TargetListReviewPage() {
             <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#23261F]" />
             {building && (
               <p className="max-w-sm text-center text-sm text-gray-500">
-                სია იგება ამ პერიოდისთვის. შეიძლება წუთამდე გასტანოს — შემოწმება ავტომატურად გრძელდება.
+                სია იგება ამ პერიოდისთვის. შეიძლება წუთამდე გასტანოს, შემოწმება ავტომატურად გრძელდება.
               </p>
             )}
           </div>
@@ -370,7 +370,7 @@ export default function TargetListReviewPage() {
                         {c.parts?.freshness != null && c.parts.freshness < 1 && (
                           <div
                             className="mt-0.5 whitespace-nowrap text-[11px] text-amber-700"
-                            title="ბოლო 90 დღეში ამ ადამიანზე უკვე ვკითხეთ — ქულა განზრახ დაწეულია"
+                            title="ბოლო 90 დღეში ამ ადამიანზე უკვე ვკითხეთ, ქულა განზრახ დაწეულია"
                           >
                             ცოტა ხნის წინ მივმართეთ
                           </div>

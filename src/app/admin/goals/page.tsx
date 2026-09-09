@@ -18,6 +18,11 @@ type Goal = {
   status?: string | null;
   // Task 8 (8 Sept): stage can now be "waiting_topup" (wallet on, balance 0).
   stage?: string | null;
+  // Task 4 (9 Sept): plan is an object (or null); plan_proposed is the
+  // not-yet-approved one; plan_version bumps on every proposal.
+  plan?: object | null;
+  plan_proposed?: object | null;
+  plan_version?: number | null;
   brief?: string | null;
   blocked_question?: string | null;
   wakes?: Wake[];
@@ -128,6 +133,11 @@ export default function AdminGoalsPage() {
                           {STAGE_LABEL[g.stage] ?? g.stage}
                         </span>
                       )}
+                      {g.plan ? (
+                        <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700">გეგმა v{g.plan_version ?? "?"} ✓</span>
+                      ) : g.plan_proposed ? (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">გეგმა v{g.plan_version ?? "?"} დასამტკიცებელი</span>
+                      ) : null}
                       {g.blocked_question && (
                         <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">დაბლოკილია კითხვით</span>
                       )}

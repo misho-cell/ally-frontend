@@ -17,6 +17,14 @@ type Blocker =
 
 type Action = { at?: string; kind?: string; detail?: string | null; ref_id?: string | number | null };
 
+// Task 4 (9 Sept): the plan is a structured object.
+type PlanShape = {
+  solved_when?: string | null;
+  routes?: { name?: string; status?: string }[];
+  people_to_involve?: { name?: string; route?: string }[];
+  never_contact?: { name?: string }[];
+};
+
 type Goal = {
   id: number | string;
   title?: string | null;
@@ -27,8 +35,8 @@ type Goal = {
   last_activity_at?: string | null;
   next_wake_at?: string | null;
   thread_id?: number | string | null;
-  plan?: string | null;
-  plan_proposed?: boolean | null;
+  plan?: PlanShape | null;
+  plan_proposed?: PlanShape | null;
   plan_version?: number | null;
   plan_approved_at?: string | null;
   payer?: { user_id?: number | string; name?: string | null; balance?: number | null } | null;
@@ -60,6 +68,7 @@ const ACTION_LABEL: Record<string, string> = {
   question_to_owner: "კითხვა მფლობელს",
   question_defaulted: "კითხვა ავტომ. შეივსო",
   circle_widened: "წრე გაფართოვდა",
+  method_change_proposed: "მეთოდის ცვლილება შეთავაზდა",
   ask_sent: "კითხვა გაიგზავნა",
   follow_up_sent: "შეხსენება გაიგზავნა",
   relay_sent: "გადაგზავნა",
@@ -270,11 +279,8 @@ export default function AdminGoalDetailPage() {
               </div>
             </div>
 
-            {goal.plan && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">გეგმა</p>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{goal.plan}</p>
-              </div>
+            {(goal.plan || goal.plan_proposed) && (
+              <PlanBlock plan={goal.plan ?? goal.plan_proposed!} approved={!!goal.plan} version={goal.plan_version ?? null} />
             )}
 
             <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -301,6 +307,59 @@ export default function AdminGoalDetailPage() {
           </>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function PlanBlock({ plan, approved, version }: { plan: PlanShape; approved: boolean; version: number | null }) {
+  const routes = plan.routes ?? [];
+  const people = plan.people_to_involve ?? [];
+  const never = plan.never_contact ?? [];
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">გეგმა</p>
+        {version != null && <span className="text-xs text-gray-400">v{version}</span>}
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${approved ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}>
+          {approved ? "დამტკიცებული" : "დასამტკიცებელი"}
+        </span>
+      </div>
+      {plan.solved_when && (
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">როდის ჩაითვლება გადაწყვეტილად</p>
+          <p className="mt-0.5 text-sm text-gray-700 whitespace-pre-wrap">{plan.solved_when}</p>
+        </div>
+      )}
+      {routes.length > 0 && (
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">გზები</p>
+          <div className="mt-1 flex flex-col gap-1">
+            {routes.map((r, i) => (
+              <p key={i} className="text-sm text-gray-700">{r.name ?? "—"}{r.status ? <span className="text-xs text-gray-400"> · {r.status}</span> : null}</p>
+            ))}
+          </div>
+        </div>
+      )}
+      {people.length > 0 && (
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">ვის ჩავრთავთ</p>
+          <div className="mt-1 flex flex-col gap-1">
+            {people.map((p, i) => (
+              <p key={i} className="text-sm text-gray-700">{p.name ?? "—"}{p.route ? <span className="text-xs text-gray-400"> · {p.route}</span> : null}</p>
+            ))}
+          </div>
+        </div>
+      )}
+      {never.length > 0 && (
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">არასდროს დავუკავშირდეთ</p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {never.map((n, i) => (
+              <span key={i} className="rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-600">{n.name ?? "—"}</span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -353,7 +353,7 @@ export default function PromptBlockEditorPage() {
                   className="rounded-xl border border-gray-200 px-4 py-3 font-mono text-sm outline-none focus:border-[#3E7A56]"
                 />
                 <p className="text-xs text-gray-400">
-                  ცარიელი — ყველა იუზერი; შევსებული — მხოლოდ ეს ექაუნთები (ტესტისთვის).
+                  ცარიელი: ყველა იუზერი; შევსებული: მხოლოდ ეს ექაუნთები (ტესტისთვის).
                 </p>
               </div>
 

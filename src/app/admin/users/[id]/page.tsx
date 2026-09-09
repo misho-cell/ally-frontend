@@ -280,7 +280,7 @@ function UsageBlock({ u }: { u: NonNullable<UserProfile["usage"]> }) {
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">პირველი რეალური მიზანი</p>
         {frt ? (
           <p className="mt-1 text-sm text-gray-700">
-            #{frt.task_id} {frt.title ? `— ${frt.title}` : ""}
+            #{frt.task_id} {frt.title ? `· ${frt.title}` : ""}
             <span className="text-xs text-gray-400"> · შექმნა {fmtDate(frt.created_at)}{frt.first_action_at ? ` · ქმედება ${fmtDate(frt.first_action_at)}` : ""}</span>
           </p>
         ) : (
@@ -455,7 +455,7 @@ function MemoryBlock({ m }: { m: UserProfile["memory"] }) {
     <Card title="AI მეხსიერება">
       {(distress || paused) && (
         <div className="mb-4 flex flex-wrap gap-2">
-          {distress && <span className="rounded-lg bg-red-100 px-3 py-1.5 text-xs font-bold text-red-700">⚠ distress — ფრთხილად</span>}
+          {distress && <span className="rounded-lg bg-red-100 px-3 py-1.5 text-xs font-bold text-red-700">⚠ distress, ფრთხილად</span>}
           {paused && <span className="rounded-lg bg-orange-100 px-3 py-1.5 text-xs font-semibold text-orange-700">nudge შეჭერებულია</span>}
         </div>
       )}
