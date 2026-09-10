@@ -79,6 +79,7 @@ export default function AdminAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [referral, setReferral] = useState<{ step: string; users: number }[] | null>(null);
+  const [referralNote, setReferralNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -109,6 +110,7 @@ export default function AdminAnalyticsPage() {
             ? d.steps
             : order.filter((k) => typeof d[k] === "number").map((k) => ({ step: k, users: d[k] as number }));
           setReferral(steps);
+          if (typeof d.note === "string" && d.note) setReferralNote(d.note);
         })
         .catch(() => {});
     } catch {
@@ -159,7 +161,7 @@ export default function AdminAnalyticsPage() {
             <GrowthBlock growth={data.growth} />
             <RetentionBlock retention={data.retention} />
             <FunnelBlock steps={data.funnel.steps} />
-            {referral && <FunnelBlock steps={referral} title="მოწვევების ძაბრი" />}
+            {referral && <FunnelBlock steps={referral} title="მოწვევების ძაბრი" note={referralNote} />}
             <UsageBlock usage={data.usage} />
           </>
         ) : null}
@@ -224,7 +226,7 @@ function RetentionBlock({ retention }: { retention: Overview["retention"] }) {
 
 /* ---------- Block 3: Funnel ---------- */
 
-function FunnelBlock({ steps, title = "აქტივაციის ძაბრი" }: { steps: { step: string; users: number }[]; title?: string }) {
+function FunnelBlock({ steps, title = "აქტივაციის ძაბრი", note }: { steps: { step: string; users: number }[]; title?: string; note?: string | null }) {
   const max = steps.length > 0 ? steps[0].users : 0;
 
   return (
@@ -265,7 +267,8 @@ function FunnelBlock({ steps, title = "აქტივაციის ძაბ�
           })}
         </div>
       )}
-    </Card>
+    {note && <p className="mt-3 text-xs text-gray-400" title={note}>ⓘ {note}</p>}
+      </Card>
   );
 }
 
