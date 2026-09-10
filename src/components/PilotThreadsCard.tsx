@@ -20,7 +20,9 @@ function fmt(iso?: string | null): string {
 
 export default function PilotThreadsCard({ userId }: { userId: string }) {
   const [threads, setThreads] = useState<Thread[] | null>(null);
-  const [hidden, setHidden] = useState(false);
+  // Task 16 (10 Sept): a 403 now names which admin id was seen — show that
+  // one line instead of hiding, so the right id is known on first check.
+  const [forbidden, setForbidden] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [error, setError] = useState<string | null>(null);
@@ -31,14 +33,21 @@ export default function PilotThreadsCard({ userId }: { userId: string }) {
       .then((res) => { if (alive) setThreads(recordItems(pickArray(unwrapData(res), ["threads"])) as Thread[]); })
       .catch((err) => {
         if (!alive) return;
-        if (err instanceof ApiError && err.status === 403) { setHidden(true); return; }
+        if (err instanceof ApiError && err.status === 403) { setForbidden(err.message || "403"); return; }
         setError(err instanceof ApiError ? err.message : "ჩატვირთვა ვერ მოხერხდა");
         setThreads([]);
       });
     return () => { alive = false; };
   }, [userId]);
 
-  if (hidden) return null;
+  if (forbidden) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white px-6 py-4 shadow-sm">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">საუბრები (პილოტი)</h2>
+        <p className="mt-1 text-xs text-gray-400">{forbidden}</p>
+      </div>
+    );
+  }
 
   async function open(t: Thread) {
     const key = String(t.id);

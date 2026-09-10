@@ -31,6 +31,7 @@ const FUNNEL_LABELS: Record<string, string> = {
   // Referral funnel steps (Task 66, 9 Sept): `issued` was renamed to
   // `link_shown`; showing a link is not "sent" — `shared` is.
   link_shown: "ბმული ნახა",
+  sent: "გააგზავნა",
   shared: "გააზიარა",
   opened: "გახსნა",
   registered: "დარეგისტრირდა ბმულით",
@@ -77,6 +78,7 @@ export default function AdminAnalyticsPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [referral, setReferral] = useState<{ step: string; users: number }[] | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -96,6 +98,19 @@ export default function AdminAnalyticsPage() {
         return;
       }
       setData(json.data as Overview);
+      // Task 66 (10 Sept): invite funnel lives on its own route.
+      fetch(`${BASE_URL}/admin/referral-funnel`, { headers: adminAuthHeaders() })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          const d = j?.data ?? j;
+          if (!d || typeof d !== "object") return;
+          const order = ["link_shown", "sent", "opened", "registered"];
+          const steps = Array.isArray(d.steps)
+            ? d.steps
+            : order.filter((k) => typeof d[k] === "number").map((k) => ({ step: k, users: d[k] as number }));
+          setReferral(steps);
+        })
+        .catch(() => {});
     } catch {
       // network/offline — show retry, do not redirect
       setError(true);
@@ -144,6 +159,7 @@ export default function AdminAnalyticsPage() {
             <GrowthBlock growth={data.growth} />
             <RetentionBlock retention={data.retention} />
             <FunnelBlock steps={data.funnel.steps} />
+            {referral && <FunnelBlock steps={referral} title="მოწვევების ძაბრი" />}
             <UsageBlock usage={data.usage} />
           </>
         ) : null}
@@ -208,11 +224,11 @@ function RetentionBlock({ retention }: { retention: Overview["retention"] }) {
 
 /* ---------- Block 3: Funnel ---------- */
 
-function FunnelBlock({ steps }: { steps: { step: string; users: number }[] }) {
+function FunnelBlock({ steps, title = "აქტივაციის ძაბრი" }: { steps: { step: string; users: number }[]; title?: string }) {
   const max = steps.length > 0 ? steps[0].users : 0;
 
   return (
-    <Card title="აქტივაციის ძაბრი">
+    <Card title={title}>
       {steps.length === 0 ? (
         <EmptyChart />
       ) : (

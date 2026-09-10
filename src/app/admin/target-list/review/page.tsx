@@ -116,6 +116,9 @@ export default function TargetListReviewPage() {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Task 17 (10 Sept): queue size + which gate dropped how many.
+  const [gates, setGates] = useState<{ candidates_in?: number; survived?: number; listed?: number; gates?: { gate: string; enabled?: boolean; removed?: number; matched?: number }[] } | null>(null);
+  const [gatesOpen, setGatesOpen] = useState(false);
 
   const bail = useCallback((err: unknown) => {
     if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
@@ -183,6 +186,9 @@ export default function TargetListReviewPage() {
     if (pollRef.current) clearTimeout(pollRef.current);
     try {
       await loadDecisions();
+      apiFetch<{ data?: unknown }>(`/admin/target-list/gates?days=${days}`, { admin: true })
+        .then((g) => { const d = (g.data ?? g) as typeof gates; if (d && typeof d === "object") setGates(d); })
+        .catch(() => {});
       const list = await fetchList();
       if (list) { setRows(list); return; }
       // Still building — start polling.
@@ -268,6 +274,38 @@ export default function TargetListReviewPage() {
           „კი" სიაში ტოვებს. „არა" ადამიანს ყველა მომავალი სიიდან შლის. სტრიქონის უპასუხოდ დატოვება ნორმაა.
           {rows && <> · {rows.length} კანდიდატი, {decided} გადაწყვეტილი.</>}
         </p>
+        {gates && gates.candidates_in != null && (
+          <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm text-sm">
+            <button type="button" onClick={() => setGatesOpen((v) => !v)} className="flex w-full items-center justify-between gap-3 text-left">
+              <span className="text-[#23261F]">
+                რიგი: <b>{gates.candidates_in.toLocaleString("en-US")}</b>
+                {gates.survived != null && <> → წესები გაიარა <b>{gates.survived.toLocaleString("en-US")}</b></>}
+                {gates.listed != null && <> → სიაში <b>{gates.listed.toLocaleString("en-US")}</b></>}
+              </span>
+              <span className="text-xs text-gray-400">{gatesOpen ? "▾" : "▸"} ჭიშკრები</span>
+            </button>
+            {gatesOpen && (gates.gates ?? []).length > 0 && (
+              <table className="mt-3 w-full text-left text-xs">
+                <thead><tr className="text-gray-400">
+                  <th className="py-1 pr-4 font-semibold">წესი</th>
+                  <th className="py-1 pr-4 font-semibold">ჩართული</th>
+                  <th className="py-1 pr-4 font-semibold">ამოაგდო</th>
+                  <th className="py-1 font-semibold">დაემთხვა</th>
+                </tr></thead>
+                <tbody>
+                  {gates.gates!.map((g) => (
+                    <tr key={g.gate} className="text-gray-600">
+                      <td className="py-1 pr-4 font-mono">{g.gate}</td>
+                      <td className="py-1 pr-4">{g.enabled === false ? "—" : "✓"}</td>
+                      <td className="py-1 pr-4">{g.removed ?? "—"}</td>
+                      <td className="py-1">{g.matched ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
 
         {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 whitespace-pre-wrap">{error}</div>}
 

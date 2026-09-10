@@ -16,6 +16,16 @@ type Summary = Record<string, number | string>;
 
 type Candidate = {
   id: number | string;
+  // Task 82 (10 Sept): live shape — sample_alias is the name, phones are the
+  // pair; only the last 4 digits may be shown (D149).
+  sample_alias?: string | null;
+  name_as_saved?: string | null;
+  phones?: string[];
+  status?: string | null;
+  band?: string | null;
+  co_owners?: number | null;
+  name_distinct_phones?: number | null;
+  looks_like_a_name?: boolean | null;
   name?: string | null;
   phone?: string | null;
   matched_name?: string | null;
@@ -170,10 +180,23 @@ export default function AdminIdentityPage() {
                 <div key={key} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1 text-sm">
-                      <p className="font-semibold text-[#23261F]">{c.name || "—"} {c.phone && <span className="font-mono text-xs text-gray-400">{c.phone}</span>}</p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        → {c.matched_name || "—"} {c.matched_phone && <span className="font-mono">{c.matched_phone}</span>}
-                        {c.confidence != null && <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 font-semibold">{Math.round(c.confidence * 100)}%</span>}
+                      <p className="font-semibold text-[#23261F]">
+                        {c.sample_alias || c.name_as_saved || c.name || "—"}
+                        {(c.phones ?? (c.phone ? [c.phone] : [])).map((p) => (
+                          <span key={p} className="ml-2 font-mono text-xs text-gray-400" title="ბოლო 4 ციფრი">…{p.slice(-4)}</span>
+                        ))}
+                      </p>
+                      <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                        {c.band && <span className="rounded-full bg-gray-100 px-2 py-0.5 font-semibold">{c.band}</span>}
+                        {c.status && (
+                          <span className={`rounded-full px-2 py-0.5 font-semibold ${c.status === "approved" ? "bg-green-50 text-green-700" : c.status === "rejected" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}>
+                            {c.status === "approved" ? "დამტკიცებული" : c.status === "rejected" ? "უარყოფილი" : "მოლოდინში"}
+                          </span>
+                        )}
+                        {c.co_owners != null && <span>{c.co_owners} მფლობელი</span>}
+                        {c.name_distinct_phones != null && <span>{c.name_distinct_phones} ნომერი სახელზე</span>}
+                        {c.matched_name && <span>→ {c.matched_name}</span>}
+                        {c.confidence != null && <span className="rounded-full bg-gray-100 px-2 py-0.5 font-semibold">{Math.round(c.confidence * 100)}%</span>}
                       </p>
                       {c.reason && <p className="mt-1 text-xs text-gray-400">{c.reason}</p>}
                     </div>

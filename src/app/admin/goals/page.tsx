@@ -13,6 +13,7 @@ type Wake = { at: string; reason?: string | null };
 
 type Goal = {
   id: number | string;
+  task_id?: number | string;
   user_id?: number | string;
   title?: string | null;
   status?: string | null;
@@ -113,7 +114,10 @@ export default function AdminGoalsPage() {
           <p className="py-8 text-center text-sm text-gray-400">მიზნები ვერ მოიძებნა</p>
         ) : (
           goals.map((g) => {
-            const id = String(g.id);
+            // Task 15 (10 Sept): rows may carry task_id rather than id — with
+            // String(undefined) every row shared the key "undefined" and the
+            // expander toggled nothing.
+            const id = String(g.id ?? g.task_id);
             const wakes = Array.isArray(g.wakes) ? g.wakes : [];
             return (
               <div key={id} className="rounded-2xl border border-gray-200 bg-white shadow-sm">
