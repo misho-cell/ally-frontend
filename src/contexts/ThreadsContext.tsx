@@ -35,6 +35,8 @@ export type ServerMessage = {
   content: string;
   kind?: string;
   run_id?: string | null;
+  // Task 98: "pending" rows carry their own buttons.
+  choices?: string[] | null;
 };
 
 export type ChatMessage = {
@@ -53,6 +55,11 @@ export type ChatMessage = {
   pending?: boolean;
   // The POST failed — the bubble stays with a "not sent / resend" marker.
   failed?: boolean;
+  // Task 98 (11 Sept): per-message buttons. A pending item (an intro that was
+  // accepted, a goal question, a debrief) arrives as its OWN assistant
+  // message via message_appended, never glued to the reply — and each names
+  // its action. Rendered under this bubble, not under the thread's last one.
+  choices?: string[];
 };
 
 export type Option = { phone: string; name: string };
@@ -99,14 +106,17 @@ export function updateThreadState(
 
 export function toChatMessages(raw: unknown): ChatMessage[] {
   const rows: ServerMessage[] = Array.isArray(raw) ? raw : [];
-  return rows.map((m) => ({
+  // "event" rows are bookkeeping, never a bubble (Task 98 note from the backend).
+  return rows.filter((m) => m.kind !== "event").map((m) => ({
     id: crypto.randomUUID(),
     serverId: m.id ?? undefined,
     createdAt: m.created_at ?? undefined,
     role: m.role === "user" ? "user" : "assistant",
     content: m.content,
+    // "pending" is a message with its own buttons — same bubble, plus choices.
     kind: m.kind === "step" ? "step" : m.kind === "error" ? "error" : "message",
     runId: m.run_id ?? null,
+    ...(m.kind === "pending" && Array.isArray(m.choices) && m.choices.length > 0 ? { choices: m.choices } : {}),
   }));
 }
 

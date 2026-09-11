@@ -555,6 +555,37 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 }
                 break;
 
+              // Task 98 (11 Sept): a pending item appended AFTER the reply, as its
+              // own bubble with its own buttons. Always append — never replace
+              // the last bubble. Several may follow one run_complete.
+              case "message_appended":
+                if (data.threadId != null && typeof data.content === "string") {
+                  setThreadStates((prev) =>
+                    updateThreadState(prev, data.threadId, (ts) => {
+                      const sid = data.messageId != null ? String(data.messageId) : null;
+                      if (sid && ts.messages.some((m) => m.serverId != null && String(m.serverId) === sid)) return ts;
+                      return {
+                        ...ts,
+                        messages: [
+                          ...ts.messages,
+                          {
+                            id: crypto.randomUUID(),
+                            serverId: sid ?? undefined,
+                            role: "assistant",
+                            content: data.content,
+                            kind: "message",
+                            runId: data.runId ?? null,
+                            pending: true,
+                            createdAt: new Date().toISOString(),
+                            ...(Array.isArray(data.choices) && data.choices.length > 0 ? { choices: data.choices as string[] } : {}),
+                          },
+                        ],
+                      };
+                    })
+                  );
+                }
+                break;
+
               case "run_error":
                 if (data.threadId != null) {
                   setThreadStates((prev) =>

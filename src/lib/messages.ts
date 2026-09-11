@@ -29,7 +29,10 @@ async function get(url: string): Promise<Response> {
 // The newest message's persisted choices, if any (task 22 k).
 function lastChoices(raw: unknown): string[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
-  const last = raw[raw.length - 1] as { choices?: unknown };
+  const last = raw[raw.length - 1] as { kind?: unknown; choices?: unknown };
+  // Task 98: a "pending" row renders its buttons under its OWN bubble
+  // (ChatMessage.choices) — lifting them here too would show them twice.
+  if (last?.kind === "pending") return undefined;
   return Array.isArray(last?.choices) ? (last.choices as string[]) : undefined;
 }
 

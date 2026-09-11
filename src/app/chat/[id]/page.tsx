@@ -1292,6 +1292,31 @@ export default function ThreadPage() {
                       )}
                     </div>
                   </div>
+                  {/* Task 98: this bubble's own buttons — shown until the user
+                      answers (any later user message clears them). */}
+                  {msg.choices && msg.choices.length > 0 && !loading && (() => {
+                    const idx = messages.indexOf(msg);
+                    const answered = messages.slice(idx + 1).some((m) => m.role === "user");
+                    return !answered;
+                  })() && (
+                    <div className="decision-card" style={{ marginLeft: "36px" }}>
+                      <div className="flex flex-wrap gap-2">
+                        {msg.choices.map((choice, ci) => (
+                          <button
+                            key={`${msg.id}-${ci}`}
+                            type="button"
+                            onClick={() => sendMessage(choice)}
+                            className="bg-white px-4 py-2 text-left transition-colors"
+                            style={{ border: "1px solid var(--cta-border)", borderRadius: "var(--radius-pill)", color: "var(--accent-strong)", fontSize: "14px", fontWeight: 500 }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-tint)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "#FFFFFF"; }}
+                          >
+                            {choice}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {extractInviteLink(msg.content) && (
                     <ShareInviteButton url={extractInviteLink(msg.content)!} label={chrome.share} />
                   )}
