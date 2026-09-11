@@ -185,9 +185,13 @@ export default function PromptBlockEditorPage() {
     }
   }
 
+  // Task 93 (11 Sept): window.confirm() locks the whole tab and can't be
+  // closed remotely — use the app's own in-page dialog like the rest of admin.
+  const [restoreTarget, setRestoreTarget] = useState<HistoryEntry | null>(null);
+  const [restoring, setRestoring] = useState(false);
+
   async function restore(entry: HistoryEntry) {
-    const ok = window.confirm(`დავაბრუნო ბლოკი ${fmtDateFull(entry.changed_at)}-ის ვერსიაზე?`);
-    if (!ok) return;
+    setRestoring(true);
     setError(null);
     try {
       await apiFetch<unknown>(`/admin/prompt-blocks/${rawName}`, {
@@ -207,6 +211,9 @@ export default function PromptBlockEditorPage() {
       setTab("edit");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "აღდგენა ვერ მოხერხდა");
+    } finally {
+      setRestoring(false);
+      setRestoreTarget(null);
     }
   }
 
@@ -450,7 +457,7 @@ export default function PromptBlockEditorPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => restore(h)}
+                        onClick={() => setRestoreTarget(h)}
                         className="self-start rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-[#23261F] transition-colors hover:bg-gray-50"
                       >
                         ამ ვერსიაზე დაბრუნება
@@ -463,6 +470,20 @@ export default function PromptBlockEditorPage() {
           </section>
         )}
       </div>
+
+      {restoreTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(18,21,16,0.32)" }} onClick={() => !restoring && setRestoreTarget(null)} role="dialog" aria-modal="true">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm text-[#23261F]">დავაბრუნო ბლოკი {fmtDateFull(restoreTarget.changed_at)}-ის ვერსიაზე?</p>
+            <div className="flex justify-end gap-2">
+              <button type="button" disabled={restoring} onClick={() => setRestoreTarget(null)} className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50">გაუქმება</button>
+              <button type="button" disabled={restoring} onClick={() => restore(restoreTarget)} className="flex w-32 items-center justify-center rounded-xl bg-[#23261F] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60">
+                {restoring ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : "დაბრუნება"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

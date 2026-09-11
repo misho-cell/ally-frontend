@@ -61,6 +61,9 @@ export default function AdminIdentityPage() {
   const router = useRouter();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
+  // Task 87 (11 Sept): show reviewable_total (real people Lika must decide
+  // on), not total (every pending row, incl. ones never shown).
+  const [reviewableTotal, setReviewableTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -74,6 +77,8 @@ export default function AdminIdentityPage() {
       ]);
       setSummary(normalizeSummary(sRes));
       setCandidates(normalizeCandidates(cRes));
+      const cBody = unwrapData(cRes);
+      setReviewableTotal(isRecord(cBody) && typeof cBody.reviewable_total === "number" ? cBody.reviewable_total : null);
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
         router.replace("/admin/login");
@@ -163,7 +168,9 @@ export default function AdminIdentityPage() {
           </div>
         )}
 
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">კანდიდატები</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+          კანდიდატები{reviewableTotal != null && <span className="ml-2 normal-case text-gray-400">· სულ {fmtN(reviewableTotal)} გადასაწყვეტი</span>}
+        </h2>
 
         {candidates === null ? (
           <div className="flex justify-center py-12">
