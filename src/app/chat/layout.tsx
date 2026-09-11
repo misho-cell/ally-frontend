@@ -603,7 +603,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     };
   }, [loadThreads, refreshTokens, fetchSummary]);
 
-  const sendIntoThread = useCallback(async (threadId: string, text: string, echo: boolean) => {
+  // asGoal (Task 90, 11 Sept): only the FIRST message sent from "+ ახალი მიზანი"
+  // carries as_goal:true, so it becomes a goal regardless of wording. Plain
+  // chat never sends it — the server's own rule decides there.
+  const sendIntoThread = useCallback(async (threadId: string, text: string, echo: boolean, asGoal = false) => {
     const sentinel = `pending-${crypto.randomUUID()}`;
     setThreadStates((prev) =>
       updateThreadState(prev, threadId, (ts) => ({
@@ -624,7 +627,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     const res = await fetch(`${BASE_URL}/threads/${threadId}/message`, {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ message: text }),
+      body: JSON.stringify(asGoal ? { message: text, as_goal: true } : { message: text }),
     });
     if (res.status === 401) { forceLogin(); return; }
     const json = await res.json().catch(() => ({}));
@@ -671,7 +674,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         [String(thread.id)]: trimmed.length > 42 ? trimmed.slice(0, 42) + "…" : trimmed,
       }));
       router.push(`/chat/${thread.id}`);
-      await sendIntoThread(String(thread.id), trimmed, true);
+      await sendIntoThread(String(thread.id), trimmed, true, true);
     } catch {}
     finally {
       setCreating(false);

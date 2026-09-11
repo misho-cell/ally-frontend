@@ -955,7 +955,16 @@ export default function ThreadPage() {
     lastBlock && lastBlock.type === "steps" && lastBlock.trailing ? lastBlock.steps : [];
   const renderBlocks = loading && trailingSteps.length > 0 ? blocks.slice(0, -1) : blocks;
 
-  const lastMsg = messages[messages.length - 1];
+  // Task 25 (11 Sept): buttons vanished ~1.7s after appearing. The refetch
+  // that follows thread_updated merges the server's rows, and the server can
+  // persist a "step" row (or a scrubbed copy of the reply) AFTER the answer —
+  // so the raw last item stopped being the assistant's message and the gate
+  // below hid the choices. Judge by the last non-step message instead; the
+  // choices themselves are still cleared only when the user sends.
+  let lastMsg = messages[messages.length - 1];
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].kind !== "step") { lastMsg = messages[i]; break; }
+  }
   const lastIsAssistantMessage = lastMsg?.kind === "message" && lastMsg.role === "assistant";
   const showOptions = !loading && lastIsAssistantMessage && options.length > 0;
   const showChoices = !loading && lastIsAssistantMessage && choices.length > 0;
