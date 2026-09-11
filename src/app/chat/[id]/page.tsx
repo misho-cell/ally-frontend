@@ -822,8 +822,11 @@ export default function ThreadPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [streaming, loading]);
 
+  // inReplyTo (Task 98): the pending bubble's server message id, so the
+  // backend gets an unambiguous link to the item even when two bubbles are
+  // on screen. Text is still what is sent — one consent gate on the server.
   const sendMessage = useCallback(
-    async (text: string, echo: boolean = true) => {
+    async (text: string, echo: boolean = true, inReplyTo?: string | number) => {
       if (voiceState === "recording") {
         stopRecognition();
       }
@@ -883,7 +886,7 @@ export default function ThreadPage() {
         const res = await fetch(`${BASE_URL}/threads/${threadId}/message`, {
           method: "POST",
           headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ message: trimmed }),
+          body: JSON.stringify(inReplyTo != null ? { message: trimmed, in_reply_to_message_id: String(inReplyTo) } : { message: trimmed }),
         });
 
         if (res.status === 401) { forceLogin(); return; }
@@ -1305,7 +1308,7 @@ export default function ThreadPage() {
                           <button
                             key={`${msg.id}-${ci}`}
                             type="button"
-                            onClick={() => sendMessage(choice)}
+                            onClick={() => sendMessage(choice, true, msg.serverId)}
                             className="bg-white px-4 py-2 text-left transition-colors"
                             style={{ border: "1px solid var(--cta-border)", borderRadius: "var(--radius-pill)", color: "var(--accent-strong)", fontSize: "14px", fontWeight: 500 }}
                             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-tint)"; }}
