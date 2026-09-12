@@ -83,7 +83,9 @@ export default function NotificationButton() {
       await fetch(`${BASE_URL}/notifications/subscribe`, {
         method: "POST",
         headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify(sub),
+        // Row 6: see the note in chat/layout.tsx — names the device so an
+        // Apple endpoint can be told apart from a Mac one.
+        body: JSON.stringify({ ...sub, user_agent: navigator.userAgent }),
       });
       localStorage.setItem("push_endpoint", sub.endpoint ?? "");
       setStatus("granted");

@@ -371,7 +371,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         await fetch(`${BASE_URL}/notifications/subscribe`, {
           method: "POST",
           headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify(sub),
+          // Row 6 (12 Sept): name the device. web.push.apple.com serves macOS
+          // Safari as well as iPhones, so without this an Apple endpoint can't
+          // be told apart from a Mac one. Optional server-side.
+          body: JSON.stringify({ ...sub, user_agent: navigator.userAgent }),
         });
         localStorage.setItem("push_endpoint", sub.endpoint ?? "");
       } catch {}

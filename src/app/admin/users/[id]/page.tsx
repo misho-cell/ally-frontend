@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { adminAuthHeaders } from "@/lib/deviceId";
 import { fmtDate, fmtDateTime, fmtRelative, isFuture } from "@/lib/date";
 import PilotThreadsCard from "@/components/PilotThreadsCard";
+import AdminPushBlock from "@/components/AdminPushBlock";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const ACCENT = "#23261F";
@@ -207,6 +208,7 @@ export default function AdminUserDetailPage() {
             <SearchesBlock s={data.searches} />
             <OutcomesBlock o={data.outcomes} />
             <MemoryBlock m={data.memory} />
+            <AdminPushBlock userId={id} />
             <DevicesBlock d={data.devices} />
             <TimelineBlock items={data.timeline} />
           </>
