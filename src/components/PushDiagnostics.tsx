@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getLocale } from "@/lib/i18n";
+import NotificationButton from "./NotificationButton";
 
 // Row 6 (12 Sept): the three values needed to tell a push problem apart —
 // install mode, permission, and which push service holds the subscription —
@@ -116,6 +117,13 @@ export default function PushDiagnostics() {
       {isIos && !info.standalone && (
         <p style={{ fontSize: "12px", color: "var(--danger)", marginTop: "2px" }}>{s.tabNote}</p>
       )}
+      {/* Row 6: the only "turn notifications on" control used to live inside a
+          single thread page, so anyone who stayed on the list or the profile
+          had no way to grant permission at all. It renders nothing once
+          permission is granted. */}
+      <div style={{ marginTop: "2px" }}>
+        <NotificationButton />
+      </div>
     </div>
   );
 }

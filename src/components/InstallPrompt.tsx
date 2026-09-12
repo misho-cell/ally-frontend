@@ -22,6 +22,27 @@ const L = {
   },
 };
 
+const DISMISS_KEY = "install_dismissed";
+const DISMISS_DAYS = 7;
+
+// Row 6 (12 Sept): this banner used to be dismissed FOREVER by one tap on
+// "not now". On iPhone it is the only route to notifications at all — iOS
+// delivers web push exclusively to a home-screen app — so a single tap could
+// silently cost a user every notification from then on. It now comes back
+// after a week. A legacy "1" (the old permanent flag) counts as long expired,
+// so anyone who dismissed it before sees it once more.
+function dismissedRecently(): boolean {
+  try {
+    const raw = localStorage.getItem(DISMISS_KEY);
+    if (!raw) return false;
+    const at = Number(raw);
+    if (!Number.isFinite(at) || at <= 1) return false;
+    return Date.now() - at < DISMISS_DAYS * 24 * 60 * 60 * 1000;
+  } catch {
+    return false;
+  }
+}
+
 export default function InstallPrompt() {
   const s = L[getLocale()];
   const [platform, setPlatform] = useState<Platform>(null);
@@ -29,7 +50,7 @@ export default function InstallPrompt() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem("install_dismissed")) return;
+    if (dismissedRecently()) return;
 
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
@@ -54,7 +75,7 @@ export default function InstallPrompt() {
   }, []);
 
   function dismiss() {
-    localStorage.setItem("install_dismissed", "1");
+    localStorage.setItem(DISMISS_KEY, String(Date.now()));
     setDismissed(true);
   }
 
@@ -63,7 +84,7 @@ export default function InstallPrompt() {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === "accepted") {
-      localStorage.setItem("install_dismissed", "1");
+      localStorage.setItem(DISMISS_KEY, String(Date.now()));
     }
     setDeferredPrompt(null);
     setDismissed(true);
