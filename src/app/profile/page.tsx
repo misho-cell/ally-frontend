@@ -9,6 +9,7 @@ import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { getLocale, fmtDateLoc } from "@/lib/i18n";
 import { clearUserName } from "@/lib/user";
 import { openStripePortal, portalErrorText } from "@/lib/stripe";
+import PushDiagnostics from "@/components/PushDiagnostics";
 import ReferralRewardsCard from "@/components/ReferralRewardsCard";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -911,6 +912,11 @@ export default function ProfilePage() {
               </div>
               <span style={{ color: "var(--meta)" }}>→</span>
             </Link>
+
+            {/* Row 6 (12 Sept): on-screen push diagnostics — an iPhone has no
+                console, so this is the only way a tester can report the three
+                values that separate a permission problem from a delivery one. */}
+            <PushDiagnostics />
 
             {/* Answer rules (Task 7, D120) */}
             <Link
