@@ -98,6 +98,17 @@ function cell(v: unknown, colKey: string, nullLabel: string): string {
     return nullLabel;
   }
   if (typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2);
+  // Task 40 (12 Sept): inviters: [{name, state}] reads as names, not JSON.
+  // Phones are deliberately absent from this payload — do not add them.
+  if (Array.isArray(v)) {
+    if (v.length === 0) return nullLabel;
+    const named = v.map((x) =>
+      isRecord(x) && typeof x.name === "string"
+        ? `${x.name}${typeof x.state === "string" ? ` (${x.state})` : ""}`
+        : null,
+    );
+    if (named.every((n) => n !== null)) return named.join(", ");
+  }
   if (typeof v === "object") {
     // technique: { when, how, reason } — show the words, not raw JSON.
     if (isRecord(v) && ("when" in v || "how" in v || "reason" in v)) {

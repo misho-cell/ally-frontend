@@ -8,6 +8,16 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 type DayCount = { day: string; count: number };
 
+type Rate = { of: string; per: string; percent: number; people: number; of_people: number };
+type ReferralFunnel = {
+  steps: { step: string; users: number }[];
+  rates: Rate[];
+  ratesBlocked: string | null;
+  registered: number | null;
+  registeredSinceTracking: number | null;
+  note: string | null;
+};
+
 type Overview = {
   growth: { totalUsers: number; newUsersByDay: DayCount[] };
   retention: { dau: number; wau: number; mau: number; activeUsersByDay: DayCount[] };
@@ -78,8 +88,7 @@ export default function AdminAnalyticsPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [referral, setReferral] = useState<{ step: string; users: number }[] | null>(null);
-  const [referralNote, setReferralNote] = useState<string | null>(null);
+  const [referral, setReferral] = useState<ReferralFunnel | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,17 +109,28 @@ export default function AdminAnalyticsPage() {
       }
       setData(json.data as Overview);
       // Task 66 (10 Sept): invite funnel lives on its own route.
+      // Task 89 (12 Sept): the server now sends comparable_steps (counts) and
+      // rates (percentages it computed over comparable people-sets). We draw
+      // exactly those and divide nothing ourselves — three of these steps count
+      // EVENTS, so 27 opens on 4 shared links really is 675%: true and useless.
       fetch(`${BASE_URL}/admin/referral-funnel`, { headers: adminAuthHeaders() })
         .then((r) => (r.ok ? r.json() : null))
         .then((j) => {
           const d = j?.data ?? j;
           if (!d || typeof d !== "object") return;
           const order = ["link_shown", "sent", "opened", "registered"];
-          const steps = Array.isArray(d.steps)
-            ? d.steps
+          const steps: { step: string; users: number }[] = Array.isArray(d.comparable_steps)
+            ? (d.comparable_steps as { step: string; count: number }[]).map((x) => ({ step: x.step, users: x.count }))
             : order.filter((k) => typeof d[k] === "number").map((k) => ({ step: k, users: d[k] as number }));
-          setReferral(steps);
-          if (typeof d.note === "string" && d.note) setReferralNote(d.note);
+          setReferral({
+            steps,
+            rates: Array.isArray(d.rates) ? (d.rates as Rate[]) : [],
+            ratesBlocked: typeof d.rates_blocked === "string" ? d.rates_blocked : null,
+            registered: typeof d.registered === "number" ? d.registered : null,
+            registeredSinceTracking:
+              typeof d.registered_since_tracking === "number" ? d.registered_since_tracking : null,
+            note: typeof d.note === "string" && d.note ? d.note : null,
+          });
         })
         .catch(() => {});
     } catch {
@@ -161,7 +181,7 @@ export default function AdminAnalyticsPage() {
             <GrowthBlock growth={data.growth} />
             <RetentionBlock retention={data.retention} />
             <FunnelBlock steps={data.funnel.steps} />
-            {referral && <FunnelBlock steps={referral} title="მოწვევების ძაბრი" note={referralNote} />}
+            {referral && <ReferralBlock f={referral} />}
             <UsageBlock usage={data.usage} />
           </>
         ) : null}
@@ -226,6 +246,57 @@ function RetentionBlock({ retention }: { retention: Overview["retention"] }) {
 
 /* ---------- Block 3: Funnel ---------- */
 
+// Task 89 (12 Sept): percentages come from the server's `rates`, which count
+// PEOPLE inside a set that contains them, so they can never exceed 100%. When
+// `rates` is empty we print `rates_blocked` and no percentage column at all.
+function ReferralBlock({ f }: { f: ReferralFunnel }) {
+  return (
+    <Card title="მოწვევების ძაბრი">
+      {f.steps.length === 0 ? (
+        <EmptyChart />
+      ) : (
+        <div className="flex flex-col gap-3">
+          {f.steps.map((s) => (
+            <div key={s.step} className="flex items-center justify-between text-sm">
+              <span className="font-medium text-gray-700">{FUNNEL_LABELS[s.step] ?? s.step}</span>
+              <span className="font-semibold text-[#23261F]">{s.users.toLocaleString("en-US")}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4 border-t border-gray-100 pt-3">
+        {f.rates.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            {f.rates.map((r) => (
+              <div key={`${r.of}-${r.per}`} className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">
+                  {FUNNEL_LABELS[r.of] ?? r.of} / {FUNNEL_LABELS[r.per] ?? r.per}
+                </span>
+                <span className="text-gray-500">
+                  <span className="font-semibold text-[#23261F]">{r.percent}%</span>
+                  <span className="ml-2 text-xs">{r.people} / {r.of_people}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400">{f.ratesBlocked ?? "პროცენტი ჯერ არ ითვლება"}</p>
+        )}
+      </div>
+
+      {(f.registered != null || f.registeredSinceTracking != null) && (
+        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+          {f.registered != null && <span>დარეგისტრირდა სულ: <b className="text-[#23261F]">{f.registered.toLocaleString("en-US")}</b></span>}
+          {f.registeredSinceTracking != null && <span>აღრიცხვის დაწყებიდან: <b className="text-[#23261F]">{f.registeredSinceTracking.toLocaleString("en-US")}</b></span>}
+        </div>
+      )}
+
+      {f.note && <p className="mt-3 text-xs text-gray-400" title={f.note}>ⓘ {f.note}</p>}
+    </Card>
+  );
+}
+
 function FunnelBlock({ steps, title = "აქტივაციის ძაბრი", note }: { steps: { step: string; users: number }[]; title?: string; note?: string | null }) {
   const max = steps.length > 0 ? steps[0].users : 0;
 
@@ -235,23 +306,14 @@ function FunnelBlock({ steps, title = "აქტივაციის ძაბ�
         <EmptyChart />
       ) : (
         <div className="flex flex-col gap-3">
-          {steps.map((s, i) => {
-            const prev = i > 0 ? steps[i - 1].users : null;
-            const convPct = prev && prev > 0 ? Math.round((s.users / prev) * 100) : null;
-            const overallPct = max > 0 ? Math.round((s.users / max) * 100) : 0;
+          {steps.map((s) => {
+            // Task 89: bars are a visual scale only — never a published ratio.
             const width = max > 0 ? Math.max(4, (s.users / max) * 100) : 0;
             return (
               <div key={s.step} className="flex flex-col gap-1">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-gray-700">{FUNNEL_LABELS[s.step] ?? s.step}</span>
-                  <span className="text-gray-500">
-                    <span className="font-semibold text-[#23261F]">{s.users}</span>
-                    {i > 0 && (
-                      <span className="ml-2 text-xs">
-                        {convPct === null ? "—" : `${convPct}%`}
-                      </span>
-                    )}
-                  </span>
+                  <span className="font-semibold text-[#23261F]">{s.users.toLocaleString("en-US")}</span>
                 </div>
                 <div className="h-7 w-full overflow-hidden rounded-lg bg-gray-100">
                   <div
@@ -259,9 +321,6 @@ function FunnelBlock({ steps, title = "აქტივაციის ძაბ�
                     style={{ width: `${width}%`, background: ACCENT, transition: "width 0.4s" }}
                   />
                 </div>
-                {i > 0 && (
-                  <span className="text-[11px] text-gray-400">{overallPct}% სულ დარეგისტრირებულიდან</span>
-                )}
               </div>
             );
           })}

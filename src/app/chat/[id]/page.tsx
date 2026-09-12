@@ -70,13 +70,28 @@ async function recordShared() {
   } catch {}
 }
 
-function ShareInviteButton({ url, label }: { url: string; label: string }) {
+// Task 39 (D54, 12 Sept): get_invite_link now returns a ready share_text with
+// the link already inside it, and the assistant puts it in the reply. The
+// client only ever sees that reply, so share the block that carries the link,
+// verbatim — never the button caption, and never text+url as two fields (the
+// link would then appear twice in WhatsApp).
+function extractInviteShareText(content: string): string {
+  const url = extractInviteLink(content);
+  if (!url) return content.trim();
+  const block = content
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .find((p) => p.includes(url));
+  if (!block) return url;
+  const cleaned = block.replace(/^[-*>\s]+/, "").trim();
+  return cleaned.length > url.length ? cleaned : url;
+}
+
+function ShareInviteButton({ text, label }: { text: string; label: string }) {
   async function share() {
     try {
       if (navigator.share) {
-        // Task 39 (D54): text AND url in the sheet, so WhatsApp gets a
-        // ready-to-send message, not a bare link.
-        await navigator.share({ text: label, url });
+        await navigator.share({ text });
         recordShared();
         return;
       }
@@ -84,7 +99,7 @@ function ShareInviteButton({ url, label }: { url: string; label: string }) {
       return; // user canceled the native sheet — not an error
     }
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(text);
       recordShared();
     } catch {}
   }
@@ -366,7 +381,13 @@ export default function ThreadPage() {
       ? Math.max(0, 1 - tokens.spentThisPeriod / granted)
       : null;
 
-  const streamingActive = loading && !!streaming && streaming.text.length > 0;
+  // [97] D201 (12 Sept): while the assistant works the screen shows ONLY the
+  // step line; the answer appears once, at the end. The intermediate
+  // answer_delta text rewrote itself up to five times in 30 seconds, which
+  // reads as a machine changing its mind. The events still arrive — they are
+  // simply not drawn. Flip this one flag back to true to restore.
+  const SHOW_STREAMING_TEXT = false;
+  const streamingActive = SHOW_STREAMING_TEXT && loading && !!streaming && streaming.text.length > 0;
   // 23 Aug #5: in-thread chrome follows the conversation's language.
   const chrome = CHROME[detectThreadLang(messages)];
 
@@ -390,7 +411,7 @@ export default function ThreadPage() {
   }, [streaming]);
 
   useEffect(() => {
-    if (!streaming) return;
+    if (!SHOW_STREAMING_TEXT || !streaming) return;
     const total = streaming.text.length;
     if (revealedLen >= total) return;
     // Catch up faster the further behind we are, so a long burst doesn't
@@ -1321,7 +1342,7 @@ export default function ThreadPage() {
                     </div>
                   )}
                   {extractInviteLink(msg.content) && (
-                    <ShareInviteButton url={extractInviteLink(msg.content)!} label={chrome.share} />
+                    <ShareInviteButton text={extractInviteShareText(msg.content)} label={chrome.share} />
                   )}
                   {isFirstAssistant && isRequest && (reqNames || reqQuote) && (
                     <div style={{ marginLeft: "36px" }} className="flex flex-col gap-2">
