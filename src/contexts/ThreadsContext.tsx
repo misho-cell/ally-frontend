@@ -37,6 +37,8 @@ export type ServerMessage = {
   run_id?: string | null;
   // Task 98: "pending" rows carry their own buttons.
   choices?: string[] | null;
+  // Task 39: filled only on the row that requested an invite link.
+  share_text?: string | null;
 };
 
 export type ChatMessage = {
@@ -121,6 +123,7 @@ export function toChatMessages(raw: unknown): ChatMessage[] {
     kind: m.kind === "step" ? "step" : m.kind === "error" ? "error" : "message",
     runId: m.run_id ?? null,
     ...(m.kind === "pending" && Array.isArray(m.choices) && m.choices.length > 0 ? { choices: m.choices } : {}),
+    ...(typeof m.share_text === "string" && m.share_text ? { shareText: m.share_text } : {}),
   }));
 }
 

@@ -74,8 +74,9 @@ async function recordShared() {
 // message get_invite_link composed, link already inside. Share it verbatim;
 // never rebuild it from the reply (a paraphrase would go out in the user's
 // own name) and never add the url as a second field (it would appear twice).
-// On a reloaded thread share_text is gone — the SSE field is not persisted on
-// the message row — so the button falls back to the bare link.
+// It survives a reload too: the row carries share_text, exactly like a pending
+// row carries its choices. No share_text means nothing to share — the button
+// simply isn't there.
 function ShareInviteButton({ text, label }: { text: string; label: string }) {
   async function share() {
     try {
@@ -1330,8 +1331,8 @@ export default function ThreadPage() {
                       </div>
                     </div>
                   )}
-                  {(msg.shareText || extractInviteLink(msg.content)) && (
-                    <ShareInviteButton text={msg.shareText ?? extractInviteLink(msg.content)!} label={chrome.share} />
+                  {msg.shareText && (
+                    <ShareInviteButton text={msg.shareText} label={chrome.share} />
                   )}
                   {isFirstAssistant && isRequest && (reqNames || reqQuote) && (
                     <div style={{ marginLeft: "36px" }} className="flex flex-col gap-2">
