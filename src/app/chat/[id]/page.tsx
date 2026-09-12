@@ -70,23 +70,12 @@ async function recordShared() {
   } catch {}
 }
 
-// Task 39 (D54, 12 Sept): get_invite_link now returns a ready share_text with
-// the link already inside it, and the assistant puts it in the reply. The
-// client only ever sees that reply, so share the block that carries the link,
-// verbatim — never the button caption, and never text+url as two fields (the
-// link would then appear twice in WhatsApp).
-function extractInviteShareText(content: string): string {
-  const url = extractInviteLink(content);
-  if (!url) return content.trim();
-  const block = content
-    .split(/\n{2,}/)
-    .map((p) => p.trim())
-    .find((p) => p.includes(url));
-  if (!block) return url;
-  const cleaned = block.replace(/^[-*>\s]+/, "").trim();
-  return cleaned.length > url.length ? cleaned : url;
-}
-
+// Task 39 (D54, 12 Sept): run_complete now carries share_text — the exact
+// message get_invite_link composed, link already inside. Share it verbatim;
+// never rebuild it from the reply (a paraphrase would go out in the user's
+// own name) and never add the url as a second field (it would appear twice).
+// On a reloaded thread share_text is gone — the SSE field is not persisted on
+// the message row — so the button falls back to the bare link.
 function ShareInviteButton({ text, label }: { text: string; label: string }) {
   async function share() {
     try {
@@ -1341,8 +1330,8 @@ export default function ThreadPage() {
                       </div>
                     </div>
                   )}
-                  {extractInviteLink(msg.content) && (
-                    <ShareInviteButton text={extractInviteShareText(msg.content)} label={chrome.share} />
+                  {(msg.shareText || extractInviteLink(msg.content)) && (
+                    <ShareInviteButton text={msg.shareText ?? extractInviteLink(msg.content)!} label={chrome.share} />
                   )}
                   {isFirstAssistant && isRequest && (reqNames || reqQuote) && (
                     <div style={{ marginLeft: "36px" }} className="flex flex-col gap-2">

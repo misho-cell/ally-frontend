@@ -60,6 +60,10 @@ export type ChatMessage = {
   // message via message_appended, never glued to the reply — and each names
   // its action. Rendered under this bubble, not under the thread's last one.
   choices?: string[];
+  // Task 39 (12 Sept): the ready-to-send invite text, link already inside,
+  // straight from run_complete.share_text. Shared verbatim — never rebuilt
+  // from the reply, never paired with a separate url.
+  shareText?: string;
 };
 
 export type Option = { phone: string; name: string };
@@ -150,7 +154,24 @@ export function mergeMessages(fresh: ChatMessage[], existing: ChatMessage[]): Ch
 
   const pending = existing.filter((m) => (m.pending || m.failed) && !freshKeys.has(contentKey(m)));
 
-  return [...older, ...fresh, ...pending];
+  // SSE-only extras (share text, per-bubble buttons) live on the local copy.
+  // When the server row replaces it, carry them across — otherwise the refetch
+  // that follows thread_updated drops them a second after they appear.
+  const extras = new Map<string, { shareText?: string; choices?: string[] }>();
+  for (const m of existing) {
+    if (m.shareText || m.choices) extras.set(contentKey(m), { shareText: m.shareText, choices: m.choices });
+  }
+  const kept = fresh.map((m) => {
+    const extra = extras.get(contentKey(m));
+    if (!extra) return m;
+    return {
+      ...m,
+      ...(!m.shareText && extra.shareText ? { shareText: extra.shareText } : {}),
+      ...(!m.choices && extra.choices ? { choices: extra.choices } : {}),
+    };
+  });
+
+  return [...older, ...kept, ...pending];
 }
 
 // Older page arrived — put it in front, skipping rows we already hold.

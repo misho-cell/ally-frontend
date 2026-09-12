@@ -537,6 +537,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             runId: data.runId ?? null,
                             pending: true,
                             createdAt: new Date().toISOString(),
+                            // Task 39: present only when get_invite_link ran.
+                            ...(typeof data.share_text === "string" && data.share_text
+                              ? { shareText: data.share_text }
+                              : {}),
                           },
                         ],
                         options: Array.isArray(data.options) ? data.options : [],
