@@ -400,7 +400,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       abortRef.current = new AbortController();
       const ctrl = abortRef.current;
 
-      fetchEventSource(`${BASE_URL}/threads/stream`, {
+      // device_id in the query, not a header (13 Sept): presence is counted
+      // per device now, and this stream is what marks a device "here". A
+      // custom header would put a CORS preflight in front of every reconnect,
+      // and this stream reconnects often; a query parameter has no preflight
+      // and no failure mode. The id is a random UUID naming a browser, not a
+      // secret, and it is the same one sent with the subscription.
+      fetchEventSource(`${BASE_URL}/threads/stream?device_id=${encodeURIComponent(getDeviceId())}`, {
         headers: { Authorization: `Bearer ${getToken()}` },
         signal: ctrl.signal,
         openWhenHidden: true,
