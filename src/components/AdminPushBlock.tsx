@@ -18,6 +18,8 @@ import { unwrapData, pickArray, recordItems, isRecord } from "@/lib/payload";
 type Subscription = {
   provider?: string | null;
   user_agent?: string | null;
+  // Sent from 13 Sept; the stable per-browser key, shown when present.
+  device_id?: string | null;
   endpoint_tail?: string | null;
   created_at?: string | null;
 };
@@ -97,6 +99,9 @@ export default function AdminPushBlock({ userId }: { userId: string }) {
                   <span className="text-[#23261F]">{dev}</span>
                 ) : (
                   <span className="text-gray-400" title="ეს ველი 12 სექტემბერს დაემატა, ძველ მწკრივებზე ცარიელია">მოწყობილობა უცნობია</span>
+                )}
+                {s.device_id && (
+                  <span className="font-mono text-xs text-gray-400" title={s.device_id}>id …{s.device_id.slice(-12)}</span>
                 )}
                 <span className="font-mono text-xs text-gray-400">{s.endpoint_tail ?? "—"}</span>
                 <span className="ml-auto text-xs text-gray-400">{fmt(s.created_at)}</span>

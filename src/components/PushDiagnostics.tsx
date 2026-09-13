@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getLocale } from "@/lib/i18n";
+import { getDeviceId } from "@/lib/deviceId";
 import NotificationButton from "./NotificationButton";
 
 // Row 6 (12 Sept): the three values needed to tell a push problem apart —
@@ -25,6 +26,7 @@ const L = {
     permission: "Permission",
     service: "Push service",
     device: "Device",
+    deviceId: "Device id",
     yes: "yes",
     no: "no",
     none: "none",
@@ -38,6 +40,7 @@ const L = {
     permission: "ნებართვა",
     service: "მიწოდების სერვისი",
     device: "მოწყობილობა",
+    deviceId: "მოწყობილობის id",
     yes: "კი",
     no: "არა",
     none: "არ არის",
@@ -47,6 +50,7 @@ const L = {
 };
 
 type Info = {
+  deviceId: string;
   standalone: boolean;
   permission: string | null;
   endpointHost: string | null;
@@ -75,7 +79,7 @@ export default function PushDiagnostics() {
     const device = deviceName(navigator.userAgent);
 
     const finish = (endpointHost: string | null) => {
-      if (alive) setInfo({ standalone, permission, endpointHost, device });
+      if (alive) setInfo({ standalone, permission, endpointHost, device, deviceId: getDeviceId() });
     };
 
     if (!("serviceWorker" in navigator)) {
@@ -110,6 +114,7 @@ export default function PushDiagnostics() {
       <p style={{ fontSize: "12px", color: "var(--meta)" }}>{s.hint}</p>
       <div className="flex flex-col gap-1.5" style={{ marginTop: "4px" }}>
         {row(s.device, info.device)}
+        {row(s.deviceId, info.deviceId.slice(-12))}
         {row(s.installed, info.standalone ? s.yes : s.no)}
         {row(s.permission, info.permission ?? s.unavailable)}
         {row(s.service, info.endpointHost ?? s.none)}

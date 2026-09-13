@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
-import { authHeaders, handleAdminTokenMisuse } from "@/lib/deviceId";
+import { authHeaders, getDeviceId, handleAdminTokenMisuse } from "@/lib/deviceId";
 import { getSpeechRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { t, tf, fmtDateShort } from "@/lib/i18n";
 import { useUserName, clearUserName } from "@/lib/user";
@@ -374,7 +374,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           // Row 6 (12 Sept): name the device. web.push.apple.com serves macOS
           // Safari as well as iPhones, so without this an Apple endpoint can't
           // be told apart from a Mac one. Optional server-side.
-          body: JSON.stringify({ ...sub, user_agent: navigator.userAgent }),
+          // device_id is the stable key: a UUID minted once per browser and
+          // kept in localStorage, unchanged when the UA string changes on a
+          // browser update. user_agent stays for readability.
+          body: JSON.stringify({ ...sub, user_agent: navigator.userAgent, device_id: getDeviceId() }),
         });
         localStorage.setItem("push_endpoint", sub.endpoint ?? "");
       } catch {}

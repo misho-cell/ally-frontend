@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { authHeaders } from "@/lib/deviceId";
+import { authHeaders, getDeviceId } from "@/lib/deviceId";
 import { getLocale } from "@/lib/i18n";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -85,7 +85,7 @@ export default function NotificationButton() {
         headers: authHeaders({ "Content-Type": "application/json" }),
         // Row 6: see the note in chat/layout.tsx — names the device so an
         // Apple endpoint can be told apart from a Mac one.
-        body: JSON.stringify({ ...sub, user_agent: navigator.userAgent }),
+        body: JSON.stringify({ ...sub, user_agent: navigator.userAgent, device_id: getDeviceId() }),
       });
       localStorage.setItem("push_endpoint", sub.endpoint ?? "");
       setStatus("granted");
