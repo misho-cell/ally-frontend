@@ -14,12 +14,21 @@ import { unwrapData, pickArray, recordItems, isRecord } from "@/lib/payload";
 //    the same as "no device".
 //  - 0 deliveries does NOT mean nothing was sent. Recording started on
 //    12 Sept; the server says so in `note`, which is printed as-is.
+//  - (14 Sept) skipped is NOT failed. Per-device presence added a third
+//    status: a push deliberately withheld because that device is watching
+//    right now. Colouring it like a failure would turn the healthy case into
+//    an alarm on the one screen meant to tell them apart.
 
 type Subscription = {
   provider?: string | null;
   user_agent?: string | null;
   // Sent from 13 Sept; the stable per-browser key, shown when present.
   device_id?: string | null;
+  // Last 12 characters, the same slice the tester's card shows.
+  device_id_tail?: string | null;
+  // True = this device is watching right now, so a push to it is withheld on
+  // purpose. Without it a deliberate skip is indistinguishable from silence.
+  live?: boolean | null;
   endpoint_tail?: string | null;
   created_at?: string | null;
 };
@@ -52,7 +61,7 @@ function deviceName(ua?: string | null): string | null {
 export default function AdminPushBlock({ userId }: { userId: string }) {
   const [subs, setSubs] = useState<Subscription[] | null>(null);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [counts, setCounts] = useState<{ sent: number | null; failed: number | null }>({ sent: null, failed: null });
+  const [counts, setCounts] = useState<{ sent: number | null; skipped: number | null; failed: number | null }>({ sent: null, skipped: null, failed: null });
   const [note, setNote] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
 
@@ -67,6 +76,7 @@ export default function AdminPushBlock({ userId }: { userId: string }) {
         setDeliveries(recordItems(pickArray(body, ["recent_deliveries"])) as Delivery[]);
         setCounts({
           sent: typeof body.sent_recently === "number" ? body.sent_recently : null,
+          skipped: typeof body.skipped_recently === "number" ? body.skipped_recently : null,
           failed: typeof body.failed_recently === "number" ? body.failed_recently : null,
         });
         setNote(typeof body.note === "string" ? body.note : null);
@@ -100,8 +110,18 @@ export default function AdminPushBlock({ userId }: { userId: string }) {
                 ) : (
                   <span className="text-gray-400" title="ეს ველი 12 სექტემბერს დაემატა, ძველ მწკრივებზე ცარიელია">მოწყობილობა უცნობია</span>
                 )}
-                {s.device_id && (
-                  <span className="font-mono text-xs text-gray-400" title={s.device_id}>id …{s.device_id.slice(-12)}</span>
+                {(s.device_id_tail || s.device_id) && (
+                  <span className="font-mono text-xs text-gray-400" title={s.device_id ?? undefined}>
+                    id …{s.device_id_tail ?? s.device_id!.slice(-12)}
+                  </span>
+                )}
+                {s.live && (
+                  <span
+                    className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700"
+                    title="ახლა უყურებს — push განზრახ არ ეგზავნება"
+                  >
+                    უყურებს ახლა
+                  </span>
                 )}
                 <span className="font-mono text-xs text-gray-400">{s.endpoint_tail ?? "—"}</span>
                 <span className="ml-auto text-xs text-gray-400">{fmt(s.created_at)}</span>
@@ -112,17 +132,24 @@ export default function AdminPushBlock({ userId }: { userId: string }) {
       )}
 
       <div className="mt-4 border-t border-gray-100 pt-3">
-        <p className="text-sm text-gray-600">
-          გაიგზავნა: <b className="text-[#23261F]">{counts.sent ?? "—"}</b>
-          <span className="ml-4">ჩავარდა: <b className="text-[#23261F]">{counts.failed ?? "—"}</b></span>
-        </p>
+        {/* Three separate counts, three colours. skipped is healthy. */}
+        <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+          <span className="text-gray-600">გაიგზავნა: <b className="text-green-700">{counts.sent ?? "—"}</b></span>
+          <span className="text-gray-600">გამოტოვდა: <b className="text-blue-700">{counts.skipped ?? "—"}</b></span>
+          <span className="text-gray-600">ჩავარდა: <b className="text-red-600">{counts.failed ?? "—"}</b></span>
+        </div>
+        <p className="mt-1 text-xs text-gray-400">გამოტოვება ნიშნავს, რომ მოწყობილობა უყურებდა და push განზრახ არ გაიგზავნა. ეს ხარვეზი არ არის.</p>
         {note && <p className="mt-1 text-xs text-gray-400">{note}</p>}
 
         {deliveries.length > 0 && (
           <div className="mt-3 flex flex-col gap-1">
             {deliveries.map((d, i) => (
               <div key={i} className="flex flex-wrap items-center gap-2 text-xs">
-                <span className={`rounded-full px-2 py-0.5 font-semibold ${d.status === "sent" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+                <span className={`rounded-full px-2 py-0.5 font-semibold ${
+                  d.status === "sent" ? "bg-green-50 text-green-700"
+                  : d.status === "skipped" ? "bg-blue-50 text-blue-700"
+                  : "bg-red-50 text-red-600"
+                }`}>
                   {d.status ?? "?"}{d.status_code != null ? ` ${d.status_code}` : ""}
                 </span>
                 <span className="font-mono text-gray-400">{d.endpoint_tail ?? "—"}</span>

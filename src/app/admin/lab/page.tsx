@@ -28,6 +28,10 @@ const TABS: Tab[] = [
   // the numeric technique_* fields are hidden so a 0 doesn't read as a count.
   { key: "chorus-asks", label: "Chorus კითხვები", path: "/admin/chorus/asks" },
   { key: "asks", label: "კითხვები (წევრებს შორის)", path: "/admin/asks" },
+  // 14 Sept: the nightly base walk. A cursor that never moves is the only
+  // visible sign that the walk has died, so the scalars matter more than the
+  // rows here — extractScalars puts them above the table.
+  { key: "base-walk", label: "ღამის სვლა (base walk)", path: "/admin/target-list/base-walk" },
 ];
 
 // Numeric technique_* columns are the same data as the technique object but as
