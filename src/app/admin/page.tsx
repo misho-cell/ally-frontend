@@ -178,6 +178,12 @@ export default function AdminPage() {
             მოწვევის კოჰორტები →
           </a>
           <a
+            href="/admin/handoff"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
+          >
+            ტესტერის ყუთი →
+          </a>
+          <a
             href="/admin/research-findings"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
           >
