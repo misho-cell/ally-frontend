@@ -175,6 +175,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const lastCompletedRunIdRef = useRef<Record<string, string>>({});
   const pathnameRef = useRef(pathname);
   const homeInputRef = useRef<HTMLInputElement>(null);
+  // True only between pressing "+ ახალი მიზანი" and the next send from the home
+  // box. It is a ref, not state, because nothing renders from it and a stale
+  // closure here would hand as_goal to the wrong line.
+  const explicitGoalRef = useRef(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -687,6 +691,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   const createThread = useCallback(async () => {
     setCollapsed(false);
+    explicitGoalRef.current = true;
     homeInputRef.current?.focus();
     // Desktop composer lives in the main pane (ticket 6 #1) — ask it to focus.
     window.dispatchEvent(new Event("netai:focus-composer"));
@@ -695,6 +700,18 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const createTask = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || creating) return;
+    // ITEM 20 (15 Sept): the home box used to send as_goal on EVERY line, so
+    // "which goals do I have open?" opened a goal, with a plan and an open
+    // question, about the question itself. That is the state ITEM 0 fell into,
+    // where a wake-up approved its own plan and nearly wrote to two real
+    // people. The box was preparing the state the wake-up then acted on.
+    //
+    // A typed line now goes in plain and the server's own rule decides — the
+    // same rule that already classifies a line typed inside a thread, and it
+    // reads all three of the tester's examples as questions. Only "+ new goal"
+    // sets the flag, because that button is someone saying so on purpose.
+    const asGoal = explicitGoalRef.current;
+    explicitGoalRef.current = false;
     setCreating(true);
     setHomeInput("");
     try {
@@ -721,7 +738,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         [String(thread.id)]: trimmed.length > 42 ? trimmed.slice(0, 42) + "…" : trimmed,
       }));
       router.push(`/chat/${thread.id}`);
-      await sendIntoThread(String(thread.id), trimmed, true, true);
+      await sendIntoThread(String(thread.id), trimmed, true, asGoal);
     } catch {}
     finally {
       setCreating(false);
@@ -968,7 +985,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
             </button>
             <button
-              onClick={() => { router.push("/chat"); window.dispatchEvent(new Event("netai:focus-composer")); }}
+              onClick={() => { explicitGoalRef.current = true; router.push("/chat"); window.dispatchEvent(new Event("netai:focus-composer")); }}
               aria-label={t("newTask")}
               className="flex items-center justify-center rounded-full"
               style={{ width: 32, height: 32, background: "var(--accent)", color: "#FBFAF4", fontSize: "18px" }}
@@ -1041,6 +1058,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 and phone list alike. */}
             <button
               onClick={() => {
+                explicitGoalRef.current = true;
                 router.push("/chat");
                 homeInputRef.current?.focus();
                 window.dispatchEvent(new Event("netai:focus-composer"));
