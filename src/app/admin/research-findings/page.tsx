@@ -105,6 +105,10 @@ export default function AdminResearchFindingsPage() {
   useEffect(() => { load(); }, [load]);
 
   const off = status?.on === false;
+  // 15 Sept: on with no run yet is a THIRD state. "we looked and found
+  // nothing" and "it has not started" are different facts, and an empty list
+  // under a switch that reads as on says the first while meaning the second.
+  const neverRan = status?.on === true && status?.last_run == null;
 
   return (
     <div className="min-h-full bg-gray-50">
@@ -130,6 +134,12 @@ export default function AdminResearchFindingsPage() {
         {off && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             ავტომატური კვლევა გამორთულია. ცარიელი სია ამ მიზეზითაა, არა ხარვეზის გამო.
+          </div>
+        )}
+
+        {neverRan && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            ჩართულია, პირველ გაშვებას ელოდება. ჯერ არაფერი შეგვისწავლია.
           </div>
         )}
 

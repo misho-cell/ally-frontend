@@ -63,6 +63,8 @@ export default function AdminPushBlock({ userId }: { userId: string }) {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [counts, setCounts] = useState<{ sent: number | null; skipped: number | null; failed: number | null }>({ sent: null, skipped: null, failed: null });
   const [note, setNote] = useState<string | null>(null);
+  // Start of the window the counts cover; absent on older backends.
+  const [since, setSince] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
 
   useEffect(() => {
@@ -80,6 +82,11 @@ export default function AdminPushBlock({ userId }: { userId: string }) {
           failed: typeof body.failed_recently === "number" ? body.failed_recently : null,
         });
         setNote(typeof body.note === "string" ? body.note : null);
+        setSince(
+          typeof body.recording_since === "string" ? body.recording_since
+          : typeof body.since === "string" ? body.since
+          : null,
+        );
       })
       .catch((err) => {
         if (!alive) return;
@@ -132,14 +139,26 @@ export default function AdminPushBlock({ userId }: { userId: string }) {
       )}
 
       <div className="mt-4 border-t border-gray-100 pt-3">
-        {/* Three separate counts, three colours. skipped is healthy. */}
-        <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+        {/* 15 Sept: the counts cover only the window in which deliveries were
+            RECORDED, which starts long after the oldest subscription was
+            created (30 July vs 12 Sept — six weeks with no rows at all). A
+            bare "9" next to a July date reads as nine in six weeks. So the
+            window is drawn ON the counts, not left to fine print underneath. */}
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">ჩაწერილი მიწოდებები</h3>
+          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+            {since ? `${fmt(since)}-დან` : "ჩაწერის დაწყებიდან"}
+          </span>
+        </div>
+        <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 text-sm">
           <span className="text-gray-600">გაიგზავნა: <b className="text-green-700">{counts.sent ?? "—"}</b></span>
           <span className="text-gray-600">გამოტოვდა: <b className="text-blue-700">{counts.skipped ?? "—"}</b></span>
           <span className="text-gray-600">ჩავარდა: <b className="text-red-600">{counts.failed ?? "—"}</b></span>
         </div>
+        {/* The server's own sentence about the window. It is the line that
+            stops the misreading, so it is readable, not grey fine print. */}
+        {note && <p className="mt-1.5 text-xs text-amber-800">{note}</p>}
         <p className="mt-1 text-xs text-gray-400">გამოტოვება ნიშნავს, რომ მოწყობილობა უყურებდა და push განზრახ არ გაიგზავნა. ეს ხარვეზი არ არის.</p>
-        {note && <p className="mt-1 text-xs text-gray-400">{note}</p>}
 
         {deliveries.length > 0 && (
           <div className="mt-3 flex flex-col gap-1">

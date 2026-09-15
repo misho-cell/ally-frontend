@@ -233,12 +233,25 @@ export default function LabPage() {
           <p className="py-8 text-center text-sm text-gray-400">მონაცემები ვერ მოიძებნა</p>
         )}
 
+        {/* 15 Sept: on base-walk, candidates: 0 with last_walk: null means the
+            walk has NEVER RUN — broken work. candidates: 0 with a real
+            last_walk means it ran and found nobody — an empty base. Rendering
+            both as a bare "0" says the harmless one and hides the other. */}
+        {active.key === "base-walk" &&
+          scalars.some(([k, v]) => k === "last_walk" && v == null) && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            ღამის სვლა ჯერ არ გაშვებულა. ქვემოთ ნულები ამ მიზეზითაა, არა იმიტომ, რომ კანდიდატი არ მოიძებნა.
+          </div>
+        )}
+
         {scalars.length > 0 && (
           <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
             {scalars.map(([k, v]) => (
               <div key={k} className="flex flex-col">
                 <span className="text-[11px] uppercase tracking-wide text-gray-400">{prettifyKey(k)}</span>
-                <span className="text-sm font-semibold text-[#23261F]">{cell(v, k, "—")}</span>
+                <span className="text-sm font-semibold text-[#23261F]">
+                  {k === "last_walk" && v == null ? "არ გაშვებულა" : cell(v, k, "—")}
+                </span>
               </div>
             ))}
           </div>
