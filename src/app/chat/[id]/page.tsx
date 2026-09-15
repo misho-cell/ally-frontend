@@ -781,9 +781,30 @@ export default function ThreadPage() {
   // FE-1 (30 Aug): sticky-bottom — only auto-scroll while the user is already
   // near the bottom. Scrolling up to reread mid-stream must not get yanked
   // back down on every token.
-  const NEAR_BOTTOM_PX = 80;
+  // Ticket 19 [19] (15 Sept): raised from 80. On a phone the container height
+  // is fractional and iOS rubber-banding leaves a few pixels of slack, so a
+  // reader sitting at the very bottom could measure as "not at the bottom"
+  // and lose the follow.
+  const NEAR_BOTTOM_PX = 120;
   const nearBottomRef = useRef(true);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+
+  // Ticket 19 [19]: scrollIntoView({behavior:"smooth"}) is the wrong tool here.
+  // It animates towards a target measured when it starts, so an answer that is
+  // still growing lands short, and in iOS Home-Screen mode — a different
+  // viewport from a Safari tab, which is why Ticket 9 [27] read as fixed —
+  // it is unreliable inside a nested scroller. Setting scrollTop on the
+  // container itself is synchronous and cannot be outrun by the content.
+  const stickToBottom = useCallback((smooth: boolean) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const top = el.scrollHeight - el.clientHeight;
+    if (smooth && typeof el.scrollTo === "function") {
+      el.scrollTo({ top, behavior: "smooth" });
+    } else {
+      el.scrollTop = top;
+    }
+  }, []);
 
   function updateNearBottom() {
     const el = scrollRef.current;
@@ -802,7 +823,7 @@ export default function ThreadPage() {
   function jumpToBottom() {
     nearBottomRef.current = true;
     setShowJumpToBottom(false);
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    stickToBottom(true);
   }
 
   useLayoutEffect(() => {
@@ -820,9 +841,7 @@ export default function ThreadPage() {
     lastIdRef.current = lastId;
     if (!lastId) return;
     if (nearBottomRef.current || firstPaintRef.current) {
-      messagesEndRef.current?.scrollIntoView({
-        behavior: firstPaintRef.current ? "auto" : "smooth",
-      });
+      stickToBottom(!firstPaintRef.current);
     }
     firstPaintRef.current = false;
   }, [messages]);
@@ -830,8 +849,32 @@ export default function ThreadPage() {
   useEffect(() => {
     if (!streaming && !loading) return;
     if (!nearBottomRef.current) return;
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [streaming, loading]);
+    stickToBottom(true);
+  }, [streaming, loading, stickToBottom]);
+
+  // Ticket 19 [19]: the effects above fire when the LAST MESSAGE ID changes or
+  // a run starts and stops. Neither fires while an answer is growing — a step
+  // row appearing, a bubble reflowing, a long reply landing in one piece — so
+  // the last line walked off the bottom and the reader had to chase it by
+  // hand. Watching the content box means every height change is followed,
+  // whatever caused it.
+  //
+  // It follows ONLY when the reader is already at the bottom: someone who has
+  // scrolled up to reread is left alone, which is the half of this that a
+  // plain "scroll to the end" would get wrong.
+  useEffect(() => {
+    const el = scrollRef.current;
+    const content = el?.firstElementChild;
+    if (!el || !content || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      if (nearBottomRef.current) stickToBottom(false);
+    });
+    ro.observe(content);
+    return () => ro.disconnect();
+    // The container swaps its child when the first messages land, so the
+    // observer re-attaches then; otherwise it would keep watching the
+    // detached loading state and follow nothing.
+  }, [stickToBottom, messages.length === 0]);
 
   // inReplyTo (Task 98): the pending bubble's server message id, so the
   // backend gets an unambiguous link to the item even when two bubbles are
