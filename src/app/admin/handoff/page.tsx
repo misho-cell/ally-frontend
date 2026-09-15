@@ -146,7 +146,7 @@ export default function AdminHandoffPage() {
       await apiFetch("/admin/handoff/read", {
         method: "POST",
         admin: true,
-        body: JSON.stringify({ reader, last_seen_id: lastSeen }),
+        body: { reader, last_seen_id: lastSeen },
       });
       setUnread(0);
     } catch {
@@ -163,7 +163,7 @@ export default function AdminHandoffPage() {
       await apiFetch("/admin/handoff", {
         method: "POST",
         admin: true,
-        body: JSON.stringify({ author: me, body: text }),
+        body: { author: me, body: text },
       });
       setDraft("");
       await load(me);
