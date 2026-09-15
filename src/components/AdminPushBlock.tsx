@@ -47,6 +47,18 @@ function fmt(iso?: string | null): string {
   return isNaN(d.getTime()) ? "—" : d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+// recording_since arrives as Postgres text ("2026-09-12 21:57:08.551099+00"),
+// which Safari will not parse as a Date — a space instead of T and six-digit
+// microseconds. Only the day matters on the chip, so take it literally off the
+// front of the string rather than round-tripping through Date.
+function fmtDay(raw: string): string {
+  const day = raw.slice(0, 10);
+  const d = new Date(`${day}T00:00:00Z`);
+  return isNaN(d.getTime())
+    ? day
+    : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" });
+}
+
 // The same reading the tester's own diagnostics card does, from the UA string.
 function deviceName(ua?: string | null): string | null {
   if (!ua) return null;
@@ -147,13 +159,16 @@ export default function AdminPushBlock({ userId }: { userId: string }) {
         <div className="flex flex-wrap items-baseline gap-x-2">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">ჩაწერილი მიწოდებები</h3>
           <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-            {since ? `${fmt(since)}-დან` : "ჩაწერის დაწყებიდან"}
+            {since ? `${fmtDay(since)}-დან` : "ჩაწერა ჯერ არ დაწყებულა"}
           </span>
         </div>
+        {/* recording_since === null means no delivery was ever recorded, so
+            the three counts are UNKNOWN, not zero — the same distinction as
+            last_walk: null. Printing 0 here would invent a measurement. */}
         <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-          <span className="text-gray-600">გაიგზავნა: <b className="text-green-700">{counts.sent ?? "—"}</b></span>
-          <span className="text-gray-600">გამოტოვდა: <b className="text-blue-700">{counts.skipped ?? "—"}</b></span>
-          <span className="text-gray-600">ჩავარდა: <b className="text-red-600">{counts.failed ?? "—"}</b></span>
+          <span className="text-gray-600">გაიგზავნა: <b className="text-green-700">{since ? counts.sent ?? "—" : "უცნობია"}</b></span>
+          <span className="text-gray-600">გამოტოვდა: <b className="text-blue-700">{since ? counts.skipped ?? "—" : "უცნობია"}</b></span>
+          <span className="text-gray-600">ჩავარდა: <b className="text-red-600">{since ? counts.failed ?? "—" : "უცნობია"}</b></span>
         </div>
         {/* The server's own sentence about the window. It is the line that
             stops the misreading, so it is readable, not grey fine print. */}
