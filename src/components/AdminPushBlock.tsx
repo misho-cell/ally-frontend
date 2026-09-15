@@ -44,7 +44,11 @@ type Delivery = {
 function fmt(iso?: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
-  return isNaN(d.getTime()) ? "—" : d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  // A value we cannot parse falls back to the raw string, never to the dash
+  // that means "no date". Safari refused Postgres timestamps until 15 Sept,
+  // so every real time on an iPhone would have printed as absent — the same
+  // class of lie these screens exist to stop. The dash is reserved for null.
+  return isNaN(d.getTime()) ? iso : d.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 // recording_since arrives as Postgres text ("2026-09-12 21:57:08.551099+00"),
