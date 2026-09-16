@@ -324,6 +324,8 @@ export default function ThreadPage() {
   // wording per window — calendar_month vs calendar_week). Shown verbatim.
   const [limitMsg, setLimitMsg] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
+  // Stays until dismissed. A stop that failed must not fade away.
+  const [stopFailed, setStopFailed] = useState(false);
   const [packages, setPackages] = useState<TopupPackage[]>([]);
   // Ticket 6 #7: design-system modals instead of window.prompt/confirm.
   const [renameOpen, setRenameOpen] = useState(false);
@@ -545,18 +547,37 @@ export default function ThreadPage() {
     } catch {}
   }
 
+  // Ticket 20 row 113 (16 Sept). Two separate faults, and the second is the
+  // worse one.
+  //
+  // The call sends the THREAD id where the route wants the GOAL id, so it
+  // 404s. That half cannot be fixed here yet: the chat view is handed a
+  // thread and never learns the goal's id, so the backend is adding
+  // POST /threads/:id/stop. Guessing an id would be worse than failing —
+  // within one account the two can collide, and a wrong guess would stop
+  // somebody's other goal.
+  //
+  // Meanwhile the failure vanished into a toast that clears itself after two
+  // and a half seconds. The tester pressed Stop three times and saw nothing
+  // at all. Someone who believes a goal stopped, while it keeps running and
+  // keeps waking them, is worse off than someone who is told it failed: the
+  // false calm is the actual harm, not the 404. So a failed stop now leaves
+  // a banner that stays until it is dismissed, and says plainly that the
+  // goal is still running.
   async function stopTask() {
     if (stopping) return;
     setStopping(true);
+    setStopFailed(false);
     try {
       const res = await fetch(`${BASE_URL}/tasks/${threadId}/stop`, {
         method: "POST",
         headers: authHeaders({ "Content-Type": "application/json" }),
       });
       if (res.status === 401) { forceLogin(); return; }
-      if (!res.ok) showToast(t("stopFailed"), false);
+      if (!res.ok) { setStopFailed(true); return; }
+      showToast(t("stopped"), true);
     } catch {
-      showToast(t("stopFailed"), false);
+      setStopFailed(true);
     } finally {
       setStopping(false);
     }
@@ -844,7 +865,7 @@ export default function ThreadPage() {
       stickToBottom(!firstPaintRef.current);
     }
     firstPaintRef.current = false;
-  }, [messages]);
+  }, [messages, stickToBottom]);
 
   useEffect(() => {
     if (!streaming && !loading) return;
@@ -862,6 +883,7 @@ export default function ThreadPage() {
   // It follows ONLY when the reader is already at the bottom: someone who has
   // scrolled up to reread is left alone, which is the half of this that a
   // plain "scroll to the end" would get wrong.
+  const isEmptyThread = messages.length === 0;
   useEffect(() => {
     const el = scrollRef.current;
     const content = el?.firstElementChild;
@@ -874,7 +896,7 @@ export default function ThreadPage() {
     // The container swaps its child when the first messages land, so the
     // observer re-attaches then; otherwise it would keep watching the
     // detached loading state and follow nothing.
-  }, [stickToBottom, messages.length === 0]);
+  }, [stickToBottom, isEmptyThread]);
 
   // inReplyTo (Task 98): the pending bubble's server message id, so the
   // backend gets an unambiguous link to the item even when two bubbles are
@@ -1058,6 +1080,25 @@ export default function ThreadPage() {
 
   return (
     <div className="flex h-full flex-col" style={{ background: "var(--bg)" }}>
+      {/* Ticket 20: a failed stop stays on screen. The goal is still running,
+          so the person needs to know now, not for two seconds. */}
+      {stopFailed && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 px-4 py-3"
+          style={{ background: "var(--danger-bg, #FDECEC)", color: "var(--danger)", fontSize: "13px" }}
+        >
+          <span style={{ flex: 1 }}>{t("stopFailed")}</span>
+          <button
+            type="button"
+            onClick={() => setStopFailed(false)}
+            style={{ fontWeight: 600, textDecoration: "underline", flexShrink: 0 }}
+          >
+            {t("stopFailedDismiss")}
+          </button>
+        </div>
+      )}
+
       {toast && (
         <div className="toast" role="status" aria-live="polite">
           {toast.ok && <span style={{ marginRight: 4 }}>✓</span>}
