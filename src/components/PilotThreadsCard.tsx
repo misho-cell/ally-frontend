@@ -20,6 +20,16 @@ type Message = {
   // them. `kind` is the field that actually carries the distinction and the
   // endpoint has always sent it.
   kind?: string;
+  // 20 Sept (row 132): which model wrote this text. Diagnostic only, and
+  // deliberately not shown in the owner's own chat — putting a model name
+  // under every reply is a visible product change, and neither the backend
+  // nor I get to make that quietly. It lives here, where reading is already
+  // the whole purpose.
+  //
+  // null means NOBODY IS RECORDED, not "Claude wrote it". An unrecorded
+  // answer and an answer known to come from a given model are different
+  // facts, so the empty case says so rather than leaving a blank.
+  answered_by?: string | null;
   content?: string;
   created_at?: string | null;
 };
@@ -149,7 +159,16 @@ export default function PilotThreadsCard({ userId }: { userId: string }) {
                       return (
                         <div key={i} className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap break-words ${mine ? "self-end bg-[#23261F] text-white" : "self-start bg-gray-100 text-gray-800"}`}>
                           {m.content}
-                          {m.created_at && <div className={`mt-1 text-[10px] ${mine ? "text-white/60" : "text-gray-400"}`}>{fmt(m.created_at)}</div>}
+                          <div className={`mt-1 flex flex-wrap items-center gap-2 text-[10px] ${mine ? "text-white/60" : "text-gray-400"}`}>
+                            {m.created_at && <span>{fmt(m.created_at)}</span>}
+                            {/* Only on the assistant's side; a person's own
+                                message has no model behind it to name. */}
+                            {!mine && (
+                              <span className="ml-auto font-mono">
+                                {m.answered_by ? m.answered_by : "მოდელი არ ჩაწერილა"}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
