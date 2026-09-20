@@ -1059,7 +1059,13 @@ export default function ThreadPage() {
     : null;
   const reqResolved = resolvedRequests[threadId]?.action;
 
-  const statusLabel = taskStatus
+  // 20 Sept: the server's own sentence wins over the generic word, exactly as
+  // on the list row. Fixing only the row was half a fix — this is the screen
+  // the row opens, so the wrong label came back one tap later. A goal halted
+  // because WE ran out of tokens read as "needs your answer" here too.
+  const statusLabel = thread?.status_line
+    ? thread.status_line
+    : taskStatus
     ? taskStatus === "working" ? t("stWorking")
       : taskStatus === "waiting" ? t("stWaiting")
       : taskStatus === "needs_you" ? t("stNeedsYou")
@@ -1186,7 +1192,7 @@ export default function ThreadPage() {
             )}
           </span>
           {statusLabel && (
-            <span style={{ font: "600 11px/15px var(--font-system)", color: taskStatus === "needs_you" || taskStatus === "failed" ? "var(--request-accent)" : "var(--ink-soft)" }}>
+            <span style={{ font: "600 11px/15px var(--font-system)", color: !thread?.status_line && (taskStatus === "needs_you" || taskStatus === "failed") ? "var(--request-accent)" : "var(--ink-soft)" }}>
               {statusLabel}
             </span>
           )}
