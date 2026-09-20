@@ -203,7 +203,12 @@ type Ctx = {
   createThread: () => void;
   createTask: (text: string) => Promise<void>;
   titles: Record<string, string>;
-  resolveRequest: (threadId: string, action: "accept" | "deny" | "later") => void;
+  // Item 5 (20 Sept): an accept must say HOW — "direct" gives the requester
+  // the target's number, "via_mediator" gives out nothing. There is no bare
+  // accept in this union on purpose: the server reads a missing channel as
+  // direct, so a button that could not say which one was a button that gave
+  // away somebody's number in silence.
+  resolveRequest: (threadId: string, action: "accept_direct" | "accept_mediator" | "deny" | "later") => void;
   resolvedRequests: Record<string, { action: string; at: number }>;
   // Bumped per-thread on thread_updated — an open thread refetches its
   // messages so task-engine messages appear without any user action (v68 #5).

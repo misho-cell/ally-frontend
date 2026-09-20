@@ -30,6 +30,10 @@ const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
 // to every device — the cross-device signal to hide a snoozed request.
 const SNOOZE_STATUS_LINE = "გადადებულია";
 
+// Accepting an introduction must say HOW: there is deliberately no bare
+// "accept" here, so no code path can send one.
+type ResolveAction = "accept_direct" | "accept_mediator" | "deny" | "later";
+
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
 }
@@ -745,7 +749,18 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     }
   }, [creating, router, sendIntoThread]);
 
-  const resolveRequest = useCallback((threadId: string, action: "accept" | "deny" | "later") => {
+  // Item 5 (20 Sept): accepting an introduction is two different decisions,
+  // and until today the button only made one of them. "direct" hands the
+  // requester the target's phone number; "via_mediator" hands out nothing and
+  // keeps the thread going through the mediator. The server stored the choice
+  // as NULL when the app did not send it, and a NULL reads as direct — so a
+  // mediator who pressed one button gave away somebody's number without ever
+  // being asked. The backend's guard lived on the chat tool, a path no
+  // mediator has ever used; the button is how this is actually answered.
+  //
+  // So the accept action now carries its channel from the button that was
+  // pressed, and there is no button that accepts without saying how.
+  const resolveRequest = useCallback((threadId: string, action: ResolveAction) => {
     const next = { ...resolvedRequests, [threadId]: { action, at: Date.now() } };
     setResolvedRequests(next);
     try { localStorage.setItem(REQ_KEY, JSON.stringify(next)); } catch {}
@@ -760,17 +775,23 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     };
 
     const ref = threadsRef.current.find((x) => String(x.id) === threadId)?.request_ref;
-    const fallbackMsg = action === "accept" ? t("reqAcceptMsg") : action === "deny" ? t("reqDenyMsg") : t("reqLaterMsg");
+    const channel: "direct" | "via_mediator" | null =
+      action === "accept_direct" ? "direct" : action === "accept_mediator" ? "via_mediator" : null;
+    const fallbackMsg =
+      action === "accept_direct" ? t("reqAcceptMsg") :
+      action === "accept_mediator" ? t("reqAcceptMediatorMsg") :
+      action === "deny" ? t("reqDenyMsg") : t("reqLaterMsg");
 
     (async () => {
       for (let i = 0; i < 3; i++) {
         try {
           if (ref) {
-            const path = action === "accept" ? "accept" : action === "deny" ? "decline" : "snooze";
+            const path = channel ? "accept" : action === "deny" ? "decline" : "snooze";
             const res = await fetch(`${BASE_URL}/requests/${ref}/${path}`, {
               method: "POST",
               headers: authHeaders({ "Content-Type": "application/json" }),
-              body: JSON.stringify({}),
+              // Declining arranges nothing, so it carries no channel.
+              body: JSON.stringify(channel ? { channel } : {}),
             });
             if (res.status === 401) { forceLogin(); return; }
             if (res.ok) return;
@@ -1433,13 +1454,14 @@ function RequestActionRow({
 }: {
   thread: Thread;
   resolved: string | undefined;
-  onResolve: (a: "accept" | "deny" | "later") => void;
+  onResolve: (a: ResolveAction) => void;
   active: boolean;
 }) {
   const router = useRouter();
   const quote = thread.last_message?.replace(/\s+/g, " ").trim();
   const confirmation =
-    resolved === "accept" ? t("reqAccepted") :
+    resolved === "accept_direct" ? t("reqAcceptedDirect") :
+    resolved === "accept_mediator" ? t("reqAcceptedMediator") :
     resolved === "deny" ? t("reqDenied") :
     resolved === "later" ? t("reqSnoozed") : null;
 
@@ -1477,7 +1499,10 @@ function RequestActionRow({
         <p style={{ font: "600 13px/18px var(--font-system)", color: "var(--accent-strong)" }}>{confirmation}</p>
       ) : (
         <div className="flex gap-2 pt-0.5">
-          <button className="req-btn accept" onClick={(e) => { e.stopPropagation(); onResolve("accept"); }}>{t("reqAccept")}</button>
+          {/* Two ways to say yes, because they are two different answers for
+              the person whose number is at stake. There is no plain accept. */}
+          <button className="req-btn accept" onClick={(e) => { e.stopPropagation(); onResolve("accept_direct"); }}>{t("reqAcceptDirect")}</button>
+          <button className="req-btn accept" onClick={(e) => { e.stopPropagation(); onResolve("accept_mediator"); }}>{t("reqAcceptMediator")}</button>
           <button className="req-btn deny" onClick={(e) => { e.stopPropagation(); onResolve("deny"); }}>{t("reqDeny")}</button>
           <button className="req-btn later" onClick={(e) => { e.stopPropagation(); onResolve("later"); }}>{t("reqLater")}</button>
         </div>

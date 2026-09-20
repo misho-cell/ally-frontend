@@ -1430,8 +1430,12 @@ export default function ThreadPage() {
                         {reqQuote && <blockquote className="rc-quote">„{reqQuote}“</blockquote>}
                       </div>
                       {!reqResolved && (
-                        <div className="flex gap-2">
-                          <button className="req-btn accept" onClick={() => resolveRequest(threadId, "accept")}>{t("reqAccept")}</button>
+                        <div className="flex flex-wrap gap-2">
+                          {/* Item 5: the same two ways to say yes as the list
+                              row. A number moves on one of them and not the
+                              other, so neither can be the silent default. */}
+                          <button className="req-btn accept" onClick={() => resolveRequest(threadId, "accept_direct")}>{t("reqAcceptDirect")}</button>
+                          <button className="req-btn accept" onClick={() => resolveRequest(threadId, "accept_mediator")}>{t("reqAcceptMediator")}</button>
                           <button className="req-btn deny" onClick={() => resolveRequest(threadId, "deny")}>{t("reqDeny")}</button>
                           <button className="req-btn later" onClick={() => resolveRequest(threadId, "later")}>{t("reqLater")}</button>
                         </div>
