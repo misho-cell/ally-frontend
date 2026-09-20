@@ -1179,6 +1179,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       key={thread.id}
                       title={goalTitle(thread)}
                       status={status}
+                      statusLine={thread.status_line}
                       href={`/chat/${thread.id}`}
                       active={pathname === `/chat/${thread.id}`}
                       unread={isUnread(thread)}
@@ -1200,6 +1201,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         key={thread.id}
                         title={goalTitle(thread)}
                         status={status}
+                        statusLine={thread.status_line}
                         href={`/chat/${thread.id}`}
                         active={pathname === `/chat/${thread.id}`}
                         unread={isUnread(thread)}
@@ -1343,10 +1345,19 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 }
 
 function TaskRow({
-  title, status, href, active, unread, onLongPress,
+  title, status, statusLine, href, active, unread, onLongPress,
 }: {
   title: string;
   status: TaskStatus;
+  // 20 Sept: the server's own sentence about this goal, already written in
+  // the owner's language. It was arriving on every row and being thrown away
+  // while the row drew a generic word from `status` instead — so a goal
+  // halted because WE ran out of tokens on the account was labelled "needs
+  // your answer", telling the person they owed something when the block was
+  // ours. Lika read that on 18 Sept. Where the sentence exists it replaces
+  // the generic label rather than sitting next to it, because the generic
+  // label is the part that was wrong.
+  statusLine?: string | null;
   href: string;
   active: boolean;
   unread: boolean;
@@ -1398,13 +1409,20 @@ function TaskRow({
         }
       }}
     >
-      <span className="flex-1 truncate" style={{ font: `${active || unread ? 700 : 500} 13.5px/18px var(--font-system)`, color: "var(--ink)" }}>
-        {title}
+      <span className="flex-1 min-w-0 flex flex-col">
+        <span className="truncate" style={{ font: `${active || unread ? 700 : 500} 13.5px/18px var(--font-system)`, color: "var(--ink)" }}>
+          {title}
+        </span>
+        {statusLine && (
+          <span className="truncate" title={statusLine} style={{ font: "500 12px/16px var(--font-system)", color: "var(--meta)" }}>
+            {statusLine}
+          </span>
+        )}
       </span>
       {unread && !active && (
         <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, background: "var(--accent)" }} />
       )}
-      <StatusPill status={status} />
+      {!statusLine && <StatusPill status={status} />}
       <AnimBox status={status} size={40} />
     </Link>
   );
