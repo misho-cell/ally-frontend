@@ -6,7 +6,7 @@ import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
 import Modal from "@/components/Modal";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
-import { getSpeechRecognition, type SpeechRecognitionLike } from "@/lib/speech";
+import { getSpeechRecognition, speechLang, type SpeechRecognitionLike } from "@/lib/speech";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { fetchMessagePage } from "@/lib/messages";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
@@ -118,19 +118,11 @@ function detectThreadLang(messages: ChatMessage[]): ThreadLang {
   return getLocale();
 }
 
-const SUPPORTED_LANGS = [
-  "en-US", "en-GB", "es-ES", "fr-FR", "de-DE",
-  "it-IT", "pt-BR", "ja-JP", "ko-KR", "zh-CN",
-  "ru-RU", "ar-SA",
-];
-
-function detectLang(): string {
-  if (typeof navigator === "undefined") return "en-US";
-  const nav = navigator.language;
-  if (SUPPORTED_LANGS.includes(nav)) return nav;
-  const base = nav.split("-")[0];
-  return SUPPORTED_LANGS.find((l) => l.startsWith(base)) ?? "en-US";
-}
+// Row 145: the list that used to live here held twelve languages and Georgian
+// was not one of them, so ka-GE was unreachable even from a phone set to
+// Georgian — every Georgian sentence was transcribed as something else.
+// speechLang() in lib/speech.ts replaces it and asks the server, which knows
+// the language from what the owner actually writes.
 
 type VoiceState = "idle" | "recording" | "processing";
 
@@ -657,7 +649,7 @@ export default function ThreadPage() {
     if (!SR) return;
 
     const recognition = new SR();
-    recognition.lang = detectLang();
+    recognition.lang = speechLang();
     recognition.continuous = true;
     recognition.interimResults = true;
 

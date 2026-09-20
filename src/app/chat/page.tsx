@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useThreads, taskStatusOf } from "@/contexts/ThreadsContext";
 import { t } from "@/lib/i18n";
-import { getSpeechRecognition, type SpeechRecognitionLike } from "@/lib/speech";
+import { getSpeechRecognition, speechLang, type SpeechRecognitionLike } from "@/lib/speech";
 
 // Desktop right pane, no goal selected: dogs clip + one line + the goal
 // composer (ticket 6 #1). D20 (22 Aug): mic AND send are both available while
@@ -36,7 +36,7 @@ export default function ChatIndexPage() {
       return;
     }
     const rec = new SR();
-    rec.lang = navigator.language || "en-US";
+    rec.lang = speechLang();
     rec.continuous = true;
     rec.interimResults = true;
     recognitionRef.current = rec;

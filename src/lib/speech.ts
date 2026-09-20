@@ -35,6 +35,41 @@ type SpeechWindow = Window & {
   webkitSpeechRecognition?: SpeechRecognitionCtor;
 };
 
+// Row 145 (20 Sept): a Georgian sentence spoken once on an iPhone came back
+// as "Mujhe Ba Aar Ki photography please" — not one Georgian letter — and the
+// assistant then went to work on that nonsense. The recogniser was being told
+// to listen in navigator.language, the PHONE's language, which on that phone
+// is not Georgian. Asked to hear a language nobody was speaking, it returned
+// the nearest thing it could find.
+//
+// The server already knows the answer, from the owner's own words rather than
+// from their handset settings, and sends it on the messages envelope. That is
+// the value the recogniser needed all along.
+//
+// The phone's setting stays as the fallback, and nothing here refuses speech
+// in another language: people switch, and a product that throws away your
+// sentence for being foreign is a worse fault than the one this fixes.
+const SPEECH_LANG: Record<string, string> = {
+  ka: "ka-GE",
+  en: "en-US",
+  ru: "ru-RU",
+  es: "es-ES",
+};
+
+export function speechLang(): string {
+  if (typeof navigator === "undefined") return "en-US";
+  try {
+    const fromServer = localStorage.getItem("netai_server_lang");
+    if (fromServer && SPEECH_LANG[fromServer]) return SPEECH_LANG[fromServer];
+  } catch {
+    /* private mode — fall through to the handset */
+  }
+  const nav = navigator.language;
+  if (!nav) return "en-US";
+  const base = nav.split("-")[0];
+  return SPEECH_LANG[base] ?? nav;
+}
+
 export function getSpeechRecognition(): SpeechRecognitionCtor | null {
   if (typeof window === "undefined") return null;
   const w = window as SpeechWindow;

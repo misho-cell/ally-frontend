@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { authHeaders, getDeviceId, handleAdminTokenMisuse } from "@/lib/deviceId";
-import { getSpeechRecognition, type SpeechRecognitionLike } from "@/lib/speech";
+import { getSpeechRecognition, speechLang, type SpeechRecognitionLike } from "@/lib/speech";
 import { t, tf, fmtDateShort } from "@/lib/i18n";
 import { useUserName, clearUserName } from "@/lib/user";
 import Modal from "@/components/Modal";
@@ -847,7 +847,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       return;
     }
     const rec = new SR();
-    rec.lang = navigator.language || "en-US";
+    rec.lang = speechLang();
     rec.continuous = true;
     rec.interimResults = true;
     recognitionRef.current = rec;
