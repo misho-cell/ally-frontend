@@ -5,10 +5,43 @@
 
 export type Locale = "ka" | "en";
 
+// 20 Sept: the server tells us the conversation's language, decided from the
+// owner's OWN words, and sends it on the messages envelope. Everything we had
+// before was a guess: the phone's country code, or the browser's setting. On
+// 18 September the same page showed "ნაბიჯები (14)" at 11:24 and "Steps (14)"
+// at 11:26, because a guess is free to change its mind between renders.
+//
+// The server's answer therefore outranks both guesses. It does not outrank a
+// person: the app has no screen where someone picks a language, so there is
+// no explicit choice here to overrule — if one is ever added, it belongs
+// above this.
+const SERVER_LANG_KEY = "netai_server_lang";
+
+export function setServerLanguage(raw: unknown): void {
+  if (typeof raw !== "string") return;
+  // The server speaks four; the interface is written in two. Recording the
+  // real value rather than the mapped one keeps "we have no Russian strings"
+  // separate from "this person reads English".
+  if (!["ka", "en", "ru", "es"].includes(raw)) return;
+  try { localStorage.setItem(SERVER_LANG_KEY, raw); } catch {}
+}
+
+function serverLocale(): Locale | null {
+  try {
+    const v = localStorage.getItem(SERVER_LANG_KEY);
+    if (v === "ka") return "ka";
+    // ru and es have no strings yet, so English is the honest fallback.
+    if (v === "en" || v === "ru" || v === "es") return "en";
+  } catch {}
+  return null;
+}
+
 export function getLocale(): Locale {
-  // 23 Aug #2: an account-level override (set from the profile phone) beats
-  // the browser language — the product language is the app's, not Chrome's.
   if (typeof window !== "undefined") {
+    const fromServer = serverLocale();
+    if (fromServer) return fromServer;
+    // 23 Aug #2: an account-level value (derived from the profile phone) beats
+    // the browser language — the product language is the app's, not Chrome's.
     try {
       const stored = localStorage.getItem("netai_locale");
       if (stored === "ka" || stored === "en") return stored;
@@ -145,6 +178,7 @@ const en = {
   stWaiting: "waiting on a reply",
   stNeedsYou: "needs you",
   stDone: "done",
+  stStopped: "you stopped this",
   stFailed: "stuck",
   stopGoal: "Stop",
   stopFailed: "The goal did not stop. It is still running and can still wake you. Please try again.",
@@ -245,6 +279,7 @@ const ka: typeof en = {
   stWaiting: "ველოდები პასუხს",
   stNeedsYou: "საჭიროა შენი პასუხი",
   stDone: "დასრულდა",
+  stStopped: "შენ გააჩერე",
   stFailed: "ვერ მოხერხდა",
   stopGoal: "გაჩერება",
   stopFailed: "მიზანი არ გაჩერდა. ის კვლავ მუშაობს და კვლავ შეუძლია შეგახსენოს. სცადე თავიდან.",

@@ -127,8 +127,11 @@ const AnimBox = memo(function AnimBox({ status, size }: { status: TaskStatus; si
 
 // Badge lives only on needs_you (tester C.1); waiting keeps its quiet pill,
 // working keeps green, done rows carry NO pill — the section already says it.
-function StatusPill({ status }: { status: TaskStatus }) {
-  if (status === "done") return null;
+function StatusPill({ status, stopped }: { status: TaskStatus; stopped?: boolean }) {
+  // A goal the owner halted also arrives as "done". Saying nothing there
+  // would let "I stopped this" read as "this finished", which is the app
+  // telling someone the opposite of what they did.
+  if (status === "done") return stopped ? <span className="task-pill done">{t("stStopped")}</span> : null;
   const label =
     status === "working" ? t("stWorking") :
     status === "waiting" ? t("stWaiting") :
@@ -1201,6 +1204,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       title={goalTitle(thread)}
                       status={status}
                       statusLine={thread.status_line}
+                      stopped={thread.goal_stopped === true}
                       href={`/chat/${thread.id}`}
                       active={pathname === `/chat/${thread.id}`}
                       unread={isUnread(thread)}
@@ -1223,6 +1227,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         title={goalTitle(thread)}
                         status={status}
                         statusLine={thread.status_line}
+                        stopped={thread.goal_stopped === true}
                         href={`/chat/${thread.id}`}
                         active={pathname === `/chat/${thread.id}`}
                         unread={isUnread(thread)}
@@ -1366,10 +1371,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 }
 
 function TaskRow({
-  title, status, statusLine, href, active, unread, onLongPress,
+  title, status, statusLine, stopped, href, active, unread, onLongPress,
 }: {
   title: string;
   status: TaskStatus;
+  stopped?: boolean;
   // 20 Sept: the server's own sentence about this goal, already written in
   // the owner's language. It was arriving on every row and being thrown away
   // while the row drew a generic word from `status` instead — so a goal
@@ -1443,7 +1449,7 @@ function TaskRow({
       {unread && !active && (
         <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, background: "var(--accent)" }} />
       )}
-      {!statusLine && <StatusPill status={status} />}
+      {!statusLine && <StatusPill status={status} stopped={stopped} />}
       <AnimBox status={status} size={40} />
     </Link>
   );

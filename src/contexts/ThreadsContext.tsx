@@ -19,6 +19,14 @@ export type Thread = {
   status_line?: string | null;
   is_task?: boolean;
   request_ref?: string | null;
+  // 20 Sept: the owner stopped this goal; it did not finish. Both land on
+  // status "done", so without this field the app tells someone their goal
+  // completed when they are the one who halted it. May be absent on older
+  // deployments, which is why only an explicit true is treated as stopped.
+  goal_stopped?: boolean;
+  // Time of the last MESSAGE, as distinct from updated_at, which also moves
+  // when only the status changed.
+  last_message_at?: string | null;
 };
 
 export type TaskStatus = "working" | "waiting" | "needs_you" | "done" | "failed";

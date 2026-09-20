@@ -1,4 +1,5 @@
 import { authHeaders } from "./deviceId";
+import { setServerLanguage } from "./i18n";
 import { forceLogin, toChatMessages, PAGE_SIZE, type ChatMessage } from "@/contexts/ThreadsContext";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -64,6 +65,7 @@ export async function fetchMessagePage(
       return { messages: [], paged: false };
     }
     const json = await res.json();
+    setServerLanguage(json?.language);
     return { messages: toChatMessages(json.data ?? json), paged: true };
   }
 
@@ -77,6 +79,8 @@ export async function fetchMessagePage(
     if (res.status === 403) throw new Error("subscription_required");
     if (res.ok) {
       const json = await res.json();
+      // `language` rides on the envelope, next to data, not on each message.
+      setServerLanguage(json?.language);
       const raw = json.data ?? json;
       return { messages: toChatMessages(raw), paged: true, choices: lastChoices(raw) };
     }
@@ -91,6 +95,7 @@ export async function fetchMessagePage(
   if (res.status === 403) throw new Error("subscription_required");
   if (!res.ok) throw new Error(String(res.status));
   const json = await res.json();
+  setServerLanguage(json?.language);
   const raw = json.data ?? json;
   return { messages: toChatMessages(raw), paged: false, choices: lastChoices(raw) };
 }

@@ -1070,6 +1070,9 @@ export default function ThreadPage() {
       : taskStatus === "waiting" ? t("stWaiting")
       : taskStatus === "needs_you" ? t("stNeedsYou")
       : taskStatus === "failed" ? t("stFailed")
+      // Stopped and finished both arrive as "done"; only goal_stopped tells
+      // them apart, and the difference is whether the person did it.
+      : thread?.goal_stopped === true ? t("stStopped")
       : t("stDone")
     : null;
 
