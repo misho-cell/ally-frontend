@@ -10,7 +10,33 @@ import { unwrapData, pickArray, recordItems, isRecord } from "@/lib/payload";
 // is written on the user's side. The route disables itself after 15 Oct.
 
 type Thread = { id: number | string; type?: string; title?: string | null; status?: string | null; status_line?: string | null; last_message?: string | null; updated_at?: string | null };
-type Message = { role?: string; content?: string; created_at?: string | null };
+type Message = {
+  role?: string;
+  // 20 Sept: the engine's own turns — the [მოვლენა] events and the
+  // (სისტემური შენიშვნა) nudges — are stored with role "user", because the
+  // model API needs a user turn to answer at all. So role alone cannot say
+  // who spoke, and drawing by role put the server's words in the owner's
+  // bubble: 214 rows over three days attributed to a person who never wrote
+  // them. `kind` is the field that actually carries the distinction and the
+  // endpoint has always sent it.
+  kind?: string;
+  content?: string;
+  created_at?: string | null;
+};
+
+// The owner's own words are the only thing that gets the owner's bubble.
+const KIND_LABEL: Record<string, string> = {
+  event: "სერვერის ჩანაწერი",
+  step: "ნაბიჯი",
+  pending: "მოლოდინში",
+  error: "შეცდომა",
+};
+const KIND_CLS: Record<string, string> = {
+  event: "border-amber-200 bg-amber-50 text-amber-900",
+  step: "border-gray-200 bg-white text-gray-500",
+  pending: "border-blue-200 bg-blue-50 text-blue-900",
+  error: "border-red-200 bg-red-50 text-red-700",
+};
 
 function fmt(iso?: string | null): string {
   if (!iso) return "";
@@ -98,12 +124,35 @@ export default function PilotThreadsCard({ userId }: { userId: string }) {
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-200 border-t-[#23261F] inline-block" />
                     ) : ms.length === 0 ? (
                       <p className="text-xs text-gray-400">შეტყობინება არ არის</p>
-                    ) : ms.map((m, i) => (
-                      <div key={i} className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap break-words ${m.role === "user" ? "self-end bg-[#23261F] text-white" : "self-start bg-gray-100 text-gray-800"}`}>
-                        {m.content}
-                        {m.created_at && <div className={`mt-1 text-[10px] ${m.role === "user" ? "text-white/60" : "text-gray-400"}`}>{fmt(m.created_at)}</div>}
-                      </div>
-                    ))}
+                    ) : ms.map((m, i) => {
+                      const kind = m.kind ?? "message";
+                      // Anything that is not a plain message is the machine's,
+                      // whatever its role says. It gets a labelled full-width
+                      // row so it can never read as something a person typed.
+                      if (kind !== "message") {
+                        return (
+                          <div
+                            key={i}
+                            className={`rounded-xl border px-3 py-2 text-xs whitespace-pre-wrap break-words ${KIND_CLS[kind] ?? "border-gray-200 bg-white text-gray-500"}`}
+                          >
+                            <div className="mb-1 flex items-center gap-2">
+                              <span className="text-[10px] font-semibold uppercase tracking-wide">
+                                {KIND_LABEL[kind] ?? kind}
+                              </span>
+                              {m.created_at && <span className="ml-auto text-[10px] opacity-60">{fmt(m.created_at)}</span>}
+                            </div>
+                            {m.content}
+                          </div>
+                        );
+                      }
+                      const mine = m.role === "user";
+                      return (
+                        <div key={i} className={`max-w-[85%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap break-words ${mine ? "self-end bg-[#23261F] text-white" : "self-start bg-gray-100 text-gray-800"}`}>
+                          {m.content}
+                          {m.created_at && <div className={`mt-1 text-[10px] ${mine ? "text-white/60" : "text-gray-400"}`}>{fmt(m.created_at)}</div>}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

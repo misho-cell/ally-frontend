@@ -40,6 +40,10 @@ const changed = [
 ]
   .map((f) => f.trim())
   .filter((f) => /\.(ts|tsx|js|jsx|mjs)$/.test(f))
+  // Build output is not authored code. next build regenerates the service
+  // worker into public/ on every run, and linting it reports faults nobody
+  // wrote and nobody can fix — which would teach us to ignore this gate.
+  .filter((f) => !f.startsWith("public/") && !f.startsWith(".next/"))
   .filter((f) => existsSync(f));
 
 const files = [...new Set(changed)].sort();
