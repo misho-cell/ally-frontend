@@ -130,7 +130,19 @@ export function toChatMessages(raw: unknown): ChatMessage[] {
     // "pending" is a message with its own buttons — same bubble, plus choices.
     kind: m.kind === "step" ? "step" : m.kind === "error" ? "error" : "message",
     runId: m.run_id ?? null,
-    ...(m.kind === "pending" && Array.isArray(m.choices) && m.choices.length > 0 ? { choices: m.choices } : {}),
+    // Row 160 (21 Sept): buttons on a plan stopped working as soon as any
+    // other message arrived, and the plan could no longer be answered at all.
+    // The choices were still being sent — they ride on the assistant's own
+    // row — but only "pending" rows were allowed to keep them here, so a plan
+    // (a plain message with choices on the same row: 171 such rows in a
+    // fortnight, against 23 pending ones) had to fall back to the
+    // thread-level gate, which hides the buttons the moment the last message
+    // is not the assistant's.
+    //
+    // Any row that carries its own choices now keeps them, whatever its kind.
+    // Buttons belong to the message that offered them, not to the end of the
+    // conversation.
+    ...(Array.isArray(m.choices) && m.choices.length > 0 ? { choices: m.choices } : {}),
     ...(typeof m.share_text === "string" && m.share_text ? { shareText: m.share_text } : {}),
   }));
 }

@@ -1038,7 +1038,11 @@ export default function ThreadPage() {
   }
   const lastIsAssistantMessage = lastMsg?.kind === "message" && lastMsg.role === "assistant";
   const showOptions = !loading && lastIsAssistantMessage && options.length > 0;
-  const showChoices = !loading && lastIsAssistantMessage && choices.length > 0;
+  // The thread-level copy is now only for choices that arrived over SSE before
+  // any row carried them. Once the row has its own, the bubble renders them and
+  // this would draw the same buttons a second time.
+  const lastHasOwnChoices = (lastMsg?.choices?.length ?? 0) > 0;
+  const showChoices = !loading && lastIsAssistantMessage && choices.length > 0 && !lastHasOwnChoices;
   const composerBlocked = rateLimited || limitHit;
   const lastUserText = [...messages].reverse().find((m) => m.kind === "message" && m.role === "user")?.content;
 
