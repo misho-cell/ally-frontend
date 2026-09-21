@@ -36,7 +36,14 @@ const TABS: Tab[] = [
 
 // Numeric technique_* columns are the same data as the technique object but as
 // codes; 0 there means "no", not a count, so we hide them and show the words.
-const HIDE_COLUMNS = new Set(["technique_when", "technique_how", "technique_reason"]);
+// 21 Sept: prompt_mode was renamed to run_mode and both now arrive carrying
+// the same value from the same column, so a table drawn from the keys would
+// show one fact twice. The old name is hidden rather than the new one: it
+// described the RUN while sitting on the ROW, and a reader took it for a row
+// attribute and concluded that 52 of the engine's own step rows were reaching
+// the client as ordinary messages. Their counts were right; the name lied.
+// The backend deletes prompt_mode once told, so this line goes with it.
+const HIDE_COLUMNS = new Set(["technique_when", "technique_how", "technique_reason", "prompt_mode"]);
 
 // F-1 (5 Sept): top-level scalars of a body that ALSO carries arrays used to
 // vanish — extractTables only falls back to them when no array exists. For
