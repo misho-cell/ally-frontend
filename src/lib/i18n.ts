@@ -36,8 +36,31 @@ function serverLocale(): Locale | null {
   return null;
 }
 
+// Row 218: the one value here that is not a guess. The handset's country and
+// the browser's setting guess at the person; the server's `language` reads
+// what they actually write, which is better but still a reading. A choice
+// made on the profile screen is the person saying it, so it outranks all of
+// them — and it is only ever set by that button, never inferred, so its
+// absence means nobody has chosen rather than "they chose the default".
+const CHOSEN_KEY = "netai_locale_chosen";
+
+export function setChosenLanguage(loc: Locale): void {
+  try { localStorage.setItem(CHOSEN_KEY, loc); } catch {}
+}
+
+export function getChosenLanguage(): Locale | null {
+  try {
+    const v = localStorage.getItem(CHOSEN_KEY);
+    return v === "ka" || v === "en" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 export function getLocale(): Locale {
   if (typeof window !== "undefined") {
+    const chosen = getChosenLanguage();
+    if (chosen) return chosen;
     const fromServer = serverLocale();
     if (fromServer) return fromServer;
     // 23 Aug #2: an account-level value (derived from the profile phone) beats

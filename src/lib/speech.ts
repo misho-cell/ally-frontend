@@ -59,6 +59,11 @@ const SPEECH_LANG: Record<string, string> = {
 export function speechLang(): string {
   if (typeof navigator === "undefined") return "en-US";
   try {
+    // Row 218: somebody who has said which language they speak has said it
+    // about their voice too, so that choice comes before the server's reading
+    // of their writing.
+    const chosen = localStorage.getItem("netai_locale_chosen");
+    if (chosen && SPEECH_LANG[chosen]) return SPEECH_LANG[chosen];
     const fromServer = localStorage.getItem("netai_server_lang");
     if (fromServer && SPEECH_LANG[fromServer]) return SPEECH_LANG[fromServer];
   } catch {
