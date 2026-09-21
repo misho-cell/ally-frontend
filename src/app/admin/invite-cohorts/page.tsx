@@ -212,7 +212,20 @@ export default function InviteCohortsPage() {
                             {ms.map((m, i) => (
                               <tr key={i} className="text-gray-600">
                                 <td className="py-1 pr-4">{m.day ?? "—"}</td>
-                                <td className="py-1 pr-4">{m.name ?? "—"}</td>
+                                {/* Row 88: ?? only catches null and undefined,
+                                    so a name that is an empty string fell
+                                    through and drew an EMPTY CELL — which
+                                    reads as a missing name while the column
+                                    itself is not null. Blank and absent now
+                                    say different things, so the next person to
+                                    look at this can tell which one it is. */}
+                                <td className="py-1 pr-4">
+                                  {m.name == null
+                                    ? "—"
+                                    : m.name.trim() === ""
+                                      ? <span className="text-gray-400">სახელი ცარიელია</span>
+                                      : m.name}
+                                </td>
                                 <td className="py-1 pr-4">{m.status ?? "—"}</td>
                                 <td className="py-1">{fmtDate(m.trial_ends_at)}</td>
                               </tr>
