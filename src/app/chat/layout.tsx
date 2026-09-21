@@ -1344,6 +1344,18 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             )}
           </form>
 
+          {/* Row 73: the updates screen has to be reachable from here, or it
+              is a screen nobody can find — which is what happened to the
+              pilot conversation reader. */}
+          <Link
+            href="/updates"
+            prefetch
+            className="transition-opacity hover:opacity-70"
+            style={{ borderTop: "1px solid var(--sidebar-border)", paddingTop: "10px", color: "var(--ink-soft)", fontSize: "12.5px", fontWeight: 600 }}
+          >
+            {t("updatesLink")}
+          </Link>
+
           <div className="flex items-center gap-2.5" style={{ borderTop: "1px solid var(--sidebar-border)", paddingTop: "10px" }}>
             <Link href="/profile" prefetch className="initial-avatar transition-opacity hover:opacity-80" style={{ width: 28, height: 28, fontSize: "12px" }}>
               {user.initial}
