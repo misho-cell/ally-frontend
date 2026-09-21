@@ -47,14 +47,23 @@ function prettifyKey(key: string): string {
 // are the counters whose meaning we actually know; anything else keeps its raw
 // key and is marked as unexplained, because a plausible-sounding label we
 // invented would be worse than an ugly one that is true.
+// The definitions are the backend's own, given on 21 Sept, not guessed from
+// the key names. `band` is the one most worth spelling out: it is how RARE the
+// name is, not how confident anyone is — which is exactly the reading the
+// removed percentage invited.
 const SUMMARY_LABEL: Record<string, string> = {
-  total: "მოლოდინში მყოფი მწკრივი, ყველა",
-  reviewable_total: "გადასაწყვეტი, ნამდვილი ადამიანი",
+  total: "სულ ამ მდგომარეობაში, ფილტრის გარეშე",
+  matched: "ახლანდელ ფილტრში ჯდება",
+  reviewable_total: "ნამდვილად ადამიანის სახელს ჰგავს",
   pending: "მოლოდინში",
   approved: "დამტკიცებული",
   rejected: "უარყოფილი",
-  merged: "გაერთიანებული",
+  not_a_name: "წარწერა სახელი არ არის",
 };
+
+// Shown once under the list, because a reviewer who does not know this reads
+// "rare" as "we are sure" — the same mistake the percentage was making.
+const BAND_NOTE = "ბენდი სახელის იშვიათობაა და არა დარწმუნებულობა: rare — სახელს 2 ან ნაკლები ნომერი ატარებს, uncommon — 3-დან 5-მდე, common — 6 და მეტი.";
 
 function normalizeCandidates(raw: unknown): Candidate[] {
   return recordItems(pickArray(unwrapData(raw), ["candidates", "rows"])) as unknown as Candidate[];
@@ -215,6 +224,7 @@ export default function AdminIdentityPage() {
           <p className="text-xs text-gray-400">
             თავში ისინია, ვინც სახელს ჰგავს და ვისზეც ყველაზე ცოტა ნომერი და მფლობელია. ეს დალაგების წესია და არა შეფასება.
           </p>
+          <p className="text-xs text-gray-400">{BAND_NOTE}</p>
         </div>
 
         {candidates === null ? (
