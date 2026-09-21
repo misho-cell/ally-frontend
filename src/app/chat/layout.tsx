@@ -666,11 +666,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // chat never sends it — the server's own rule decides there.
   const sendIntoThread = useCallback(async (threadId: string, text: string, echo: boolean, asGoal = false) => {
     const sentinel = `pending-${crypto.randomUUID()}`;
+    // Row 157: the echoed bubble needs an id we can find again, because when
+    // the send fails this is the only copy of what the person typed.
+    const localId = crypto.randomUUID();
     setThreadStates((prev) =>
       updateThreadState(prev, threadId, (ts) => ({
         ...ts,
         messages: echo
-          ? [...ts.messages, { id: crypto.randomUUID(), role: "user" as const, content: text, kind: "message" as const, runId: null, pending: true, createdAt: new Date().toISOString() }]
+          ? [...ts.messages, { id: localId, role: "user" as const, content: text, kind: "message" as const, runId: null, pending: true, createdAt: new Date().toISOString() }]
           : ts.messages,
         options: [],
         choices: [],
@@ -682,14 +685,42 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         result: null,
       }))
     );
-    const res = await fetch(`${BASE_URL}/threads/${threadId}/message`, {
-      method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify(asGoal ? { message: text, as_goal: true } : { message: text }),
-    });
+    // Row 157: this used to throw straight into a caller that swallowed it,
+    // so a goal typed on the home screen and refused by the server (an empty
+    // allowance, say) left the thread spinning for ever with the typed line
+    // gone and nothing said. The words were the person's, and they were the
+    // only copy. Now the bubble is marked failed and the spinner stops, so it
+    // is still on screen and still retryable — the thread view already knows
+    // how to resend a bubble in that state.
+    const markFailed = () =>
+      setThreadStates((prev) =>
+        updateThreadState(prev, threadId, (ts) => ({
+          ...ts,
+          loading: false,
+          runId: null,
+          progress: null,
+          messages: ts.messages.map((m) => (m.id === localId ? { ...m, failed: true, pending: true } : m)),
+        }))
+      );
+
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_URL}/threads/${threadId}/message`, {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(asGoal ? { message: text, as_goal: true } : { message: text }),
+      });
+    } catch (err) {
+      if (echo) markFailed();
+      // Still thrown, because callers with their own retry loop rely on it.
+      throw err;
+    }
     if (res.status === 401) { forceLogin(); return; }
     const json = await res.json().catch(() => ({}));
-    if (!res.ok || json.success === false) throw new Error(json.error ?? String(res.status));
+    if (!res.ok || json.success === false) {
+      if (echo) markFailed();
+      throw new Error(json.error ?? String(res.status));
+    }
     const runId: string | null = json.runId ?? json.data?.runId ?? null;
     setThreadStates((prev) =>
       updateThreadState(prev, threadId, (ts) => (ts.runId === sentinel ? { ...ts, runId } : ts))
