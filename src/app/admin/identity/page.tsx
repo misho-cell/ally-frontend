@@ -138,14 +138,20 @@ export default function AdminIdentityPage() {
 
   // Task 24 (9 Sept): undo the last approve/reject — POST /admin/identity/unmerge
   // { id } puts the pair back into pending.
-  const [lastActed, setLastActed] = useState<string | null>(null);
+  // Row 236 (21 Sept): undo sent the CANDIDATE's id, and the route wants the
+  // person it merged into — so every undo came back 400 and the button did
+  // nothing at all. The right value was already in hand: approve answers with
+  // { ok, person_id }. Keeping both means the notice can still name the
+  // candidate the reviewer just acted on while the call carries what the
+  // server actually needs.
+  const [lastActed, setLastActed] = useState<{ candidateId: string; personId: string } | null>(null);
   async function unmerge() {
     if (!lastActed) return;
-    setBusyId(lastActed);
+    setBusyId(lastActed.candidateId);
     setError(null);
     try {
-      await apiFetch<unknown>("/admin/identity/unmerge", { method: "POST", admin: true, body: { id: lastActed } });
-      setNotice(`დაბრუნდა pending-ში (#${lastActed})`);
+      await apiFetch<unknown>("/admin/identity/unmerge", { method: "POST", admin: true, body: { id: lastActed.personId } });
+      setNotice(`დაბრუნდა pending-ში (#${lastActed.candidateId})`);
       setLastActed(null);
       await load();
     } catch (err) {
@@ -161,12 +167,17 @@ export default function AdminIdentityPage() {
     setError(null);
     setNotice(null);
     try {
-      await apiFetch<unknown>(`/admin/identity/candidates/${encodeURIComponent(key)}/${action}`, {
+      const res = await apiFetch<unknown>(`/admin/identity/candidates/${encodeURIComponent(key)}/${action}`, {
         method: "POST",
         admin: true,
       });
       setNotice(action === "approve" ? `დამტკიცდა ✓ (#${key})` : `უარყოფილია (#${key})`);
-      setLastActed(key);
+      // Undo is only offered when the server named the person it merged into.
+      // Without that value the call is the 400 this row was filed for, and a
+      // button that cannot work should not be on screen pretending it can.
+      const body = unwrapData(res);
+      const personId = isRecord(body) && body.person_id != null ? String(body.person_id) : null;
+      setLastActed(personId ? { candidateId: key, personId } : null);
       setCandidates((prev) => (prev ? prev.filter((c) => String(c.id) !== key) : prev));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "ვერ შესრუცდა");
