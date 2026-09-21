@@ -43,6 +43,19 @@ function prettifyKey(key: string): string {
   return key.replace(/_/g, " ");
 }
 
+// Row 91, first complaint: a number that does not say what it counts. These
+// are the counters whose meaning we actually know; anything else keeps its raw
+// key and is marked as unexplained, because a plausible-sounding label we
+// invented would be worse than an ugly one that is true.
+const SUMMARY_LABEL: Record<string, string> = {
+  total: "მოლოდინში მყოფი მწკრივი, ყველა",
+  reviewable_total: "გადასაწყვეტი, ნამდვილი ადამიანი",
+  pending: "მოლოდინში",
+  approved: "დამტკიცებული",
+  rejected: "უარყოფილი",
+  merged: "გაერთიანებული",
+};
+
 function normalizeCandidates(raw: unknown): Candidate[] {
   return recordItems(pickArray(unwrapData(raw), ["candidates", "rows"])) as unknown as Candidate[];
 }
@@ -68,6 +81,27 @@ export default function AdminIdentityPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // Row 91, third complaint: the easy decisions were buried among the hard
+  // ones. This is a stated ordering rule, not a score: a row that reads as a
+  // name, with the fewest phones on that name and the fewest owners, is the
+  // one a reviewer can settle at a glance. The rule is printed above the list
+  // so nobody mistakes it for a judgement the system has made.
+  const easiestFirst = useCallback((rows: Candidate[]): Candidate[] => {
+    const rank = (c: Candidate) => [
+      c.looks_like_a_name === true ? 0 : 1,
+      c.name_distinct_phones ?? Number.MAX_SAFE_INTEGER,
+      c.co_owners ?? Number.MAX_SAFE_INTEGER,
+    ];
+    return [...rows].sort((a, b) => {
+      const ra = rank(a);
+      const rb = rank(b);
+      for (let i = 0; i < ra.length; i++) {
+        if (ra[i] !== rb[i]) return ra[i] - rb[i];
+      }
+      return 0;
+    });
+  }, []);
+
   const load = useCallback(async () => {
     setError(null);
     try {
@@ -76,7 +110,7 @@ export default function AdminIdentityPage() {
         apiFetch<unknown>("/admin/identity/candidates", { admin: true }),
       ]);
       setSummary(normalizeSummary(sRes));
-      setCandidates(normalizeCandidates(cRes));
+      setCandidates(easiestFirst(normalizeCandidates(cRes)));
       const cBody = unwrapData(cRes);
       setReviewableTotal(isRecord(cBody) && typeof cBody.reviewable_total === "number" ? cBody.reviewable_total : null);
     } catch (err) {
@@ -87,7 +121,7 @@ export default function AdminIdentityPage() {
       setError(err instanceof ApiError ? err.message : "ჩატვირთვა ვერ მოხერხდა");
       setCandidates([]);
     }
-  }, [router]);
+  }, [router, easiestFirst]);
 
   useEffect(() => {
     load();
@@ -162,15 +196,26 @@ export default function AdminIdentityPage() {
             {Object.entries(summary).map(([k, v]) => (
               <div key={k} className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
                 <p className="text-2xl font-bold text-[#23261F]">{typeof v === "number" ? fmtN(v) : v}</p>
-                <p className="mt-0.5 text-xs text-gray-500">{prettifyKey(k)}</p>
+                {SUMMARY_LABEL[k] ? (
+                  <p className="mt-0.5 text-xs text-gray-500">{SUMMARY_LABEL[k]}</p>
+                ) : (
+                  <p className="mt-0.5 text-xs text-gray-400" title="ამ მრიცხველის მნიშვნელობა ჩვენთვის დადასტურებული არ არის">
+                    {prettifyKey(k)} (აუხსნელი)
+                  </p>
+                )}
               </div>
             ))}
           </div>
         )}
 
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-          კანდიდატები{reviewableTotal != null && <span className="ml-2 normal-case text-gray-400">· სულ {fmtN(reviewableTotal)} გადასაწყვეტი</span>}
-        </h2>
+        <div className="flex flex-col gap-1">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            კანდიდატები{reviewableTotal != null && <span className="ml-2 normal-case text-gray-400">· სულ {fmtN(reviewableTotal)} გადასაწყვეტი</span>}
+          </h2>
+          <p className="text-xs text-gray-400">
+            თავში ისინია, ვინც სახელს ჰგავს და ვისზეც ყველაზე ცოტა ნომერი და მფლობელია. ეს დალაგების წესია და არა შეფასება.
+          </p>
+        </div>
 
         {candidates === null ? (
           <div className="flex justify-center py-12">
@@ -203,7 +248,14 @@ export default function AdminIdentityPage() {
                         {c.co_owners != null && <span>{c.co_owners} მფლობელი</span>}
                         {c.name_distinct_phones != null && <span>{c.name_distinct_phones} ნომერი სახელზე</span>}
                         {c.matched_name && <span>→ {c.matched_name}</span>}
-                        {c.confidence != null && <span className="rounded-full bg-gray-100 px-2 py-0.5 font-semibold">{Math.round(c.confidence * 100)}%</span>}
+                        {/* Row 91, second complaint: this used to render as
+                            "87%", which reads as a calibrated probability that
+                            the two are the same person. It is not one — it is
+                            an internal ordering value. A percentage invites a
+                            reviewer to trust a number that was never measured,
+                            so it is gone; `band` below is the server's own
+                            grouping and says the same thing without a false
+                            precision. */}
                       </p>
                       {c.reason && <p className="mt-1 text-xs text-gray-400">{c.reason}</p>}
                     </div>
