@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { unwrap, fmtN, fmtDate, type PromptBlock } from "./shared";
 
 type ListData = {
@@ -55,11 +56,20 @@ export default function PromptBlocksPage() {
   }, [load]);
 
   // სვიჩი სიიდანვე — გამორთვაზე დადასტურება (საავარიო მუხრუჭი).
+  // Task 93: the question is asked in the app's own dialog now, so it cannot
+  // wedge the tab; switching ON needs no question and still goes straight
+  // through.
+  const [confirmOff, setConfirmOff] = useState<PromptBlock | null>(null);
+
   async function toggleBlock(block: PromptBlock) {
     if (block.enabled) {
-      const ok = window.confirm(`ბლოკი ყველა იუზერზე გამოირთვება, გავაგრძელო?\n\n(${block.name})`);
-      if (!ok) return;
+      setConfirmOff(block);
+      return;
     }
+    await applyToggle(block);
+  }
+
+  async function applyToggle(block: PromptBlock) {
     setError(null);
     try {
       await apiFetch<unknown>(`/admin/prompt-blocks/${block.name}`, {
@@ -198,6 +208,20 @@ export default function PromptBlocksPage() {
         )}
         {tab === "runs" && <RunsTab />}
       </div>
+
+      {confirmOff && (
+        <ConfirmDialog
+          message={`ბლოკი ყველა იუზერზე გამოირთვება, გავაგრძელო?\n\n(${confirmOff.name})`}
+          confirmLabel="გამორთვა"
+          danger
+          onCancel={() => setConfirmOff(null)}
+          onConfirm={async () => {
+            const b = confirmOff;
+            setConfirmOff(null);
+            await applyToggle(b);
+          }}
+        />
+      )}
     </div>
   );
 }

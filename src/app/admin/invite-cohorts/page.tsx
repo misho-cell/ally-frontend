@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { unwrapData, pickArray, recordItems } from "@/lib/payload";
 
 // Task 3 (8 Sept): invite cohorts (Axel's 20-day trials). Each cohort is an
@@ -91,8 +92,10 @@ export default function InviteCohortsPage() {
     }
   }
 
+  // Task 93: asked in the app's own dialog, which does not freeze the tab.
+  const [confirmClose, setConfirmClose] = useState<Cohort | null>(null);
+
   async function closeDoor(c: Cohort) {
-    if (!window.confirm(`კოდი „${c.code}" დაიხუროს? ახალი რეგისტრაცია შეჩერდება (არსებული წევრები რჩებიან).`)) return;
     setBusyCode(c.code);
     setError(null);
     try {
@@ -183,7 +186,7 @@ export default function InviteCohortsPage() {
                         {isOpen ? "▾" : "▸"} წევრები
                       </button>
                       {!closed && !synthetic && (
-                        <button type="button" disabled={busyCode === c.code} onClick={() => closeDoor(c)} className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50">
+                        <button type="button" disabled={busyCode === c.code} onClick={() => setConfirmClose(c)} className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50">
                           დახურვა
                         </button>
                       )}
@@ -225,6 +228,21 @@ export default function InviteCohortsPage() {
           </div>
         )}
       </div>
+
+      {confirmClose && (
+        <ConfirmDialog
+          message={`კოდი „${confirmClose.code}" დაიხუროს? ახალი რეგისტრაცია შეჩერდება (არსებული წევრები რჩებიან).`}
+          confirmLabel="დახურვა"
+          danger
+          busy={busyCode === confirmClose.code}
+          onCancel={() => setConfirmClose(null)}
+          onConfirm={async () => {
+            const c = confirmClose;
+            setConfirmClose(null);
+            await closeDoor(c);
+          }}
+        />
+      )}
     </div>
   );
 }
