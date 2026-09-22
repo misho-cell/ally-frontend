@@ -1380,7 +1380,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               pilot conversation reader. */}
           <Link
             href="/updates"
-            prefetch
+            // Opening that screen SPENDS the due updates, so it must only ever
+            // be opened by a person. Next's prefetch does not run a client
+            // component's effects today, which is why this was safe — but that
+            // is the framework's behaviour and not a promise, and the cost of
+            // being wrong is somebody's update marked shown to a phone rather
+            // than to them. One slower first open is the cheaper side.
+            prefetch={false}
             className="transition-opacity hover:opacity-70"
             style={{ borderTop: "1px solid var(--sidebar-border)", paddingTop: "10px", color: "var(--ink-soft)", fontSize: "12.5px", fontWeight: 600 }}
           >

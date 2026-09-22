@@ -12,13 +12,21 @@ import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 // postponing was not late, it was impossible. The backend now keeps a held
 // state and this screen is the place to use it.
 //
-// OPENING THIS SCREEN SPENDS THE DUE UPDATES, and that is deliberate. Reading
-// them here is being shown them, exactly as the assistant showing them is. A
-// screen that displayed updates without counting them as shown would be the
-// same fault as before, only pointing the other way. What makes it safe is
-// that nothing disappears: a spent update moves into the already-seen list
-// below and stays reachable after a reload, which is the third part of the
-// same row.
+// OPENING THIS SCREEN SPENDS THE DUE UPDATES, and that is deliberate.
+// Reading them here is being shown them, exactly as the assistant showing
+// them is. A screen that displayed updates without counting them as shown
+// would be the same fault as before, only pointing the other way. What makes
+// it safe is that nothing disappears: a spent update moves into the
+// already-seen list below and stays reachable after a reload, which is the
+// third part of the same row.
+//
+// That reasoning holds only while opening is a DELIBERATE ACT BY THE PERSON.
+// A deep link followed automatically, a prefetch, a background refresh or a
+// tab restored at launch would spend `due` on the phone's behalf, and the
+// owner would never see what they were told about. The sidebar link therefore
+// sets prefetch={false}. Anything added later that can reach this screen
+// without somebody choosing to look at it breaks the rule, and is worth
+// saying out loud rather than discovering as an empty list.
 
 const L = {
   en: {
