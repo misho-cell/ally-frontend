@@ -188,11 +188,26 @@ export default function LoginPage() {
 
   // /join?ref=CODE lands here — carry the code through to registration
   // without making the visitor retype it.
+  //
+  // Row 229 (22 Sept): the code was ALSO kept only in `inviteInput`, which
+  // handlePhoneSubmit clears at the very first step. So the invite arrived,
+  // was stored, and was wiped before registration ever read it — silently,
+  // because an absent referral is not an error: the account is created, the
+  // person is let in, and the inviter is lost with nothing saying so.
+  // Attribution died on 31 August, the day that clearing line was written,
+  // and 25 registrations since carry no inviter.
+  //
+  // The URL's code now lives in a ref that nothing clears. It is not a second
+  // source of truth: the typed field still wins when somebody types one, and
+  // this is only the fallback for the value the link brought.
+  const urlRefRef = useRef<string | null>(null);
   useEffect(() => {
     const ref = new URLSearchParams(window.location.search).get("ref");
     if (ref) {
-      setInviteInput(ref.trim());
-      setReferralInput(ref.trim());
+      const code = ref.trim();
+      urlRefRef.current = code || null;
+      setInviteInput(code);
+      setReferralInput(code);
     }
   }, []);
 
@@ -276,7 +291,10 @@ export default function LoginPage() {
     clearToken();
     otpPassedRef.current = false;
     confirmedReferralRef.current = null;
-    setInviteInput("");
+    // Clearing what a previous attempt typed is right; clearing what the
+    // invite link brought is not, so the field falls back to the URL's code
+    // rather than to nothing.
+    setInviteInput(urlRefRef.current ?? "");
     const full = composePhone(dial, phoneRaw);
     setPhone(full);
     try {
@@ -386,7 +404,12 @@ export default function LoginPage() {
       // Gate flow value wins; otherwise the optional "Invited by" field. Always
       // sent when present — this is what builds the referral chain. The same
       // value goes in BOTH params (code or number, server sorts it out).
-      const referral = confirmedReferralRef.current ?? (inviteInput.trim() || null);
+      // Three sources, in order of how deliberate they are: a referral the
+      // gate confirmed, then whatever is in the field, then the code the
+      // invite link carried. The last one exists so that a link can never be
+      // lost by anything this screen does to its own state.
+      const referral =
+        confirmedReferralRef.current ?? (inviteInput.trim() || urlRefRef.current || null);
       if (referral) {
         body.referralPhone = referral;
         body.referralCode = referral;
