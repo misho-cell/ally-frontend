@@ -251,6 +251,24 @@ export default function LabPage() {
           </div>
         )}
 
+        {/* 22 Sept: a capped list used to be indistinguishable from a
+            complete one — the tester read "100" four times and published it
+            as evidence that a path created no asks, when 100 is what a full
+            page says whatever the real number is. The routes now send `total`
+            and `truncated`, and a cut list says so in a sentence rather than
+            leaving it to be spotted among the scalars. */}
+        {(() => {
+          const truncated = scalars.find(([k]) => k === "truncated")?.[1] === true;
+          const total = scalars.find(([k]) => k === "total")?.[1];
+          if (!truncated) return null;
+          return (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              სია მოჭრილია. ქვემოთ მხოლოდ ერთი გვერდია
+              {typeof total === "number" ? `, სულ კი ${total} მწკრივია` : ""}. ეს რიცხვი ჯამი არ არის.
+            </div>
+          );
+        })()}
+
         {scalars.length > 0 && (
           <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
             {scalars.map(([k, v]) => (

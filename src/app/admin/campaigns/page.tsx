@@ -10,17 +10,24 @@ import { isRecord, pickArray, recordItems, unwrapData } from "@/lib/payload";
 // asked about, why this one is sitting where it is, or who is doing the
 // asking. All of that was already in the payload.
 //
-// Three of the four things asked for exist today. The fourth — the circle the
-// inviter and the target share — does not: the backend has the function but
-// it costs 0.79s per pair against an 8.4M row table, and this route returns a
-// hundred campaigns with several inviters each. So it is left as a stated gap
-// rather than a guess or a silently missing column.
+// All four things asked for are here now. The fourth, the circle an inviter
+// and a target share, arrived on 22 Sept — on the inviter, not the campaign,
+// because the count belongs to the pair.
 
 type Inviter = {
   name?: string | null;
   state?: string | null;
   asked_at?: string | null;
   scheduled_ask_at?: string | null;
+  // 22 Sept: how many people this inviter and the target have in common. It
+  // sits on the PAIR, not the campaign, so one target with two inviters has
+  // two different numbers.
+  //
+  // The key is ABSENT when the count could not be taken — never zero. "you
+  // have nobody in common" and "I could not count" are different answers and
+  // a screen that draws them the same invents a fact. So this is read with
+  // `in`, not with a falsy check.
+  shared_circle?: number;
 };
 
 type Campaign = {
@@ -34,9 +41,9 @@ type Campaign = {
   closed_reason?: string | null;
   closed_at?: string | null;
   inviters?: Inviter[];
-  // Postgres COUNT is a bigint and this route does not convert it, so these
-  // arrive as STRINGS. "12" > "9" is false, so anything numeric goes through
-  // Number() first — see count().
+  // These came as STRINGS until 22 Sept (Postgres COUNT is a bigint), which
+  // made "12" > "9" false and any sort read backwards. They are numbers now;
+  // count() stays because it costs nothing and an old deployment still works.
   participant_count?: number | string | null;
   asked_count?: number | string | null;
   next_ask_due_at?: string | null;
@@ -118,12 +125,6 @@ export default function AdminCampaignsPage() {
       <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-6">
         {error && <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600 whitespace-pre-wrap">{error}</div>}
 
-        {/* The gap is named on the screen. A missing column that nobody
-            mentions is read as "there is nothing to say here". */}
-        <p className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs text-gray-500">
-          საერთო წრე (რა აკავშირებთ მომწვევსა და სამიზნეს) ჯერ არ ჩანს — ის ამ მისამართზე არ მოდის. ადგილი დატოვებულია და შეივსება, როცა დაემატება.
-        </p>
-
         {campaigns === null ? (
           <div className="flex justify-center py-12">
             <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#23261F]" />
@@ -171,6 +172,17 @@ export default function AdminCampaignsPage() {
                           <div key={j} className="flex flex-wrap items-center gap-2 text-xs">
                             <span className="font-semibold text-[#23261F]">{inv.name || "უსახელო ანგარიში"}</span>
                             {inv.state && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">{inv.state}</span>}
+                            {/* Absent key and zero say different things, so
+                                they are drawn differently. */}
+                            {"shared_circle" in inv ? (
+                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">
+                                {inv.shared_circle === 0 ? "საერთო არავინ" : `${inv.shared_circle} საერთო`}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400" title="ამ წყვილზე დათვლა ვერ მოხერხდა">
+                                საერთო ვერ დაითვალა
+                              </span>
+                            )}
                             <span className="ml-auto text-gray-400">
                               {inv.asked_at
                                 ? `იკითხა ${fmt(inv.asked_at)}`
