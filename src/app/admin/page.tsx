@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
 
 type InsightField = {
@@ -141,6 +142,17 @@ export default function AdminPage() {
           >
             მომხმარებლები →
           </a>
+          {/* Rows 16 and 236: both screens existed and neither could be found.
+              The conversation reader lives on a user's page, so the way in is
+              to pick the user — and it is named after what it does rather
+              than after the table behind it. */}
+          <Link
+            href="/admin/users"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
+            title="მომხმარებლის გვერდზე, ბარათი: საუბრები (პილოტი)"
+          >
+            საუბრის წაკითხვა →
+          </Link>
           <a
             href="/admin/analytics"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
@@ -157,7 +169,7 @@ export default function AdminPage() {
             href="/admin/identity"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
           >
-            იდენტობა →
+            დუბლიკატების გაერთიანება →
           </a>
           <a
             href="/admin/contacts/raw-labels"
