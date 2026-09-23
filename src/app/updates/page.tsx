@@ -44,6 +44,10 @@ const L = {
     goal: "Goal",
     loadFailed: "Could not load",
     retry: "Try again",
+    weekTitle: "Your week",
+    weekOf: (d: string) => `week of ${d}`,
+    weekDone: "Read it",
+    asks: (sent: number, answered: number) => `${answered} of ${sent} answered`,
   },
   ka: {
     back: "← ჩატი",
@@ -60,6 +64,10 @@ const L = {
     goal: "მიზანი",
     loadFailed: "ვერ ჩაიტვირთა",
     retry: "თავიდან",
+    weekTitle: "შენი კვირა",
+    weekOf: (d: string) => `კვირა ${d}-დან`,
+    weekDone: "წავიკითხე",
+    asks: (sent: number, answered: number) => `${sent}-დან ${answered}-ს უპასუხეს`,
   },
 };
 
@@ -70,6 +78,40 @@ type Update = {
   task_id?: number | string | null;
   created_at?: string | null;
 };
+
+// Row 230 (23 Sept, D462). The weekly summary used to be written into every
+// open goal's thread: on 21 September Lika had 36 open goals and the same
+// 9,607-character text went into 32 of them in nine seconds. She still did not
+// find it — she found it by opening chats one at a time. The founder's whole
+// criterion for this card was therefore "cannot be missed", and he chose a
+// card of its own at the top rather than a row in the list.
+type WeeklyGoal = {
+  task_id?: number | string | null;
+  title?: string | null;
+  asks_sent?: number | null;
+  asks_answered?: number | null;
+  pending_question?: string | null;
+};
+
+const WEEKLY_KIND = "weekly_summary";
+// Which week the person has already dismissed. Keyed by week_start so next
+// week's summary is a new card rather than one that never returns.
+const WEEK_READ_KEY = "netai_week_read";
+
+function weeklyGoals(payload: unknown): WeeklyGoal[] {
+  if (!isRecord(payload)) return [];
+  for (const key of ["goals", "per_goal", "breakdown"]) {
+    const v = payload[key];
+    if (Array.isArray(v)) return recordItems(v) as WeeklyGoal[];
+  }
+  return [];
+}
+
+function weekStart(payload: unknown): string | null {
+  if (!isRecord(payload)) return null;
+  const v = payload.week_start;
+  return typeof v === "string" && v ? v : null;
+}
 
 // The payload's shape is the backend's and varies by kind, so nothing is
 // invented here: the first string-like field that reads as text is shown, and
@@ -93,6 +135,7 @@ export default function UpdatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [weekDismissed, setWeekDismissed] = useState<string | null>(null);
   // This call spends what it returns, so it must not be fired twice by a
   // re-render: a second run would consume a second batch for nobody.
   const loadedOnce = useRef(false);
@@ -119,7 +162,35 @@ export default function UpdatesPage() {
     if (loadedOnce.current) return;
     loadedOnce.current = true;
     load();
+    // localStorage cannot be read while rendering: the server renders this
+    // page too and has no such thing, so reading it there would hydrate to a
+    // different tree than the browser draws. After mount is the only correct
+    // moment, which is what an effect is for — the rule cannot express that
+    // exception, so it is disabled on this line and nowhere else.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    try { setWeekDismissed(localStorage.getItem(WEEK_READ_KEY)); } catch { /* private mode */ }
   }, [load]);
+
+  // The founder's second instruction: opening the screen must NOT spend this
+  // card — it stays until it is tapped. That is a deliberate exception to the
+  // rule above, and it is why the summary is looked for in `seen` as well as
+  // `due`: GET /updates has already marked it shown server-side by the time
+  // this renders, and the card has to outlive that.
+  const weekly =
+    due.find((u) => u.kind === WEEKLY_KIND) ?? seen.find((u) => u.kind === WEEKLY_KIND) ?? null;
+  const weeklyWeek = weekly ? weekStart(weekly.payload) : null;
+  const showWeekly = weekly != null && (weeklyWeek == null || weeklyWeek !== weekDismissed);
+
+  // The summary is never also drawn as an ordinary row: one thing in two
+  // places is how a person stops trusting either.
+  const dueRest = due.filter((u) => u.kind !== WEEKLY_KIND);
+  const seenRest = seen.filter((u) => u.kind !== WEEKLY_KIND);
+
+  const dismissWeek = () => {
+    if (!weeklyWeek) { setWeekDismissed("dismissed"); return; }
+    try { localStorage.setItem(WEEK_READ_KEY, weeklyWeek); } catch { /* private mode */ }
+    setWeekDismissed(weeklyWeek);
+  };
 
   const snooze = async (ref: string, days: number) => {
     if (busy) return;
@@ -223,23 +294,90 @@ export default function UpdatesPage() {
           </div>
         )}
 
+        {/* The card, at the top, before everything else on the screen. */}
+        {!loading && showWeekly && weekly && (
+          <div
+            className="card flex flex-col gap-3"
+            style={{ borderColor: "var(--accent)", borderWidth: "1.5px" }}
+          >
+            <div className="flex flex-wrap items-baseline gap-2">
+              <h2 style={{ font: "500 17px/22px var(--font-bricolage)", color: "var(--ink)" }}>{s.weekTitle}</h2>
+              {weeklyWeek && (
+                <span style={{ font: "400 12px/16px var(--font-system)", color: "var(--meta)" }}>
+                  {s.weekOf(fmtDateLoc(weeklyWeek, { day: "numeric", month: "short" }))}
+                </span>
+              )}
+            </div>
+
+            {payloadText(weekly.payload) && (
+              <p style={{ font: "400 15px/22px var(--font-system)", color: "var(--ink)", whiteSpace: "pre-wrap" }}>
+                {payloadText(weekly.payload)}
+              </p>
+            )}
+
+            {/* Goal by goal, because the text alone is what she could already
+                not find. A goal with nothing to report still appears: its
+                silence is the report. */}
+            {weeklyGoals(weekly.payload).length > 0 && (
+              <div className="flex flex-col gap-2">
+                {weeklyGoals(weekly.payload).map((g, i) => {
+                  const sent = typeof g.asks_sent === "number" ? g.asks_sent : null;
+                  const answered = typeof g.asks_answered === "number" ? g.asks_answered : null;
+                  return (
+                    <div key={g.task_id ?? i} className="flex flex-col gap-0.5">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        {g.task_id != null ? (
+                          <Link
+                            href={`/chat/${g.task_id}`}
+                            style={{ font: "600 13px/18px var(--font-system)", color: "var(--accent)" }}
+                          >
+                            {g.title || `${s.goal} #${g.task_id}`}
+                          </Link>
+                        ) : (
+                          <span style={{ font: "600 13px/18px var(--font-system)", color: "var(--ink)" }}>
+                            {g.title || s.goal}
+                          </span>
+                        )}
+                        {sent != null && answered != null && (
+                          <span style={{ font: "400 12px/16px var(--font-system)", color: "var(--meta)" }}>
+                            {s.asks(sent, answered)}
+                          </span>
+                        )}
+                      </div>
+                      {g.pending_question && (
+                        <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--ink-soft)" }}>
+                          {g.pending_question}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <button type="button" className="btn-secondary self-start" onClick={dismissWeek}>
+              {s.weekDone}
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <span className="sk-bar" style={{ width: "80%" }} />
         ) : (
           <>
-            {due.length === 0 ? (
+            {dueRest.length === 0 ? (
               <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--meta)" }}>{s.dueEmpty}</p>
             ) : (
-              <div className="flex flex-col gap-3">{due.map((u, i) => card(u, i, true))}</div>
+              <div className="flex flex-col gap-3">{dueRest.map((u, i) => card(u, i, true))}</div>
             )}
 
             <h2 style={{ font: "500 15px/20px var(--font-system)", color: "var(--ink)", marginTop: "8px" }}>
               {s.seenTitle}
             </h2>
-            {seen.length === 0 ? (
+            {seenRest.length === 0 ? (
               <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--meta)" }}>{s.seenEmpty}</p>
             ) : (
-              <div className="flex flex-col gap-3">{seen.map((u, i) => card(u, i, false))}</div>
+              <div className="flex flex-col gap-3">{seenRest.map((u, i) => card(u, i, false))}</div>
             )}
           </>
         )}
