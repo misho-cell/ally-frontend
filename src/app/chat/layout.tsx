@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { authHeaders, getDeviceId, handleAdminTokenMisuse } from "@/lib/deviceId";
-import { getSpeechRecognition, speechLang, type SpeechRecognitionLike } from "@/lib/speech";
+import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { t, tf, fmtDateShort } from "@/lib/i18n";
 import { useUserName, clearUserName } from "@/lib/user";
 import Modal from "@/components/Modal";
@@ -883,19 +883,17 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     rec.interimResults = true;
     recognitionRef.current = rec;
     setRecording(true);
-    let finalText = "";
     rec.onresult = (e) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const tr = e.results[i][0].transcript;
-        if (e.results[i].isFinal) finalText += (finalText ? " " : "") + tr.trim();
-        else interim += tr;
-      }
-      setHomeInput([finalText, interim.trim()].filter(Boolean).join(" "));
+      const { final, interim } = transcriptOf(e);
+      setHomeInput([final, interim].filter(Boolean).join(" "));
     };
     rec.onend = () => { recognitionRef.current = null; setRecording(false); };
     rec.onerror = () => { recognitionRef.current = null; setRecording(false); };
-    rec.start();
+    if (startRecognition(rec) !== null) {
+      recognitionRef.current = null;
+      setRecording(false);
+      showToast(t("micFailed"));
+    }
   }
 
   function openRename(th: Thread, fallbackTitle: string) {

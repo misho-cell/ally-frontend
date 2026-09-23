@@ -80,3 +80,56 @@ export function getSpeechRecognition(): SpeechRecognitionCtor | null {
   const w = window as SpeechWindow;
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
+
+// Row 226 (23 Sept). One spoken Georgian sentence arrived on Android as a
+// 125-character ladder — „დღეს", „დღეს რა", „დღეს რა ახალი" — each partial
+// appended to the last instead of replacing it. The cause was the same in all
+// three places the microphone was wired: the final text was ACCUMULATED across
+// events, from `resultIndex` forward, on the assumption that every event
+// carries only what is new.
+//
+// `event.results` is cumulative: it holds the whole utterance so far, and an
+// engine is free to re-deliver a result it has already sent — Android's does.
+// Accumulating then adds the same words a second and third time.
+//
+// So nothing is accumulated here. The transcript is rebuilt from the whole
+// list on every event, which is idempotent: re-delivering a result cannot
+// change the answer.
+export function transcriptOf(event: SpeechRecognitionEventLike): { final: string; interim: string } {
+  let final = "";
+  let interim = "";
+  for (let i = 0; i < event.results.length; i++) {
+    const text = event.results[i][0]?.transcript ?? "";
+    if (event.results[i].isFinal) {
+      const t = text.trim();
+      if (t) final += (final ? " " : "") + t;
+    } else {
+      interim += text;
+    }
+  }
+  return { final, interim: interim.trim() };
+}
+
+// The iPhone half of the same row: the button produced no recording, no error
+// and no permission prompt. start() can throw synchronously, and an error
+// whose name we did not recognise was swallowed — so the two cases that look
+// identical to a person, "it is not supported here" and "it failed", both
+// looked like nothing at all.
+//
+// This returns the reason it could not start, or null if it did. Silence is
+// never one of the answers.
+export function startRecognition(rec: SpeechRecognitionLike): string | null {
+  try {
+    rec.start();
+    return null;
+  } catch (err) {
+    // InvalidStateError means one is already running: stopping is the honest
+    // response, not a complaint the person cannot act on.
+    const name = err instanceof Error ? err.name : "";
+    if (name === "InvalidStateError") {
+      try { rec.abort(); } catch { /* it is already gone */ }
+      return null;
+    }
+    return name || "start-failed";
+  }
+}

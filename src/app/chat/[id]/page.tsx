@@ -6,7 +6,7 @@ import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import NotificationButton from "@/components/NotificationButton";
 import Modal from "@/components/Modal";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
-import { getSpeechRecognition, speechLang, type SpeechRecognitionLike } from "@/lib/speech";
+import { getSpeechRecognition, speechLang, transcriptOf, startRecognition as beginRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { fetchMessagePage } from "@/lib/messages";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
@@ -659,22 +659,14 @@ export default function ThreadPage() {
     setVoiceState("recording");
 
     recognition.onresult = (e) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const tr = e.results[i][0].transcript;
-        if (e.results[i].isFinal) {
-          confirmedTranscriptRef.current += (confirmedTranscriptRef.current ? " " : "") + tr.trim();
-        } else {
-          interim += tr;
-        }
-      }
+      // Row 226: rebuilt from the whole result list every time rather than
+      // accumulated, so an engine that re-delivers a final result cannot add
+      // the same words twice. See transcriptOf.
+      const { final, interim } = transcriptOf(e);
+      confirmedTranscriptRef.current = final;
       const base = inputBeforeRecordingRef.current;
-      const combined = [
-        confirmedTranscriptRef.current,
-        interim.trim(),
-      ].filter(Boolean).join(" ");
-      const joined = base ? base + " " + combined : combined;
-      setInput(joined);
+      const combined = [final, interim].filter(Boolean).join(" ");
+      setInput(base ? base + " " + combined : combined);
     };
 
     recognition.onend = () => {
@@ -686,16 +678,29 @@ export default function ThreadPage() {
     recognition.onerror = (e) => {
       recognitionRef.current = null;
       setVoiceState("idle");
+      setInput(inputBeforeRecordingRef.current);
+      // Row 226: two error names were handled and every other one was
+      // swallowed, so on the iPhone — where the failure has neither of those
+      // names — the button produced no recording, no prompt and no message.
+      // Every failure now says something.
       if (e.error === "not-allowed") {
         showToast(t("micNotAllowed"), false);
-        setInput(inputBeforeRecordingRef.current);
       } else if (e.error === "network") {
         showToast(t("netRequired"), false);
-        setInput(inputBeforeRecordingRef.current);
+      } else if (e.error !== "aborted" && e.error !== "no-speech") {
+        // aborted is the person stopping it and no-speech is silence; neither
+        // is a fault worth interrupting them over.
+        showToast(t("micFailed"), false);
       }
     };
 
-    recognition.start();
+    // start() can throw synchronously — on iOS it is one of the ways the
+    // button did nothing at all.
+    if (beginRecognition(recognition) !== null) {
+      recognitionRef.current = null;
+      setVoiceState("idle");
+      showToast(t("micFailed"), false);
+    }
   }
 
   function handleMicClick() {

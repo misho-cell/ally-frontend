@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useThreads, taskStatusOf } from "@/contexts/ThreadsContext";
 import { t } from "@/lib/i18n";
-import { getSpeechRecognition, speechLang, type SpeechRecognitionLike } from "@/lib/speech";
+import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 
 // Desktop right pane, no goal selected: dogs clip + one line + the goal
 // composer (ticket 6 #1). D20 (22 Aug): mic AND send are both available while
@@ -41,19 +41,16 @@ export default function ChatIndexPage() {
     rec.interimResults = true;
     recognitionRef.current = rec;
     setRecording(true);
-    let finalText = "";
     rec.onresult = (e) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const tr = e.results[i][0].transcript;
-        if (e.results[i].isFinal) finalText += (finalText ? " " : "") + tr.trim();
-        else interim += tr;
-      }
-      setInput([finalText, interim.trim()].filter(Boolean).join(" "));
+      const { final, interim } = transcriptOf(e);
+      setInput([final, interim].filter(Boolean).join(" "));
     };
     rec.onend = () => { recognitionRef.current = null; setRecording(false); };
     rec.onerror = () => { recognitionRef.current = null; setRecording(false); };
-    rec.start();
+    if (startRecognition(rec) !== null) {
+      recognitionRef.current = null;
+      setRecording(false);
+    }
   }
 
   function submit(e: React.FormEvent) {
