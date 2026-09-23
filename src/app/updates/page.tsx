@@ -94,17 +94,16 @@ type WeeklyGoal = {
 };
 
 const WEEKLY_KIND = "weekly_summary";
-// Which week the person has already dismissed. Keyed by week_start so next
-// week's summary is a new card rather than one that never returns.
-const WEEK_READ_KEY = "netai_week_read";
 
+// One name, pinned on the server with a test. This used to read three
+// spellings because the shape was described loosely and "whatever you have
+// will work" felt helpful — which is exactly how two names for one thing
+// become permanent, as they did for the request ref that blocked the
+// tester's seat for a week.
 function weeklyGoals(payload: unknown): WeeklyGoal[] {
   if (!isRecord(payload)) return [];
-  for (const key of ["goals", "per_goal", "breakdown"]) {
-    const v = payload[key];
-    if (Array.isArray(v)) return recordItems(v) as WeeklyGoal[];
-  }
-  return [];
+  const v = payload.goals;
+  return Array.isArray(v) ? (recordItems(v) as WeeklyGoal[]) : [];
 }
 
 function weekStart(payload: unknown): string | null {
@@ -135,7 +134,6 @@ export default function UpdatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [weekDismissed, setWeekDismissed] = useState<string | null>(null);
   // This call spends what it returns, so it must not be fired twice by a
   // re-render: a second run would consume a second batch for nobody.
   const loadedOnce = useRef(false);
@@ -162,13 +160,6 @@ export default function UpdatesPage() {
     if (loadedOnce.current) return;
     loadedOnce.current = true;
     load();
-    // localStorage cannot be read while rendering: the server renders this
-    // page too and has no such thing, so reading it there would hydrate to a
-    // different tree than the browser draws. After mount is the only correct
-    // moment, which is what an effect is for — the rule cannot express that
-    // exception, so it is disabled on this line and nowhere else.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    try { setWeekDismissed(localStorage.getItem(WEEK_READ_KEY)); } catch { /* private mode */ }
   }, [load]);
 
   // The founder's second instruction: opening the screen must NOT spend this
@@ -176,20 +167,34 @@ export default function UpdatesPage() {
   // rule above, and it is why the summary is looked for in `seen` as well as
   // `due`: GET /updates has already marked it shown server-side by the time
   // this renders, and the card has to outlive that.
-  const weekly =
-    due.find((u) => u.kind === WEEKLY_KIND) ?? seen.find((u) => u.kind === WEEKLY_KIND) ?? null;
+  const weekly = due.find((u) => u.kind === WEEKLY_KIND) ?? null;
   const weeklyWeek = weekly ? weekStart(weekly.payload) : null;
-  const showWeekly = weekly != null && (weeklyWeek == null || weeklyWeek !== weekDismissed);
 
   // The summary is never also drawn as an ordinary row: one thing in two
   // places is how a person stops trusting either.
   const dueRest = due.filter((u) => u.kind !== WEEKLY_KIND);
   const seenRest = seen.filter((u) => u.kind !== WEEKLY_KIND);
 
-  const dismissWeek = () => {
-    if (!weeklyWeek) { setWeekDismissed("dismissed"); return; }
-    try { localStorage.setItem(WEEK_READ_KEY, weeklyWeek); } catch { /* private mode */ }
-    setWeekDismissed(weeklyWeek);
+  // Tapping is what marks it read, and the server is the one that records it.
+  // This was briefly a flag in this browser, because opening the screen spent
+  // the card server-side and the card had to outlive that. The backend made
+  // the summary an unspent kind instead, so "seen" now means "tapped" and a
+  // local flag would be a second, quieter answer to a question that has one.
+  const readWeek = async (ref: string) => {
+    if (busy) return;
+    setBusy(ref);
+    setNotice(null);
+    try {
+      await apiFetch(`/updates/${encodeURIComponent(ref)}/seen`, { method: "POST" });
+      setDue((prev) => prev.filter((u) => u.update_ref !== ref));
+    } catch {
+      // The card stays exactly where it is. A tap that did not land must not
+      // look like one that did — which is why an unknown ref answers 404
+      // rather than a quiet 200.
+      setNotice({ text: s.failed, ok: false });
+    } finally {
+      setBusy(null);
+    }
   };
 
   const snooze = async (ref: string, days: number) => {
@@ -295,7 +300,7 @@ export default function UpdatesPage() {
         )}
 
         {/* The card, at the top, before everything else on the screen. */}
-        {!loading && showWeekly && weekly && (
+        {!loading && weekly && (
           <div
             className="card flex flex-col gap-3"
             style={{ borderColor: "var(--accent)", borderWidth: "1.5px" }}
@@ -355,7 +360,12 @@ export default function UpdatesPage() {
               </div>
             )}
 
-            <button type="button" className="btn-secondary self-start" onClick={dismissWeek}>
+            <button
+              type="button"
+              className="btn-secondary self-start"
+              disabled={busy === weekly.update_ref}
+              onClick={() => weekly.update_ref && readWeek(weekly.update_ref)}
+            >
               {s.weekDone}
             </button>
           </div>
