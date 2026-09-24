@@ -62,6 +62,7 @@ const L = {
     trialEndsBanner: (d: string) => `Free trial ends ${d}`,
     canceled: "Canceled",
     continuesUntil: (tier: string, d: string) => `${tier} continues until ${d}`,
+    endsOn: (d: string) => `Ends on ${d}. It will not renew.`,
     freePlan: "Free plan",
     tapChoose: "Tap below to choose a plan.",
     portalError: "Couldn't open the portal. Please try again.",
@@ -123,6 +124,7 @@ const L = {
     trialEndsBanner: (d: string) => `უფასო პერიოდი მთავრდება ${d}`,
     canceled: "გაუქმებული",
     continuesUntil: (tier: string, d: string) => `${tier} გაგრძელდება ${d}-მდე`,
+    endsOn: (d: string) => `მთავრდება ${d}. ავტომატურად აღარ განახლდება.`,
     freePlan: "უფასო გეგმა",
     tapChoose: "გეგმის ასარჩევად დააჭირე ქვემოთ.",
     portalError: "პორტალი ვერ გაიხსნა. სცადე თავიდან.",
@@ -161,6 +163,19 @@ type Profile = {
   trial_ends_at: string | null;
   current_period_ends_at: string | null;
   subscription_status_changed_at?: string | null;
+  // Row 248 (24 Sept). When the subscription is scheduled to stop, this is
+  // when. Null means it is not scheduled to stop, so the payment really is
+  // automatic.
+  //
+  // The date, NOT the flag. The backend first named cancel_at_period_end and
+  // then measured live Stripe: the one account that has actually cancelled
+  // has cancel_at set to the second of its period end and that flag FALSE.
+  // Stripe treats "cancel at period end" and "cancel at this timestamp" as
+  // two ways to arrange the same thing, and reading the flag would have left
+  // this person told their payment was automatic days before it stopped —
+  // looking exactly like the server fix having failed. The flag is how the
+  // cancellation was arranged; the date is whether there is one.
+  cancels_at?: string | null;
 };
 
 type TokenBalance = {
@@ -691,7 +706,7 @@ function TokensWidget() {
 
 function SubscriptionBadge({ profile }: { profile: Profile }) {
   const s = useStrings();
-  const { subscription_status, subscription_tier, trial_ends_at, current_period_ends_at } = profile;
+  const { subscription_status, subscription_tier, trial_ends_at, current_period_ends_at, cancels_at } = profile;
 
   const panel = (dotColor: string, title: string, titleColor: string, body?: string | null, bg?: string) => (
     <div style={{ background: bg ?? "var(--accent-tint)", borderRadius: "var(--radius-tile)", padding: "12px 14px" }}>
@@ -714,6 +729,17 @@ function SubscriptionBadge({ profile }: { profile: Profile }) {
   }
 
   if (subscription_status === "active") {
+    // Row 248: a scheduled stop is still an active subscription, and it was
+    // being told "next payment" right up to the day it ended.
+    if (cancels_at) {
+      return panel(
+        "var(--request-accent)",
+        s.activeLabel(TIER_LABELS[subscription_tier]),
+        "var(--request-accent)",
+        s.endsOn(fmtDateLoc(cancels_at)),
+        "var(--request-tint)"
+      );
+    }
     return panel(
       "var(--accent)",
       s.activeLabel(TIER_LABELS[subscription_tier]),
