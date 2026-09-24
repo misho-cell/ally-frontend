@@ -62,6 +62,11 @@ const L = {
     firstTime: "First time here — enter your name",
     namePlaceholder: "Name Surname",
     invitedBy: "Invited by (optional)",
+    // 24 Sept: said instead when the server answers with a mode this build
+    // does not recognise. Calling a field optional is a promise about what
+    // the next screen will accept, and a mode we have never seen is not a
+    // promise we are in a position to make.
+    invitedByUnknown: "Invited by",
     invitedByPlaceholder: "Friend's code or number",
     signUp: "Sign up",
     genericError: "Something went wrong",
@@ -92,6 +97,7 @@ const L = {
     firstTime: "პირველად ხარ აქ? შეიყვანე სახელი",
     namePlaceholder: "სახელი გვარი",
     invitedBy: "ვინ მოგიწვია? (არასავალდებულო)",
+    invitedByUnknown: "ვინ მოგიწვია?",
     invitedByPlaceholder: "მეგობრის კოდი ან ნომერი",
     signUp: "რეგისტრაცია",
     genericError: "რაღაც შეცდომა მოხდა",
@@ -150,6 +156,7 @@ export default function LoginPage() {
   // (gate off included). No validation — unknown values register fine without
   // a link, and the backend ignores self-referrals.
   const [inviteInput, setInviteInput] = useState("");
+  const [eligibleMode, setEligibleMode] = useState<string | null>(null);
   // OTP is single-use: once verify-otp + complete-login succeed we must not
   // re-run them on retry (e.g. when the eligibility call itself failed).
   const otpPassedRef = useRef(false);
@@ -314,6 +321,16 @@ export default function LoginPage() {
     const elig = await post<Eligibility>("/auth/eligibility", { phone });
     if (elig.eligible) {
       confirmedReferralRef.current = null;
+      // 24 Sept. Two modes can admit somebody with no inviter and in both the
+      // "Invited by" field is genuinely optional: `open` (a review or QA
+      // number, which has nobody to be invited by) and `existing` (already
+      // registered). Every other route needs an inviter.
+      //
+      // The mode is kept so that a mode this build has never heard of does
+      // not inherit the word "optional". That word is a promise about what
+      // the next screen will accept, and the gate's rules have changed three
+      // times today; an unknown answer should say less, not guess.
+      setEligibleMode(typeof elig.mode === "string" ? elig.mode : null);
       setStep("name");
     } else if (elig.reason === "referral_required") {
       // FT-4 (31 Aug): don't blank the field — it may already hold the
@@ -590,7 +607,9 @@ export default function LoginPage() {
                     Builds the referral chain in every mode; no validation needed. */}
                 {!confirmedReferralRef.current && (
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs" style={{ color: "var(--ink-soft)" }}>{s.invitedBy}</label>
+                    <label className="text-xs" style={{ color: "var(--ink-soft)" }}>
+                      {eligibleMode === "open" || eligibleMode === "existing" ? s.invitedBy : s.invitedByUnknown}
+                    </label>
                     <input
                       type="text"
                       value={inviteInput}
