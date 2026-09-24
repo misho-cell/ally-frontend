@@ -136,21 +136,40 @@ export default function AdminIdentityPage() {
     load();
   }, [load]);
 
-  // Task 24 (9 Sept): undo the last approve/reject — POST /admin/identity/unmerge
-  // { id } puts the pair back into pending.
-  // Row 236 (21 Sept): undo sent the CANDIDATE's id, and the route wants the
-  // person it merged into — so every undo came back 400 and the button did
-  // nothing at all. The right value was already in hand: approve answers with
-  // { ok, person_id }. Keeping both means the notice can still name the
-  // candidate the reviewer just acted on while the call carries what the
-  // server actually needs.
-  const [lastActed, setLastActed] = useState<{ candidateId: string; personId: string } | null>(null);
+  // Task 24 (9 Sept): undo the last approve or reject, putting the pair back
+  // into pending.
+  //
+  // Row 236, and the second reading of it (24 Sept) is the one that matters.
+  // This called POST /admin/identity/unmerge, which takes a WHOLE PERSON
+  // apart. It never did any harm only because it sent the field under the
+  // name `id` and that route reads `person_id`: the value arrived undefined,
+  // the route answered 400 before touching anything, and 472 merges have
+  // produced zero unmerges ever. Lika's red error and this call are the same
+  // fault seen from the two ends.
+  //
+  // My first reading was that the field name was the bug. It was not, and
+  // correcting the field name ALONE would have made this button dangerous for
+  // the first time: aimed at that route it would work, and on a person built
+  // from more than one approval it removes phones that no single decision
+  // added. Six such people exist. An inert wrong button and a working wrong
+  // button are not the same mistake.
+  //
+  // So the route is what changes. The candidate route undoes exactly the
+  // approval that was just made and nothing else, and takes no body: the id
+  // is the candidate the page itself approved. A 409 means the approval
+  // predates the record of what it merged and extended a person who already
+  // existed — the server names the other route in its message, and that is
+  // the guard holding, not a failure, so the message is shown as it arrives.
+  const [lastActed, setLastActed] = useState<{ candidateId: string } | null>(null);
   async function unmerge() {
     if (!lastActed) return;
     setBusyId(lastActed.candidateId);
     setError(null);
     try {
-      await apiFetch<unknown>("/admin/identity/unmerge", { method: "POST", admin: true, body: { id: lastActed.personId } });
+      await apiFetch<unknown>(
+        `/admin/identity/candidates/${encodeURIComponent(lastActed.candidateId)}/unmerge`,
+        { method: "POST", admin: true }
+      );
       setNotice(`დაბრუნდა pending-ში (#${lastActed.candidateId})`);
       setLastActed(null);
       await load();
@@ -172,15 +191,15 @@ export default function AdminIdentityPage() {
         admin: true,
       });
       setNotice(action === "approve" ? `დამტკიცდა ✓ (#${key})` : `უარყოფილია (#${key})`);
-      // Undo is only offered when the server named the person it merged into.
-      // Without that value the call is the 400 this row was filed for, and a
-      // button that cannot work should not be on screen pretending it can.
-      const body = unwrapData(res);
-      const personId = isRecord(body) && body.person_id != null ? String(body.person_id) : null;
-      setLastActed(personId ? { candidateId: key, personId } : null);
+      // 24 Sept: undo used to be offered only when the server named the
+      // person it had merged into, because the old route needed that id.
+      // The candidate route needs nothing but the candidate, so the undo is
+      // offered for every action it can actually undo — including a reject,
+      // which has no person and so never got the button at all.
+      setLastActed({ candidateId: key });
       setCandidates((prev) => (prev ? prev.filter((c) => String(c.id) !== key) : prev));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "ვერ შესრუცდა");
+      setError(err instanceof ApiError ? err.message : "ვერ შესრულდა");
     } finally {
       setBusyId(null);
     }

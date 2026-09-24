@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api";
-import { pickArray, recordItems } from "@/lib/payload";
+import { isRecord, pickArray, recordItems, unwrapData } from "@/lib/payload";
 import PilotThreadsCard from "@/components/PilotThreadsCard";
 
 // Row 16 (24 Sept). Reading a pilot user's conversation already worked, but
@@ -20,7 +20,15 @@ type Person = {
   user_id?: number | string | null;
   name?: string | null;
   phone?: string | null;
-  thread_count?: number | string | null;
+  registered_at?: string | null;
+  // How many days since this person registered.
+  day?: number | string | null;
+  threads?: number | string | null;
+  goals?: number | string | null;
+  // Billed by Stripe, and let in by an admin. Two facts, never one: a
+  // hand-granted account is a person using the product and is not revenue.
+  paying?: boolean | null;
+  granted_by_hand?: boolean | null;
   last_active_at?: string | null;
 };
 
@@ -49,6 +57,10 @@ function fmt(iso?: string | null): string | null {
 export default function AdminPilotPage() {
   const router = useRouter();
   const [people, setPeople] = useState<Person[] | null>(null);
+  // The server's own count, shown beside the rows. If it ever disagrees with
+  // how many rows arrived, that disagreement is worth seeing rather than
+  // hiding behind a list that looks complete.
+  const [total, setTotal] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -56,7 +68,14 @@ export default function AdminPilotPage() {
     try {
       const res = await apiFetch<unknown>("/admin/pilot/people", { admin: true });
       if (!stillWanted()) return;
-      setPeople(recordItems(pickArray(res, ["people", "users", "data"])) as Person[]);
+      // 24 Sept: this read `res` directly and never unwrapped the envelope,
+      // so with the list at data.people it found nothing and drew the empty
+      // state — "nobody is in the pilot yet" over a 200 carrying 48 people.
+      // A screen that reports an empty list and a screen that failed to find
+      // the list must not look the same, and this one did.
+      const body = unwrapData(res);
+      setPeople(recordItems(pickArray(body, ["people"])) as Person[]);
+      setTotal(isRecord(body) && typeof body.total === "number" ? body.total : null);
       setError(null);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
@@ -75,6 +94,7 @@ export default function AdminPilotPage() {
             : "ჩატვირთვა ვერ მოხერხდა"
       );
       setPeople([]);
+      setTotal(null);
     }
   }, [router]);
 
@@ -95,6 +115,7 @@ export default function AdminPilotPage() {
         <div className="flex items-center gap-3">
           <a href="/admin" className="text-sm text-gray-400 transition hover:text-gray-600">← ადმინი</a>
           <h1 className="text-lg font-bold text-[#23261F]">პილოტის ხალხი</h1>
+          {total != null && <span className="text-xs text-gray-500">სულ {total}</span>}
         </div>
         <button
           type="button"
@@ -120,7 +141,8 @@ export default function AdminPilotPage() {
           <div className="flex flex-col gap-3">
             {people.map((p, i) => {
               const pid = personId(p);
-              const threads = count(p.thread_count);
+              const threads = count(p.threads);
+              const goals = count(p.goals);
               const seen = fmt(p.last_active_at);
               const open = pid != null && pid === openId;
               return (
@@ -137,6 +159,17 @@ export default function AdminPilotPage() {
                       <span className="text-xs text-gray-500">{threads} საუბარი</span>
                     ) : (
                       <span className="text-xs text-gray-400">საუბრების რაოდენობა არ მოსულა</span>
+                    )}
+                    {goals != null && <span className="text-xs text-gray-500">{goals} მიზანი</span>}
+                    {p.day != null && <span className="text-xs text-gray-400">დღე {String(p.day)}</span>}
+                    {/* Two separate facts, drawn separately. */}
+                    {p.paying === true && (
+                      <span className="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">იხდის</span>
+                    )}
+                    {p.granted_by_hand === true && (
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600" title="ადმინმა მისცა წვდომა, შემოსავალი არაა">
+                        ხელით მიცემული
+                      </span>
                     )}
                     {seen && <span className="text-xs text-gray-400">ბოლოს: {seen}</span>}
                     {pid == null ? (
