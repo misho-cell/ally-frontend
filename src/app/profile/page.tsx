@@ -28,7 +28,15 @@ const L = {
     renews: (d: string) => `Renews ${d}`,
     perWeek: "weekly",
     perMonth: "monthly",
-    usedOf: (spent: string, granted: string) => `${spent} of ${granted} used this period`,
+    // Row 235/250 (24 Sept). This used to read "2,586 of 250 used this
+    // period", with a bar beside it pinned at 100%. Every part of that is
+    // true and the whole of it is false: the grant is not a ceiling. Spending
+    // continues out of the balance once the grant is used, and the balance is
+    // the only thing checked before a run. Lika was ten times "over" a number
+    // that never stopped anything, while the number that does is printed
+    // directly above it.
+    spentThisPeriod: (spent: string) => `${spent} used this period`,
+    grantArrives: (granted: string, every: string) => `${granted} arrives ${every}`,
     trialBalance: "Trial balance — subscribe to keep going",
     addTokens: "Add tokens",
     tokensAdded: "Tokens added",
@@ -90,7 +98,8 @@ const L = {
     renews: (d: string) => `განახლდება: ${d}`,
     perWeek: "კვირაში",
     perMonth: "თვეში",
-    usedOf: (spent: string, granted: string) => `ამ პერიოდში დახარჯულია ${spent} / ${granted}`,
+    spentThisPeriod: (spent: string) => `ამ პერიოდში დახარჯულია ${spent}`,
+    grantArrives: (granted: string, every: string) => `${granted} ემატება ${every}`,
     trialBalance: "საცდელი ბალანსი. გასაგრძელებლად გამოიწერე.",
     addTokens: "ტოკენების დამატება",
     tokensAdded: "ტოკენები დაემატა",
@@ -616,11 +625,6 @@ function TokensWidget() {
   const granted = tokens?.grantedThisPeriod ?? 0;
   const spent = tokens ? Math.max(0, tokens.spentThisPeriod) : 0;
   const isTrial = granted === 120;
-  const usedPct = tokens && granted > 0 ? Math.min(1, spent / granted) : null;
-  const fillColor =
-    usedPct !== null && usedPct >= 0.95
-      ? "var(--request-accent)"
-      : "var(--accent)";
   // Top-up is for subscribers only — trial wallets get the subscribe CTA elsewhere.
   const showTopup = !!tokens && !isTrial && packages.length > 0;
 
@@ -656,23 +660,18 @@ function TokensWidget() {
             </span>
           </div>
 
+          {/* The bar that used to sit here filled towards the grant and
+              stopped at 100%, which is a picture of a limit. There is no
+              limit to draw: the balance above is what runs out. */}
           {granted > 0 && (
-            <>
-              <div className="w-full overflow-hidden" style={{ height: "6px", borderRadius: "3px", background: "var(--skeleton)" }}>
-                <div
-                  className="h-full"
-                  style={{
-                    width: `${Math.round((usedPct ?? 0) * 100)}%`,
-                    borderRadius: "3px",
-                    background: fillColor,
-                    transition: "width 0.4s",
-                  }}
-                />
-              </div>
-              <p className="text-xs" style={{ color: "var(--meta)" }}>
-                {s.usedOf(fmtTokens(spent), fmtTokens(granted))}
-              </p>
-            </>
+            <p className="text-xs" style={{ color: "var(--meta)" }}>
+              {s.spentThisPeriod(fmtTokens(spent))}
+              {" · "}
+              {s.grantArrives(
+                fmtTokens(granted),
+                tokens.window === "calendar_month" ? s.perMonth : s.perWeek
+              )}
+            </p>
           )}
 
           {isTrial && (
