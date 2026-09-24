@@ -24,6 +24,10 @@ export function setServerLanguage(raw: unknown): void {
   // separate from "this person reads English".
   if (!["ka", "en", "ru", "es"].includes(raw)) return;
   try { localStorage.setItem(SERVER_LANG_KEY, raw); } catch {}
+  // A chosen language outranks the server's reading, so it must not be
+  // overwritten here — the same order getLocale() applies.
+  if (getChosenLanguage()) return;
+  writeLocaleCookie(raw === "ka" ? "ka" : "en");
 }
 
 function serverLocale(): Locale | null {
@@ -46,6 +50,7 @@ const CHOSEN_KEY = "netai_locale_chosen";
 
 export function setChosenLanguage(loc: Locale): void {
   try { localStorage.setItem(CHOSEN_KEY, loc); } catch {}
+  writeLocaleCookie(loc);
 }
 
 export function getChosenLanguage(): Locale | null {
@@ -55,6 +60,32 @@ export function getChosenLanguage(): Locale | null {
   } catch {
     return null;
   }
+}
+
+// 24 Sept. getLocale() returns "en" wherever there is no window, which is
+// every server render, and "ka" on a Georgian phone — so every translated
+// string differs between the prerendered HTML and the hydrating tree. React
+// abandons the tree over it (#418) and rebuilds, and a press that lands in
+// that window hits a node with no handler. That is the same fault as row 3b,
+// with a wider reach: it touches every string, not just the timestamps.
+//
+// This writes the answer where a server render COULD read it. It is a
+// prerequisite and not yet a fix: /chat is prerendered at build time, so
+// nothing server-side reads this cookie today and nothing will until that
+// page is made dynamic — which changes how the app is served and is not a
+// call to make while shipping a caption. Saying so here rather than leaving
+// a cookie that looks like a solved problem.
+//
+// The backend sets no cookies at all and has no account-level language, so
+// there is nothing to read from that side; this is the app's own origin
+// writing what the app itself has already worked out.
+const LOCALE_COOKIE = "netai_locale_ssr";
+
+function writeLocaleCookie(loc: Locale): void {
+  try {
+    // A year, and Lax: it is a display preference, never a credential.
+    document.cookie = `${LOCALE_COOKIE}=${loc}; path=/; max-age=31536000; SameSite=Lax`;
+  } catch {}
 }
 
 export function getLocale(): Locale {
