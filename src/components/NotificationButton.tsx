@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { authHeaders, getDeviceId } from "@/lib/deviceId";
 import { getLocale } from "@/lib/i18n";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import { ensurePushSubscription, pushState } from "@/lib/push";
 
 // Screen-local strings (phone locale: ka → Georgian, else English).
 // No emoji in UI copy (brand rule).
@@ -13,88 +11,70 @@ const L = {
     needsPwa: "Install the app for notifications",
     blocked: "Notifications blocked",
     enable: "Notifications",
+    // Row 111 (24 Sept): a failure used to leave the button looking untouched,
+    // so a person who pressed it and got nothing pressed it again forever and
+    // the server never heard about any of it. It says so now.
+    failed: "Could not turn them on",
   },
   ka: {
     needsPwa: "შეტყობინებებისთვის დააინსტალირე აპლიკაცია",
     blocked: "შეტყობინებები დაბლოკილია",
     enable: "შეტყობინებები",
+    failed: "ჩართვა ვერ მოხერხდა",
   },
 };
 
-function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  const arr = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; i++) arr[i] = rawData.charCodeAt(i);
-  return arr.buffer;
-}
-
-type Status = "idle" | "loading" | "granted" | "denied" | "needs-pwa" | "unsupported";
+type Status = "idle" | "loading" | "granted" | "denied" | "needs-pwa" | "unsupported" | "failed";
 
 export default function NotificationButton() {
   const s = L[getLocale()];
   const [status, setStatus] = useState<Status>("idle");
+  // The step that broke, kept beside the message. Not translated: it is for a
+  // screenshot that reaches us, not for the person to act on.
+  const [reason, setReason] = useState<string | null>(null);
 
   useEffect(() => {
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as unknown as { standalone?: boolean }).standalone === true;
-
-    const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent);
-
-    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
-      setStatus("unsupported");
-      return;
-    }
-    if (isIos && !isStandalone) {
-      setStatus("needs-pwa");
-      return;
-    }
-    if (Notification.permission === "denied") {
-      setStatus("denied");
-      return;
-    }
-    if (Notification.permission === "granted" && localStorage.getItem("push_endpoint")) {
-      setStatus("granted");
-      return;
-    }
+    let alive = true;
+    void (async () => {
+      const state = pushState();
+      if (state === "granted") {
+        // Granted is not registered. The registration can be missing here — a
+        // rotated endpoint, a POST that failed last time — and this is the
+        // pass that repairs it without prompting anyone.
+        const r = await ensurePushSubscription(false);
+        if (alive && r.state === "subscribed") setStatus("granted");
+        return;
+      }
+      if (alive && state !== "unasked") setStatus(state);
+    })();
+    return () => { alive = false; };
   }, []);
 
   async function enable() {
     setStatus("loading");
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setStatus("denied");
-        return;
-      }
-      const keyRes = await fetch(`${BASE_URL}/notifications/vapid-public-key`, {
-        headers: authHeaders(),
-      });
-      const keyJson = await keyRes.json();
-      const vapidKey = keyJson.data?.key ?? keyJson.key;
-      const reg = await navigator.serviceWorker.ready;
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidKey),
-      });
-      const sub = subscription.toJSON();
-      await fetch(`${BASE_URL}/notifications/subscribe`, {
-        method: "POST",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        // Row 6: see the note in chat/layout.tsx — names the device so an
-        // Apple endpoint can be told apart from a Mac one.
-        body: JSON.stringify({ ...sub, user_agent: navigator.userAgent, device_id: getDeviceId() }),
-      });
-      localStorage.setItem("push_endpoint", sub.endpoint ?? "");
+    setReason(null);
+    const result = await ensurePushSubscription(true);
+    if (result.state === "subscribed") {
       setStatus("granted");
-    } catch {
-      setStatus("idle");
+      return;
     }
+    if (result.state === "failed") {
+      setStatus("failed");
+      setReason(result.reason);
+      return;
+    }
+    setStatus(result.state === "unasked" ? "idle" : result.state);
   }
 
   if (status === "granted" || status === "unsupported") return null;
+
+  if (status === "failed") {
+    return (
+      <span className="text-xs" style={{ color: "var(--danger)" }}>
+        {s.failed}{reason ? ` (${reason})` : ""}
+      </span>
+    );
+  }
 
   if (status === "needs-pwa") {
     return <span className="text-xs" style={{ color: "var(--meta)" }}>{s.needsPwa}</span>;

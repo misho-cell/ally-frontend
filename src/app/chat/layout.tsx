@@ -5,10 +5,12 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { authHeaders, getDeviceId, handleAdminTokenMisuse } from "@/lib/deviceId";
+import { ensurePushSubscription } from "@/lib/push";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { t, tf, fmtDateShort } from "@/lib/i18n";
 import { useUserName, clearUserName } from "@/lib/user";
 import Modal from "@/components/Modal";
+import PushPrompt from "@/components/PushPrompt";
 import {
   ThreadsContext,
   updateThreadState,
@@ -50,15 +52,6 @@ function dedup(arr: Thread[]): Thread[] {
 
 function isSubscriptionError(status: number, body: { error?: string; success?: boolean }): boolean {
   return status === 403 || body?.error === "subscription_required" || (body?.success === false && body?.error === "subscription_required");
-}
-
-function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  const arr = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; i++) arr[i] = rawData.charCodeAt(i);
-  return arr.buffer;
 }
 
 function isStaleRun(ts: ThreadState, eventRunId: unknown): boolean {
@@ -363,36 +356,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     } catch {}
   }, []);
 
+  // Row 101 (24 Sept): this used to call pushManager.subscribe() on every
+  // load, which minted a second registration each time the browser had
+  // rotated the endpoint — five of them for one tester. ensurePushSubscription
+  // reuses what the browser already holds and reports the endpoint it
+  // replaced. `false` means it will never raise the permission prompt from a
+  // page load; asking is the button's job.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
-    if (Notification.permission !== "granted") return;
-    (async () => {
-      try {
-        const keyRes = await fetch(`${BASE_URL}/notifications/vapid-public-key`, { headers: authHeaders() });
-        const keyJson = await keyRes.json();
-        const vapidKey = keyJson.data?.key ?? keyJson.key;
-        if (!vapidKey) return;
-        const reg = await navigator.serviceWorker.ready;
-        const subscription = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidKey),
-        });
-        const sub = subscription.toJSON();
-        await fetch(`${BASE_URL}/notifications/subscribe`, {
-          method: "POST",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          // Row 6 (12 Sept): name the device. web.push.apple.com serves macOS
-          // Safari as well as iPhones, so without this an Apple endpoint can't
-          // be told apart from a Mac one. Optional server-side.
-          // device_id is the stable key: a UUID minted once per browser and
-          // kept in localStorage, unchanged when the UA string changes on a
-          // browser update. user_agent stays for readability.
-          body: JSON.stringify({ ...sub, user_agent: navigator.userAgent, device_id: getDeviceId() }),
-        });
-        localStorage.setItem("push_endpoint", sub.endpoint ?? "");
-      } catch {}
-    })();
+    void ensurePushSubscription(false);
   }, []);
 
   useEffect(() => {
@@ -1168,6 +1139,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             className="flex-1 overflow-y-auto flex flex-col gap-[3px]"
             onScroll={onListScroll}
           >
+            {/* Row 111: the ask lives where people actually are. It renders
+                nothing once the question has been answered either way. */}
+            <PushPrompt />
             {!threadsLoaded ? (
               <div className="flex flex-col gap-2 pt-1">
                 <span className="sk-bar" style={{ width: "84%" }} />
