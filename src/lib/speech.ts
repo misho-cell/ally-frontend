@@ -118,7 +118,78 @@ export function transcriptOf(event: SpeechRecognitionEventLike): { final: string
 //
 // This returns the reason it could not start, or null if it did. Silence is
 // never one of the answers.
+// Row 226 (24 Sept). "The microphone records nothing" is three different
+// faults wearing one sentence: the recogniser never started, it started and
+// heard nothing, or it heard something and the screen did not show it. From
+// the outside they are identical, and the backend has nothing to look at —
+// speech-to-text is entirely in the browser and the server only ever receives
+// finished text, so there is no server-side reading that could tell them
+// apart.
+//
+// This is the same move that turned the push row from a week of guessing into
+// a named cause in minutes: write down what actually happened, in a place a
+// person can screenshot. It records the LAST attempt only. A log would be
+// better and a log nobody can reach is worse than a line on the screen.
+const SPEECH_LOG_KEY = "netai_speech_last";
+
+export type SpeechOutcome = {
+  // "start" — the recogniser accepted the call and the engine began.
+  // "error" — it named a fault; detail is the engine's own error string.
+  // "result" — text arrived, with how many characters.
+  // "end" — it finished. Reaching "end" having only ever seen "start" is
+  //         precisely the iPhone symptom: it ran and heard nothing.
+  // "start-failed" — start() threw; detail is the exception name.
+  stage: "start" | "error" | "result" | "end" | "start-failed";
+  detail?: string;
+  at: string;
+  lang: string;
+  standalone: boolean;
+};
+
+function record(stage: SpeechOutcome["stage"], detail?: string): void {
+  try {
+    const entry: SpeechOutcome = {
+      stage,
+      detail,
+      at: new Date().toISOString(),
+      lang: speechLang(),
+      standalone:
+        window.matchMedia?.("(display-mode: standalone)").matches === true ||
+        (navigator as unknown as { standalone?: boolean }).standalone === true,
+    };
+    localStorage.setItem(SPEECH_LOG_KEY, JSON.stringify(entry));
+  } catch {
+    /* private mode: the diagnostics card then says nothing was recorded,
+       which is true, rather than showing a stale entry. */
+  }
+}
+
+export function lastSpeechOutcome(): SpeechOutcome | null {
+  try {
+    const raw = localStorage.getItem(SPEECH_LOG_KEY);
+    if (!raw) return null;
+    const v: unknown = JSON.parse(raw);
+    return typeof v === "object" && v !== null && "stage" in v ? (v as SpeechOutcome) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function startRecognition(rec: SpeechRecognitionLike): string | null {
+  // addEventListener, not the on* properties: every call site assigns those
+  // itself and assigning them here would silently replace the caller's
+  // handlers — a diagnostic that breaks the thing it is diagnosing.
+  try {
+    rec.addEventListener("start", () => record("start"));
+    rec.addEventListener("end", () => record("end"));
+    rec.addEventListener("error", (e) => record("error", (e as SpeechRecognitionErrorEventLike).error || "unnamed"));
+    rec.addEventListener("result", (e) => {
+      const { final, interim } = transcriptOf(e as SpeechRecognitionEventLike);
+      record("result", `${final.length}+${interim.length}`);
+    });
+  } catch {
+    /* an engine that refuses listeners still gets to try starting */
+  }
   try {
     rec.start();
     return null;
@@ -130,6 +201,7 @@ export function startRecognition(rec: SpeechRecognitionLike): string | null {
       try { rec.abort(); } catch { /* it is already gone */ }
       return null;
     }
+    record("start-failed", name || "unnamed");
     return name || "start-failed";
   }
 }

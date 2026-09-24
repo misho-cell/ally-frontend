@@ -10,6 +10,7 @@ import { getLocale, fmtDateLoc } from "@/lib/i18n";
 import { clearUserName } from "@/lib/user";
 import { openStripePortal, portalErrorText } from "@/lib/stripe";
 import PushDiagnostics from "@/components/PushDiagnostics";
+import MicDiagnostics from "@/components/MicDiagnostics";
 import LanguageCard from "@/components/LanguageCard";
 import ReferralRewardsCard from "@/components/ReferralRewardsCard";
 
@@ -943,6 +944,7 @@ export default function ProfilePage() {
                 console, so this is the only way a tester can report the three
                 values that separate a permission problem from a delivery one. */}
             <PushDiagnostics />
+            <MicDiagnostics />
 
             {/* Row 218 (21 Sept): somewhere to say which language, for the
                 people whose phone does not match how they speak. */}
