@@ -196,6 +196,12 @@ export default function AdminPage() {
             კამპანიები →
           </a>
           <a
+            href="/admin/pilot"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
+          >
+            პილოტის ხალხი →
+          </a>
+          <a
             href="/admin/facts"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
           >
