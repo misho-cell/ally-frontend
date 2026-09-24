@@ -1401,10 +1401,24 @@ export default function ThreadPage() {
                     </div>
                   </div>
                   {/* Task 98: this bubble's own buttons — shown until the user
-                      answers (any later user message clears them). */}
+                      answers THIS question.
+                      Row 3a (24 Sept): "answered" used to mean any later user
+                      message at all. Thread 17528: a plan with two buttons, the
+                      owner typed one more line, and the only way to approve the
+                      plan was gone — permanently, because the test is re-run on
+                      every load and the server keeps returning those two labels.
+                      Approving is what sends messages in the owner's name, so
+                      the cost of that shortcut was an owner who could not act
+                      and was told nothing. Answering means picking one of the
+                      offered labels, which is exactly what pressing a button
+                      sends, so the buttons still vanish the instant one is
+                      pressed. */}
                   {msg.choices && msg.choices.length > 0 && !loading && (() => {
                     const idx = messages.indexOf(msg);
-                    const answered = messages.slice(idx + 1).some((m) => m.role === "user");
+                    const offered = msg.choices!;
+                    const answered = messages
+                      .slice(idx + 1)
+                      .some((m) => m.role === "user" && offered.includes(m.content.trim()));
                     return !answered;
                   })() && (
                     <div className="decision-card" style={{ marginLeft: "36px" }}>

@@ -75,12 +75,24 @@ function loadJson<T>(key: string, fallback: T): T {
   }
 }
 
-function fmtClock(iso?: string): string {
+// Row 3b (24 Sept). This decided "today or not" by reading the clock DURING
+// RENDER, and it runs on the server too. The server's clock is UTC and the
+// phone's is Tbilisi, four hours apart, so any thread touched in the last four
+// hours of a UTC day was a date on the server and a time on the phone. React
+// sees two different strings for one node, gives up on the hydrated tree
+// (#418) and rebuilds it — and in that window the buttons on screen are the
+// server's HTML with nothing attached to them. A press did nothing at all:
+// no request, no error, nothing in `conversations`. Typing the same label by
+// hand worked first time, which is what made it look like a server problem.
+//
+// So no clock during render. `today` is passed in, and it is null until the
+// component has mounted: before that the stamp is the absolute date, which is
+// the same string on both sides.
+function fmtClock(iso: string | undefined, today: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
-  const now = new Date();
-  const sameDay = d.toDateString() === now.toDateString();
+  const sameDay = today != null && d.toDateString() === today;
   return sameDay
     ? d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
     : fmtDateShort(d);
@@ -145,6 +157,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [threadBumps, setThreadBumps] = useState<Record<string, number>>({});
   const [resolvedRequests, setResolvedRequests] = useState<Record<string, { action: string; at: number }>>({});
   const [lastRead, setLastRead] = useState<Record<string, string>>({});
+  // Row 3b: the clock, read once after mount instead of during render. Null on
+  // the server pass and on the hydrating pass, which is what keeps both sides
+  // producing the same HTML. See fmtClock above for what the mismatch cost.
+  const [clock, setClock] = useState<{ today: string; at: number } | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [searchQ, setSearchQ] = useState("");
   const [toast, setToast] = useState<string | null>(null);
@@ -198,6 +214,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     setResolvedRequests(loadJson<Record<string, { action: string; at: number }>>(REQ_KEY, {}));
     setLastRead(loadJson<Record<string, string>>(READ_KEY, {}));
     setCollapsed(loadJson<boolean>(COLLAPSE_KEY, false));
+    setClock({ today: new Date().toDateString(), at: Date.now() });
   }, []);
 
   // 23 Aug #1: select-all must survive touch/long-press opening — onFocus
@@ -903,7 +920,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   }
 
   // ---- Derived lists ----
-  const now = Date.now();
+  // Row 3b: same reason as fmtClock. Zero until mounted, which makes the
+  // snooze test below false — a snoozed request stays hidden for one render
+  // rather than flickering back in and then out again.
+  const now = clock?.at ?? 0;
   const q = searchQ.trim().toLowerCase();
 
   function goalTitle(th: Thread): string {
@@ -1166,6 +1186,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         resolved={resolvedRequests[String(th.id)]?.action}
                         onResolve={(a) => resolveRequest(String(th.id), a)}
                         active={pathname === `/chat/${th.id}`}
+                        today={clock?.today ?? null}
                       />
                     ))}
                   </section>
@@ -1191,7 +1212,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                           {th.title || "…"}
                         </span>
                         <span className="shrink-0" style={{ font: "400 11px/16px var(--font-system)", color: "var(--meta)" }}>
-                          {fmtClock(th.updated_at)}
+                          {fmtClock(th.updated_at, clock?.today ?? null)}
                         </span>
                         <span className="task-pill needs_you">{t("askBadge")}</span>
                       </Link>
@@ -1477,12 +1498,15 @@ function TaskRow({
 }
 
 function RequestActionRow({
-  thread, resolved, onResolve, active,
+  thread, resolved, onResolve, active, today,
 }: {
   thread: Thread;
   resolved: string | undefined;
   onResolve: (a: ResolveAction) => void;
   active: boolean;
+  // Row 3b: the clock arrives as a prop rather than being read here, so this
+  // card renders the same string on the server and on the phone.
+  today: string | null;
 }) {
   const router = useRouter();
   const quote = thread.last_message?.replace(/\s+/g, " ").trim();
@@ -1504,7 +1528,7 @@ function RequestActionRow({
         </p>
         {/* E20: when the request arrived. */}
         <span className="shrink-0" style={{ font: "400 11px/16px var(--font-system)", color: "var(--meta)" }}>
-          {fmtClock(thread.updated_at)}
+          {fmtClock(thread.updated_at, today)}
         </span>
       </div>
       <p style={{ font: "400 13px/19px var(--font-bricolage)", color: "var(--ink-2)" }}>

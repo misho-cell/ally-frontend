@@ -180,8 +180,20 @@ export function mergeMessages(fresh: ChatMessage[], existing: ChatMessage[]): Ch
   // SSE-only extras (share text, per-bubble buttons) live on the local copy.
   // When the server row replaces it, carry them across — otherwise the refetch
   // that follows thread_updated drops them a second after they appear.
+  //
+  // Row 3c (24 Sept): only from a row the server has not spoken about yet.
+  // This used to carry from EVERY local row, which meant a server row that
+  // deliberately arrived with its choices cleared had them grafted straight
+  // back on. That is what left three buttons on a stopped goal in thread
+  // 17564, one of them offering to send an invitation on a goal that was over:
+  // the stop had cleared every choices row on the server, and the client put
+  // them back. `pending` marks a bubble this client invented from the stream
+  // and the server has not confirmed; once a fetch has replaced it, the
+  // server's word is the only word. An absent choices field and a cleared one
+  // are the same sentence from the server, and both of them outrank ours.
   const extras = new Map<string, { shareText?: string; choices?: string[] }>();
   for (const m of existing) {
+    if (!m.pending) continue;
     if (m.shareText || m.choices) extras.set(contentKey(m), { shareText: m.shareText, choices: m.choices });
   }
   const kept = fresh.map((m) => {
