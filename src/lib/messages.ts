@@ -21,7 +21,18 @@ export type MessagePage = {
   // Choices attached to the newest message (task 22 k) — the server persists
   // them on the message row so they survive a reload.
   choices?: string[];
+  // The conversation's language, decided by the server from the OWNER's own
+  // messages. Absent when this deployment does not send it, which is why it
+  // is optional rather than defaulted: "the server did not say" and "the
+  // server said English" are different, and only the first one may be
+  // guessed at.
+  language?: string;
 };
+
+function envelopeLanguage(json: unknown): string | undefined {
+  const v = (json as { language?: unknown } | null)?.language;
+  return typeof v === "string" && v ? v : undefined;
+}
 
 async function get(url: string): Promise<Response> {
   return fetch(url, { headers: authHeaders() });
@@ -66,7 +77,7 @@ export async function fetchMessagePage(
     }
     const json = await res.json();
     setServerLanguage(json?.language);
-    return { messages: toChatMessages(json.data ?? json), paged: true };
+    return { messages: toChatMessages(json.data ?? json), paged: true, language: envelopeLanguage(json) };
   }
 
   // Newest page.
@@ -82,7 +93,7 @@ export async function fetchMessagePage(
       // `language` rides on the envelope, next to data, not on each message.
       setServerLanguage(json?.language);
       const raw = json.data ?? json;
-      return { messages: toChatMessages(raw), paged: true, choices: lastChoices(raw) };
+      return { messages: toChatMessages(raw), paged: true, choices: lastChoices(raw), language: envelopeLanguage(json) };
     }
     pagingSupported = false;
   }
@@ -97,5 +108,5 @@ export async function fetchMessagePage(
   const json = await res.json();
   setServerLanguage(json?.language);
   const raw = json.data ?? json;
-  return { messages: toChatMessages(raw), paged: false, choices: lastChoices(raw) };
+  return { messages: toChatMessages(raw), paged: false, choices: lastChoices(raw), language: envelopeLanguage(json) };
 }

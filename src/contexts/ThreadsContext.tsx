@@ -92,6 +92,12 @@ export type ThreadState = {
   // False once a page of older history came back short — stop the spinner.
   hasMoreOlder: boolean;
   result: ResultData | null;
+  // The conversation's language as the SERVER decided it, from the owner's own
+  // messages. Null means the server has not said, not English: the caption
+  // then falls back to reading the script of the last message, which is the
+  // guess that used to flip "ნაბიჯები (14)" to "Steps (14)" on one open page
+  // with no reload.
+  language: string | null;
 };
 
 export const DEFAULT_THREAD_STATE: ThreadState = {
@@ -106,6 +112,7 @@ export const DEFAULT_THREAD_STATE: ThreadState = {
   progress: null,
   hasMoreOlder: true,
   result: null,
+  language: null,
 };
 
 export function updateThreadState(

@@ -105,7 +105,13 @@ function ShareInviteButton({ text, label }: { text: string; label: string }) {
   );
 }
 
-function detectThreadLang(messages: ChatMessage[]): ThreadLang {
+function detectThreadLang(messages: ChatMessage[], serverLang: string | null): ThreadLang {
+  // The server's answer first. It is computed from what the OWNER writes, so
+  // it does not change when the assistant happens to reply in another script,
+  // and it does not change between two renders of the same page.
+  if (serverLang === "ka" || serverLang === "en" || serverLang === "ru" || serverLang === "es") {
+    return serverLang;
+  }
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i];
     if (m.kind !== "message" || !m.content) continue;
@@ -373,7 +379,7 @@ export default function ThreadPage() {
   const SHOW_STREAMING_TEXT = false;
   const streamingActive = SHOW_STREAMING_TEXT && loading && !!streaming && streaming.text.length > 0;
   // 23 Aug #5: in-thread chrome follows the conversation's language.
-  const chrome = CHROME[detectThreadLang(messages)];
+  const chrome = CHROME[detectThreadLang(messages, st.language)];
 
   // FT-10 (2 Sept): the server pushes answer_delta in uneven, sentence-sized
   // bursts, so rendering streaming.text as-is makes the reply "jump" in
@@ -738,6 +744,11 @@ export default function ThreadPage() {
               !ts.loading && Array.isArray(page.choices) && page.choices.length > 0
                 ? page.choices
                 : ts.choices,
+            // Row 3 note from the backend (24 Sept): the server sends the
+            // conversation's language on the envelope. Kept only when it
+            // arrives — an older deployment that sends nothing must not
+            // overwrite what a previous load learned.
+            language: page.language ?? ts.language,
           }))
         );
         setLoadPhase("done");
