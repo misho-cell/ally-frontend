@@ -147,9 +147,52 @@ function Rows({ title, rows }: { title: string; rows: DayRow[] }) {
   );
 }
 
-function SidePanel({ title, subtitle, data }: { title: string; subtitle: string; data: Side }) {
+// 24 Sept. `asks.sent` read 127 while the day rows beside it summed to 27:
+// the day rows were windowed and the asks block was not, so one payload held
+// two totals for the same thing and the screen drew both, correctly. Nobody
+// noticed, including the two of us whose whole job that day was noticing
+// exactly this, and it reached a PASS.
+//
+// The server has fixed it. This is here for the next one. The screen has both
+// numbers in hand and can simply check them against each other, which costs
+// nothing and does not depend on anybody remembering to look.
+//
+// It only checks when the day rows actually cover the window — first row is
+// `from`, last is `to`. Otherwise the rows are a slice and a difference means
+// nothing, and a warning that cries wolf is its own kind of wrong number.
+function sumOver(rows: DayRow[], key: "asks_sent" | "asks_answered"): number | null {
+  let total = 0;
+  for (const r of rows) {
+    const n = num(r[key]);
+    // One unreadable day makes the sum unreadable. Treating it as zero would
+    // manufacture a disagreement, or hide one.
+    if (n == null) return null;
+    total += n;
+  }
+  return total;
+}
+
+function coversWindow(rows: DayRow[], from?: string | null, to?: string | null): boolean {
+  if (rows.length === 0 || !from || !to) return false;
+  return rows[0]?.day === from && rows[rows.length - 1]?.day === to;
+}
+
+function SidePanel({
+  title, subtitle, data, from, to,
+}: { title: string; subtitle: string; data: Side; from?: string | null; to?: string | null }) {
   const asks = data.asks ?? {};
   const people = data.people ?? {};
+  const dayRows = recordItems(pickArray(data.days ?? [])) as DayRow[];
+  const checkable = coversWindow(dayRows, from, to);
+  const sentSum = checkable ? sumOver(dayRows, "asks_sent") : null;
+  const answeredSum = checkable ? sumOver(dayRows, "asks_answered") : null;
+  const mismatches: string[] = [];
+  if (sentSum != null && num(asks.sent) != null && sentSum !== num(asks.sent)) {
+    mismatches.push(`გაგზავნილი: ჯამში ${asks.sent}, დღეების მიხედვით ${sentSum}`);
+  }
+  if (answeredSum != null && num(asks.answered) != null && answeredSum !== num(asks.answered)) {
+    mismatches.push(`ნაპასუხები: ჯამში ${asks.answered}, დღეების მიხედვით ${answeredSum}`);
+  }
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-5">
       <div>
@@ -166,6 +209,15 @@ function SidePanel({ title, subtitle, data }: { title: string; subtitle: string;
 
       <div>
         <div className="mb-1 text-xs font-semibold text-gray-500">კითხვები</div>
+        {mismatches.length > 0 && (
+          <div
+            className="mb-2 rounded-lg px-3 py-2 text-xs"
+            style={{ background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca" }}
+          >
+            ეს რიცხვები ერთმანეთს არ ემთხვევა, ანუ ერთ-ერთი სხვა კითხვას პასუხობს:
+            {mismatches.map((m) => <div key={m}>{m}</div>)}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           <Stat label="გაგზავნილი" value={asks.sent} />
           <Stat label="ნაპასუხები" value={asks.answered} />
@@ -193,7 +245,7 @@ function SidePanel({ title, subtitle, data }: { title: string; subtitle: string;
         </p>
       </div>
 
-      <Rows title="დღეები" rows={recordItems(pickArray(data.days ?? [])) as DayRow[]} />
+      <Rows title="დღეები" rows={dayRows} />
       <Rows title="კვირები" rows={recordItems(pickArray(data.weeks ?? [])) as DayRow[]} />
     </div>
   );
@@ -314,8 +366,8 @@ export default function AdminPilotReportPage() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {/* Side by side, never summed: a seat is a test account and a
                   real person is a real person. */}
-              <SidePanel title="ნამდვილი ხალხი" subtitle="სატესტო სავარძლების გარეშე" data={side(report.real)} />
-              <SidePanel title="სატესტო სავარძლები" subtitle="ცალკე ითვლება, ნამდვილ ხალხს არასოდეს ემატება" data={side(report.seats)} />
+              <SidePanel title="ნამდვილი ხალხი" subtitle="სატესტო სავარძლების გარეშე" data={side(report.real)} from={report.from} to={report.to} />
+              <SidePanel title="სატესტო სავარძლები" subtitle="ცალკე ითვლება, ნამდვილ ხალხს არასოდეს ემატება" data={side(report.seats)} from={report.from} to={report.to} />
             </div>
           </>
         )}
