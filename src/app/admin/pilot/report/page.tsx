@@ -68,6 +68,12 @@ type Report = {
   // The first day on which any closure could be dated at all. A DATE, not a
   // count, and null is its most important value — see the banner below.
   closures_dated_since?: string | null;
+  // How many closures predate the column and can therefore never be dated.
+  // Sent as a field rather than described in a message, because a number
+  // written into the page is a number the page cannot notice changing — and
+  // this one only ever falls, which is exactly the kind that would sit there
+  // looking right for weeks.
+  closures_without_a_date?: number | null;
   real?: Side;
   seats?: Side;
 };
@@ -239,6 +245,13 @@ export default function AdminPilotReportPage() {
   // date existed, and every finished/stopped number is therefore zero for
   // reasons that have nothing to do with the pilot.
   const dated = report?.closures_dated_since ?? null;
+  const undated = num(report?.closures_without_a_date);
+  // Said in both cases. A date does not make the excluded closures visible,
+  // it only means the exclusion has an edge.
+  const undatedLine =
+    undated == null
+      ? ""
+      : ` ${undated} მიზანი დაიხურა ამის დაწერამდე და ვერასოდეს დათარიღდება, ანუ ვერცერთ დღეში ჩანს.`;
 
   return (
     <div className="min-h-full bg-gray-50">
@@ -294,8 +307,8 @@ export default function AdminPilotReportPage() {
               }
             >
               {dated
-                ? `დახურვები თარიღდება მხოლოდ ${dated}-დან. ამაზე ადრე დახურული მიზნები ვერცერთ დღეში ვერ ჩანს.`
-                : "ვერცერთ დახურვას თარიღი ჯერ არ აქვს. ამიტომ „დასრულებული“, „შეჩერებული“ და „უშედეგოდ დახურული“ ყველა დღეში ნულია — ეს იმას არ ნიშნავს, რომ არაფერი გადაწყდა."}
+                ? `დახურვები თარიღდება მხოლოდ ${dated}-დან.${undatedLine}`
+                : `ვერცერთ დახურვას თარიღი ჯერ არ აქვს. ამიტომ „დასრულებული“, „შეჩერებული“ და „უშედეგოდ დახურული“ ყველა დღეში ნულია, და ეს იმას არ ნიშნავს, რომ არაფერი გადაწყდა.${undatedLine}`}
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
