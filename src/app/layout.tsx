@@ -5,6 +5,7 @@ import BuildTag from "@/components/BuildTag";
 import LocaleHtml from "@/components/LocaleHtml";
 import PastDueBanner from "@/components/PastDueBanner";
 import CheckoutReturn from "@/components/CheckoutReturn";
+import PushHeartbeat from "@/components/PushHeartbeat";
 
 export const metadata: Metadata = {
   title: "Netai",
@@ -42,6 +43,7 @@ export default function RootLayout({
         <LocaleHtml />
         <PastDueBanner />
         <CheckoutReturn />
+        <PushHeartbeat />
         {children}
         <InstallPrompt />
         <BuildTag />

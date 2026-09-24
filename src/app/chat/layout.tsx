@@ -5,7 +5,6 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { authHeaders, getDeviceId, handleAdminTokenMisuse } from "@/lib/deviceId";
-import { ensurePushSubscription } from "@/lib/push";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { t, tf, fmtDateShort } from "@/lib/i18n";
 import { useUserName, clearUserName } from "@/lib/user";
@@ -371,16 +370,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         setTokens(json.data as TokenBalance);
       }
     } catch {}
-  }, []);
-
-  // Row 101 (24 Sept): this used to call pushManager.subscribe() on every
-  // load, which minted a second registration each time the browser had
-  // rotated the endpoint — five of them for one tester. ensurePushSubscription
-  // reuses what the browser already holds and reports the endpoint it
-  // replaced. `false` means it will never raise the permission prompt from a
-  // page load; asking is the button's job.
-  useEffect(() => {
-    void ensurePushSubscription(false);
   }, []);
 
   useEffect(() => {
