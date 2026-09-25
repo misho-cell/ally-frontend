@@ -644,10 +644,26 @@ export default function ThreadPage() {
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
 
+  // Row 226, iPhone, third reading (25 Sept). Stopping asked the engine to
+  // stop and then WAITED FOR ITS PERMISSION to leave the recording state: the
+  // screen only went back to idle when `onend` arrived. On iOS that event can
+  // never come. The screen then keeps the red stop button forever, and every
+  // further tap calls stop() on a recogniser that is already gone — which is
+  // exactly what "the microphone button cannot be pressed at all" looks like
+  // from the outside. The control was alive the whole time and had nothing
+  // left to do.
+  //
+  // So leaving is ours to decide, not the engine's. The state goes back
+  // immediately, abort follows stop because one of them may be ignored, and
+  // an `onend` that turns up afterwards finds nothing to do. A person can
+  // always get out of a screen that says it is listening.
   function stopRecognition() {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
+    const rec = recognitionRef.current;
+    recognitionRef.current = null;
+    setVoiceState("idle");
+    if (!rec) return;
+    try { rec.stop(); } catch { /* already stopped */ }
+    try { rec.abort(); } catch { /* already gone */ }
   }
 
   function startRecognition() {

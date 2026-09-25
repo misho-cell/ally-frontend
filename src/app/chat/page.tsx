@@ -32,7 +32,17 @@ export default function ChatIndexPage() {
       return;
     }
     if (recording) {
-      recognitionRef.current?.stop();
+      // Row 226 (25 Sept): see the note in chat/[id]/page.tsx. Leaving the
+      // recording state is not the engine's decision to make — on iOS the
+      // `onend` that used to release it can simply never arrive, and the
+      // control then looks dead while being perfectly alive.
+      const rec = recognitionRef.current;
+      recognitionRef.current = null;
+      setRecording(false);
+      if (rec) {
+        try { rec.stop(); } catch { /* already stopped */ }
+        try { rec.abort(); } catch { /* already gone */ }
+      }
       return;
     }
     const rec = new SR();
