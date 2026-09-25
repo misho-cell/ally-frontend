@@ -401,6 +401,38 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         onopen: async () => {
           if (sawFirstOpenRef.current) {
             setReconnectNonce((n) => n + 1);
+            // Row 250.3 (25 Sept). The screen said "working" on a goal the
+            // server had settled two seconds after the last message, and only
+            // a reload cleared it.
+            //
+            // The cause is this connection closing on purpose. The stream is
+            // torn down the moment the tab is hidden, because that is what
+            // tells the server to send a push instead. So a run that finishes
+            // while the person is away delivers its run_complete to nobody,
+            // and `loading` — set when they pressed send — has nothing left
+            // that could ever clear it. She was told by a notification that
+            // the answer was ready and came back to a screen still working on
+            // it. Messages did come back on reconnect; this flag did not.
+            //
+            // Reopening is therefore the moment to stop claiming a run is in
+            // flight: we were not listening, so we do not know. If one really
+            // is still going the server says so again within moments on this
+            // fresh stream and the state returns. Briefly showing a live run
+            // as finished is a far smaller lie than showing a finished one as
+            // live forever.
+            setThreadStates((prev) => {
+              let changed = false;
+              const next: typeof prev = {};
+              for (const [key, ts] of Object.entries(prev)) {
+                if (!ts.loading && !ts.runId && !ts.streaming && !ts.progress) {
+                  next[key] = ts;
+                  continue;
+                }
+                changed = true;
+                next[key] = { ...ts, loading: false, runId: null, streaming: null, progress: null };
+              }
+              return changed ? next : prev;
+            });
           } else {
             sawFirstOpenRef.current = true;
           }
