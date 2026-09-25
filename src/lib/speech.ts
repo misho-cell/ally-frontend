@@ -81,6 +81,38 @@ export function getSpeechRecognition(): SpeechRecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
+// Row 226, second reading (25 Sept). Rebuilding the transcript from the
+// whole result list was right and it was not enough: on Android the list
+// itself is the ladder. Chrome there does not update one entry as the
+// sentence grows, it adds a NEW entry per update, each holding a longer
+// prefix of the same words:
+//
+//     results = ["I need",
+//                "I need a political",
+//                "I need a political consultant"]
+//
+// (the real one was Georgian; it is written in English here so the sample
+// does not enter the Georgian word inventory, which exists to catch damaged
+// UI strings and should not be taught a bug's output)
+//
+// Reading the list honestly and joining what it holds then produces exactly
+// the wall the tester saw, about sixty lines for one sentence, and it was
+// sent that way: two of the founder's goals are now made of it.
+//
+// So entries are collapsed by containment. When a piece extends the piece
+// before it, or is contained in it, they are one segment and the longer text
+// wins; only genuinely new words start a new segment. An engine that behaves
+// (one entry per segment, each distinct) is unaffected, which is why the PC
+// never showed this.
+function push(parts: string[], text: string): void {
+  const last = parts[parts.length - 1];
+  if (last !== undefined && (text.startsWith(last) || last.startsWith(text))) {
+    parts[parts.length - 1] = text.length >= last.length ? text : last;
+    return;
+  }
+  parts.push(text);
+}
+
 // Row 226 (23 Sept). One spoken Georgian sentence arrived on Android as a
 // 125-character ladder — „დღეს", „დღეს რა", „დღეს რა ახალი" — each partial
 // appended to the last instead of replacing it. The cause was the same in all
@@ -96,18 +128,17 @@ export function getSpeechRecognition(): SpeechRecognitionCtor | null {
 // list on every event, which is idempotent: re-delivering a result cannot
 // change the answer.
 export function transcriptOf(event: SpeechRecognitionEventLike): { final: string; interim: string } {
-  let final = "";
-  let interim = "";
+  const finals: string[] = [];
+  const interims: string[] = [];
   for (let i = 0; i < event.results.length; i++) {
-    const text = event.results[i][0]?.transcript ?? "";
-    if (event.results[i].isFinal) {
-      const t = text.trim();
-      if (t) final += (final ? " " : "") + t;
-    } else {
-      interim += text;
-    }
+    const text = (event.results[i][0]?.transcript ?? "").trim();
+    if (!text) continue;
+    push(event.results[i].isFinal ? finals : interims, text);
   }
-  return { final, interim: interim.trim() };
+  // Only the last interim is shown. After the collapse above it is the
+  // longest form of the tail being spoken, and the ones before it are the
+  // same words mid-thought.
+  return { final: finals.join(" "), interim: interims.length ? interims[interims.length - 1] : "" };
 }
 
 // The iPhone half of the same row: the button produced no recording, no error

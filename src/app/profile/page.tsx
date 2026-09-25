@@ -36,8 +36,19 @@ const L = {
     // the only thing checked before a run. Lika was ten times "over" a number
     // that never stopped anything, while the number that does is printed
     // directly above it.
-    spentThisPeriod: (spent: string) => `${spent} used this period`,
-    grantArrives: (granted: string, every: string) => `${granted} arrives ${every}`,
+    // Row 235, reopened 25 Sept. A real person read "465" and then
+    // "482 used this period · 250 arrives weekly" and could not say whether
+    // she had 465, whether she had spent 482, when, or what the 250 was. Each
+    // number was true and none of them was attached to its question. So the
+    // big number is labelled, and the rest is one sentence in the order a
+    // person asks it: what is left, what went, what comes back and when.
+    left: "left",
+    spentThisWeek: (spent: string) => `You spent ${spent} this week.`,
+    spentThisMonth: (spent: string) => `You spent ${spent} this month.`,
+    addedWeekly: (granted: string, d: string) => `${granted} is added every week, next on ${d}.`,
+    addedMonthly: (granted: string, d: string) => `${granted} is added every month, next on ${d}.`,
+    addedWeeklyNoDate: (granted: string) => `${granted} is added every week.`,
+    addedMonthlyNoDate: (granted: string) => `${granted} is added every month.`,
     trialBalance: "Trial balance — subscribe to keep going",
     addTokens: "Add tokens",
     tokensAdded: "Tokens added",
@@ -99,8 +110,13 @@ const L = {
     renews: (d: string) => `განახლდება: ${d}`,
     perWeek: "კვირაში",
     perMonth: "თვეში",
-    spentThisPeriod: (spent: string) => `ამ პერიოდში დახარჯულია ${spent}`,
-    grantArrives: (granted: string, every: string) => `${granted} ემატება ${every}`,
+    left: "დაგრჩა",
+    spentThisWeek: (spent: string) => `ამ კვირაში დახარჯე ${spent}.`,
+    spentThisMonth: (spent: string) => `ამ თვეში დახარჯე ${spent}.`,
+    addedWeekly: (granted: string, d: string) => `ყოველ კვირას ემატება ${granted}, შემდეგი ${d}.`,
+    addedMonthly: (granted: string, d: string) => `ყოველ თვეს ემატება ${granted}, შემდეგი ${d}.`,
+    addedWeeklyNoDate: (granted: string) => `ყოველ კვირას ემატება ${granted}.`,
+    addedMonthlyNoDate: (granted: string) => `ყოველ თვეს ემატება ${granted}.`,
     trialBalance: "საცდელი ბალანსი. გასაგრძელებლად გამოიწერე.",
     addTokens: "ტოკენების დამატება",
     tokensAdded: "ტოკენები დაემატა",
@@ -641,15 +657,10 @@ function TokensWidget() {
       {toast && (
         <div className="toast" role="status" aria-live="polite"><span style={{ marginRight: 4 }}>✓</span>{toast}</div>
       )}
-      <div className="flex items-baseline justify-between">
-        <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.tokens}</h2>
-        {tokens && !isTrial && granted > 0 && tokens.resetsAt && (
-          <span style={{ fontSize: "12px", color: "var(--meta)" }}>
-            {s.renews(fmtDateLoc(tokens.resetsAt))}
-            {tokens.window === "calendar_week" ? ` (${s.perWeek})` : tokens.window === "calendar_month" ? ` (${s.perMonth})` : ""}
-          </span>
-        )}
-      </div>
+      {/* The renewal date used to sit here, opposite the title, and on a
+          narrow phone the two ran together as one word. It belongs in the
+          sentence below anyway, where it is next to the number it is about. */}
+      <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.tokens}</h2>
 
       {failed || !tokens ? (
         <p className="text-sm" style={{ color: "var(--meta)" }}>-</p>
@@ -659,21 +670,31 @@ function TokensWidget() {
             <span style={{ font: "600 28px/34px var(--font-system)", letterSpacing: "-0.3px", color: "var(--ink-strong)" }}>
               {fmtTokens(balance!)}
             </span>
+            {/* Naming the big number. Unlabelled it was read as a spend, a
+                limit and an allowance by the same person in one sitting. */}
+            <span style={{ fontSize: "12.5px", color: "var(--meta)" }}>{s.left}</span>
           </div>
 
           {/* The bar that used to sit here filled towards the grant and
               stopped at 100%, which is a picture of a limit. There is no
-              limit to draw: the balance above is what runs out. */}
-          {granted > 0 && (
-            <p className="text-xs" style={{ color: "var(--meta)" }}>
-              {s.spentThisPeriod(fmtTokens(spent))}
-              {" · "}
-              {s.grantArrives(
-                fmtTokens(granted),
-                tokens.window === "calendar_month" ? s.perMonth : s.perWeek
-              )}
-            </p>
-          )}
+              limit to draw: the balance above is what runs out.
+              The date is only promised when the server sent one: "next on"
+              with a date invented here would be the same fault in a new
+              place. */}
+          {granted > 0 && (() => {
+            const monthly = tokens.window === "calendar_month";
+            const when = tokens.resetsAt ? fmtDateLoc(tokens.resetsAt) : null;
+            const added = when
+              ? (monthly ? s.addedMonthly(fmtTokens(granted), when) : s.addedWeekly(fmtTokens(granted), when))
+              : (monthly ? s.addedMonthlyNoDate(fmtTokens(granted)) : s.addedWeeklyNoDate(fmtTokens(granted)));
+            return (
+              <p className="text-xs" style={{ color: "var(--meta)", lineHeight: 1.5 }}>
+                {monthly ? s.spentThisMonth(fmtTokens(spent)) : s.spentThisWeek(fmtTokens(spent))}
+                {" "}
+                {added}
+              </p>
+            );
+          })()}
 
           {isTrial && (
             <p className="text-xs" style={{ color: "var(--meta)" }}>{s.trialBalance}</p>

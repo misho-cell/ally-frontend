@@ -520,6 +520,12 @@ export default function LoginPage() {
                 <input
                   type="text"
                   inputMode="numeric"
+                  // 25 Sept: the first real invitee opened the link inside his
+                  // SMS app and had to leave the page to read the code. With
+                  // this the phone offers it on the keyboard instead, and the
+                  // person never leaves the screen they are being let in on.
+                  autoComplete="one-time-code"
+                  name="one-time-code"
                   maxLength={6}
                   required
                   autoFocus

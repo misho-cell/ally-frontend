@@ -652,7 +652,14 @@ export default function ThreadPage() {
 
   function startRecognition() {
     const SR = getSpeechRecognition();
-    if (!SR) return;
+    // Row 226 (25 Sept): this returned in silence. On an iPhone that had just
+    // been restarted the button then did nothing at all, twice over — no
+    // recording, no message, nothing to report — which is the same silence
+    // the error handling below was written to end. Saying it costs one line.
+    if (!SR) {
+      showToast(t("micFailed"), false);
+      return;
+    }
 
     const recognition = new SR();
     recognition.lang = speechLang();
@@ -663,6 +670,28 @@ export default function ThreadPage() {
     confirmedTranscriptRef.current = "";
     recognitionRef.current = recognition;
     setVoiceState("recording");
+
+    // Row 226, the iPhone half. The box showed "გისმენ…" with the stop button
+    // and nothing was ever written: no result, no end, no error. An engine
+    // that goes quiet leaves the screen claiming to listen forever, and the
+    // person has no way back — after a restart the button looked dead because
+    // the screen had never left the recording state.
+    //
+    // So silence has a deadline. Any real event clears it; nothing arriving
+    // within it puts the screen back and says so, which is a worse outcome
+    // than working and a much better one than lying.
+    let heard = false;
+    const clearStall = () => { heard = true; };
+    recognition.addEventListener("start", clearStall);
+    recognition.addEventListener("result", clearStall);
+    const stall = setTimeout(() => {
+      if (heard || recognitionRef.current !== recognition) return;
+      try { recognition.abort(); } catch { /* already gone */ }
+      recognitionRef.current = null;
+      setVoiceState("idle");
+      setInput(inputBeforeRecordingRef.current);
+      showToast(t("micFailed"), false);
+    }, 6000);
 
     recognition.onresult = (e) => {
       // Row 226: rebuilt from the whole result list every time rather than
@@ -676,12 +705,14 @@ export default function ThreadPage() {
     };
 
     recognition.onend = () => {
+      clearTimeout(stall);
       recognitionRef.current = null;
       setVoiceState("idle");
       setTimeout(() => inputRef.current?.focus(), 50);
     };
 
     recognition.onerror = (e) => {
+      clearTimeout(stall);
       recognitionRef.current = null;
       setVoiceState("idle");
       setInput(inputBeforeRecordingRef.current);
@@ -703,6 +734,7 @@ export default function ThreadPage() {
     // start() can throw synchronously — on iOS it is one of the ways the
     // button did nothing at all.
     if (beginRecognition(recognition) !== null) {
+      clearTimeout(stall);
       recognitionRef.current = null;
       setVoiceState("idle");
       showToast(t("micFailed"), false);
