@@ -7,6 +7,7 @@ import NotificationButton from "@/components/NotificationButton";
 import Modal from "@/components/Modal";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition as beginRecognition, type SpeechRecognitionLike } from "@/lib/speech";
+import { recorderSupported, speechLimits, startRecording, transcribe, type Recording } from "@/lib/dictation";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { fetchMessagePage } from "@/lib/messages";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
@@ -314,6 +315,12 @@ export default function ThreadPage() {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [speechSupported, setSpeechSupported] = useState(false);
+  // Row 226 (25 Sept): the iPhone records and sends the audio instead of
+  // asking the browser to recognise it, because Safari's recogniser has no
+  // Georgian and the home-screen app is refused outright. Decided once, after
+  // mount, so the server render and the phone agree on what to draw.
+  const [useRecorder, setUseRecorder] = useState(false);
+  const recordingRef = useRef<Recording | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [rateLimitedUntil, setRateLimitedUntil] = useState(0);
   const rateLimited = rateLimitedUntil > Date.now();
@@ -445,7 +452,12 @@ export default function ThreadPage() {
   }, [bump, loading]);
 
   useEffect(() => {
-    setSpeechSupported(!!getSpeechRecognition());
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const recorder = ios && recorderSupported();
+    setUseRecorder(recorder);
+    // The button is offered when either road exists. On an iPhone the browser
+    // recogniser may be present and still useless, so the recorder decides.
+    setSpeechSupported(recorder || !!getSpeechRecognition());
   }, []);
 
   useEffect(() => {
@@ -633,6 +645,13 @@ export default function ThreadPage() {
 
   useEffect(() => {
     function onVisibilityChange() {
+      if (document.hidden && recordingRef.current) {
+        // A recording the person walked away from is not theirs to pay for.
+        recordingRef.current.cancel();
+        recordingRef.current = null;
+        setVoiceState("idle");
+        setInput(inputBeforeRecordingRef.current);
+      }
       if (document.hidden && recognitionRef.current) {
         recognitionRef.current.abort();
         recognitionRef.current = null;
@@ -757,7 +776,69 @@ export default function ThreadPage() {
     }
   }
 
+  // Row 226: the recorded path. getUserMedia raises the real permission
+  // prompt — the one iOS never showed, which is why the permission state sat
+  // at "prompt" forever — and the audio goes to a recogniser that knows
+  // Georgian. Every refusal says which refusal it was.
+  async function startDictation() {
+    const limits = await speechLimits();
+    if (!limits.enabled) {
+      // Not a failure and not a silence: the feature is off, and a person who
+      // presses a button deserves to know that rather than watch nothing.
+      showToast(t("micOff"), false);
+      return;
+    }
+    inputBeforeRecordingRef.current = input;
+    let rec: Recording;
+    try {
+      rec = await startRecording(limits.maxDurationMs, () => showToast(t("micTooLong"), false));
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : "";
+      showToast(reason === "mic-denied" ? t("micNotAllowed") : t("micFailed"), false);
+      return;
+    }
+    recordingRef.current = rec;
+    setVoiceState("recording");
+  }
+
+  async function stopDictation() {
+    const rec = recordingRef.current;
+    recordingRef.current = null;
+    if (!rec) { setVoiceState("idle"); return; }
+    setVoiceState("processing");
+    const captured = await rec.stop();
+    if (!captured) { setVoiceState("idle"); return; }
+    const result = await transcribe(
+      captured.blob,
+      captured.mime,
+      captured.durationMs,
+      speechLang().split("-")[0] || null,
+      threadId
+    );
+    setVoiceState("idle");
+    if (result.state === "text") {
+      const base = inputBeforeRecordingRef.current;
+      setInput(base ? base + " " + result.text : result.text);
+      setTimeout(() => inputRef.current?.focus(), 50);
+      return;
+    }
+    // Named, so the next report says which wall it hit rather than "the
+    // microphone does not work".
+    const said =
+      result.reason === "no_speech" ? t("micHeardNothing")
+      : result.reason === "too_long" || result.reason === "too_large" ? t("micTooLong")
+      : result.reason === "not_enabled" ? t("micOff")
+      : result.reason === "network" || result.reason === "timeout" ? t("netRequired")
+      : t("micFailed");
+    showToast(said, false);
+  }
+
   function handleMicClick() {
+    if (useRecorder) {
+      if (voiceState === "recording") void stopDictation();
+      else if (voiceState === "idle") void startDictation();
+      return;
+    }
     if (voiceState === "recording") {
       stopRecognition();
     } else if (voiceState === "idle") {

@@ -232,6 +232,12 @@ const en = {
   stWaiting: "waiting on a reply",
   stNeedsYou: "needs you",
   micFailed: "The microphone did not start. Type it instead, or try again.",
+  // Row 226 (25 Sept). The iPhone path records and sends the audio, so it has
+  // failures the browser path never had, and each says which.
+  micOff: "Voice typing is not switched on yet.",
+  micHeardNothing: "No words were heard. Try again a little closer.",
+  micTooLong: "That was too long. Say it in one sentence.",
+  micSending: "Writing it down…",
   updatesLink: "Updates",
   stDone: "done",
   stStopped: "you stopped this",
@@ -335,6 +341,10 @@ const ka: typeof en = {
   stWaiting: "ველოდები პასუხს",
   stNeedsYou: "საჭიროა შენი პასუხი",
   micFailed: "მიკროფონი ვერ ჩაირთო. აკრიფე ან სცადე თავიდან.",
+  micOff: "ხმით კრეფა ჯერ არ არის ჩართული.",
+  micHeardNothing: "სიტყვები ვერ გავიგონე. სცადე ახლოდან.",
+  micTooLong: "ძალიან გრძელი გამოვიდა. თქვი ერთ წინადადებად.",
+  micSending: "ვწერ…",
   updatesLink: "განახლებები",
   stDone: "დასრულდა",
   stStopped: "შენ გააჩერე",
