@@ -47,6 +47,13 @@ const FALLBACK: Limits = {
   types: ["audio/mp4", "audio/webm", "audio/ogg"],
 };
 
+// Only a YES is remembered. A "no" cached for the session would outlive the
+// reason for it: the flag was switched on tonight while people had the app
+// open, and a remembered refusal means their button keeps saying "not
+// switched on" until they think to reload — which reads as the feature being
+// broken rather than as this screen holding an old answer. The numbers are
+// stable; the permission to spend money is not, and the two do not deserve
+// the same memory.
 let cached: Limits | null = null;
 
 function readLimits(raw: unknown): Limits {
@@ -70,8 +77,9 @@ export async function speechLimits(): Promise<Limits> {
   try {
     const res = await fetch(`${BASE_URL}/speech/limits`, { headers: authHeaders() });
     if (!res.ok) return FALLBACK;
-    cached = readLimits(await res.json());
-    return cached;
+    const limits = readLimits(await res.json());
+    if (limits.enabled) cached = limits;
+    return limits;
   } catch {
     return FALLBACK;
   }
