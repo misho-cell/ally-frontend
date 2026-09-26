@@ -1088,7 +1088,20 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               </svg>
             </button>
           </aside>
-          <main className={mainClass}>{children}</main>
+          <main className={mainClass}>
+          {/* Row 111 (26 Sept). The ask lived only in the thread list, and on
+              a phone that column is hidden the moment somebody opens a
+              conversation — which is where people actually are. So the one
+              screen that carries the question was invisible to exactly the
+              people it was written for. Shown here only on a narrow screen,
+              so a desktop does not get it twice. */}
+          {isOnThread && (
+            <div className="md:hidden" style={{ padding: "0 12px" }}>
+              <PushPrompt />
+            </div>
+          )}
+          {children}
+        </main>
           {renameModal}
         </div>
       </ThreadsContext.Provider>
@@ -1436,7 +1449,20 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           </div>
         </aside>
 
-        <main className={mainClass}>{children}</main>
+        <main className={mainClass}>
+          {/* Row 111 (26 Sept). The ask lived only in the thread list, and on
+              a phone that column is hidden the moment somebody opens a
+              conversation — which is where people actually are. So the one
+              screen that carries the question was invisible to exactly the
+              people it was written for. Shown here only on a narrow screen,
+              so a desktop does not get it twice. */}
+          {isOnThread && (
+            <div className="md:hidden" style={{ padding: "0 12px" }}>
+              <PushPrompt />
+            </div>
+          )}
+          {children}
+        </main>
         {renameModal}
       </div>
     </ThreadsContext.Provider>
