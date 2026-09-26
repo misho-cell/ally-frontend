@@ -173,7 +173,18 @@ export default function UpdatesPage() {
   // The summary is never also drawn as an ordinary row: one thing in two
   // places is how a person stops trusting either.
   const dueRest = due.filter((u) => u.kind !== WEEKLY_KIND);
-  const seenRest = seen.filter((u) => u.kind !== WEEKLY_KIND);
+  // 26 Sept: the same row could arrive in BOTH lists in one response — every
+  // new card did, from the day the endpoint was written. This screen draws
+  // both lists, so it drew those cards twice, and the reason it was never
+  // reported is probably that nobody could tell a duplicate from two similar
+  // updates.
+  //
+  // The server no longer sends it that way. This stays because the rule it
+  // enforces is the screen's own and costs nothing: a row is waiting or it is
+  // read, never both, and when the two disagree the unread state wins. A
+  // person shown one thing twice stops believing either copy.
+  const dueRefs = new Set(due.map((u) => u.update_ref));
+  const seenRest = seen.filter((u) => u.kind !== WEEKLY_KIND && !dueRefs.has(u.update_ref));
 
   // Tapping is what marks it read, and the server is the one that records it.
   // This was briefly a flag in this browser, because opening the screen spent
