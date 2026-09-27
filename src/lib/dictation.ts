@@ -256,3 +256,62 @@ export async function transcribe(
     clearTimeout(timer);
   }
 }
+
+// 27 Sept. The recorded path shipped into the conversation composer and only
+// that one. The app has three microphones — the goals screen, the thread list
+// and the conversation — and the other two were left asking the browser to
+// recognise speech, which on an iPhone home-screen app is refused outright.
+//
+// So "the microphone does not start on the goals screen" was not a lead to
+// investigate. It was a certainty, visible in the code, and it would have
+// gone on explaining reports from every person who never opened a
+// conversation. This is the whole flow in one place so that a fourth
+// microphone cannot be half-built the same way.
+export type DictationHandle = {
+  /** Stop, transcribe, hand back the text. Safe to call twice. */
+  finish: () => Promise<void>;
+  /** Throw it away. */
+  cancel: () => void;
+};
+
+export async function beginDictation(opts: {
+  language: string | null;
+  threadId?: string;
+  onText: (text: string) => void;
+  /** A named reason, never a silence. The caller turns it into its own copy. */
+  onNotice: (reason: string) => void;
+}): Promise<DictationHandle | null> {
+  const limits = await speechLimits();
+  if (!limits.enabled) {
+    opts.onNotice("not_enabled");
+    return null;
+  }
+  let rec: Recording;
+  try {
+    rec = await startRecording(limits.maxDurationMs, () => opts.onNotice("too_long"));
+  } catch (err) {
+    opts.onNotice(err instanceof Error ? err.message : "mic-unavailable");
+    return null;
+  }
+  let done = false;
+  return {
+    finish: async () => {
+      if (done) return;
+      done = true;
+      const captured = await rec.stop();
+      if (!captured) return;
+      const result = await transcribe(
+        captured.blob, captured.mime, captured.durationMs, opts.language, opts.threadId
+      );
+      if (result.state === "text") opts.onText(result.text);
+      else opts.onNotice(result.reason);
+    },
+    cancel: () => { done = true; rec.cancel(); },
+  };
+}
+
+/** iOS is the only place the browser's own recogniser cannot be trusted. */
+export function shouldRecord(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod/.test(navigator.userAgent) && recorderSupported();
+}

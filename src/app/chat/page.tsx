@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useThreads, taskStatusOf } from "@/contexts/ThreadsContext";
 import { t } from "@/lib/i18n";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
+import { beginDictation, shouldRecord, type DictationHandle } from "@/lib/dictation";
 
 // Desktop right pane, no goal selected: dogs clip + one line + the goal
 // composer (ticket 6 #1). D20 (22 Aug): mic AND send are both available while
@@ -14,6 +15,7 @@ export default function ChatIndexPage() {
   const [recording, setRecording] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const dictationRef = useRef<DictationHandle | null>(null);
 
   const hasGoals = threads.some((th) =>
     taskStatusOf(th, threadStates[String(th.id)]) !== null
@@ -25,7 +27,30 @@ export default function ChatIndexPage() {
     return () => window.removeEventListener("netai:focus-composer", focus);
   }, []);
 
+  // 27 Sept: on an iPhone the browser's recogniser is refused in the
+  // home-screen app, so this screen's microphone could not start at all —
+  // which is exactly what the tester reported. It records and uploads here
+  // too now, the same as the conversation composer.
+  async function startMicRecorded() {
+    if (dictationRef.current) {
+      const h = dictationRef.current;
+      dictationRef.current = null;
+      await h.finish();
+      setRecording(false);
+      return;
+    }
+    const handle = await beginDictation({
+      language: speechLang().split("-")[0] || null,
+      onText: (t) => setInput((prev) => (prev.trim() ? prev + " " + t : t)),
+      onNotice: () => { /* the screen has no toast; the field simply stays as it was */ },
+    });
+    if (!handle) return;
+    dictationRef.current = handle;
+    setRecording(true);
+  }
+
   function startMic() {
+    if (shouldRecord()) { void startMicRecorded(); return; }
     const SR = getSpeechRecognition();
     if (!SR) {
       inputRef.current?.focus();

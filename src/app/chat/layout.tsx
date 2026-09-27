@@ -6,6 +6,7 @@ import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { authHeaders, getDeviceId, handleAdminTokenMisuse } from "@/lib/deviceId";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
+import { beginDictation, shouldRecord, type DictationHandle } from "@/lib/dictation";
 import { t, tf, fmtDateShort } from "@/lib/i18n";
 import { useUserName, clearUserName } from "@/lib/user";
 import Modal from "@/components/Modal";
@@ -197,6 +198,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const renameInputRef = useRef<HTMLInputElement>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  // 27 Sept: the third microphone. See lib/dictation.ts — on an iPhone the
+  // browser recogniser is refused, so this one records and uploads too.
+  const dictationRef = useRef<DictationHandle | null>(null);
   const threadsRef = useRef<Thread[]>([]);
   const loadingMoreRef = useRef(false);
   // Unread baseline (ticket 6 #13): updated_at of every thread when it was
@@ -876,7 +880,26 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     router.replace("/login");
   }
 
+  async function startHomeMicRecorded() {
+    if (dictationRef.current) {
+      const h = dictationRef.current;
+      dictationRef.current = null;
+      await h.finish();
+      setRecording(false);
+      return;
+    }
+    const handle = await beginDictation({
+      language: speechLang().split("-")[0] || null,
+      onText: (t) => setHomeInput((prev) => (prev.trim() ? prev + " " + t : t)),
+      onNotice: () => showToast(t("micFailed")),
+    });
+    if (!handle) return;
+    dictationRef.current = handle;
+    setRecording(true);
+  }
+
   function startHomeMic() {
+    if (shouldRecord()) { void startHomeMicRecorded(); return; }
     const SR = getSpeechRecognition();
     if (!SR) {
       homeInputRef.current?.focus();
