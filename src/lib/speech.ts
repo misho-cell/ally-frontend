@@ -175,11 +175,34 @@ export type SpeechOutcome = {
   at: string;
   lang: string;
   standalone: boolean;
+  // 27 Sept. Which road the press actually took. The iPhone is supposed to
+  // record the audio and send it; everything else asks the browser to
+  // recognise it. Until now only the browser road wrote here, so an iPhone
+  // that took the recorder road showed the LAST BROWSER ATTEMPT instead —
+  // an old entry, indistinguishable from a fresh one, on the very card we
+  // use to decide which road ran. A diagnostic that cannot say which of two
+  // things happened is the fault it was built to end.
+  path: "browser" | "recorder";
 };
 
+// Written by the recorder road in lib/dictation.ts, so one card answers
+// "which road, and what did it say" from a single screenshot.
+export function recordSpeechStage(
+  path: SpeechOutcome["path"],
+  stage: SpeechOutcome["stage"],
+  detail?: string
+): void {
+  write(path, stage, detail);
+}
+
 function record(stage: SpeechOutcome["stage"], detail?: string): void {
+  write("browser", stage, detail);
+}
+
+function write(path: SpeechOutcome["path"], stage: SpeechOutcome["stage"], detail?: string): void {
   try {
     const entry: SpeechOutcome = {
+      path,
       stage,
       detail,
       at: new Date().toISOString(),

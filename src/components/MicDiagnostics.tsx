@@ -26,6 +26,11 @@ const L = {
     lang: "Listening for",
     installed: "Added to home screen",
     lastTry: "Last attempt",
+    // Which road the press took. On an iPhone it should say "recorded and
+    // sent"; if it says "browser" there, the recorder path did not run and
+    // that alone is the answer.
+    viaRecorder: "recorded and sent",
+    viaBrowser: "browser recogniser",
     never: "nothing recorded yet",
     yes: "yes",
     no: "no",
@@ -49,6 +54,8 @@ const L = {
     lang: "უსმენს ენას",
     installed: "მთავარ ეკრანზე დამატებული",
     lastTry: "ბოლო ცდა",
+    viaRecorder: "ჩაიწერა და გაიგზავნა",
+    viaBrowser: "ბრაუზერის ამომცნობი",
     never: "ჯერ არაფერი ჩაწერილა",
     yes: "კი",
     no: "არა",
@@ -107,8 +114,9 @@ export default function MicDiagnostics() {
 
   // The stage, its detail and the time, together. The stage alone would lose
   // the difference between "heard nothing" and "heard something short".
+  const via = last ? (last.path === "recorder" ? s.viaRecorder : s.viaBrowser) : "";
   const lastLine = last
-    ? `${s.stage[last.stage] ?? last.stage}${last.detail ? ` (${last.detail})` : ""} · ${new Date(last.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}${last.standalone ? "" : " · tab"}`
+    ? `${via} · ${s.stage[last.stage] ?? last.stage}${last.detail ? ` (${last.detail})` : ""} · ${new Date(last.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}${last.standalone ? "" : " · tab"}`
     : s.never;
 
   return (

@@ -8,6 +8,7 @@ import Modal from "@/components/Modal";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition as beginRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { recorderSupported, speechLimits, startRecording, transcribe, type Recording } from "@/lib/dictation";
+import { recordSpeechStage } from "@/lib/speech";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { fetchMessagePage } from "@/lib/messages";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
@@ -785,6 +786,9 @@ export default function ThreadPage() {
     if (!limits.enabled) {
       // Not a failure and not a silence: the feature is off, and a person who
       // presses a button deserves to know that rather than watch nothing.
+      // Written down too, because "the switch was off" and "the recorder
+      // never ran" look the same to everybody who was not holding the phone.
+      recordSpeechStage("recorder", "start-failed", "not-enabled");
       showToast(t("micOff"), false);
       return;
     }
@@ -794,10 +798,12 @@ export default function ThreadPage() {
       rec = await startRecording(limits.maxDurationMs, () => showToast(t("micTooLong"), false));
     } catch (err) {
       const reason = err instanceof Error ? err.message : "";
+      recordSpeechStage("recorder", "start-failed", reason || "unnamed");
       showToast(reason === "mic-denied" ? t("micNotAllowed") : t("micFailed"), false);
       return;
     }
     recordingRef.current = rec;
+    recordSpeechStage("recorder", "start");
     setVoiceState("recording");
   }
 
@@ -807,7 +813,14 @@ export default function ThreadPage() {
     if (!rec) { setVoiceState("idle"); return; }
     setVoiceState("processing");
     const captured = await rec.stop();
-    if (!captured) { setVoiceState("idle"); return; }
+    if (!captured) {
+      recordSpeechStage("recorder", "end", "nothing-captured");
+      setVoiceState("idle");
+      return;
+    }
+    // The size and the container, before the upload: an empty blob and a
+    // refused upload are different failures and used to read the same.
+    recordSpeechStage("recorder", "end", `${captured.blob.size}b ${captured.mime}`);
     const result = await transcribe(
       captured.blob,
       captured.mime,
@@ -816,6 +829,11 @@ export default function ThreadPage() {
       threadId
     );
     setVoiceState("idle");
+    recordSpeechStage(
+      "recorder",
+      result.state === "text" ? "result" : "error",
+      result.state === "text" ? `${result.text.length} chars` : result.reason
+    );
     if (result.state === "text") {
       const base = inputBeforeRecordingRef.current;
       setInput(base ? base + " " + result.text : result.text);
