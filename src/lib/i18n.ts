@@ -238,6 +238,10 @@ const en = {
   micHeardNothing: "No words were heard. Try again a little closer.",
   micTooLong: "That was too long. Say it in one sentence.",
   micSending: "Writing it down…",
+  // 27 Sept. The microphone worked; what failed was the writing-down. Saying
+  // "the microphone did not start" here would send the next bug report to the
+  // wrong half of the product, and that report would be believed.
+  micWriteFailed: "Heard you, but could not write it down. Type it instead.",
   updatesLink: "Updates",
   stDone: "done",
   stStopped: "you stopped this",
@@ -345,6 +349,7 @@ const ka: typeof en = {
   micHeardNothing: "სიტყვები ვერ გავიგონე. სცადე ახლოდან.",
   micTooLong: "ძალიან გრძელი გამოვიდა. თქვი ერთ წინადადებად.",
   micSending: "ვწერ…",
+  micWriteFailed: "გაგიგონე, მაგრამ ჩაწერა ვერ მოხერხდა. აკრიფე.",
   updatesLink: "განახლებები",
   stDone: "დასრულდა",
   stStopped: "შენ გააჩერე",

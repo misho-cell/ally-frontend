@@ -847,6 +847,13 @@ export default function ThreadPage() {
       : result.reason === "too_long" || result.reason === "too_large" ? t("micTooLong")
       : result.reason === "not_enabled" ? t("micOff")
       : result.reason === "network" || result.reason === "timeout" ? t("netRequired")
+      // 27 Sept: the recogniser refusing is NOT the microphone failing. If the
+      // server has no key for it, every press would have reported "the
+      // microphone did not start" — sending the next bug report to the wrong
+      // half of the product, with a person's honest testimony behind it. The
+      // recording worked; the writing-down did not, and the screen says which.
+      : result.reason === "recognizer_failed" || result.reason === "unsupported_format"
+        ? t("micWriteFailed")
       : t("micFailed");
     showToast(said, false);
   }
