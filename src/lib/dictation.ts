@@ -56,6 +56,17 @@ const FALLBACK: Limits = {
 // the same memory.
 let cached: Limits | null = null;
 
+function acceptedList(d: Record<string, unknown> | undefined): string[] | null {
+  for (const key of ["accepted", "accepted_types"]) {
+    const v = d?.[key];
+    if (Array.isArray(v)) {
+      const list = v.filter((t): t is string => typeof t === "string");
+      if (list.length > 0) return list;
+    }
+  }
+  return null;
+}
+
 function readLimits(raw: unknown): Limits {
   const d = (raw as { data?: Record<string, unknown> })?.data ?? (raw as Record<string, unknown>);
   const n = (v: unknown, fallback: number) => (typeof v === "number" && v > 0 ? v : fallback);
@@ -66,9 +77,12 @@ function readLimits(raw: unknown): Limits {
     maxBytes: n(d?.max_bytes, FALLBACK.maxBytes),
     maxDurationMs: n(d?.max_duration_ms, FALLBACK.maxDurationMs),
     timeoutMs: n(d?.timeout_ms, FALLBACK.timeoutMs),
-    types: Array.isArray(d?.accepted_types)
-      ? (d.accepted_types as unknown[]).filter((t): t is string => typeof t === "string")
-      : FALLBACK.types,
+    // 27 Sept: this read only `accepted_types` and the server sends
+    // `accepted`. The list therefore always fell back to the built-in one,
+    // which happens to start with audio/mp4 and so kept working — a wrong
+    // read hidden by a lucky default is the kind that surfaces months later,
+    // on the day the server's list changes. Both spellings are read now.
+    types: acceptedList(d) ?? FALLBACK.types,
   };
 }
 
