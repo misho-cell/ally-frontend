@@ -33,6 +33,43 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 // server — three different bugs with one empty log. Every path now returns a
 // named outcome and the caller decides what to show.
 
+// Row 276 (27 Sept). Four different answers to "why has this person no push
+// subscription" used to look identical from the server: a row simply absent.
+// They are not the same and they do not have the same remedy.
+//
+//   needs_pwa   an iPhone in a Safari tab. Push is impossible there until the
+//               app is on the home screen. Nothing in this code can change it.
+//   unasked     we could have asked and did not, or asked where they never
+//               looked. Mine to fix.
+//   denied      they were asked and said no. That deserves respect and an
+//               instruction, not another prompt: the browser will not ask
+//               again.
+//   granted     with no subscription: they said yes and we lost it. Mine, and
+//               the worst of the four.
+//
+// Sent on every open, because a state can change between one and the next.
+// The server keeps `state_since` separate from "when we last heard", so
+// somebody who refused once and opens the app daily does not read as having
+// refused again every day.
+const STATE_PATH = "/notifications/state";
+
+function wireState(state: ReturnType<typeof pushState>): string {
+  return state === "needs-pwa" ? "needs_pwa" : state;
+}
+
+async function reportState(state: ReturnType<typeof pushState>): Promise<void> {
+  try {
+    await fetch(`${BASE_URL}${STATE_PATH}`, {
+      method: "POST",
+      headers: authHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ state: wireState(state), standalone: isStandalone() }),
+    });
+  } catch {
+    // Telling the server why we are quiet must never be the reason we are
+    // quiet. A failure here changes nothing the person can see.
+  }
+}
+
 export type PushOutcome =
   // The browser cannot do push at all.
   | { state: "unsupported" }
@@ -120,9 +157,17 @@ async function register(subscription: PushSubscription, previous: string | null)
  */
 export async function ensurePushSubscription(ask: boolean): Promise<PushOutcome> {
   const state = pushState();
-  if (state === "unsupported" || state === "needs-pwa" || state === "denied") return { state };
+  if (state === "unsupported" || state === "needs-pwa" || state === "denied") {
+    // Reported before returning: these three are exactly the cases that leave
+    // no subscription behind, and they are the ones worth telling apart.
+    void reportState(state);
+    return { state };
+  }
   if (state === "unasked") {
-    if (!ask) return { state: "unasked" };
+    if (!ask) {
+      void reportState("unasked");
+      return { state: "unasked" };
+    }
     let permission: NotificationPermission;
     try {
       permission = await Notification.requestPermission();
@@ -131,6 +176,11 @@ export async function ensurePushSubscription(ask: boolean): Promise<PushOutcome>
     }
     if (permission !== "granted") return { state: "denied" };
   }
+
+  // From here the permission is granted, whether it always was or was just
+  // given. Said once, before the registration is attempted, so that "granted
+  // and yet no subscription" is visible even when everything below fails.
+  void reportState("granted");
 
   let reg: ServiceWorkerRegistration;
   try {
