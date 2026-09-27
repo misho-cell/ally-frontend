@@ -224,6 +224,24 @@ export async function transcribe(
   form.append("duration_ms", String(Math.round(durationMs)));
   // A hint, never an instruction. A wrong hint is the bug being fixed here,
   // so nothing is sent when nothing is known.
+  //
+  // ⚠️ DO NOT DROP `ka` HERE, however wasteful it looks. 27 Sept: the
+  // recogniser refuses language=ka with a 400, and I offered to stop sending
+  // it. The backend said no, and was right twice over.
+  //
+  // First, this field does two jobs on their side and only one of them is the
+  // refused parameter: `ka` is also what selects the Georgian SCRIPT PRIMER, a
+  // Georgian sentence sent as preceding context so that Georgian letters are
+  // the obvious continuation. Sending nothing would have removed the only
+  // lever anyone has on script — on the very row whose live complaint is
+  // Georgian coming back in Latin letters.
+  //
+  // Second, the waste is not what it looks like: they remember the refusal in
+  // module scope, so it costs one failed request per container, not one per
+  // recording. Measured: one refusal that day, none since.
+  //
+  // An optimisation that removes a cost of one-per-deploy and takes a feature
+  // with it. Asking first is the only reason it did not ship.
   if (language) form.append("language", language);
   if (threadId) form.append("thread_id", threadId);
 
