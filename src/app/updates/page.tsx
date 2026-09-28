@@ -49,6 +49,10 @@ const L = {
     retry: "Try again",
     weekTitle: "Your week",
     weekOf: (d: string) => `week of ${d}`,
+    // 28 Sept: the card listed all 24 goals, twice, about eight screen-heights
+    // of it. Now it is a heading, a line, and the rest behind a tap.
+    weekOpen: (n: number) => `Goal by goal (${n})`,
+    weekClose: "Hide",
     weekDone: "Read it",
     asks: (sent: number, answered: number) => `${answered} of ${sent} answered`,
   },
@@ -69,6 +73,8 @@ const L = {
     retry: "თავიდან",
     weekTitle: "შენი კვირა",
     weekOf: (d: string) => `კვირა ${d}-დან`,
+    weekOpen: (n: number) => `მიზნების მიხედვით (${n})`,
+    weekClose: "დამალვა",
     weekDone: "წავიკითხე",
     asks: (sent: number, answered: number) => `${sent}-დან ${answered}-ს უპასუხეს`,
   },
@@ -112,6 +118,22 @@ type WeeklyGoal = {
 
 const WEEKLY_KIND = "weekly_summary";
 
+// 28 Sept. The weekly payload carries the same week in two shapes: `goals`,
+// the structured list, and `text`, a composed paragraph. The card drew BOTH,
+// which is how a tester met twenty-four goals listed twice across eight
+// screens. That was not a rendering mistake — the server sent both and never
+// said which was the screen's.
+//
+// `card_source` says. It names the authoritative representation, and it is
+// read rather than assumed: if it ever says something this build does not
+// know, nothing is drawn from the payload body and the heading and the line
+// still stand on their own. Guessing wrong here is what produced the wall.
+function cardSource(payload: unknown): string | null {
+  if (!isRecord(payload)) return null;
+  const v = payload.card_source;
+  return typeof v === "string" && v ? v : null;
+}
+
 // One name, pinned on the server with a test. This used to read three
 // spellings because the shape was described loosely and "whatever you have
 // will work" felt helpful — which is exactly how two names for one thing
@@ -151,6 +173,9 @@ export default function UpdatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // Closed by default: the point of the card is to say whether the week
+  // concerns you, not to hand you the week.
+  const [weekOpen, setWeekOpen] = useState(false);
   // This call spends what it returns, so it must not be fired twice by a
   // re-render: a second run would consume a second batch for nobody.
   const loadedOnce = useRef(false);
@@ -353,6 +378,14 @@ export default function UpdatesPage() {
             style={{ borderColor: "var(--accent)", borderWidth: "1.5px" }}
           >
             <div className="flex flex-wrap items-baseline gap-2">
+              {/* This heading stays ours, not the payload's, and that is a
+                  choice rather than an oversight: the server's `title`
+                  follows the language it infers, while this follows the
+                  language the person CHOSE on their profile, and a choice
+                  outranks a reading (row 218). For every other kind the
+                  title is the goal's own words and only the server can know
+                  them; here it is a fixed label we already hold in both
+                  languages. */}
               <h2 style={{ font: "500 17px/22px var(--font-bricolage)", color: "var(--ink)" }}>{s.weekTitle}</h2>
               {weeklyWeek && (
                 <span style={{ font: "400 12px/16px var(--font-system)", color: "var(--meta)" }}>
@@ -361,16 +394,33 @@ export default function UpdatesPage() {
               )}
             </div>
 
-            {payloadText(weekly.payload) && (
-              <p style={{ font: "400 15px/22px var(--font-system)", color: "var(--ink)", whiteSpace: "pre-wrap" }}>
-                {payloadText(weekly.payload)}
+            {/* The composed paragraph is NOT drawn. It is the model's script
+                for what it says at the start of a conversation, long by
+                design, and it repeats every goal the list below already has.
+                `detail` is the two-number line meant for this spot: enough to
+                know whether the week concerns you, before deciding to look. */}
+            {typeof weekly.detail === "string" && weekly.detail.trim() && (
+              <p style={{ font: "400 15px/22px var(--font-system)", color: "var(--ink)" }}>
+                {weekly.detail}
               </p>
             )}
 
-            {/* Goal by goal, because the text alone is what she could already
-                not find. A goal with nothing to report still appears: its
-                silence is the report. */}
-            {weeklyGoals(weekly.payload).length > 0 && (
+            {/* Goal by goal, behind a tap. A goal with nothing to report still
+                appears once opened: its silence is the report. Closed by
+                default is the whole of this fix — the information was never
+                wrong, there was simply too much of it to meet unasked. */}
+            {cardSource(weekly.payload) === "goals" && weeklyGoals(weekly.payload).length > 0 && (
+              <button
+                type="button"
+                onClick={() => setWeekOpen((v) => !v)}
+                className="self-start"
+                style={{ font: "600 13px/18px var(--font-system)", color: "var(--accent)" }}
+              >
+                {weekOpen ? s.weekClose : s.weekOpen(weeklyGoals(weekly.payload).length)}
+              </button>
+            )}
+
+            {weekOpen && cardSource(weekly.payload) === "goals" && weeklyGoals(weekly.payload).length > 0 && (
               <div className="flex flex-col gap-2">
                 {weeklyGoals(weekly.payload).map((g, i) => {
                   const sent = typeof g.asks_sent === "number" ? g.asks_sent : null;
