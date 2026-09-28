@@ -37,8 +37,11 @@ const L = {
     seenTitle: "Already read",
     seenEmpty: "Nothing here yet.",
     held: (n: number) => `${n} kept for later`,
-    laterDay: "Tomorrow",
-    laterWeek: "In a week",
+    // 28 Sept: these read "Tomorrow" and "In a week" and a tester asked what
+    // they meant. They are not a date, they are an action — the card comes
+    // back then. A label that names only the when leaves the what to guess.
+    laterDay: "Remind me tomorrow",
+    laterWeek: "Remind me in a week",
     heldOk: "Kept for later.",
     failed: "Could not postpone it. It is still here.",
     goal: "Goal",
@@ -57,8 +60,8 @@ const L = {
     seenTitle: "უკვე წაკითხული",
     seenEmpty: "ჯერ არაფერია.",
     held: (n: number) => `${n} გადადებულია`,
-    laterDay: "ხვალ",
-    laterWeek: "კვირაში",
+    laterDay: "შემახსენე ხვალ",
+    laterWeek: "შემახსენე კვირაში",
     heldOk: "გადაიდო.",
     failed: "ვერ გადაიდო. ისევ აქ არის.",
     goal: "მიზანი",
@@ -74,6 +77,20 @@ const L = {
 type Update = {
   update_ref?: string | null;
   kind?: string | null;
+  // 28 Sept. The card used to identify itself with the schema word and the
+  // goal number — "debrief · მიზანი #3995" — because the payload carried the
+  // words in nine different shapes across ten kinds and there was no field
+  // that meant "what this card is about". A tester read three of those side
+  // by side and could not tell them apart; they were three different people
+  // who had not answered, and the screen said the same thing three times.
+  //
+  // The server composes both now, always present on every kind, in the
+  // reader's language. `detail` may legitimately be an empty string — the
+  // weekly summary's is, because its body IS the card — so absent and empty
+  // are kept apart: absent means an older deployment and falls back, empty
+  // means the server had nothing to add and the line is simply not drawn.
+  title?: string | null;
+  detail?: string | null;
   payload?: unknown;
   task_id?: number | string | null;
   created_at?: string | null;
@@ -233,20 +250,39 @@ export default function UpdatesPage() {
 
   const card = (u: Update, i: number, withActions: boolean) => {
     const ref = u.update_ref ?? "";
-    const text = payloadText(u.payload);
+    // The server's own words first. payloadText stays as the fallback for a
+    // deployment that has not shipped the contract yet: a card with no
+    // heading at all would be worse than the schema word it replaced.
+    const heading = typeof u.title === "string" && u.title.trim() ? u.title : null;
+    const detail = typeof u.detail === "string" ? u.detail : null;
+    const text = detail ?? payloadText(u.payload);
     return (
       <div key={ref || i} className="card flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          {u.kind && (
-            <span style={{ font: "600 11px/15px var(--font-system)", color: "var(--meta)" }}>{u.kind}</span>
-          )}
-          {u.task_id != null && (
-            <Link
-              href={`/chat/${u.task_id}`}
-              style={{ font: "600 11px/15px var(--font-system)", color: "var(--accent)" }}
-            >
-              {s.goal} #{u.task_id}
-            </Link>
+          {/* The card says what it is about. The kind was a schema word and
+              the number was a number; neither told anybody anything. The
+              kind is not drawn at all now — it is how the code routes, not
+              how a person reads. */}
+          {heading ? (
+            u.task_id != null ? (
+              <Link
+                href={`/chat/${u.task_id}`}
+                style={{ font: "600 14px/20px var(--font-system)", color: "var(--ink)" }}
+              >
+                {heading}
+              </Link>
+            ) : (
+              <span style={{ font: "600 14px/20px var(--font-system)", color: "var(--ink)" }}>{heading}</span>
+            )
+          ) : (
+            u.task_id != null && (
+              <Link
+                href={`/chat/${u.task_id}`}
+                style={{ font: "600 11px/15px var(--font-system)", color: "var(--accent)" }}
+              >
+                {s.goal} #{u.task_id}
+              </Link>
+            )
           )}
           {u.created_at && (
             <span className="ml-auto" style={{ font: "400 11px/15px var(--font-system)", color: "var(--meta)" }}>
