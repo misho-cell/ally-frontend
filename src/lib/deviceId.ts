@@ -23,6 +23,31 @@ export function getDeviceId(): string {
   return id;
 }
 
+// 29 Sept. The language the person CHOSE, when they have chosen one.
+//
+// The server composes text for the screen — the update cards' title and
+// detail — in the language it infers from what somebody writes. This app
+// renders everything else in the language they picked on their profile. While
+// the two agree nothing shows; when they disagree a single card comes out in
+// two languages, heading in one and the line beneath it in the other, which
+// is worse than either language used consistently.
+//
+// A choice outranks a reading (row 218), so the choice is what travels. It is
+// sent only when one exists: absent means nobody has chosen, and then the
+// server's own reading is the best answer available and must not be
+// overwritten with a default.
+//
+// Read directly here rather than imported to keep this module free of a
+// dependency on the i18n bundle; the key is the one setChosenLanguage writes.
+function chosenLocale(): string | null {
+  try {
+    const v = localStorage.getItem("netai_locale_chosen");
+    return v === "ka" || v === "en" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 // USER requests: Bearer from `token` + X-Device-Id. The single source for app
 // endpoints (chat, threads, contacts, profile, billing, notifications).
 // Do NOT use on /auth/* (no user yet), the SSE stream, or /admin/*.
@@ -32,6 +57,8 @@ export function authHeaders(extra?: Record<string, string>): Record<string, stri
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const deviceId = getDeviceId();
   if (deviceId) headers["X-Device-Id"] = deviceId;
+  const locale = chosenLocale();
+  if (locale) headers["X-Locale"] = locale;
   return headers;
 }
 
