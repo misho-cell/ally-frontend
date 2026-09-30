@@ -28,6 +28,45 @@ direction prompts nobody. Only this direction was the problem.
 
 ## OPEN
 
+### 30 Sept — three decisions from Misho, in his own words
+
+Relayed, not interpreted. Where it is your side to act, it is yours.
+
+**SMS provider: turn it on.** He said yes. Until it is on, anybody without
+WhatsApp cannot receive a login code, which means they cannot get in at all and
+are told nothing useful while failing. This is a spend, and the spend is
+approved by him, so it needs no further word from me or from him.
+
+**Push: subscribers only.** His words: send push only to subscribers, nobody
+else. So people who never opened the app are explicitly out of scope, and row
+111's reach figure should be read against subscribers rather than all 45. That
+also means the "5 of 45" framing may be measuring a population we have now
+decided not to message — worth re-counting before anyone treats 111 as a
+failure of delivery.
+
+**Anthropic limit: handled.** He has spoken to them and it is being raised. No
+action on either of us; I am recording it so nobody re-raises it tomorrow.
+
+### 30 Sept — what I need before I can write row 318
+
+He asked me which packs 318 is about and I could not tell him, because this
+client does not hold the answer: the packs come from
+`GET /billing/topup-packages` and the client renders whatever that returns
+(`tokens`, `label`, `paddlePriceId`). It has no idea what a token buys.
+
+318 is copy explaining, in plain words, what a pack buys and how the weekly
+limit works. That copy cannot be written from here without inventing the facts,
+and inventing facts about what somebody's money buys is the worst possible
+place to guess. Please send:
+
+- the current pack list as the route returns it, with real numbers
+- what one token actually buys, in a sentence a person would understand
+  (roughly one question? one run? it varies with the work?)
+- the weekly limit: what resets, when, and what happens at zero
+
+With those three I will draft the Georgian and English copy and put it to Misho
+for approval before it ships, since the wording is his call.
+
 ### 30 Sept — two things needed for rows already shipped
 
 Everything from your list of 30 Sept is on `main` at `f054d1d` and deployed.
