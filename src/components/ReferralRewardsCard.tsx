@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getLocale } from "@/lib/i18n";
+import { fetchInvite, shareInvite, type Invite } from "@/lib/invite";
 
 const SITE_URL = "https://netai.guru";
 
@@ -41,6 +42,15 @@ export function inviteShareText(code: string | null): string {
 export default function ReferralRewardsCard({ code }: { code: string | null }) {
   const s = L[getLocale()];
   const [copied, setCopied] = useState<"code" | "text" | null>(null);
+  // Row 320. Fetched when the card mounts, not when the button is pressed:
+  // `navigator.share` needs the user activation of the tap itself, and an
+  // await in between loses it on iOS Safari. Prefetching is what makes the
+  // press open the sheet at once instead of after a round trip.
+  const [invite, setInvite] = useState<Invite | null>(null);
+  // The profile carries the code and so does the invite route. Either is the
+  // same code; whichever arrived is shown, so a profile that came back without
+  // it does not blank out a code the person actually has.
+  const shownCode = code ?? invite?.code ?? null;
 
   // The copied state flips OPTIMISTICALLY, before the async clipboard write —
   // testers reported the state never appearing when clipboard.writeText was
@@ -51,15 +61,15 @@ export default function ReferralRewardsCard({ code }: { code: string | null }) {
   }
 
   async function copyCode() {
-    if (!code) return;
+    if (!shownCode) return;
     flash("code");
     try {
-      await navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(shownCode);
     } catch {
       // Fallback for browsers where the async clipboard is blocked.
       try {
         const ta = document.createElement("textarea");
-        ta.value = code;
+        ta.value = shownCode;
         ta.style.position = "fixed";
         ta.style.opacity = "0";
         document.body.appendChild(ta);
@@ -70,29 +80,28 @@ export default function ReferralRewardsCard({ code }: { code: string | null }) {
     }
   }
 
+  useEffect(() => {
+    let alive = true;
+    void fetchInvite().then((got) => { if (alive) setInvite(got); });
+    return () => { alive = false; };
+  }, []);
+
   // One share mechanism everywhere (ticket 6 #10): native sheet, clipboard
-  // fallback.
+  // fallback. The server's text wins when it arrived, because it is written
+  // in the language this person chose and it is the text the funnel counts.
+  // The locally composed one stays as the fallback for the window before the
+  // fetch lands, and for accounts the invite-link flag is still off for.
   async function share() {
-    const text = inviteShareText(code);
-    try {
-      if (navigator.share) {
-        await navigator.share({ text });
-        return;
-      }
-    } catch {
-      return; // user closed the sheet
-    }
-    flash("text");
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {}
+    const text = invite?.share_text ?? inviteShareText(shownCode);
+    const outcome = await shareInvite(text);
+    if (outcome === "copied") flash("text");
   }
 
   return (
     <div className="card flex flex-col gap-3">
       <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.title}</h2>
       <p style={{ font: "400 13.5px/21px var(--font-system)", color: "var(--ink-2)" }}>{s.body}</p>
-      {code && (
+      {shownCode && (
         <div className="flex items-center gap-2">
           <code
             className="flex-1 truncate px-3 py-2.5"
@@ -106,7 +115,7 @@ export default function ReferralRewardsCard({ code }: { code: string | null }) {
               letterSpacing: "1.5px",
             }}
           >
-            {code}
+            {shownCode}
           </code>
           <button
             type="button"

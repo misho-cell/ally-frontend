@@ -299,6 +299,15 @@ body {
 .sk-ally > div { flex: 1; display: flex; flex-direction: column; gap: 8px; }
 
 /* ============ Toast ============ */
+/* Row 294: one live line that changes as the run moves, instead of a new
+   line stacked per step. It is keyed by the step it shows, so React remounts
+   it and this plays on every change — that movement is the only thing telling
+   the person the run is still going. Nothing is lost by not stacking: the
+   finished steps appear in full under the reply once the run ends. */
+.working-line { margin: 0; font: 400 12.5px/18px var(--font-system); color: var(--meta); animation: working-line-in 220ms ease-out; }
+@keyframes working-line-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .working-line { animation: none; } }
+
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes toast-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(8px); } }
 .toast {

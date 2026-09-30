@@ -11,6 +11,7 @@ import { recorderSupported, speechLimits, startRecording, transcribe, type Recor
 import { recordSpeechStage } from "@/lib/speech";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { fetchMessagePage } from "@/lib/messages";
+import { shareInvite } from "@/lib/invite";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import { useUserName } from "@/lib/user";
 import {
@@ -61,16 +62,9 @@ function linkifyInviteLink(text: string): string {
 
 // F2 (27 Aug): issued (assistant handed out the link) vs sent (the user
 // actually shared it) are now separate funnel events — record `sent` only on
-// a real share action, once per click.
-async function recordShared() {
-  try {
-    await fetch(`${BASE_URL}/auth/referral/shared`, {
-      method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({}),
-    });
-  } catch {}
-}
+// a real share action, once per click. 30 Sept: the share and the recording
+// both live in lib/invite now, so this button and the one-tap button on the
+// profile cannot drift into counting differently.
 
 // Task 39 (D54, 12 Sept): run_complete now carries share_text — the exact
 // message get_invite_link composed, link already inside. Share it verbatim;
@@ -81,19 +75,7 @@ async function recordShared() {
 // simply isn't there.
 function ShareInviteButton({ text, label }: { text: string; label: string }) {
   async function share() {
-    try {
-      if (navigator.share) {
-        await navigator.share({ text });
-        recordShared();
-        return;
-      }
-    } catch {
-      return; // user canceled the native sheet — not an error
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      recordShared();
-    } catch {}
+    await shareInvite(text);
   }
   return (
     <button
@@ -173,24 +155,70 @@ function renderStepText(text: string): React.ReactNode {
 }
 
 type RenderBlock =
-  | { type: "message"; msg: ChatMessage }
+  // `steps` are the steps of THIS reply's own run, rendered with it.
+  | { type: "message"; msg: ChatMessage; steps: ChatMessage[] }
+  // Steps that belong to no reply: the run still going, or rows that arrived
+  // without a run_id. They keep the old adjacency grouping, because for these
+  // there is nothing better to group them by — and dropping them would turn
+  // "we have no reply for these yet" into "there were no steps".
   | { type: "steps"; steps: ChatMessage[]; trailing: boolean };
 
+// Row 312 (30 Sept). Steps used to be grouped by adjacency: every run of
+// consecutive kind='step' rows became one list. A goal that ran several times
+// with nothing in between therefore merged every run's steps into one block —
+// the tester saw 33 lines under a reply that did two things, with a real
+// reply among them, because the server persists a scrubbed copy of the answer
+// as a step row AFTER the answer.
+//
+// run_id is what actually says which reply a step belongs to. Adjacency never
+// answered that question; it only looked like it did while goals ran once.
 function toBlocks(messages: ChatMessage[]): RenderBlock[] {
+  const stepsByRun = new Map<string, ChatMessage[]>();
+  for (const m of messages) {
+    if (m.kind !== "step" || !m.runId) continue;
+    const list = stepsByRun.get(m.runId);
+    if (list) list.push(m);
+    else stepsByRun.set(m.runId, [m]);
+  }
+
+  // Which runs have a reply to hang their steps on. This has to be known
+  // BEFORE the walk: the steps of a run come before its reply, so deciding as
+  // we meet them would emit them loose and then attach them again below.
+  const answered = new Set<string>();
+  for (const m of messages) {
+    if (m.kind === "step" || m.role !== "assistant" || !m.runId) continue;
+    if (stepsByRun.has(m.runId)) answered.add(m.runId);
+  }
+
+  const taken = new Set<string>();
   const blocks: RenderBlock[] = [];
   let i = 0;
   while (i < messages.length) {
-    if (messages[i].kind === "step") {
-      const steps: ChatMessage[] = [];
+    const m = messages[i];
+    if (m.kind === "step") {
+      const loose: ChatMessage[] = [];
       while (i < messages.length && messages[i].kind === "step") {
-        steps.push(messages[i]);
+        const s = messages[i];
+        // A step whose reply exists is rendered with that reply, never here.
+        if (!(s.runId != null && answered.has(s.runId))) loose.push(s);
         i++;
       }
-      blocks.push({ type: "steps", steps, trailing: i === messages.length });
-    } else {
-      blocks.push({ type: "message", msg: messages[i] });
-      i++;
+      if (loose.length > 0) blocks.push({ type: "steps", steps: loose, trailing: i === messages.length });
+      continue;
     }
+
+    let own: ChatMessage[] = [];
+    // A run answered twice would otherwise print its steps under both replies.
+    if (m.role === "assistant" && m.runId && answered.has(m.runId) && !taken.has(m.runId)) {
+      taken.add(m.runId);
+      // The scrubbed copy of the answer is a step row carrying the answer. It
+      // is a reply, and a reply is not a step, so it does not belong in this
+      // list however it was stored.
+      const reply = m.content.trim();
+      own = (stepsByRun.get(m.runId) ?? []).filter((s) => s.content.trim() !== reply);
+    }
+    blocks.push({ type: "message", msg: m, steps: own });
+    i++;
   }
   return blocks;
 }
@@ -1196,6 +1224,19 @@ export default function ThreadPage() {
     lastBlock && lastBlock.type === "steps" && lastBlock.trailing ? lastBlock.steps : [];
   const renderBlocks = loading && trailingSteps.length > 0 ? blocks.slice(0, -1) : blocks;
 
+  // Row 294: the single line shown while the run is going. The newest step is
+  // the freshest thing we have — both tool_progress and step_summary append a
+  // step row, while `progress` only ever holds the last tool_progress — so the
+  // step wins, and `progress` is the fallback for the gap before the first one
+  // arrives. The key is what makes React remount the line so the change is
+  // visible; without it the text would swap in place and read as frozen.
+  const newestStep = trailingSteps[trailingSteps.length - 1];
+  const liveStep = newestStep
+    ? { key: newestStep.id, text: renderStepText(newestStep.content) }
+    : progress
+      ? { key: progress, text: stripEmoji(progress) }
+      : { key: "working", text: t("workingOnIt") };
+
   // Task 25 (11 Sept): buttons vanished ~1.7s after appearing. The refetch
   // that follows thread_updated merges the server's rows, and the server can
   // persist a "step" row (or a scrubbed copy of the reply) AFTER the answer —
@@ -1552,6 +1593,13 @@ export default function ThreadPage() {
               const isFirstAssistant = firstAssistant && msg.id === firstAssistant.id;
               return (
                 <div key={msg.id} className="flex flex-col gap-3">
+                  {/* Row 312: this reply's own steps, and no others. */}
+                  {block.steps.length > 0 && (
+                    <StepGroup
+                      steps={block.steps}
+                      label={chrome.steps.replace("{n}", String(block.steps.length))}
+                    />
+                  )}
                   <div className="flex items-start" style={{ gap: "10px" }}>
                     <AllyAvatar />
                     <div className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: "4px" }}>
@@ -1659,29 +1707,23 @@ export default function ThreadPage() {
               </div>
             )}
 
+            {/* Row 294 (30 Sept). This used to stack a line per step: six
+                lines for one question, and the screen kept growing while the
+                person waited. It is one line now, replaced as the run moves,
+                beside the figure that is already moving.
+
+                Nothing is dropped by not stacking. Every one of those steps is
+                rendered in full under the reply the moment the run finishes
+                (row 312), so this is a change of when they are read, not
+                whether. What matters while waiting is the step happening NOW. */}
             {loading && (
               <div className="flex items-start" style={{ gap: "10px" }}>
                 <AllyAvatar />
-                <div className="flex flex-col gap-2" style={{ flex: 1, minWidth: 0 }}>
-                  <div className="steps" style={{ marginLeft: 0 }}>
-                    <div className="steps-list" style={{ marginTop: 0 }}>
-                      {trailingSteps.map((s) => (
-                        <div key={s.id} className="step">
-                          <span>✓</span>
-                          <p>{renderStepText(s.content)}</p>
-                        </div>
-                      ))}
-                      {!streamingActive && (
-                        <div className="step">
-                          <span className="sk-dot" style={{ width: 8, height: 8, marginTop: 6 }} />
-                          <p>{progress ? stripEmoji(progress) : t("workingOnIt")}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2" style={{ flex: 1, minWidth: 0 }}>
                   {!streamingActive && (
                     <AllyAnim clip={workingClip(trailingSteps.length)} size="inline" />
                   )}
+                  <p key={liveStep.key} className="working-line">{liveStep.text}</p>
                 </div>
               </div>
             )}
