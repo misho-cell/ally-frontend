@@ -248,6 +248,14 @@ body {
 .req-btn.deny { background: none; border-color: var(--danger); color: var(--danger); }
 .req-btn.deny:hover { background: var(--terra-tint); }
 .req-btn.later { background: none; border-color: var(--sidebar-border); color: var(--ink-2); }
+/* Row 306: each button with the line that says what it does. Stacked rather
+   than laid out in a row, because the note belongs to one button and a note
+   that could be read as belonging to the button beside it is worse than none
+   on the question of whose number gets shared. Phone width first: the buttons
+   were already wrapping there. */
+.req-actions { display: flex; flex-direction: column; gap: 10px; padding-top: 2px; }
+.req-action { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.req-note { font: 400 11.5px/16px var(--font-system); color: var(--meta); }
 .req-btn.later:hover { background: var(--skeleton); }
 
 /* Pending decision card (in-thread) */

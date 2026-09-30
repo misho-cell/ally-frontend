@@ -283,6 +283,15 @@ const en = {
   rWhen: "When",
   rWhere: "Where",
   rTopic: "Topic",
+  // Row 306 (30 Sept): a button has to say what it does BEFORE it is pressed.
+  // These four are not a preference, they are an instruction about somebody's
+  // phone number, and the difference between the first two is the whole
+  // question. It was written nowhere on the way in, only in the confirmation
+  // afterwards, which is too late to be a choice.
+  reqAcceptDirectNote: "They get your number and can contact you themselves.",
+  reqAcceptMediatorNote: "Your number is not shared. Everything keeps coming through you.",
+  reqDenyNote: "They are told no, gently. Nothing of yours is shared.",
+  reqLaterNote: "Nothing is sent now. It comes back tomorrow.",
   reqAcceptMsg: "Yes, I accept — connect us directly.",
   reqAcceptMediatorMsg: "Yes, I accept, but keep it through me — do not share my number.",
   reqDenyMsg: "No, I'd rather not — please decline politely.",
@@ -391,6 +400,10 @@ const ka: typeof en = {
   rWhen: "როდის",
   rWhere: "სად",
   rTopic: "თემა",
+  reqAcceptDirectNote: "შენი ნომერი გადაეცემა და პირდაპირ დაგიკავშირდება.",
+  reqAcceptMediatorNote: "შენი ნომერი არავის გადაეცემა, ყველაფერი შენი გავლით გრძელდება.",
+  reqDenyNote: "რბილად ეტყვის უარს, შენი არაფერი გადაეცემა.",
+  reqLaterNote: "ახლა არაფერი იგზავნება, ხვალ დაბრუნდება.",
   reqAcceptMsg: "კი, თანახმა ვარ, დაგვაკავშირე პირდაპირ.",
   reqAcceptMediatorMsg: "კი, თანახმა ვარ, მაგრამ ჩემი გავლით გააგრძელე, ნომერი არ გადასცე.",
   reqDenyMsg: "არა, არ მინდა, რბილად უთხარი უარი.",

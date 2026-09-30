@@ -12,6 +12,7 @@ import { recordSpeechStage } from "@/lib/speech";
 import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
 import { fetchMessagePage } from "@/lib/messages";
 import { shareInvite } from "@/lib/invite";
+import RequestActions from "@/components/RequestActions";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import { useUserName } from "@/lib/user";
 import {
@@ -1680,15 +1681,11 @@ export default function ThreadPage() {
                         {reqQuote && <blockquote className="rc-quote">„{reqQuote}“</blockquote>}
                       </div>
                       {!reqResolved && (
-                        <div className="flex flex-wrap gap-2">
-                          {/* Item 5: the same two ways to say yes as the list
-                              row. A number moves on one of them and not the
-                              other, so neither can be the silent default. */}
-                          <button className="req-btn accept" onClick={() => resolveRequest(threadId, "accept_direct")}>{t("reqAcceptDirect")}</button>
-                          <button className="req-btn accept" onClick={() => resolveRequest(threadId, "accept_mediator")}>{t("reqAcceptMediator")}</button>
-                          <button className="req-btn deny" onClick={() => resolveRequest(threadId, "deny")}>{t("reqDeny")}</button>
-                          <button className="req-btn later" onClick={() => resolveRequest(threadId, "later")}>{t("reqLater")}</button>
-                        </div>
+                        /* Item 5: the same two ways to say yes as the list
+                           row, and now literally the same component, so a
+                           number cannot move on one screen for a reason that
+                           was never written on the other. */
+                        <RequestActions onResolve={(a) => resolveRequest(threadId, a)} />
                       )}
                     </div>
                   )}

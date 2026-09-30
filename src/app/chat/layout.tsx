@@ -23,6 +23,7 @@ import {
   type TaskStatus,
 } from "@/contexts/ThreadsContext";
 import { parseTokenBalance } from "@/lib/tokens";
+import RequestActions from "@/components/RequestActions";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const REQ_KEY = "netai_req_resolved";
@@ -1632,14 +1633,10 @@ function RequestActionRow({
       {confirmation ? (
         <p style={{ font: "600 13px/18px var(--font-system)", color: "var(--accent-strong)" }}>{confirmation}</p>
       ) : (
-        <div className="flex gap-2 pt-0.5">
-          {/* Two ways to say yes, because they are two different answers for
-              the person whose number is at stake. There is no plain accept. */}
-          <button className="req-btn accept" onClick={(e) => { e.stopPropagation(); onResolve("accept_direct"); }}>{t("reqAcceptDirect")}</button>
-          <button className="req-btn accept" onClick={(e) => { e.stopPropagation(); onResolve("accept_mediator"); }}>{t("reqAcceptMediator")}</button>
-          <button className="req-btn deny" onClick={(e) => { e.stopPropagation(); onResolve("deny"); }}>{t("reqDeny")}</button>
-          <button className="req-btn later" onClick={(e) => { e.stopPropagation(); onResolve("later"); }}>{t("reqLater")}</button>
-        </div>
+        // Two ways to say yes, because they are two different answers for the
+        // person whose number is at stake. There is no plain accept, and since
+        // row 306 each one states what it does.
+        <RequestActions onResolve={onResolve} stopPropagation />
       )}
     </div>
   );
