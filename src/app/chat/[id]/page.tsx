@@ -343,7 +343,7 @@ export default function ThreadPage() {
   } = useThreads();
 
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
-  const { messages, options, choices, loading, error, streaming, progress, hasMoreOlder, result } = st;
+  const { messages, options, choices, choiceNotes, loading, error, streaming, progress, hasMoreOlder, result } = st;
   const send = SEND[getLocale()];
 
   const [input, setInput] = useState("");
@@ -420,6 +420,12 @@ export default function ThreadPage() {
   const grantExhausted = balance != null && balance <= 0;
   const balanceLow = balance != null && granted > 0 && Math.max(0, balance) <= granted * 0.05;
   const spent = tokensEnabled ? tokens.spentThisPeriod : null;
+  // Row 282: zero is its own state, not the bottom of "almost gone". At a
+  // balance of 0 the banner said "almost gone, 0 left" — almost gone when it
+  // is gone — and said nothing about the grant landing on Monday, which for
+  // nine of the twelve accounts sitting at zero is the only fact that matters.
+  const tokensGone = balance != null && balance <= 0;
+  const resetsAt = tokensEnabled ? tokens.resetsAt ?? null : null;
   const remainingPct =
     spent != null && granted > 0
       ? Math.max(0, 1 - spent / granted)
@@ -1656,21 +1662,12 @@ export default function ThreadPage() {
                     return !answered;
                   })() && (
                     <div className="decision-card" style={{ marginLeft: "36px" }}>
-                      <div className="flex flex-wrap gap-2">
-                        {msg.choices.map((choice, ci) => (
-                          <button
-                            key={`${msg.id}-${ci}`}
-                            type="button"
-                            onClick={() => sendMessage(choice, true, msg.serverId)}
-                            className="bg-white px-4 py-2 text-left transition-colors"
-                            style={{ border: "1px solid var(--cta-border)", borderRadius: "var(--radius-pill)", color: "var(--accent-strong)", fontSize: "14px", fontWeight: 500 }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-tint)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "#FFFFFF"; }}
-                          >
-                            {choice}
-                          </button>
-                        ))}
-                      </div>
+                      <ChoiceButtons
+                        choices={msg.choices}
+                        notes={msg.choiceNotes}
+                        keyPrefix={msg.id}
+                        onPick={(choice) => sendMessage(choice, true, msg.serverId)}
+                      />
                     </div>
                   )}
                   {msg.shareText && (
@@ -1798,27 +1795,12 @@ export default function ThreadPage() {
 
             {showChoices && (
               <div className="decision-card" style={{ marginLeft: "36px" }}>
-                <div className="flex flex-wrap gap-2">
-                  {choices.map((choice, ci) => (
-                    <button
-                      key={`${ci}-${choice}`}
-                      type="button"
-                      onClick={() => sendMessage(choice)}
-                      className="bg-white px-4 py-2 text-left transition-colors"
-                      style={{
-                        border: "1px solid var(--cta-border)",
-                        borderRadius: "var(--radius-pill)",
-                        color: "var(--accent-strong)",
-                        fontSize: "14px",
-                        fontWeight: 500,
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-tint)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "#FFFFFF"; }}
-                    >
-                      {choice}
-                    </button>
-                  ))}
-                </div>
+                <ChoiceButtons
+                  choices={choices}
+                  notes={choiceNotes}
+                  keyPrefix="thread"
+                  onPick={(choice) => sendMessage(choice)}
+                />
               </div>
             )}
 
@@ -1873,9 +1855,18 @@ export default function ThreadPage() {
               fontWeight: 500,
             }}
           >
-            {balanceLow
-              ? tf("tokensAlmostGone", { n: fmtTokens(Math.max(0, balance ?? 0)) })
-              : chrome.spent}
+            {tokensGone
+              ? granted > 0 && resetsAt
+                ? tf("tokensGone", { n: fmtTokens(granted), date: fmtDateLoc(resetsAt) })
+                : granted > 0 || resetsAt
+                  ? t("tokensGoneNoDate")
+                  : /* Neither an amount nor a date: say the one thing that is
+                       true and stop. Inventing a return here is how a screen
+                       ends up promising something nobody owes. */
+                    t("tokensGoneBare")
+              : balanceLow
+                ? tf("tokensAlmostGone", { n: fmtTokens(Math.max(0, balance ?? 0)) })
+                : chrome.spent}
           </div>
         </div>
       )}
@@ -2041,6 +2032,59 @@ export default function ThreadPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Row 306 (30 Sept). The buttons under a reply, with the server's note beneath
+// any button that has one. `choice_notes` is optional and absent on nearly
+// every message: today only plan approval carries one, because approving is
+// what writes to real people in the owner's name and the label does not say
+// so. That scarcity is the design — a line under every button teaches people
+// to stop reading them — so this renders nothing at all when there is nothing
+// to say.
+//
+// With notes the buttons stack, without them they wrap as before. A note
+// sitting beside the wrong button is worse than no note when the sentence is
+// about who gets written to in your name.
+function ChoiceButtons({
+  choices,
+  notes,
+  onPick,
+  keyPrefix,
+}: {
+  choices: string[];
+  notes?: Record<string, string>;
+  onPick: (choice: string) => void;
+  keyPrefix: string;
+}) {
+  const hasNotes = choices.some((c) => notes?.[c]);
+  return (
+    <div className={hasNotes ? "flex flex-col gap-2.5" : "flex flex-wrap gap-2"}>
+      {choices.map((choice, ci) => {
+        const note = notes?.[choice];
+        return (
+          <div key={`${keyPrefix}-${ci}`} className="flex flex-col items-start gap-1">
+            <button
+              type="button"
+              onClick={() => onPick(choice)}
+              className="bg-white px-4 py-2 text-left transition-colors"
+              style={{
+                border: "1px solid var(--cta-border)",
+                borderRadius: "var(--radius-pill)",
+                color: "var(--accent-strong)",
+                fontSize: "14px",
+                fontWeight: 500,
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-tint)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#FFFFFF"; }}
+            >
+              {choice}
+            </button>
+            {note && <span className="req-note">{note}</span>}
+          </div>
+        );
+      })}
     </div>
   );
 }

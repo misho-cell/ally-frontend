@@ -217,6 +217,14 @@ const en = {
   tokensAdded: "Tokens added",
   tokensLow: "Tokens running low",
   tokensAlmostGone: "Tokens almost gone — {n} left",
+  // Row 282 (30 Sept). At a balance of zero this screen said "almost gone,
+  // 0 left": almost gone when it is gone, and not a word about the tokens
+  // arriving on Monday. The backend found 12 accounts sitting at exactly zero,
+  // nine of them granted 250 a week, so this is the sentence those people
+  // actually read. Gone is its own state and it says when it comes back.
+  tokensGone: "No tokens left. {n} more on {date}.",
+  tokensGoneNoDate: "No tokens left. More arrive at the next reset.",
+  tokensGoneBare: "No tokens left.",
   trialUsedUp: "Trial tokens used up",
   monthlyUsedUp: "Monthly tokens used up",
   subscribeToContinue: "Subscribe to Netai to continue.",
@@ -339,6 +347,9 @@ const ka: typeof en = {
   tokensAdded: "ტოკენები დაემატა",
   tokensLow: "ტოკენები იწურება",
   tokensAlmostGone: "ტოკენები თითქმის ამოიწურა, დარჩა {n}",
+  tokensGone: "ტოკენები ამოიწურა. {n} დაგემატება {date}.",
+  tokensGoneNoDate: "ტოკენები ამოიწურა. ახალი შემდეგ განახლებაზე დაგემატება.",
+  tokensGoneBare: "ტოკენები ამოიწურა.",
   trialUsedUp: "საცდელი ტოკენები ამოიწურა",
   monthlyUsedUp: "თვის ტოკენები ამოიწურა",
   subscribeToContinue: "გასაგრძელებლად გამოიწერე Netai.",

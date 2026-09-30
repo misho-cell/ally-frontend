@@ -25,6 +25,19 @@ import {
 import { parseTokenBalance } from "@/lib/tokens";
 import RequestActions from "@/components/RequestActions";
 
+// Row 306: the server's per-button notes, read defensively. It is an optional
+// field that is absent on almost every message, so "not there" is the normal
+// case and must never look like an error; anything that is not a plain
+// label→sentence map is treated as absent rather than half-rendered.
+function readChoiceNotes(v: unknown): Record<string, string> | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const out: Record<string, string> = {};
+  for (const [label, note] of Object.entries(v as Record<string, unknown>)) {
+    if (typeof note === "string" && note.trim()) out[label] = note;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const REQ_KEY = "netai_req_resolved";
 const READ_KEY = "netai_last_read";
@@ -581,10 +594,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             ...(typeof data.share_text === "string" && data.share_text
                               ? { shareText: data.share_text }
                               : {}),
+                            ...(readChoiceNotes(data.choice_notes)
+                              ? { choiceNotes: readChoiceNotes(data.choice_notes)! }
+                              : {}),
                           },
                         ],
                         options: Array.isArray(data.options) ? data.options : [],
                         choices: Array.isArray(data.choices) ? data.choices : [],
+                        choiceNotes: readChoiceNotes(data.choice_notes) ?? {},
                         loading: false,
                         runId: null,
                         error: null,
@@ -626,6 +643,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             pending: true,
                             createdAt: new Date().toISOString(),
                             ...(Array.isArray(data.choices) && data.choices.length > 0 ? { choices: data.choices as string[] } : {}),
+                            ...(readChoiceNotes(data.choice_notes)
+                              ? { choiceNotes: readChoiceNotes(data.choice_notes)! }
+                              : {}),
                           },
                         ],
                       };

@@ -47,6 +47,12 @@ export type ServerMessage = {
   choices?: string[] | null;
   // Task 39: filled only on the row that requested an invite link.
   share_text?: string | null;
+  // Row 306 (30 Sept): { "<button label>": "<one sentence>" }, present only
+  // where a button does something its label does not admit. Today that is the
+  // plan-approval button alone, because approving is what writes to real
+  // people in the owner's name. Absent everywhere else on purpose: a note
+  // under every button teaches people to stop reading them.
+  choice_notes?: Record<string, string> | null;
 };
 
 export type ChatMessage = {
@@ -79,6 +85,8 @@ export type ChatMessage = {
   // straight from run_complete.share_text. Shared verbatim — never rebuilt
   // from the reply, never paired with a separate url.
   shareText?: string;
+  // Row 306: one sentence per button label, for the buttons on THIS message.
+  choiceNotes?: Record<string, string>;
 };
 
 export type Option = { phone: string; name: string };
@@ -87,6 +95,9 @@ export type ThreadState = {
   messages: ChatMessage[];
   options: Option[];
   choices: string[];
+  // Row 306: notes for the thread-level choices above. Same shape as a
+  // message's, and empty far more often than not.
+  choiceNotes: Record<string, string>;
   loading: boolean;
   runId: string | null;
   error: string | null;
@@ -109,6 +120,7 @@ export const DEFAULT_THREAD_STATE: ThreadState = {
   messages: [],
   options: [],
   choices: [],
+  choiceNotes: {},
   loading: false,
   runId: null,
   error: null,
@@ -156,6 +168,9 @@ export function toChatMessages(raw: unknown): ChatMessage[] {
     // conversation.
     ...(Array.isArray(m.choices) && m.choices.length > 0 ? { choices: m.choices } : {}),
     ...(typeof m.share_text === "string" && m.share_text ? { shareText: m.share_text } : {}),
+    ...(m.choice_notes && typeof m.choice_notes === "object"
+      ? { choiceNotes: m.choice_notes }
+      : {}),
   }));
 }
 
@@ -203,10 +218,10 @@ export function mergeMessages(fresh: ChatMessage[], existing: ChatMessage[]): Ch
   // and the server has not confirmed; once a fetch has replaced it, the
   // server's word is the only word. An absent choices field and a cleared one
   // are the same sentence from the server, and both of them outrank ours.
-  const extras = new Map<string, { shareText?: string; choices?: string[] }>();
+  const extras = new Map<string, { shareText?: string; choices?: string[]; choiceNotes?: Record<string, string> }>();
   for (const m of existing) {
     if (!m.pending) continue;
-    if (m.shareText || m.choices) extras.set(contentKey(m), { shareText: m.shareText, choices: m.choices });
+    if (m.shareText || m.choices || m.choiceNotes) extras.set(contentKey(m), { shareText: m.shareText, choices: m.choices, choiceNotes: m.choiceNotes });
   }
   const kept = fresh.map((m) => {
     const extra = extras.get(contentKey(m));
@@ -215,6 +230,7 @@ export function mergeMessages(fresh: ChatMessage[], existing: ChatMessage[]): Ch
       ...m,
       ...(!m.shareText && extra.shareText ? { shareText: extra.shareText } : {}),
       ...(!m.choices && extra.choices ? { choices: extra.choices } : {}),
+      ...(!m.choiceNotes && extra.choiceNotes ? { choiceNotes: extra.choiceNotes } : {}),
     };
   });
 
