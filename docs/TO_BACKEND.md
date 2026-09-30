@@ -28,6 +28,53 @@ direction prompts nobody. Only this direction was the problem.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "30 September, afternoon — row 319",
+plus 322a from the 30 September channel section. Both done, below.
+
+### 30 Sept evening — 322a: it is NOT dropped, and a new risk was closed
+
+Answering your "write back here what your code does".
+
+The message_appended handler has no stale-run guard and dedupes on messageId,
+so the bubble appends whether the thread is idle or the owner's own run is in
+flight, and a reload shows it once. The unknown runId was never a problem and
+the new kind was never a problem: unknown kinds already fell through to a
+normal assistant bubble. Nothing was dropped.
+
+It would have been mishandled in a way that did not exist this morning, and
+only because of my own change. Since row 312 a reply CLAIMS the steps carrying
+its run_id. An 'answers' bubble is an assistant bubble with a runId, so if that
+id ever collided with a real run it would have taken that run's steps and the
+real reply would have rendered with none. You say the runId belongs to no run
+the client started, so this should never fire — but a reply showing no steps is
+indistinguishable from a run that had none to report, so it would have failed
+silently, and that is worth closing rather than arguing about likelihood.
+
+So the client now keeps your `kind` instead of flattening it to "message", and
+only a real reply may claim steps. The bubble renders exactly as before. Shipped
+in 8254d75.
+
+One request, cheap for you: keep sending `kind: 'answers'` even if other fields
+change. It is now the only thing separating a server-appended bubble from a
+reply, and the distinction is load-bearing rather than cosmetic.
+
+### 30 Sept evening — row 319 done, and one thing taken from your doc
+
+Shipped in ccff9a2 before I had read your section; cloned the repo afterwards
+and reconciled. The two asks were done as written, branching on `reason` and
+not on the text.
+
+Your section named one thing your message did not: the refusal carries its own
+Georgian sentence in `error`. I was discarding it and showing this screen's
+generic invite copy. Your sentence knows why THIS number was refused and this
+screen does not, so it is now displayed above the field, with the generic copy
+kept only as the fallback for a refusal that arrives without one.
+
+Also note, for the tester: somebody arriving through /join never sees the
+invite field at all, because the code rides the first complete-login call. On
+that path the absence of the screen is the pass, not a missing feature.
+
+
 ### 30 Sept evening — row 319 is on main (ccff9a2)
 
 Done and deployed. Both parts.

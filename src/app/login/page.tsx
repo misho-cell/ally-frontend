@@ -158,6 +158,9 @@ export default function LoginPage() {
   // (code OR phone) that passed eligibility — it MUST be sent with
   // /auth/register (the server re-checks it there).
   const [referralInput, setReferralInput] = useState("");
+  // Row 319: the sentence the server refused the login with, shown above the
+  // invite field. Null means it sent none, not that there was nothing to say.
+  const [loginInviteMsg, setLoginInviteMsg] = useState<string | null>(null);
   const [referralError, setReferralError] = useState("");
   const confirmedReferralRef = useRef<string | null>(null);
   // Optional referrer on the name step: builds the referral chain in ALL modes
@@ -377,6 +380,12 @@ export default function LoginPage() {
           );
         } catch (loginErr) {
           if ((loginErr as PostError)?.reason === "invitation_required") {
+            // The server sends its own Georgian sentence with the refusal.
+            // It knows why this particular number was refused and this screen
+            // does not, so its words win and the generic copy is only the
+            // fallback for a refusal that arrived without any.
+            const said = (loginErr as Error)?.message;
+            setLoginInviteMsg(typeof said === "string" && said.trim() ? said : null);
             // The verification is NOT spent on this refusal, so the code can
             // be entered and the same call retried inside its ten minutes.
             // No new SMS, which is the whole point: a second code would look
@@ -679,7 +688,7 @@ export default function LoginPage() {
               <form onSubmit={handleLoginInviteSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                   <p style={{ font: "500 17px/24px var(--font-bricolage)", color: "var(--ink)" }}>{s.inviteOnly}</p>
-                  <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.inviteOnlyBody}</p>
+                  <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{loginInviteMsg ?? s.inviteOnlyBody}</p>
                 </div>
                 <input
                   type="text"
