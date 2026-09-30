@@ -22,6 +22,7 @@ import {
   type TokenBalance,
   type TaskStatus,
 } from "@/contexts/ThreadsContext";
+import { parseTokenBalance } from "@/lib/tokens";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const REQ_KEY = "netai_req_resolved";
@@ -370,9 +371,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       const res = await fetch(`${BASE_URL}/billing/tokens`, { headers: authHeaders() });
       if (!res.ok) return;
       const json = await res.json().catch(() => ({}));
-      if (json?.data && typeof json.data.enabled === "boolean") {
-        setTokens(json.data as TokenBalance);
-      }
+      // Row 282: read, not cast. A field this client cannot find stays null
+      // and the screens say nothing, instead of showing a zero balance to
+      // somebody who has tokens.
+      const parsed = parseTokenBalance(json);
+      if (parsed) setTokens(parsed);
     } catch {}
   }, []);
 

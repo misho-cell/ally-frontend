@@ -223,12 +223,10 @@ export function prependOlder(older: ChatMessage[], existing: ChatMessage[]): Cha
   return add.length > 0 ? [...add, ...existing] : existing;
 }
 
-export type TokenBalance = {
-  enabled: boolean;
-  balance: number;
-  grantedThisPeriod: number;
-  spentThisPeriod: number;
-};
+// Row 282: the wallet is parsed, not cast, and a field the server did not
+// send stays null instead of turning into a zero somebody reads as "empty".
+import type { TokenBalance } from "@/lib/tokens";
+export type { TokenBalance };
 
 type Ctx = {
   threads: Thread[];

@@ -13,6 +13,7 @@ import PushDiagnostics from "@/components/PushDiagnostics";
 import MicDiagnostics from "@/components/MicDiagnostics";
 import LanguageCard from "@/components/LanguageCard";
 import ReferralRewardsCard from "@/components/ReferralRewardsCard";
+import { parseTokenBalance, type TokenBalance } from "@/lib/tokens";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const MCP_URL = "https://api.netai.guru/mcp";
@@ -204,16 +205,10 @@ type Profile = {
   cancels_at?: string | null;
 };
 
-type TokenBalance = {
-  enabled: boolean;
-  balance: number;
-  grantedThisPeriod: number;
-  spentThisPeriod: number;
-  // Task 34 (9 Sept, D133): the server owns the reset date and the window;
-  // the client no longer computes "first of next month" itself.
-  window?: "calendar_week" | "calendar_month" | string;
-  resetsAt?: string | null;
-};
+// Row 282: one wallet shape for the whole app, parsed in lib/tokens, where a
+// field the server did not send stays null instead of becoming a zero.
+// Task 34 (9 Sept, D133): the server owns the reset date and the window; the
+// client no longer computes "first of next month" itself.
 
 type TopupPackage = {
   id: number;
@@ -589,10 +584,11 @@ function TokensWidget() {
     try {
       const res = await fetch(`${BASE_URL}/billing/tokens`, { headers: authHeaders() });
       const json = await res.json().catch(() => ({}));
-      if (json?.data && typeof json.data.enabled === "boolean") {
-        setTokens(json.data as TokenBalance);
-        balanceRef.current = json.data.balance;
-        return json.data as TokenBalance;
+      const parsed = parseTokenBalance(json);
+      if (parsed) {
+        setTokens(parsed);
+        balanceRef.current = parsed.balance;
+        return parsed;
       }
     } catch {}
     return null;
@@ -622,8 +618,11 @@ function TokensWidget() {
       pollRef.current = setInterval(async () => {
         ticks++;
         const t = await fetchTokens();
-        if ((t && t.balance > startBalance) || ticks >= 15) {
-          if (t && t.balance > startBalance) {
+        // Row 282: a balance the server did not state cannot be "grew", so a
+        // missing number keeps polling rather than announcing a top-up.
+        const grew = t?.balance != null && t.balance > startBalance;
+        if (grew || ticks >= 15) {
+          if (grew) {
             setToast(s.tokensAdded);
             setTimeout(() => setToast(null), 2400);
           }
@@ -638,9 +637,11 @@ function TokensWidget() {
   if (tokens && !tokens.enabled) return null;
   if (!tokens && !failed) return null; // loading — no empty box
 
-  const balance = tokens ? Math.max(0, tokens.balance) : null;
+  // Row 282: null all the way through. "We were not told" is not "you have
+  // none", and this card is about the person's own money.
+  const balance = tokens?.balance != null ? Math.max(0, tokens.balance) : null;
   const granted = tokens?.grantedThisPeriod ?? 0;
-  const spent = tokens ? Math.max(0, tokens.spentThisPeriod) : 0;
+  const spent = tokens?.spentThisPeriod != null ? Math.max(0, tokens.spentThisPeriod) : 0;
   const isTrial = granted === 120;
   // Top-up is for subscribers only — trial wallets get the subscribe CTA elsewhere.
   const showTopup = !!tokens && !isTrial && packages.length > 0;
@@ -662,13 +663,16 @@ function TokensWidget() {
           sentence below anyway, where it is next to the number it is about. */}
       <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.tokens}</h2>
 
-      {failed || !tokens ? (
+      {/* Row 282: the same dash for a balance the server did not state as for
+          a request that failed, because they are the same fact — we do not
+          know. The one thing this card may not do is print a zero for it. */}
+      {failed || !tokens || balance == null ? (
         <p className="text-sm" style={{ color: "var(--meta)" }}>-</p>
       ) : (
         <>
           <div className="flex items-baseline gap-1.5">
             <span style={{ font: "600 28px/34px var(--font-system)", letterSpacing: "-0.3px", color: "var(--ink-strong)" }}>
-              {fmtTokens(balance!)}
+              {fmtTokens(balance)}
             </span>
             {/* Naming the big number. Unlabelled it was read as a spend, a
                 limit and an allowance by the same person in one sitting. */}

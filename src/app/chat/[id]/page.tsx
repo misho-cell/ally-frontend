@@ -393,18 +393,28 @@ export default function ThreadPage() {
 
   const tokensEnabled = tokens?.enabled === true;
   const isTrialWallet = tokensEnabled && tokens.grantedThisPeriod === 120;
-  const granted = tokensEnabled ? tokens.grantedThisPeriod : 0;
+  const granted = tokensEnabled ? tokens.grantedThisPeriod ?? 0 : 0;
+  // Row 282: the balance the server actually stated, or null when it stated
+  // none. Everything below that could tell somebody they are out of tokens
+  // now goes through this, and null means we say nothing rather than say 0.
+  const balance = tokensEnabled ? tokens.balance : null;
   // FT-11 (2 Sept): grantedThisPeriod/spentThisPeriod are calendar-month
   // stats for display only — NOT the run gate. The backend confirmed the
   // only real limit is `balance > 0`; both stats sit at 0 at the start of
   // every calendar month (and for any subscriber whose grant hasn't landed
   // yet), which made `spent >= granted` fire as "exhausted" for people who
   // still had thousands of tokens. Read the actual limit from `balance`.
-  const grantExhausted = tokensEnabled && tokens.balance <= 0;
-  const balanceLow = tokensEnabled && granted > 0 && Math.max(0, tokens.balance) <= granted * 0.05;
+  //
+  // Row 282 (30 Sept): and a balance that never arrived is not a balance of
+  // zero. The banner that says the allowance is gone is a claim about the
+  // person's money, so it is made only when the server actually said the
+  // number, never on the silence of a field this client failed to read.
+  const grantExhausted = balance != null && balance <= 0;
+  const balanceLow = balance != null && granted > 0 && Math.max(0, balance) <= granted * 0.05;
+  const spent = tokensEnabled ? tokens.spentThisPeriod : null;
   const remainingPct =
-    tokensEnabled && granted > 0
-      ? Math.max(0, 1 - tokens.spentThisPeriod / granted)
+    spent != null && granted > 0
+      ? Math.max(0, 1 - spent / granted)
       : null;
 
   // [97] D201 (12 Sept): while the assistant works the screen shows ONLY the
@@ -490,14 +500,14 @@ export default function ThreadPage() {
   }, []);
 
   useEffect(() => {
-    if (tokensEnabled) balanceRef.current = tokens.balance;
-  }, [tokensEnabled, tokens]);
+    if (balance != null) balanceRef.current = balance;
+  }, [balance]);
 
   useEffect(() => {
-    if (limitHit && tokensEnabled && tokens.balance > 0) {
+    if (limitHit && balance != null && balance > 0) {
       setLimitHit(false);
     }
-  }, [limitHit, tokensEnabled, tokens]);
+  }, [limitHit, balance]);
 
   useEffect(() => {
     if (!tokensEnabled || isTrialWallet || packagesFetchedRef.current) return;
@@ -1460,11 +1470,14 @@ export default function ThreadPage() {
               </svg>
             </button>
           )}
-          {tokensEnabled && (
+          {/* Row 282: the badge is the balance, so with no balance there is
+              no badge. It showed 0 to people who had tokens, and a wrong
+              number about someone's money is worse than no number. */}
+          {balance != null && (
             <span className={`token-badge${balanceLow ? " low" : ""}`}>
               <i className="dot" style={{ width: 8, height: 8, borderRadius: "50%", background: balanceLow ? "var(--request-accent)" : "var(--accent)", display: "inline-block" }} />
               <span className="count">
-                {fmtTokens(Math.max(0, tokens.balance))}{balanceLow ? ` · ${t("lowSuffix")}` : ""}
+                {fmtTokens(Math.max(0, balance))}{balanceLow ? ` · ${t("lowSuffix")}` : ""}
               </span>
             </span>
           )}
@@ -1857,7 +1870,7 @@ export default function ThreadPage() {
             }}
           >
             {balanceLow
-              ? tf("tokensAlmostGone", { n: fmtTokens(Math.max(0, tokens!.balance)) })
+              ? tf("tokensAlmostGone", { n: fmtTokens(Math.max(0, balance ?? 0)) })
               : chrome.spent}
           </div>
         </div>
