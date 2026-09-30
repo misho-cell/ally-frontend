@@ -617,7 +617,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             serverId: sid ?? undefined,
                             role: "assistant",
                             content: data.content,
-                            kind: "message",
+                            // Row 322a: the server's own kind is kept. This
+                            // arrives with a runId belonging to no run this
+                            // client started, and a bubble that claims to be a
+                            // reply to a run would take that run's steps.
+                            kind: data.kind === "answers" ? "answers" : "message",
                             runId: data.runId ?? null,
                             pending: true,
                             createdAt: new Date().toISOString(),

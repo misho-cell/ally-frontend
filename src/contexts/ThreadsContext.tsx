@@ -58,7 +58,12 @@ export type ChatMessage = {
   createdAt?: string;
   role: "user" | "assistant";
   content: string;
-  kind: "message" | "step" | "error";
+  // Row 322a (30 Sept): "answers" is a real bubble the SERVER appends on its
+  // own — the replies to a goal's asks, written into the thread the moment
+  // they arrive rather than waiting for the model. It renders exactly like a
+  // message; it is named apart only because it carries a runId belonging to no
+  // run this client started, and so must never be mistaken for a reply to one.
+  kind: "message" | "step" | "error" | "answers";
   runId: string | null;
   // Written locally (or over SSE), not yet seen in a server fetch. Pending items
   // survive a refetch so nothing the user just saw disappears.
@@ -135,7 +140,7 @@ export function toChatMessages(raw: unknown): ChatMessage[] {
     role: m.role === "user" ? "user" : "assistant",
     content: m.content,
     // "pending" is a message with its own buttons — same bubble, plus choices.
-    kind: m.kind === "step" ? "step" : m.kind === "error" ? "error" : "message",
+    kind: m.kind === "step" ? "step" : m.kind === "error" ? "error" : m.kind === "answers" ? "answers" : "message",
     runId: m.run_id ?? null,
     // Row 160 (21 Sept): buttons on a plan stopped working as soon as any
     // other message arrived, and the plan could no longer be answered at all.

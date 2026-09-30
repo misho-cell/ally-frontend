@@ -185,9 +185,16 @@ function toBlocks(messages: ChatMessage[]): RenderBlock[] {
   // Which runs have a reply to hang their steps on. This has to be known
   // BEFORE the walk: the steps of a run come before its reply, so deciding as
   // we meet them would emit them loose and then attach them again below.
+  //
+  // Row 322a: only a real reply may claim a run's steps. The server also
+  // appends "answers" bubbles carrying a runId that belongs to no run this
+  // client started, and if one of those were treated as a reply it would take
+  // the steps of whatever run shared that id and the real reply would show
+  // none — silently, since missing steps look exactly like a run that had
+  // none to report.
   const answered = new Set<string>();
   for (const m of messages) {
-    if (m.kind === "step" || m.role !== "assistant" || !m.runId) continue;
+    if (m.kind !== "message" || m.role !== "assistant" || !m.runId) continue;
     if (stepsByRun.has(m.runId)) answered.add(m.runId);
   }
 
@@ -210,7 +217,7 @@ function toBlocks(messages: ChatMessage[]): RenderBlock[] {
 
     let own: ChatMessage[] = [];
     // A run answered twice would otherwise print its steps under both replies.
-    if (m.role === "assistant" && m.runId && answered.has(m.runId) && !taken.has(m.runId)) {
+    if (m.kind === "message" && m.role === "assistant" && m.runId && answered.has(m.runId) && !taken.has(m.runId)) {
       taken.add(m.runId);
       // The scrubbed copy of the answer is a step row carrying the answer. It
       // is a reply, and a reply is not a step, so it does not belong in this
