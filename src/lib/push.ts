@@ -1,4 +1,5 @@
 import { authHeaders, getDeviceId } from "@/lib/deviceId";
+import { durableGet, durableSet } from "@/lib/durable";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -21,11 +22,20 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 //     registration as `previous_endpoint`, so the server can retire exactly
 //     that row rather than guessing which of five is stale.
 //
-// Not device_id: it is already stable here (a UUID minted once into
-// localStorage, never regenerated) and the backend measured zero device_ids
-// carrying two endpoints. That is not because the id rotates. It is because
-// the rows that duplicate are older than the field — they were written before
-// device_id was sent at all, so they carry none and nothing can match them.
+// Not device_id: it is already stable here (a UUID minted once, never
+// regenerated) and the backend measured zero device_ids carrying two
+// endpoints. That is not because the id rotates. It is because the rows that
+// duplicate are older than the field — they were written before device_id was
+// sent at all, so they carry none and nothing can match them.
+//
+// 30 Sept. The backend then measured device_id rotating WITH the endpoint,
+// which reads as a flat contradiction of the paragraph above and is not one.
+// Nothing rotates the id. The id and ENDPOINT_KEY below simply lived in the
+// SAME store, so clearing that store reminted both in the same instant and
+// also emptied the `previous_endpoint` that was supposed to link the new row
+// to the old — one event defeating all three remedies at once, because all
+// three depended on the store it destroyed. Both are kept redundantly now;
+// lib/durable is explicit about what that does and does not survive.
 //
 // Row 111, forty of forty-five people with no subscription: the result was
 // thrown away by `catch {}` at both call sites, so "never asked", "asked and
@@ -145,7 +155,7 @@ async function register(subscription: PushSubscription, previous: string | null)
   // Written only after the server has taken it. Storing it earlier would mean
   // a failed POST still looks registered on the next load, and the retry that
   // would have fixed it never happens.
-  localStorage.setItem(ENDPOINT_KEY, endpoint);
+  durableSet(ENDPOINT_KEY, endpoint);
   return { state: "subscribed", endpoint, rotated };
 }
 
@@ -189,7 +199,7 @@ export async function ensurePushSubscription(ask: boolean): Promise<PushOutcome>
     return { state: "failed", reason: "no-service-worker" };
   }
 
-  const previous = localStorage.getItem(ENDPOINT_KEY);
+  const previous = durableGet(ENDPOINT_KEY);
 
   // The browser is the only party that knows what it already holds. Asking it
   // first is what keeps a second registration from being minted on every load.

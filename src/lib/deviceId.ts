@@ -1,3 +1,5 @@
+import { durableGet, durableSet } from "./durable";
+
 const DEVICE_ID_KEY = "device_id";
 
 function getToken(): string {
@@ -13,12 +15,18 @@ function getAdminToken(): string {
 // Generated once on first launch and reused unchanged on every request after.
 // A user clearing it just looks like a new device (one of several backend
 // signals alongside UA + IP), so resets are acceptable.
+//
+// Row 111 (30 Sept): kept in more than one store. It never rotated by itself,
+// but it shared a store with the last known push endpoint, so clearing that
+// store reminted both at once — which is precisely "device_id rotates with
+// the endpoint" as the backend measured it. See lib/durable for what this
+// does and does not survive.
 export function getDeviceId(): string {
   if (typeof window === "undefined") return "";
-  let id = localStorage.getItem(DEVICE_ID_KEY);
+  let id = durableGet(DEVICE_ID_KEY);
   if (!id) {
     id = crypto.randomUUID();
-    localStorage.setItem(DEVICE_ID_KEY, id);
+    durableSet(DEVICE_ID_KEY, id);
   }
   return id;
 }
