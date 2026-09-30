@@ -112,9 +112,17 @@ const L = {
   },
 };
 
-type Step = "phone" | "otp" | "referral" | "name";
+// Row 319: "loginInvite" is the existing-account twin of "referral". Same
+// question, different moment and a different call behind it, which is why it
+// is its own step: the referral step routes a NEW registration, this one
+// completes a login that the server refused for want of an invite.
+type Step = "phone" | "otp" | "referral" | "name" | "loginInvite";
 
-type PostError = Error & { retryAfter?: number };
+// Row 319 (30 Sept): the server's `reason` has to survive the throw. Without
+// it every 400 looks the same to the caller, and "you need an invite" would be
+// shown as "invalid code" — the one message that tells somebody to fix the
+// thing that is not broken.
+type PostError = Error & { retryAfter?: number; reason?: string };
 
 type Eligibility = {
   eligible: boolean;
@@ -276,7 +284,12 @@ export default function LoginPage() {
       throw err;
     }
     if (!res.ok || json.success === false) {
-      throw new Error(json.error ?? json.message ?? `Request failed with status ${res.status}`);
+      const err = new Error(
+        json.error ?? json.message ?? `Request failed with status ${res.status}`
+      ) as PostError;
+      const reason = (json as { reason?: unknown }).reason;
+      if (typeof reason === "string" && reason) err.reason = reason;
+      throw err;
     }
     return (json.data ?? json) as T;
   }
@@ -352,10 +365,29 @@ export default function LoginPage() {
       // eligibility call failed (OTP codes are single-use).
       if (!otpPassedRef.current) {
         await post("/auth/verify-otp", { phone, code: otp, actionType: "AUTH" });
-        const res = await post<{ token: string; isNewUser: boolean }>(
-          "/auth/complete-login",
-          { phone }
-        );
+        // Row 319: an old Ally number that opened a member's /join link is an
+        // EXISTING account, so it never reaches the registration path where
+        // the code was being sent. The link's code has to travel here too, or
+        // the person is refused while holding a valid invitation.
+        let res: { token: string; isNewUser: boolean };
+        try {
+          res = await post<{ token: string; isNewUser: boolean }>(
+            "/auth/complete-login",
+            loginBody()
+          );
+        } catch (loginErr) {
+          if ((loginErr as PostError)?.reason === "invitation_required") {
+            // The verification is NOT spent on this refusal, so the code can
+            // be entered and the same call retried inside its ten minutes.
+            // No new SMS, which is the whole point: a second code would look
+            // like the first one failed.
+            setReferralError("");
+            setStep("loginInvite");
+            setLoading(false);
+            return;
+          }
+          throw loginErr;
+        }
         if (!res.isNewUser) {
           saveToken(res.token);
           redirectTo("/chat");
@@ -374,6 +406,48 @@ export default function LoginPage() {
       setLoading(false);
     } catch (err) {
       handleError(err, s.invalidCode);
+      setLoading(false);
+    }
+  }
+
+  // Row 319. The value the person holds, wherever it came from: a referral the
+  // gate already confirmed, then what is typed, then the code the invite link
+  // carried. Same order and same both-params convention as registration, so
+  // the two paths cannot disagree about what an invite is.
+  function loginBody(): { phone: string; referralPhone?: string; referralCode?: string } {
+    const referral =
+      confirmedReferralRef.current ?? (referralInput.trim() || urlRefRef.current || null);
+    if (!referral) return { phone };
+    return { phone, referralPhone: referral, referralCode: referral };
+  }
+
+  // Row 319. Retrying the refused login with the code now in hand. This is
+  // complete-login again and not registration: the account already exists.
+  async function handleLoginInviteSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setReferralError("");
+    setError("");
+    setLoading(true);
+    try {
+      const res = await post<{ token: string; isNewUser: boolean }>(
+        "/auth/complete-login",
+        loginBody()
+      );
+      saveToken(res.token);
+      redirectTo("/chat");
+    } catch (err) {
+      const ee = err as PostError;
+      if (ee?.retryAfter) {
+        startRateLimit(ee.retryAfter);
+        setReferralError(ee.message);
+      } else if (ee?.reason === "invitation_required") {
+        // Same refusal again: the code did not satisfy the gate. Say that,
+        // rather than repeating the sentence that asked for one, which reads
+        // as though nothing was submitted.
+        setReferralError(s.referralNotFound);
+      } else {
+        setReferralError(ee instanceof Error ? ee.message : s.genericError);
+      }
       setLoading(false);
     }
   }
@@ -571,6 +645,38 @@ export default function LoginPage() {
 
             {step === "referral" && (
               <form onSubmit={handleReferralSubmit} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1">
+                  <p style={{ font: "500 17px/24px var(--font-bricolage)", color: "var(--ink)" }}>{s.inviteOnly}</p>
+                  <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.inviteOnlyBody}</p>
+                </div>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={referralInput}
+                  onChange={(e) => { setReferralInput(e.target.value); setReferralError(""); }}
+                  placeholder={s.referralPlaceholder}
+                  className="input-pill"
+                />
+                {referralError && (
+                  <p className="text-sm" style={{ color: "var(--danger)" }}>{referralError}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading || !referralInput.trim() || rateLimited}
+                  className="btn-primary h-12"
+                >
+                  {loading ? <Spinner /> : rateLimited ? s.wait(rlSecs) : s.continueBtn}
+                </button>
+              </form>
+            )}
+
+            {/* Row 319. Same question as the referral step and deliberately the
+                same words, because to the person it IS the same question: they
+                are being asked for an invite. What differs is invisible to them
+                and belongs in the code, not on the screen. */}
+            {step === "loginInvite" && (
+              <form onSubmit={handleLoginInviteSubmit} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                   <p style={{ font: "500 17px/24px var(--font-bricolage)", color: "var(--ink)" }}>{s.inviteOnly}</p>
                   <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.inviteOnlyBody}</p>
