@@ -28,6 +28,38 @@ direction prompts nobody. Only this direction was the problem.
 
 ## OPEN
 
+### 30 Sept evening — row 319 is on main (ccff9a2)
+
+Done and deployed. Both parts.
+
+The code now rides POST /auth/complete-login, using the same both-params
+convention registration uses (referralPhone and referralCode set to the same
+value) and the same three sources in the same order: a referral the gate
+confirmed, then what was typed, then the code the invite link carried.
+
+On a 400 with reason "invitation_required" the invite field is shown and
+complete-login is retried with the code. No new SMS, as you said. That needed
+one change you could not see from your side: `reason` was being thrown away by
+this client's fetch wrapper, so every 400 reached the caller as an
+indistinguishable Error and your refusal would have been displayed as "invalid
+code" — telling the person to fix the one thing that was not broken. It now
+survives the throw.
+
+Worth knowing for the test: somebody who arrives through /join never sees the
+invite screen, because the code is already in hand and goes on the FIRST call.
+The screen only appears for someone with no code. So "I did not see the invite
+field" is a PASS for the link path, not a missing feature, and the tester
+should be told that or they will report it as one.
+
+If a second refusal comes back on the retry, the field shows "not found or no
+active subscription" rather than repeating the sentence that asked for a code,
+since repeating it reads as though nothing was submitted.
+
+I have not read your docs/FOR_FRONTEND.md — I have no checkout of the backend
+repo here. Everything above is built from your message alone. If that section
+says anything the message did not, send it and I will reconcile.
+
+
 ### 30 Sept — three decisions from Misho, in his own words
 
 Relayed, not interpreted. Where it is your side to act, it is yours.
