@@ -67,32 +67,53 @@ place to guess. Please send:
 With those three I will draft the Georgian and English copy and put it to Misho
 for approval before it ships, since the wording is his call.
 
-### 30 Sept — two things needed for rows already shipped
+### 30 Sept — 282 is NOT fixed, and your contract is what shows it
 
-Everything from your list of 30 Sept is on `main` at `f054d1d` and deployed.
-Two rows are half-done and both halves waiting are yours.
+Thank you for the exact body. It is now read with those names only; the
+snake_case fallbacks are gone, because a reader that tolerates names you do not
+send cannot tell a contract change from a normal response.
 
-**282 — one real `/billing/tokens` body, or the exact field spellings.**
-The client no longer casts the response; it reads the fields, and a field it
-cannot find stays null so no screen shows a zero it was never told. But I
-accept both camelCase and snake_case precisely BECAUSE I cannot see which you
-send, so I still cannot answer the question you asked: which field the badge
-reads. One real body settles it. If a wrong number is still reported after
-this, it is yours, and I will send the account id as you offered.
+But the contract also means I have to withdraw what I told you at 09:15. I
+said the cast was the cause. It was not. The old cast already expected
+`grantedThisPeriod` and `spentThisPeriod` in camelCase — exactly what you send
+— so nothing was arriving as undefined and no field name was wrong. The cast
+was a real latent defect and it is right that it is gone, but it was not this
+symptom, and I should not have implied it was without your body in hand.
 
-**306 — an explanation beside each choice.**
-The four intro-request buttons now state their effect, including which of the
-two yes buttons passes a phone number on. The buttons under an assistant reply
-cannot be done here: they arrive as bare strings in `choices`, so nothing in
-the client knows that "Send and remember" writes a standing rule. Matching on
-label text would be a guess across four languages, and a guess about a standing
-permission is worse than silence. A parallel array or a note field on each
-choice, whichever is cheaper, and I will render it the same day.
+So what showed 0 to somebody who had tokens? Your definition answers it:
+`balance` is SUM(token_transactions.amount), and the badge renders `balance`.
+A person with `grantedThisPeriod: 120` who has spent 120 has `balance: 0`.
+The badge says 0 and is correct. They look at the same screen, see that 120
+were granted this month, and conclude they have tokens. Two numbers answering
+two different questions, and nothing on the badge saying which one it is.
 
-Also still true and not actionable by me: whether row 111 worked is your
-measurement, not mine. If new endpoints keep arriving under new device_ids at
-the same rate, the remaining cause is reinstalls and storage eviction, and no
-client change will reach it.
+That is the same shape we have both hit repeatedly this week, and it means 282
+is a wording problem, not a parsing one. Please check the reporting account and
+tell me: at the moment it showed 0, what were `balance` and `grantedThisPeriod`?
+
+- balance ≤ 0 with grant spent → the badge was right and the screen was
+  unreadable. Mine to fix, and I will, with wording rather than arithmetic.
+- balance > 0 while the badge said 0 → something else is wrong and I have not
+  found it. Send the account id.
+
+Until you answer that, please do not record 282 as closed. What shipped stops
+a zero being invented from a missing field. It does not prove this zero was.
+
+### 30 Sept — 306, yes, and narrower than you offered
+
+"Send and remember" being withdrawn at the source is better than explaining it,
+and it closes the part I could not do. I will watch for it on builds after
+61bc97a and send you a thread id if the model still offers it.
+
+On the per-choice explanation: yes, I want it, but not on every choice, and I
+do not think you should add a field to every payload. Most labels say enough.
+Populate it only where pressing the button does something the label does not
+admit — something irreversible, something that spends, or something that acts
+in the owner's name. Plan approval is the one I would insist on: approving is
+what sends messages to real people as the owner, and the label does not say so.
+"Solved / not yet / stop" needs nothing. An optional field, usually absent, is
+cheaper for you than a mandatory one and it keeps the notes meaningful: a line
+under every button teaches people to stop reading them.
 
 ### 30 Sept — for the tester, when you next post to the box
 

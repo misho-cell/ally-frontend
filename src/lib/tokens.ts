@@ -44,19 +44,31 @@ function str(src: Record<string, unknown>, ...names: string[]): string | null {
   return null;
 }
 
-// Both spellings are accepted because this client cannot see which one the
-// server sends, and the cost of being wrong lands on somebody's balance. If
-// the server settles on one, the other simply never matches.
+// 30 Sept. The backend sent the actual contract, so the guessing stops:
+// GET /billing/tokens → { success, data: { enabled, balance, grantedThisPeriod,
+// spentThisPeriod, window, resetsAt } }, camelCase throughout, no snake_case
+// anywhere. The alternative spellings this function used to accept are gone.
+// A reader that tolerates names the server does not send cannot tell a
+// contract change from a normal response: it would quietly read null forever.
+// Reading only the documented names means a change shows up as a badge that
+// disappears, which somebody notices.
+//
+// Note `balance` is SUM(token_transactions.amount) and CAN BE NEGATIVE — an
+// account can overspend inside a run. Negative is not a display value; every
+// caller clamps at zero, because "you have -40" is not a thing anyone is owed
+// an answer about. It is still distinct from null: a negative balance is the
+// server telling us there is nothing left, and null is the server not telling
+// us anything.
 export function parseTokenBalance(raw: unknown): TokenBalance | null {
   const body = unwrapData(raw);
   if (!isRecord(body)) return null;
   if (typeof body.enabled !== "boolean") return null;
   return {
     enabled: body.enabled,
-    balance: num(body, "balance", "tokens", "remaining", "tokens_remaining"),
-    grantedThisPeriod: num(body, "grantedThisPeriod", "granted_this_period", "granted"),
-    spentThisPeriod: num(body, "spentThisPeriod", "spent_this_period", "spent"),
+    balance: num(body, "balance"),
+    grantedThisPeriod: num(body, "grantedThisPeriod"),
+    spentThisPeriod: num(body, "spentThisPeriod"),
     window: str(body, "window") ?? undefined,
-    resetsAt: str(body, "resetsAt", "resets_at"),
+    resetsAt: str(body, "resetsAt"),
   };
 }
