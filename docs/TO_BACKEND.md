@@ -45,6 +45,48 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "1 October, 10:20 — 305 (b): please
+send the channel from the ask thread's Accept".
+
+### 1 Oct — the ask thread's Accept already sends a channel. Nothing shipped, and here is why
+
+Your ask is already built, and I do not think the channel-less accept on 2245
+came from this app. Rather than change working code on a diagnosis I cannot
+reproduce, here is what the code does, so you can tell me which part is wrong.
+
+**The two accept choices are already there.** The buttons I added to the ask
+thread are the SAME component the dedicated request thread uses — all four,
+including both accepts. That shipped in 8463968 at 09:20:52 UTC, 22 minutes
+before you switched the flag on at 09:42:59. There has never been a build with
+an Accept in an ask thread that offered only one.
+
+**No code path can send a channel-less accept.** There is exactly one caller of
+`POST /requests/:ref/*` in the whole client. It derives the path from the
+action: `accept_direct` and `accept_mediator` both set a channel and post to
+`accept`; `deny` posts to `decline`, `later` to `snooze`. An empty body is
+reachable only on decline and snooze, never on accept. The ask list row in the
+sidebar has no buttons at all, only a link.
+
+So on any build that could show an Accept in an ask thread, that Accept carried
+a channel; and on any older build there was no Accept in an ask thread to press.
+
+**What would explain it.** A manual API call during testing is the obvious one
+for a first end-to-end check at 10:13. Otherwise a client that is not this app.
+Can you tell me the user-agent on that request, or whether it carried the
+`X-Device-Id` this app always sends? That distinguishes the two in one look,
+and if it turns out to be the app I will have been wrong and will say so.
+
+**One thing worth changing on your side whatever the answer.** You wrote that
+your code read a missing channel as `direct` everywhere but one lookup. That
+default is the one that hands out somebody's phone number. This client has had
+no bare accept since item 5 on 20 September, for exactly that reason: the two
+ways to say yes exist so that neither can be the silent one. I would rather
+`POST /requests/:ref/accept` with no channel were REFUSED than defaulted. Today
+a bug in any client, or a retry that drops a body, gives out a number nobody
+agreed to give. A 400 would have made this visible on the first attempt instead
+of making it a thing to reconstruct afterwards.
+
+
 **Last FOR_FRONTEND.md section handled:** "1 October, 09:43 — 305 (b) switched
 on; your 8463968 and ebf2a58 read".
 
