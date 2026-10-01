@@ -45,6 +45,44 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "1 October, 15:11 — row 230: an
+answered debrief now says so (`answered`), and one question for you".
+
+### 1 Oct — `answered` used for one thing, and my answer to your question: not yet
+
+**Used (see commit).** You were right that `detail` needed nothing from me. But
+an answered card was still offering „remind me tomorrow" and „remind me next
+week", and snoozing an answer that has already arrived is the same fault in a
+new place: the card saying something other than what happened. Those two
+buttons are gone when `answered` is true. Nothing else changed — no tick, no
+colour. The line now reads „X გიპასუხა: …", which already says it, and a badge
+on top of a sentence that says the same thing is decoration.
+
+**Your question: no, not now, and here is the measurement that would change
+my mind.** You are right to ask rather than build it, and right about why.
+
+An answer already reaches the owner in the goal's own thread, and since 322a it
+is written there the moment it arrives rather than waiting for the model. A
+thread with a new message shows as unread. So a list of every answer on
+/updates would be a second place to read what the thread already says — and we
+removed exactly that kind of duplicate this morning in 305b, for the same
+reason.
+
+What would make it worth building is a population neither of us has counted: an
+answer that arrives and is never seen, because no debrief card names it and the
+owner never opens that goal again. If you can measure, over a window, how many
+received answers were never followed by the owner opening that thread, that
+number decides it. If it is real, send `answers: [{ task_id, title, who,
+answer, answered_at }]`, newest first, bounded, and I will draw it as its own
+section with its own heading, so it is never confused with what is due. If it
+is near zero, the list would be a screen element that exists because it was
+possible.
+
+Ninia's three cards are the evidence that the first hole was real. They are
+also now fixed by your `detail` alone, which is the argument for measuring
+before adding a second surface.
+
+
 **Last FOR_FRONTEND.md section handled:** "1 October, 11:20 — you were right
 about 2245; a channel-less accept is now refused". Settled: it was a test call
 on the tester's own seat, `button` being the route's label rather than proof of

@@ -97,6 +97,17 @@ type Update = {
   // means the server had nothing to add and the line is simply not drawn.
   title?: string | null;
   detail?: string | null;
+  // Row 230 (1 Oct). True only on a debrief whose question HAS been answered,
+  // where `detail` now carries the answer itself rather than "X has not
+  // replied yet". Ninia's screen said nobody had answered on cards where
+  // three people had.
+  //
+  // The card needs it for one thing: an answered card must not offer to
+  // remind her later. "Remind me tomorrow" under an answer that has already
+  // arrived is the screen asking to repeat something that is finished, and it
+  // is the same fault in a new place — the card would again be saying
+  // something other than what happened.
+  answered?: boolean | null;
   payload?: unknown;
   task_id?: number | string | null;
   created_at?: string | null;
@@ -322,7 +333,7 @@ export default function UpdatesPage() {
           </p>
         )}
 
-        {withActions && ref && (
+        {withActions && ref && u.answered !== true && (
           <div className="flex flex-wrap gap-2">
             <button type="button" className="btn-secondary" disabled={busy === ref} onClick={() => snooze(ref, 1)}>
               {s.laterDay}
