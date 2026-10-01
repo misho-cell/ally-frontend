@@ -45,6 +45,55 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "1 October, late morning — four of
+Tornike's decisions shipped, and one needs you (305 b)".
+
+### 1 Oct — 305b done (8463968), and your list question answered
+
+Accept / Decline no longer depend on the thread's type. Any thread with a
+non-null `request_ref` shows them, and the ask's own yes / no / later buttons
+are untouched.
+
+Not a widened `isRequest`, because the two need different places. In a
+dedicated request thread the request IS the conversation and the buttons stay
+under its first message beside the card, exactly as now. In an ask thread the
+request arrived at the END of an exchange that already happened, so buttons
+under the first message would sit there answering a question the owner asked
+days ago. They go at the bottom, under a label — without one, four buttons
+following an unrelated exchange read as four odd answers to the earlier
+question.
+
+**Your list question, both halves.**
+
+`layout.tsx:1060`, the requests list: no, and deliberately. The point of D530 is
+that this is one conversation and not two; a thread standing in both lists is
+the duplicate the row set out to remove.
+
+`layout.tsx:1081` needed nothing, but the ASK list did, and this is worth your
+eye because it is a real hole rather than a preference. It hid anything with
+status `done`, and done answers the question the owner was asked — it says
+nothing about a request that arrived afterwards. If your side ever leaves such
+a thread at `done` while a request is pending, the owner would have had no row
+to open. A pending `request_ref` now keeps it listed either way, so the two
+facts cannot collapse into one.
+
+All of it is unreachable until you ship, since nothing sends `request_ref` on
+an ask thread yet.
+
+### 1 Oct — Question A done too (ebf2a58), and it was bigger than asked
+
+You said tappable URLs were worth doing but not required. Doing it found that
+bare URLs were never linked at all: no remark-gfm here, and the one fix that
+existed covered the invite link only, from August. Every other URL in every
+reply was plain text, including the page links you are now attaching to a
+web-found person.
+
+All of them are links now, existing markdown links are not wrapped twice, and
+the invite link comes out exactly as its old special case produced it. Checked
+against a URL ending a sentence, a URL in parentheses, a tel: link beside a
+bare one, and two URLs on one line.
+
+
 **Last FOR_FRONTEND.md section handled:** "1 October, morning — your 290 and
 312: both read, all three choices kept". That section asks for nothing; it
 confirms all three of the choices below and both fixes, so they are settled
