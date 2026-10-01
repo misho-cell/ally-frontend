@@ -569,6 +569,46 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 break;
               }
 
+              // Row 312, last piece (1 Oct). A run narrates itself live as
+              // step_summary; when that narration turns out to BE the answer,
+              // the server promotes it to the final reply and deletes the
+              // stored step. The deletion fixes the stored history, but the
+              // live step was already on the screen, so the answer appeared
+              // twice — once as a step eleven seconds early, once as itself.
+              //
+              // step_retracted is the server taking that line back. It carries
+              // the same scrubbed text as the step_summary it cancels, so the
+              // step is matched on text within its own run.
+              case "step_retracted": {
+                const gone: string | undefined = data.text ?? data.message;
+                if (data.threadId != null && gone) {
+                  setThreadStates((prev) =>
+                    updateThreadState(prev, data.threadId, (ts) => {
+                      const runId = data.runId != null ? String(data.runId) : null;
+                      // The LAST match only. Two runs can narrate the same
+                      // sentence, and so can one run twice; a retraction
+                      // withdraws one line, not every line that reads alike.
+                      let hit = -1;
+                      for (let i = ts.messages.length - 1; i >= 0; i--) {
+                        const m = ts.messages[i];
+                        if (m.kind !== "step" || m.content !== gone) continue;
+                        if (runId != null && m.runId != null && String(m.runId) !== runId) continue;
+                        hit = i;
+                        break;
+                      }
+                      // The same sentence may also be the live "what she is
+                      // doing now" line. Withdrawing the step and leaving that
+                      // standing would keep the retracted text on screen by
+                      // another route.
+                      const progress = ts.progress === gone ? null : ts.progress;
+                      if (hit < 0) return progress === ts.progress ? ts : { ...ts, progress };
+                      return { ...ts, progress, messages: ts.messages.filter((_, i) => i !== hit) };
+                    })
+                  );
+                }
+                break;
+              }
+
               case "run_complete":
                 if (data.threadId != null) {
                   const tKey = String(data.threadId);
