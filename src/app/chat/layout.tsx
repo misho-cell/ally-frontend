@@ -1073,7 +1073,18 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // regardless of status — a thread the assistant had already answered
   // (status: "done") stayed here forever with an "unanswered" badge, out of
   // sync with the API's own status field. done means it no longer needs you.
-  const asks = threads.filter((th) => th.type === "incoming_ask" && th.status !== "done" && matches(th));
+  // Row 305b (1 Oct): an ask thread can now carry a pending introduction
+  // request. "Done" answers the question the owner asked; it says nothing
+  // about a request that arrived afterwards, so a pending request_ref keeps
+  // the row here. Otherwise answering the old question would hide the thread
+  // that is waiting on a decision about somebody's introduction.
+  //
+  // It is NOT added to the requests list above. The whole point of D530 is
+  // that this is one conversation and not two, and a thread standing in both
+  // lists is exactly the duplicate the row set out to remove.
+  const asks = threads.filter(
+    (th) => th.type === "incoming_ask" && (th.status !== "done" || th.request_ref != null) && matches(th)
+  );
 
   const goalThreads: { thread: Thread; status: TaskStatus }[] = [];
   const legacyThreads: Thread[] = [];

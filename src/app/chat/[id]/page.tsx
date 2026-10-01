@@ -397,6 +397,19 @@ export default function ThreadPage() {
   const thread = threads.find((th) => String(th.id) === threadId);
   const { initial: userInitial } = useUserName();
   const isRequest = thread?.type === "incoming_request";
+  // Row 305b (1 Oct, D530). A request for an introduction now continues the
+  // conversation the owner already had with that person instead of opening a
+  // thread of its own, so Accept / Decline can no longer be gated on the
+  // thread's TYPE: an `incoming_ask` thread can carry a pending request too.
+  // What decides is `request_ref`, which is what the buttons post to anyway.
+  //
+  // It is a separate flag rather than a widened `isRequest` because the two
+  // need different places on the screen. In a dedicated request thread the
+  // request IS the conversation, so the buttons sit under its first message
+  // beside the card. In an ask thread the request arrived at the END of an
+  // existing exchange, and buttons under the first message would answer a
+  // question the person asked days ago.
+  const carriesRequest = thread?.request_ref != null && !isRequest;
   const taskStatus: TaskStatus | null = thread ? taskStatusOf(thread, st) : null;
 
   const tokensEnabled = tokens?.enabled === true;
@@ -1801,6 +1814,19 @@ export default function ThreadPage() {
                   keyPrefix="thread"
                   onPick={(choice) => sendMessage(choice)}
                 />
+              </div>
+            )}
+
+            {/* Row 305b: a request that arrived inside an existing ask thread.
+                It belongs at the bottom, where the request actually is, and it
+                is labelled because the sentences above it are a different
+                conversation: without the label this reads as four odd answers
+                to the question the owner asked earlier. The ask's own yes / no
+                / later buttons are untouched and keep their place. */}
+            {carriesRequest && !reqResolved && (
+              <div style={{ marginLeft: "36px" }} className="flex flex-col gap-2">
+                <div className="rc-label">{t("introRequestLabel")}</div>
+                <RequestActions onResolve={(a) => resolveRequest(threadId, a)} />
               </div>
             )}
 
