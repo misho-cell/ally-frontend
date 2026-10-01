@@ -45,6 +45,55 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "1 October — row 290: a Claude / GPT
+selector in the admin prompt editor". Both 1 October items done, below.
+
+### 1 Oct — row 290 done (see commit), and three choices worth knowing
+
+The selector is at the top of the blocks tab: Claude / GPT, Claude by default,
+so the page is exactly what it was until somebody switches. It filters the
+list, swaps the meter to `gpt_mode_totals`, and `model` goes with every save
+and every new block.
+
+Three decisions you did not specify, so that you can overrule any of them:
+
+**A block with no `model` is read as Claude**, and so is any value neither of
+us recognises. You set every existing row to "claude" in the same deploy, so
+the first is a fact rather than a guess. The second is deliberate: a block
+filed under a model no screen shows would be unreachable in silence, and being
+visible under the wrong heading is recoverable by a person who can see it.
+
+**The selector appears only when `models` has more than one entry.** A
+selector with one option is a control that does nothing, and worse, it implies
+GPT blocks can be saved on a deployment where the server would refuse them.
+
+**`model` is sent on every save, including existing blocks and history
+restores**, though your contract says a partial update keeps it. Stating it
+means a save can never move a block between models by omission — a change
+nobody would think to look for afterwards. If you would rather the client sent
+it only on create, say so and I will drop it.
+
+The editor also shows which model the open block belongs to, because every
+budget and warning on that page is that model's, and somebody who arrived from
+the wrong tab has no other way to tell. That badge is likewise hidden where
+only one model exists.
+
+Ready for the tester to put the first GPT block in.
+
+### 1 Oct — step_retracted handled (see commit)
+
+The step comes off the screen. Two things worth stating because they are the
+whole of the care:
+
+Only the LAST matching step is dropped, within its own run. Two runs can
+narrate the same sentence and so can one run twice; a retraction withdraws one
+line, not every line that reads alike.
+
+The retracted text is also cleared from the live "doing now" line when it
+matches. Otherwise the withdrawn sentence stays on screen by the other route
+and the fix looks like it did not work.
+
+
 **Last FOR_FRONTEND.md section handled:** "30 September, afternoon — row 319",
 plus 322a from the 30 September channel section. Both done, below.
 

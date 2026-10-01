@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
-import { unwrap, fmtN, type PromptBlock } from "../shared";
+import { unwrap, fmtN, type PromptBlock, asModel, MODEL_LABELS, type PromptModel } from "../shared";
 
 const NAME_RE = /^[a-z0-9_]{2,40}$/;
 // Fallback only — the live limit comes from GET /admin/prompt-blocks
@@ -12,10 +12,15 @@ const NAME_RE = /^[a-z0-9_]{2,40}$/;
 // block when the backend budget moved to 30,000 (22 Aug).
 const FALLBACK_BLOCK_LIMIT = 20000;
 
+type ModeTotal = { mode: string; enabled_chars: number; budget_chars: number };
+
 type ListData = {
   blocks: PromptBlock[];
   modes: string[];
-  mode_totals?: { mode: string; enabled_chars: number; budget_chars: number }[];
+  mode_totals?: ModeTotal[];
+  // Row 290: each model keeps its own budget per mode.
+  models?: string[];
+  gpt_mode_totals?: ModeTotal[];
 };
 
 type HistoryEntry = {
@@ -60,6 +65,15 @@ export default function PromptBlockEditorPage() {
   const [content, setContent] = useState("");
   const [blockModes, setBlockModes] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState("100");
+  // Row 290. Which model this block belongs to. For an existing block it is
+  // the block's own; for a new one it comes from the selector the person was
+  // looking at, read from the query rather than guessed, so that pressing
+  // "new block" on the GPT tab does not quietly create a Claude block.
+  //
+  // Read from location rather than useSearchParams to keep this page out of
+  // the Suspense requirement that hook carries; it is wanted once, on load.
+  const [model, setModel] = useState<PromptModel>("claude");
+  const [hasGpt, setHasGpt] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [userIds, setUserIds] = useState("");
 
@@ -77,8 +91,15 @@ export default function PromptBlockEditorPage() {
       const res = await apiFetch<unknown>("/admin/prompt-blocks", { admin: true });
       const data = unwrap<ListData>(res);
       setModes(data.modes ?? []);
-      setModeTotals(data.mode_totals ?? []);
-      const budgets = (data.mode_totals ?? [])
+      setHasGpt((data.models?.length ?? 0) > 1);
+      const mine: PromptModel = isNew
+        ? asModel(new URLSearchParams(window.location.search).get("model"))
+        : asModel(data.blocks.find((x) => x.name === rawName)?.model);
+      setModel(mine);
+      // The meter has to be the one this block is measured against, or the
+      // editor shows a ceiling the save will not be judged by.
+      setModeTotals((mine === "gpt" ? data.gpt_mode_totals : data.mode_totals) ?? []);
+      const budgets = ((mine === "gpt" ? data.gpt_mode_totals : data.mode_totals) ?? [])
         .map((mt) => mt.budget_chars)
         .filter((n) => Number.isFinite(n) && n > 0);
       if (budgets.length > 0) setBlockLimit(Math.max(...budgets));
@@ -155,6 +176,12 @@ export default function PromptBlockEditorPage() {
           sort_order: parseInt(sortOrder, 10) || 0,
           enabled,
           enabled_for_user_ids: ids,
+          // Sent always, not only when new. A partial update keeps the
+          // block's model, so this is not required — but stating it means the
+          // save cannot be the thing that moves a block between models by
+          // omission, which is the kind of change nobody would think to look
+          // for afterwards.
+          model,
         },
         admin: true,
       });
@@ -197,6 +224,10 @@ export default function PromptBlockEditorPage() {
       await apiFetch<unknown>(`/admin/prompt-blocks/${rawName}`, {
         method: "PUT",
         body: {
+          // Restoring an older version restores its text, not its model: the
+          // history entry predates row 290 and would otherwise carry a block
+          // back to Claude by accident.
+          model,
           content: entry.content,
           modes: entry.modes,
           sort_order: entry.sort_order,
@@ -242,6 +273,15 @@ export default function PromptBlockEditorPage() {
         <div className="flex items-center gap-3">
           <Link href="/admin/prompt-blocks" className="text-sm text-gray-500 hover:text-gray-700">← ბლოკები</Link>
           <h1 className="font-mono text-lg font-bold text-[#23261F]">{isNew ? "ახალი ბლოკი" : rawName}</h1>
+          {/* Row 290: which model this block is for, stated rather than
+              implied. Every budget and every warning on this page is that
+              model's, and a person who got here from the wrong tab has no
+              other way to notice. Shown only where a second model exists. */}
+          {hasGpt && (
+            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
+              {MODEL_LABELS[model]}
+            </span>
+          )}
         </div>
         {!isNew && (
           <div className="flex gap-1 rounded-xl bg-gray-100 p-1">

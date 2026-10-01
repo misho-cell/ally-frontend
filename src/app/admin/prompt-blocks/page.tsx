@@ -4,12 +4,19 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { unwrap, fmtN, fmtDate, type PromptBlock } from "./shared";
+import { unwrap, fmtN, fmtDate, asModel, MODEL_LABELS, type PromptBlock, type PromptModel } from "./shared";
+
+type ModeTotal = { mode: string; enabled_chars: number; budget_chars: number };
 
 type ListData = {
   blocks: PromptBlock[];
   modes: string[];
-  mode_totals: { mode: string; enabled_chars: number; budget_chars: number }[];
+  mode_totals: ModeTotal[];
+  // Row 290: GPT's blocks have their own budget per mode. Optional because a
+  // deployment older than this note sends neither, and then the selector has
+  // nothing to switch to.
+  models?: string[];
+  gpt_mode_totals?: ModeTotal[];
 };
 
 type PreviewData = {
@@ -35,6 +42,10 @@ type Tab = "blocks" | "preview" | "runs";
 
 export default function PromptBlocksPage() {
   const [tab, setTab] = useState<Tab>("blocks");
+  // Row 290: Claude by default, so the page is exactly what it was until
+  // somebody switches. The selector is the only thing that changes which
+  // blocks and which meter are on screen.
+  const [model, setModel] = useState<PromptModel>("claude");
   const [data, setData] = useState<ListData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +94,10 @@ export default function PromptBlocksPage() {
     }
   }
 
+  // A block with no model is Claude's: every row that predates row 290 was
+  // set to "claude" server-side in the same deploy.
+  const shown = (data?.blocks ?? []).filter((b) => asModel(b.model) === model);
+
   return (
     <div className="min-h-full bg-gray-50">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
@@ -93,7 +108,7 @@ export default function PromptBlocksPage() {
           </a>
           {tab === "blocks" && (
             <Link
-              href="/admin/prompt-blocks/new"
+              href={`/admin/prompt-blocks/new?model=${model}`}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#23261F] text-white text-sm hover:opacity-80 transition"
             >
               + ახალი ბლოკი
@@ -132,8 +147,29 @@ export default function PromptBlocksPage() {
             </div>
           ) : data ? (
             <>
+              {/* Row 290. Shown only when this deployment actually offers a
+                  second model: a selector with one option is a control that
+                  does nothing, and it would suggest GPT blocks exist to save
+                  where the server would refuse them. */}
+              {(data.models?.length ?? 0) > 1 && (
+                <div className="flex gap-1 rounded-xl bg-gray-100 p-1 self-start">
+                  {(["claude", "gpt"] as PromptModel[]).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setModel(m)}
+                      className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${
+                        model === m ? "bg-white text-[#23261F] shadow-sm" : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {MODEL_LABELS[m]}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {data.mode_totals.map((mt) => {
+                {(model === "gpt" ? data.gpt_mode_totals ?? [] : data.mode_totals).map((mt) => {
                   const pct = mt.budget_chars > 0 ? mt.enabled_chars / mt.budget_chars : 0;
                   const warn = pct >= 0.9;
                   return (
@@ -156,10 +192,12 @@ export default function PromptBlocksPage() {
               </section>
 
               <section className="flex flex-col gap-3">
-                {data.blocks.length === 0 && (
-                  <p className="text-sm text-gray-400">ბლოკები ჯერ არ არის.</p>
+                {shown.length === 0 && (
+                  <p className="text-sm text-gray-400">
+                    {model === "gpt" ? "GPT-ს ბლოკი ჯერ არ აქვს." : "ბლოკები ჯერ არ არის."}
+                  </p>
                 )}
-                {data.blocks.map((b) => (
+                {shown.map((b) => (
                   <div key={b.name} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                     <div className="flex flex-wrap items-center gap-3">
                       <Link
