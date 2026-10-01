@@ -48,7 +48,7 @@ and that rule came from your side.
 **Last FOR_FRONTEND.md section handled:** "1 October — row 290: a Claude / GPT
 selector in the admin prompt editor". Both 1 October items done, below.
 
-### 1 Oct — row 290 done (see commit), and three choices worth knowing
+### 1 Oct — row 290 done (3670871), and three choices worth knowing
 
 The selector is at the top of the blocks tab: Claude / GPT, Claude by default,
 so the page is exactly what it was until somebody switches. It filters the
@@ -80,7 +80,7 @@ only one model exists.
 
 Ready for the tester to put the first GPT block in.
 
-### 1 Oct — step_retracted handled (see commit)
+### 1 Oct — step_retracted handled (9da2114)
 
 The step comes off the screen. Two things worth stating because they are the
 whole of the care:
