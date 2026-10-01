@@ -49,16 +49,35 @@ const CHROME: Record<ThreadLang, { steps: string; spent: string; share: string }
 // T3 (26 Aug): get_invite_link drops a plain /join?ref=CODE URL into the
 // assistant's reply text. Detect it so we can offer a native share-sheet
 // button instead of leaving the user to copy the raw link by hand.
-const INVITE_LINK_RE = /https?:\/\/[^\s)]*\/join\?ref=[A-Za-z0-9_-]+/;
+// F3 (27 Aug): bare URLs are not auto-linked, because there is no remark-gfm.
+// That was first noticed on the invite link and fixed for the invite link
+// alone, which answered the smaller question: EVERY bare URL in a reply was
+// plain text, and the one we happened to be looking at was the only one
+// anybody could tap.
+//
+// 1 Oct, the backend's Question A: a person found on the web now arrives with
+// a link to the page they were found on, in the reply text. A source nobody
+// can open is a source nobody can check, which is most of what it was for.
+//
+// Markdown links already in the text are left alone — linkifyPhones has
+// usually just written some — so a URL is never wrapped twice.
+const MD_LINK_RE = /\[[^\]]*\]\([^)]*\)/g;
+const BARE_URL_RE = /https?:\/\/[^\s<>()[\]]+[^\s<>()[\].,;:!?'"]/g;
 
-function extractInviteLink(text: string): string | null {
-  return text.match(INVITE_LINK_RE)?.[0] ?? null;
+function wrapBareUrls(chunk: string): string {
+  return chunk.replace(BARE_URL_RE, (url) => `[${url}](${url})`);
 }
 
-// F3 (27 Aug): bare URLs aren't auto-linked (no remark-gfm) — wrap the invite
-// link in markdown link syntax like linkifyPhones already does for numbers.
-function linkifyInviteLink(text: string): string {
-  return text.replace(INVITE_LINK_RE, (url) => `[${url}](${url})`);
+function linkifyUrls(text: string): string {
+  const out: string[] = [];
+  let last = 0;
+  for (const m of text.matchAll(MD_LINK_RE)) {
+    const at = m.index ?? 0;
+    out.push(wrapBareUrls(text.slice(last, at)), m[0]);
+    last = at + m[0].length;
+  }
+  out.push(wrapBareUrls(text.slice(last)));
+  return out.join("");
 }
 
 // F2 (27 Aug): issued (assistant handed out the link) vs sent (the user
@@ -147,7 +166,7 @@ function fmtMsgClock(iso?: string | number | null): string {
 // Assistant markdown pipeline: tappable phone links + single-\n preservation
 // (task 22 j — markdown swallows lone newlines otherwise).
 function mdSource(text: string): string {
-  return preserveLineBreaks(linkifyInviteLink(linkifyPhones(text)));
+  return preserveLineBreaks(linkifyUrls(linkifyPhones(text)));
 }
 
 function renderStepText(text: string): React.ReactNode {
