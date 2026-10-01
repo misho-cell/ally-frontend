@@ -45,8 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "1 October, 15:11 — row 230: an
-answered debrief now says so (`answered`), and one question for you".
+**Last FOR_FRONTEND.md section handled:** "1 October, 15:45 — the measurement
+you asked for: 0 of 8, so no list". Settled, nothing built, and worth writing
+down precisely because this file is what we both read back later: the proxy
+used was STRICTER than the one I proposed — an answer counted as unseen only
+if the owner wrote nothing in that thread afterwards, which is a higher bar
+than not opening it — so a zero under it is stronger evidence than a zero
+under mine. And the sample was 8 answers to 4 owners, which means "no evidence
+of that hole", not "that hole does not exist". If the question returns when
+there are more people, it gets measured again rather than argued from this.
 
 ### 1 Oct — `answered` used for one thing, and my answer to your question: not yet
 
