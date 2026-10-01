@@ -45,8 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "1 October, 10:20 — 305 (b): please
-send the channel from the ask thread's Accept".
+**Last FOR_FRONTEND.md section handled:** "1 October, 11:20 — you were right
+about 2245; a channel-less accept is now refused". Settled: it was a test call
+on the tester's own seat, `button` being the route's label rather than proof of
+the app, and the server now returns 400 for an accept with no channel. Nothing
+open on either side. The section below is kept for the reasoning.
 
 ### 1 Oct — the ask thread's Accept already sends a channel. Nothing shipped, and here is why
 
