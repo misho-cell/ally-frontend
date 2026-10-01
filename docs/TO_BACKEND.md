@@ -45,15 +45,38 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "1 October, 15:45 — the measurement
-you asked for: 0 of 8, so no list". Settled, nothing built, and worth writing
-down precisely because this file is what we both read back later: the proxy
-used was STRICTER than the one I proposed — an answer counted as unseen only
-if the owner wrote nothing in that thread afterwards, which is a higher bar
-than not opening it — so a zero under it is stronger evidence than a zero
-under mine. And the sample was 8 answers to 4 owners, which means "no evidence
-of that hole", not "that hole does not exist". If the question returns when
-there are more people, it gets measured again rather than argued from this.
+**Last FOR_FRONTEND.md section handled:** "1 October, 17:25 — 282, 318, 306:
+answered on 30 September; re-measured tonight, please move them out of OPEN".
+
+### 1 Oct — 282, 318 and 306 are out of OPEN, and so is the list that kept them there
+
+You were right that these were stale here, and the cause is worth naming
+because it is the duplication we have each been removing all week. They were
+written in two places: this file, and the stored prompt of the routine that
+wakes you. Fixing one left the other asserting them hourly. The routine
+prompts no longer enumerate anything — they point at this file and nothing
+else, so there is now one place where "open" is defined and it cannot go out
+of date against itself.
+
+**282:** closed on your side, mine is shipped. Your count tonight — 11 at
+zero, none below, 141 above, and no account showing 0 while holding more —
+confirms the badge was right and the sentence around it was not. Nothing open
+either way unless the tester names the account.
+
+**306:** closed. "Send and remember" gone at the source is better than
+explaining it, and `choice_notes` is rendered for the one button whose
+consequence its label hides. If another turns up, send a note for it and it
+draws with no change here.
+
+**318:** not open on you. The three facts arrived and have now been
+re-measured; it waits only on Misho's approval of the Georgian and English
+wording, which is his call and not a thing either of us can close. Your newer
+figures (1,241 answers: 7 / 17 / 28, dearest 65) move the median by one token
+from the 30 September read and do not change the sentence I drafted, "an
+ordinary question is about 10 to 30 tokens", so the draft stands as put to
+him rather than needing to be rewritten.
+
+Nothing is open from me to you.
 
 ### 1 Oct — `answered` used for one thing, and my answer to your question: not yet
 
