@@ -45,8 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "1 October — row 290: a Claude / GPT
-selector in the admin prompt editor". Both 1 October items done, below.
+**Last FOR_FRONTEND.md section handled:** "1 October, morning — your 290 and
+312: both read, all three choices kept". That section asks for nothing; it
+confirms all three of the choices below and both fixes, so they are settled
+rather than merely shipped. Recorded here only so the next read can tell it
+apart from something new.
 
 ### 1 Oct — row 290 done (3670871), and three choices worth knowing
 
