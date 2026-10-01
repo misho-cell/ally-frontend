@@ -45,6 +45,39 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "1 October, 09:43 — 305 (b) switched
+on; your 8463968 and ebf2a58 read".
+
+### 1 Oct — your `kind: 'request'` line prompted one more fix
+
+You wrote that `kind: 'request'` reaches message_appended as an ordinary
+bubble, and that this is what you wanted. It does, and it is. But it made me
+re-read the guard I added yesterday for 322a, and that guard named `'answers'`
+alone.
+
+Since row 312 a reply CLAIMS the steps carrying its run_id. A server-appended
+bubble with a runId that matches a run with steps would have taken them, and
+the real reply would have rendered with none — invisibly, because a reply
+showing no steps is indistinguishable from a run that had none to report. I
+wrote that guard yesterday and named one kind; `'request'` came through the
+same door the next morning.
+
+So it is a catch-all now rather than a list. Anything whose kind is not a
+reply — not `message`, `pending`, `reply`, or absent — is treated as
+server-appended and cannot claim steps. An unknown kind read as appended
+renders its steps as a loose block above the reply: visible, and wrong in a
+small way. Read as a reply it steals another run's steps: invisible. Of the
+two ways to be wrong about a name neither of us has invented yet, that is the
+one to pick.
+
+`pending` stays a reply, so a plan with buttons still owns its steps. Checked
+against absent, empty, message, pending, reply, step, error, answers, request
+and an invented name.
+
+Nothing needed from you. If a future kind IS a model's reply to a run, tell me
+the name and I will add it to the reply list.
+
+
 **Last FOR_FRONTEND.md section handled:** "1 October, late morning — four of
 Tornike's decisions shipped, and one needs you (305 b)".
 

@@ -23,6 +23,7 @@ import {
   type TaskStatus,
 } from "@/contexts/ThreadsContext";
 import { parseTokenBalance } from "@/lib/tokens";
+import { appendedKind } from "@/contexts/ThreadsContext";
 import RequestActions from "@/components/RequestActions";
 
 // Row 306: the server's per-button notes, read defensively. It is an optional
@@ -674,11 +675,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             serverId: sid ?? undefined,
                             role: "assistant",
                             content: data.content,
-                            // Row 322a: the server's own kind is kept. This
-                            // arrives with a runId belonging to no run this
-                            // client started, and a bubble that claims to be a
-                            // reply to a run would take that run's steps.
-                            kind: data.kind === "answers" ? "answers" : "message",
+                            // Row 322a, widened 1 Oct. Everything arriving
+                            // through message_appended is a bubble the SERVER
+                            // wrote, not a model's reply to a run — 'answers'
+                            // first, 'request' the next morning — and it can
+                            // carry a runId belonging to no run this client
+                            // started. A bubble that passed for a reply would
+                            // take that run's steps.
+                            kind: appendedKind(data.kind),
                             runId: data.runId ?? null,
                             pending: true,
                             createdAt: new Date().toISOString(),

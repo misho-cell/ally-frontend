@@ -206,11 +206,12 @@ function toBlocks(messages: ChatMessage[]): RenderBlock[] {
   // we meet them would emit them loose and then attach them again below.
   //
   // Row 322a: only a real reply may claim a run's steps. The server also
-  // appends "answers" bubbles carrying a runId that belongs to no run this
-  // client started, and if one of those were treated as a reply it would take
-  // the steps of whatever run shared that id and the real reply would show
-  // none — silently, since missing steps look exactly like a run that had
-  // none to report.
+  // appends bubbles of its own — the answers to a goal's asks, the opening
+  // line of a request (row 305b) — carrying a runId that belongs to no run
+  // this client started. Treated as a reply, one of those would take the
+  // steps of whatever run shared that id and the real reply would show none,
+  // silently, since missing steps look exactly like a run that had none to
+  // report. They all arrive as kind "appended" for this reason.
   const answered = new Set<string>();
   for (const m of messages) {
     if (m.kind !== "message" || m.role !== "assistant" || !m.runId) continue;

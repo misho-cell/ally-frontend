@@ -64,12 +64,25 @@ export type ChatMessage = {
   createdAt?: string;
   role: "user" | "assistant";
   content: string;
-  // Row 322a (30 Sept): "answers" is a real bubble the SERVER appends on its
-  // own — the replies to a goal's asks, written into the thread the moment
-  // they arrive rather than waiting for the model. It renders exactly like a
-  // message; it is named apart only because it carries a runId belonging to no
-  // run this client started, and so must never be mistaken for a reply to one.
-  kind: "message" | "step" | "error" | "answers";
+  // Row 322a (30 Sept), widened 1 Oct. "appended" is a bubble the SERVER wrote
+  // into the thread on its own rather than a model's reply to a run: the
+  // answers to a goal's asks (kind 'answers'), the opening line of a request
+  // that continues an existing conversation (kind 'request', row 305b), and
+  // whatever is named next.
+  //
+  // It renders exactly like a message. The distinction exists for one reason:
+  // such a bubble can carry a runId belonging to no run this client started,
+  // and since row 312 a reply CLAIMS the steps of its run. Mistaken for a
+  // reply, it would take those steps and the real reply would show none —
+  // silently, because a reply with no steps looks exactly like a run that had
+  // none to report.
+  //
+  // It is a catch-all rather than a list of known names on purpose. The first
+  // version named 'answers' alone, and 'request' arrived the next morning
+  // through the same door. An unknown kind treated as appended renders its
+  // steps as a loose block, which is visible and wrong in a small way; treated
+  // as a reply it steals another run's steps, which is invisible.
+  kind: "message" | "step" | "error" | "appended";
   runId: string | null;
   // Written locally (or over SSE), not yet seen in a server fetch. Pending items
   // survive a refetch so nothing the user just saw disappears.
@@ -142,6 +155,22 @@ export function updateThreadState(
   return { ...map, [key]: fn(cur) };
 }
 
+// The kinds that ARE a model's reply to a run, and so may own its steps.
+// Absent counts: the oldest rows carry no kind at all. "pending" is a reply
+// with buttons on the same row, so it belongs here too.
+const REPLY_KINDS = new Set(["message", "pending", "reply", ""]);
+
+export function appendedKind(raw: unknown): ChatMessage["kind"] {
+  return toKind(raw);
+}
+
+function toKind(raw: unknown): ChatMessage["kind"] {
+  if (raw === "step") return "step";
+  if (raw === "error") return "error";
+  if (raw == null) return "message";
+  return REPLY_KINDS.has(String(raw)) ? "message" : "appended";
+}
+
 export function toChatMessages(raw: unknown): ChatMessage[] {
   const rows: ServerMessage[] = Array.isArray(raw) ? raw : [];
   // "event" rows are bookkeeping, never a bubble (Task 98 note from the backend).
@@ -152,7 +181,7 @@ export function toChatMessages(raw: unknown): ChatMessage[] {
     role: m.role === "user" ? "user" : "assistant",
     content: m.content,
     // "pending" is a message with its own buttons — same bubble, plus choices.
-    kind: m.kind === "step" ? "step" : m.kind === "error" ? "error" : m.kind === "answers" ? "answers" : "message",
+    kind: toKind(m.kind),
     runId: m.run_id ?? null,
     // Row 160 (21 Sept): buttons on a plan stopped working as soon as any
     // other message arrived, and the plan could no longer be answered at all.
