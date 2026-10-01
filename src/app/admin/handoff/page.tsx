@@ -34,6 +34,17 @@ type Message = {
   author?: string | null;
   body?: string | null;
   created_at?: string | null;
+  // M1 (1 Oct). `author` is a ROLE — who in the process wrote this. Since
+  // Misho, Gio, Lika and Ninia have their own logins, the role no longer says
+  // which person: four people share "misho"'s side of the board and two AI
+  // seats share a login. `posted_by_name` is the identity, and the server
+  // fills it from the login, so it cannot be claimed.
+  //
+  // Both are shown because they answer different questions: the badge says
+  // what this message is, the name says who is answerable for it. Absent
+  // means an older row or an older deployment, and then only the role shows —
+  // which is what this screen has always shown, so nothing looks broken.
+  posted_by_name?: string | null;
 };
 
 // Closed list, deliberately. An unknown value still renders, labelled as
@@ -258,6 +269,13 @@ export default function AdminHandoffPage() {
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${AUTHOR_CLS[a] ?? "bg-gray-100 text-gray-500"}`}>
                       {authorLabel(m.author)}
                     </span>
+                    {/* M1: who actually posted it. Next to the badge rather
+                        than inside it, because the badge is the role and this
+                        is the person; collapsing them would lose the one the
+                        reader needs when four people share a side. */}
+                    {typeof m.posted_by_name === "string" && m.posted_by_name.trim() && (
+                      <span className="text-xs font-medium text-gray-600">{m.posted_by_name}</span>
+                    )}
                     <span className="ml-auto text-xs text-gray-400">{fmt(m.created_at)}</span>
                   </div>
                   <p className="mt-2 whitespace-pre-wrap break-words text-sm text-[#23261F]">{m.body ?? ""}</p>

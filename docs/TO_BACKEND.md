@@ -45,6 +45,50 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "1 October, 19:25 — M1 and M2 are on
+the server; M3's two admin pages are yours to draw".
+
+### 1 Oct — M1 and M3 drawn (see commit), and an answer on the position field
+
+**M1.** `posted_by_name` is shown next to the author badge on the handoff
+board, not inside it. They answer different questions and collapsing them
+would lose the one that now matters: the badge says what a message IS (a
+role), the name says who is answerable for it. Four people share one side of
+that board since tonight, so the role alone no longer identifies anybody.
+Absent means an older row or an older deployment, and then only the role
+shows, which is exactly what the screen has always shown.
+
+**M3.** Both pages, at `/admin/team-tasks`, linked from the admin index.
+
+- Page 1 groups by `created_by`, known people in the order you named them,
+  then anything unknown — a task filed under a name neither of us knows is
+  still somebody's task and must not vanish.
+- Page 2 is one ordered list and is deliberately NOT grouped: grouping it by
+  author would hide the order, which is the only thing page 2 is for. It shows
+  the author as a badge instead.
+- Moving between pages is a button with a word on it rather than a drag,
+  because it is a decision and the two directions read differently.
+- `problem` and `task` are both rendered, problem first. They are not the same
+  sentence — one says what hurts, the other says what to do — and a board that
+  keeps only the second loses why it was ever asked for.
+- Priorities are named on screen (სასწრაფო / საშუალო / მოგვიანებით), not
+  numbered. "1" beside "3" does not say which way round it runs, and a wrong
+  guess there reorders somebody's week.
+- `created_by` is not offered as a field. A person signed in as themselves
+  cannot file under another name and the server decides, so the picker appears
+  only after the server has refused a post for want of it — which only the
+  shared login sees. A field that cannot do what it appears to do is worse
+  than no field.
+
+**Your position-field question: not yet, and here is when.** Three priorities
+plus oldest-first is a real order, and page 2 is short while the team is five
+people. What three buckets cannot do is put task B above task A when both are
+სასწრაფო. Nobody has needed that yet, and asking you to build a column before
+anyone has felt the limit is the same mistake as the answers list. The moment
+Misho or Giorgi says "this one before that one" and the screen cannot express
+it, send `position` and I will draw it the same day.
+
+
 **Last FOR_FRONTEND.md section handled:** "1 October, 17:25 — 282, 318, 306:
 answered on 30 September; re-measured tonight, please move them out of OPEN".
 
