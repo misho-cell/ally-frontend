@@ -45,6 +45,40 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "2 October, 11:10 — Ninia's
+conversation was erased by Delete when she meant Stop".
+
+### 2 Oct — both shipped (see commit), and one thing I need from you
+
+**The dialog.** Misho's wording, used as he wrote it, in both languages. The
+irreversible part comes first and the button she actually wanted is named. The
+old line described the smaller half of what Delete does, which is how somebody
+chooses it by mistake.
+
+**Stop.** Now shown whenever the thread is a goal, with the status gate gone
+entirely. Offering it when there is nothing to stop costs one sentence saying
+so; hiding it cost somebody their conversation. The asymmetry decides it.
+
+**What I need: which stop route is authoritative.** Your note documents `POST
+/threads/:id/stop` returning `200 { stopped: false, reason: "no_open_goal" }`.
+This client has always called **`POST /tasks/:id/stop`** — line 671 — and I did
+not switch it, because swapping a working route on the strength of a sentence
+in a note is how a button that works stops working.
+
+That matters more now than it did yesterday. Before today Stop appeared only
+on threads that were plainly unfinished, so the "nothing to stop" case was
+rare. Now it can be pressed on any goal. I read the response and say „ამ
+მიზანზე არაფერი მუშაობს" when `stopped` is false, so the screen cannot claim
+something that did not happen — but that only works if `/tasks/:id/stop`
+answers the way `/threads/:id/stop` does. **If it instead returns a 4xx when
+there is no open goal, this shows a failure to somebody who did nothing
+wrong.** Tell me which route to call, or confirm both behave the same, and I
+will match it the same day.
+
+**Noted, not argued:** delete stays final. That is exactly why the sentence had
+to carry it, and it now does.
+
+
 **Last FOR_FRONTEND.md section handled:** "2 October, 10:20 — row 292: token
 packs through Stripe; the pack button needs one change".
 

@@ -259,6 +259,12 @@ const en = {
   stStopped: "you stopped this",
   stFailed: "stuck",
   stopGoal: "Stop",
+  // 2 Oct. Stop is shown whenever the thread is a goal, because hiding it was
+  // what left Delete as the only button that sounded like stopping. It can
+  // therefore be pressed on a goal that has already finished, and then the
+  // screen must say THAT rather than "stopped", which would be a second
+  // sentence describing something that did not happen.
+  nothingToStop: "Nothing is running on this goal.",
   stopFailed: "The goal did not stop. It is still running and can still wake you. Please try again.",
   stopFailedDismiss: "Hide",
   stopped: "Goal stopped",
@@ -266,7 +272,16 @@ const en = {
   renamePrompt: "New name for this goal:",
   renameFailed: "Couldn't rename — try again",
   deleteGoal: "Delete",
-  deleteConfirm: "Delete this goal? Any open work on it will be stopped.",
+  // 2 Oct. Ninia meant to stop a goal and lost the whole conversation. This
+  // line told her the work would be stopped; it did not say that every
+  // message is erased and cannot be brought back. It described the smaller
+  // half of what the button does, which is how somebody chooses it by mistake.
+  //
+  // So it now says the irreversible thing first, and names the button she
+  // actually wanted. Delete stays final (Misho: no soft delete for now),
+  // which is exactly why the sentence has to carry it.
+  deleteConfirm:
+    "The whole conversation and all its messages are erased, and this cannot be undone. If you only want to stop the goal, press Stop.",
   deleteFailed: "Couldn't delete — try again",
   modalRenameTitle: "Rename goal",
   modalDeleteTitle: "Delete goal",
@@ -380,6 +395,7 @@ const ka: typeof en = {
   stStopped: "შენ გააჩერე",
   stFailed: "ვერ მოხერხდა",
   stopGoal: "გაჩერება",
+  nothingToStop: "ამ მიზანზე არაფერი მუშაობს.",
   stopFailed: "მიზანი არ გაჩერდა. ის კვლავ მუშაობს და კვლავ შეუძლია შეგახსენოს. სცადე თავიდან.",
   stopFailedDismiss: "დამალვა",
   stopped: "მიზანი გაჩერდა",
@@ -387,7 +403,8 @@ const ka: typeof en = {
   renamePrompt: "მიზნის ახალი სახელი:",
   renameFailed: "გადარქმევა ვერ მოხერხდა, სცადე თავიდან",
   deleteGoal: "წაშლა",
-  deleteConfirm: "წავშალო ეს მიზანი? მასზე მიმდინარე სამუშაო შეჩერდება.",
+  deleteConfirm:
+    "წაიშლება მთელი საუბარი, ყველა შეტყობინებით, და აღდგენა შეუძლებელი იქნება. თუ მხოლოდ მიზნის გაჩერება გინდა, დააჭირე „გაჩერებას“.",
   deleteFailed: "წაშლა ვერ მოხერხდა, სცადე თავიდან",
   modalRenameTitle: "მიზნის გადარქმევა",
   modalDeleteTitle: "მიზნის წაშლა",

@@ -674,7 +674,14 @@ export default function ThreadPage() {
       });
       if (res.status === 401) { forceLogin(); return; }
       if (!res.ok) { setStopFailed(true); return; }
-      showToast(t("stopped"), true);
+      // 2 Oct. Since Stop is now offered on any goal thread, it can be pressed
+      // when there is nothing running. The server says so plainly
+      // (stopped: false, reason "no_open_goal") and the screen has to pass
+      // that on: "stopped" after a press that stopped nothing is the same
+      // class of fault as the delete dialog that said the work would stop.
+      const body = await res.json().catch(() => ({})) as { stopped?: boolean; data?: { stopped?: boolean } };
+      const stoppedFlag = body?.stopped ?? body?.data?.stopped;
+      showToast(stoppedFlag === false ? t("nothingToStop") : t("stopped"), true);
     } catch {
       setStopFailed(true);
     } finally {
@@ -1480,7 +1487,14 @@ export default function ThreadPage() {
           >
             +
           </button>
-          {thread?.is_task === true && taskStatus && taskStatus !== "done" && (
+          {/* 2 Oct. This used to hide Stop unless the THREAD read as unfinished.
+              A goal can be open while its thread reads "done" — a run ended and
+              nobody owes an answer yet — and in that state the only button on
+              screen that sounded like stopping was Delete. Ninia pressed it and
+              lost the whole conversation, which Delete does not undo.
+              Offering Stop when there is nothing to stop costs a sentence
+              saying so. Hiding it cost somebody their conversation. */}
+          {thread?.is_task === true && (
             <button
               onClick={stopTask}
               disabled={stopping}
