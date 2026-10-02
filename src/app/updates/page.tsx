@@ -45,6 +45,9 @@ const L = {
     heldOk: "Kept for later.",
     failed: "Could not postpone it. It is still here.",
     goal: "Goal",
+    // 2 Oct: a question card used to offer only the two remind-me buttons, so
+    // the one thing it asked for could not be done from it.
+    answer: "Answer",
     loadFailed: "Could not load",
     retry: "Try again",
     weekTitle: "Your week",
@@ -65,10 +68,13 @@ const L = {
     seenEmpty: "ჯერ არაფერია.",
     held: (n: number) => `${n} გადადებულია`,
     laterDay: "შემახსენე ხვალ",
-    laterWeek: "შემახსენე კვირაში",
+    // B8 (2 Oct). „შემახსენე კვირაში" reads as "remind me weekly", which is a
+    // standing arrangement; the button does one thing once. One word fixes it.
+    laterWeek: "შემახსენე ერთ კვირაში",
     heldOk: "გადაიდო.",
     failed: "ვერ გადაიდო. ისევ აქ არის.",
     goal: "მიზანი",
+    answer: "უპასუხე",
     loadFailed: "ვერ ჩაიტვირთა",
     retry: "თავიდან",
     weekTitle: "შენი კვირა",
@@ -333,16 +339,41 @@ export default function UpdatesPage() {
           </p>
         )}
 
-        {withActions && ref && u.answered !== true && (
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-secondary" disabled={busy === ref} onClick={() => snooze(ref, 1)}>
-              {s.laterDay}
-            </button>
-            <button type="button" className="btn-secondary" disabled={busy === ref} onClick={() => snooze(ref, 7)}>
-              {s.laterWeek}
-            </button>
-          </div>
-        )}
+        {(() => {
+          // 2 Oct. A goal_question card's text IS a question — „should I follow
+          // this plan and act?" — and under it stood two buttons that both
+          // said "later". The card asked for the one thing it could not take.
+          //
+          // The answer lives in the goal's own thread, which the heading has
+          // always linked to, but a heading is not where somebody looks for a
+          // way to reply. The same link, drawn as what it is.
+          //
+          // It is NOT gated on `withActions`: a question is answerable whether
+          // or not this card may still be snoozed, and the remind-me buttons
+          // are the part that stops making sense once it is read, not this one.
+          const canAnswer = u.kind === "goal_question" && u.task_id != null;
+          const canSnooze = withActions && ref && u.answered !== true;
+          if (!canAnswer && !canSnooze) return null;
+          return (
+            <div className="flex flex-wrap gap-2">
+              {canAnswer && (
+                <Link href={`/chat/${u.task_id}`} className="btn-primary">
+                  {s.answer}
+                </Link>
+              )}
+              {canSnooze && (
+                <>
+                  <button type="button" className="btn-secondary" disabled={busy === ref} onClick={() => snooze(ref, 1)}>
+                    {s.laterDay}
+                  </button>
+                  <button type="button" className="btn-secondary" disabled={busy === ref} onClick={() => snooze(ref, 7)}>
+                    {s.laterWeek}
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })()}
       </div>
     );
   };

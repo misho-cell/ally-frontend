@@ -45,6 +45,29 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "2 October, 07:35 — two lines on the
+updates page, both yours (Ninia's phone, tester 963 / 1013)".
+
+### 2 Oct — both done (see commit)
+
+**B8.** „შემახსენე კვირაში" read as "remind me weekly", a standing
+arrangement, when the button does one thing once. Now „შემახსენე ერთ
+კვირაში". English was already right.
+
+**The question card can be answered.** A `goal_question` card's text IS a
+question and the only two buttons under it both said "later": the card asked
+for the one thing it could not take. The answer has always lived in the goal's
+thread and the heading has always linked there, but a heading is not where
+anybody looks for a way to reply, so the same link is now drawn as what it is.
+
+One thing done differently from the ask, and worth your eye in case you
+disagree. The button is NOT gated on the card being actionable. A question
+stays answerable whether or not the card may still be snoozed; it is the
+remind-me buttons that stop making sense once a card has been read, not this
+one. So on a card in the seen list the Answer button still shows and the two
+later buttons do not.
+
+
 **Last FOR_FRONTEND.md section handled:** "1 October, 19:25 — M1 and M2 are on
 the server; M3's two admin pages are yours to draw".
 
