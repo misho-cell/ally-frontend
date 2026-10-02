@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { getLocale } from "@/lib/i18n";
 import ToneCard from "@/components/ToneCard";
 
@@ -55,7 +56,14 @@ const L = {
     previewTitle: "წაშლის გადახედვა",
     previewNote: "ჯერ არაფერი წაშლილა. გადახედე სიებს ქვემოთ.",
     finalBtn: "წაშალე სამუდამოდ",
-    finalConfirm: "ამის დაბრუნება შეუძლებეია. წავშალო ანგარიში სამუდამოდ?",
+    // 2 Oct: the word for "impossible" here was missing a letter. The broken
+    // spelling is deliberately not repeated in this comment, because the
+    // Georgian guard reads comments too and quoting it would put it back in
+    // the inventory — which is how it survived in the first place: it had
+    // been accepted there, the one failure that guard exists to catch. It sat
+    // in the final confirmation for permanent account deletion, the sentence
+    // in this app that most needs to be read and believed.
+    finalConfirm: "ამის დაბრუნება შეუძლებელია. წავშალო ანგარიში სამუდამოდ?",
     cancel: "გაუქმება",
     genericError: "რაღაც შეცდომა მოხდა",
   },
@@ -98,6 +106,11 @@ const TABLE_LABELS: Record<string, { ka: string; en: string }> = {
   ContactDeceased: { ka: "გარდაცვლიად მონიშნული კონტაქტები", en: "Contacts marked deceased" },
   UserPhone: { ka: "შენი ნომერი", en: "Your number" },
   rowsDeleted: { ka: "წაიშლება", en: "Will be deleted" },
+  // 2 Oct: the preview gained `deletes` — what goes, in plain words, beside
+  // the row counts. Without a label here an unknown key falls back to its own
+  // prettified name, so a Georgian screen would have shown the English word
+  // "deletes" as the heading of the most serious list in the app.
+  deletes: { ka: "რა წაიშლება", en: "What gets deleted" },
   retained: { ka: "დარჩება (კანონით)", en: "Retained (by law)" },
 };
 
@@ -225,6 +238,7 @@ export default function DataRightsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Dict | null>(null);
+  const [askFinal, setAskFinal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -298,8 +312,14 @@ export default function DataRightsPage() {
   }
 
   // Step 2: the real deletion (same call without dry_run), then full logout.
+  //
+  // 2 Oct: this asked through window.confirm, which Task 93 removed from the
+  // rest of the app because it wedges the whole tab and nothing outside it
+  // can dismiss it. It survived here, on the single most destructive action
+  // there is — somebody who walks away mid-question leaves a frozen browser
+  // on the screen that erases their account. The app's own dialog blocks
+  // nothing and can always be escaped.
   async function confirmDelete() {
-    if (!window.confirm(s.finalConfirm)) return;
     setBusy(true);
     setError(null);
     try {
@@ -319,6 +339,17 @@ export default function DataRightsPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
+      {askFinal && (
+        <ConfirmDialog
+          message={s.finalConfirm}
+          confirmLabel={s.finalBtn}
+          cancelLabel={s.cancel}
+          busy={busy}
+          danger
+          onConfirm={() => { setAskFinal(false); confirmDelete(); }}
+          onCancel={() => setAskFinal(false)}
+        />
+      )}
       <div className="mx-auto flex flex-col" style={{ maxWidth: "620px", padding: "28px 24px 40px", gap: "14px" }}>
         <div className="flex items-center gap-3 mb-1">
           <Link href="/profile" className="transition-colors" style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-soft)" }}>
@@ -412,7 +443,7 @@ export default function DataRightsPage() {
                   </div>
                   <Rows obj={preview} />
                   <div className="flex gap-2">
-                    <button type="button" onClick={confirmDelete} disabled={busy} className="btn-destructive disabled:opacity-60">
+                    <button type="button" onClick={() => setAskFinal(true)} disabled={busy} className="btn-destructive disabled:opacity-60">
                       {s.finalBtn}
                     </button>
                     <button type="button" onClick={() => setPreview(null)} disabled={busy} className="btn-secondary">

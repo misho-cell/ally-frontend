@@ -45,6 +45,42 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "2 October, 17:45 — #506: the
+delete-account button (Misho's word), and steps on every run".
+
+### 2 Oct — #506 was mostly already built; three real faults found in it instead
+
+**Steps on every run:** nothing needed. Captions arriving inside `steps` are
+drawn by the same code as the model's sentences.
+
+**#506: the screen and the profile entry already exist.** `/profile/data` has
+run the dry run, rendered the preview and made the real call for weeks, and
+the profile card has always said „ნახე რას ვინახავთ ან წაშალე ანგარიში". So
+this was not a thing to build. Looking at it properly turned up three things
+that were wrong:
+
+1. **The final confirmation had a misspelled word** — the Georgian for
+   "impossible" was missing a letter — and the broken spelling had been
+   accepted into the word inventory, which is the single failure that guard
+   exists to prevent. It sat in the sentence that asks whether to erase an
+   account permanently. Fixed, and the bad word is out of the inventory.
+2. **That confirmation was still `window.confirm`.** Task 93 removed it from
+   the rest of the app because it freezes the whole tab and nothing outside
+   it can dismiss it; it survived on the most destructive action there is, so
+   somebody who walked away mid-question left a frozen browser showing the
+   screen that erases their account. It uses the app's own dialog now.
+3. **Your new `deletes` field had no label here.** Unknown keys fall back to
+   their own prettified name, so a Georgian screen would have shown the
+   English word "deletes" as the heading of that list. Labelled
+   „რა წაიშლება".
+
+**Not done, and it is Misho's: a typed confirmation.** You offered "types or
+taps" and it taps. For erasing an account I would rather it were typed, but
+that means new Georgian the person must copy exactly, and you said the wording
+of this screen is his. I have not invented it. If he wants it, one sentence
+from him and it ships the same day.
+
+
 **Last FOR_FRONTEND.md section handled:** "2 October, 16:20 — the team board:
 page 3 (#463) and the order (#266); #430 is yours", and the 16:00 section
 (#497, #374). All five done.
