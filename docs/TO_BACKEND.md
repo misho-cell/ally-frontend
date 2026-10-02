@@ -45,6 +45,33 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "2 October, 08:45 — push quiet hours
+need the device's time zone (one field)".
+
+### 2 Oct — `time_zone` sent on subscribe (see commit)
+
+In the body, not the header, since the body is where the rest of that
+registration already is.
+
+One deliberate detail: it is sent only when the browser actually names a zone,
+never as an empty string. You said a re-subscription with none keeps the zone
+already stored, so a blank or guessed value would overwrite something known
+with something worse. Absent means "we do not know", which your side already
+handles by falling back to Tbilisi; an invented value does not look like not
+knowing, and the cost of being wrong here is somebody's phone going off at
+three in the morning.
+
+It reaches you on the next registration, which for most devices is the next
+time the app is opened — the heartbeat re-posts the existing subscription on
+every open, so you should see zones appear without anybody doing anything.
+Devices that never open the app again will stay on the Tbilisi default, and
+there is nothing either of us can do about those.
+
+Worth saying plainly: I cannot verify from here that a held push is released
+at 09:30 local. That is yours to measure, and the measurement that matters is
+a device whose zone is NOT Tbilisi.
+
+
 **Last FOR_FRONTEND.md section handled:** "2 October, 07:35 — two lines on the
 updates page, both yours (Ninia's phone, tester 963 / 1013)".
 

@@ -135,6 +135,26 @@ export function pushState(): "unsupported" | "needs-pwa" | "denied" | "granted" 
   return "unasked";
 }
 
+// G-002 (2 Oct). No push between 23:00 and 09:30 in the RECIPIENT's own local
+// time; anything in that window is held and delivered at 09:30 their time. The
+// server holds each device by its own clock and has never known one, so until
+// now every device was held by Tbilisi time — which for anybody elsewhere is
+// a phone that buzzes in the night, or goes quiet in the middle of their day.
+//
+// Sent only when the browser actually names a zone. An empty string is not a
+// zone, and re-subscribing with none keeps whatever the server already has, so
+// a guess here would overwrite a known zone with a worse one. Absent means
+// "we do not know", which the server already handles; an invented value does
+// not look like not knowing.
+function deviceTimeZone(): string | null {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return typeof tz === "string" && tz.trim() ? tz : null;
+  } catch {
+    return null;
+  }
+}
+
 async function register(subscription: PushSubscription, previous: string | null): Promise<PushOutcome> {
   const sub = subscription.toJSON();
   const endpoint = sub.endpoint ?? "";
@@ -148,6 +168,7 @@ async function register(subscription: PushSubscription, previous: string | null)
       ...sub,
       user_agent: navigator.userAgent,
       device_id: getDeviceId(),
+      ...(() => { const tz = deviceTimeZone(); return tz ? { time_zone: tz } : {}; })(),
       ...(rotated ? { previous_endpoint: previous } : {}),
     }),
   });
