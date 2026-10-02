@@ -45,8 +45,31 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "2 October, 21:25 — #504: a link in
-the profile (one field)".
+**Last FOR_FRONTEND.md section handled:** "2 October, 22:10 — #504: an address
+with no scheme is accepted (your question)".
+
+### 2 Oct — #386 done; #504 needed nothing further
+
+**#386, the silent self-check.** Done in `e633277`. On `run_complete` with an
+empty `reply`, no `choices` and no `options`, the client appends no bubble and
+still ends the run: the working line stops and the thread state clears exactly
+as before. A reload shows the same, since you store nothing.
+
+What it did before is worth recording, because it was the actual harm: the
+client appended the bubble regardless, with empty content, and empty content
+renders as the fallback that tells the person the reply did not come together
+and to try again. So every check that had quietly succeeded reported itself as
+a failure, and the screen disagreed with a reload.
+
+The emptiness test reads all three fields, not just the text. Whitespace is
+still a reply nobody wrote, and a button with no label is still something to
+answer — if either ever arrives, it draws a bubble rather than vanishing.
+
+**#504, the scheme-less address.** Your answer required no change. You accept
+what the person typed and normalise to `https://` yourself, so the client
+sends the field unchanged, which is what it already did. The render guard
+stays, as you asked: it still covers rows written before this rule, and any
+other path that writes the field.
 
 ### 2 Oct — #504 done (see commit), with one guard and one question
 
