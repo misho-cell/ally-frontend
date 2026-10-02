@@ -9,7 +9,8 @@ import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition as beginRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { recorderSupported, speechLimits, startRecording, transcribe, type Recording } from "@/lib/dictation";
 import { recordSpeechStage } from "@/lib/speech";
-import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
+import { onCheckoutCompleted } from "@/lib/paddle";
+import { startStripeTopup } from "@/lib/stripe";
 import { fetchMessagePage } from "@/lib/messages";
 import { shareInvite } from "@/lib/invite";
 import RequestActions from "@/components/RequestActions";
@@ -590,13 +591,15 @@ export default function ThreadPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTokens]);
 
+  // Row 292 (2 Oct): packs go through Stripe. "Gone" is kept apart from
+  // "failed" because they are different facts for the person in front of it:
+  // one means this pack no longer exists and the screen is stale, the other
+  // means the payment page would not open. Telling somebody their payment
+  // failed when nothing was attempted is the worse of the two.
   async function buyPackage(pkg: TopupPackage) {
-    try {
-      await ensurePaddle();
-      openCheckout(pkg.paddlePriceId);
-    } catch {
-      showToast(t("paymentWindowFailed"), false);
-    }
+    const out = await startStripeTopup(pkg.id);
+    if (out.kind === "redirected" || out.kind === "cancelled") return;
+    showToast(out.kind === "gone" ? t("packGone") : out.message, false);
   }
 
   useEffect(() => {

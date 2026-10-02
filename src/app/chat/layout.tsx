@@ -394,6 +394,34 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     } catch {}
   }, []);
 
+  // Row 292 (2 Oct). Stripe returns from a token pack to /chat?topup=success.
+  // The tokens are credited by Stripe's webhook, which lands independently of
+  // the person and often a second or two after them, so the wallet read on
+  // mount can legitimately still show the old balance — somebody who just
+  // paid would see the number they paid to change.
+  //
+  // So it is re-read a few times over the next few seconds. No message is
+  // shown: the server already sends a push saying how many tokens arrived,
+  // and a second announcement here would either repeat it or, worse, contradict
+  // it if this read lands first. The badge changing is the confirmation.
+  //
+  // The parameter is stripped either way, so a refresh does not start it
+  // again, and `cancelled` is silent: choosing not to pay is not an error and
+  // does not need telling.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const topup = params.get("topup");
+    if (topup !== "success" && topup !== "cancelled") return;
+    params.delete("topup");
+    const qs = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    if (topup !== "success") return;
+    const delays = [1500, 4000, 8000];
+    const timers = delays.map((ms) => setTimeout(() => refreshTokens(), ms));
+    return () => { timers.forEach(clearTimeout); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     loadThreads();
     refreshTokens();

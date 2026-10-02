@@ -234,6 +234,10 @@ const en = {
   micNotAllowed: "Microphone access is not allowed",
   netRequired: "Internet connection required",
   paymentWindowFailed: "Couldn't open the payment window",
+  // Row 292 (2 Oct): the pack is no longer on sale. Distinct from a payment
+  // failure, because nothing was attempted and nothing is wrong with the
+  // person's card — the list they were looking at had gone stale.
+  packGone: "This pack is no longer available. Reopen the page to see the current ones.",
   genericError: "Something went wrong. Please try again.",
   lowSuffix: "low",
   stWorking: "working",
@@ -359,6 +363,7 @@ const ka: typeof en = {
   micNotAllowed: "მიკროფონზე წვდომა არ არის დაშვებული",
   netRequired: "საჭიროა ინტერნეტთან კავშირი",
   paymentWindowFailed: "გადახდის ფანჯარა ვერ გაიხსნა",
+  packGone: "ეს პაკეტი აღარ იყიდება. გახსენი გვერდი თავიდან და ნახავ მიმდინარეს.",
   genericError: "რაღაც შეცდომა მოხდა. სცადე თავიდან.",
   lowSuffix: "ცოტაღა დარჩა",
   stWorking: "მუშაობს",

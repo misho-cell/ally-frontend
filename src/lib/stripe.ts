@@ -76,6 +76,41 @@ export async function startStripeCheckout(): Promise<CheckoutOutcome> {
   return { kind: "redirected" };
 }
 
+// Row 292 (2 Oct). Token packs go through Stripe now, as a one-time checkout
+// priced from the same topup_packages row /billing/topup-packages returns, and
+// credited once from Stripe's webhook. Paddle is no longer involved in a pack.
+//
+// Deliberately NOT sharing startStripeCheckout's confirm step: that dialog
+// exists because a returning subscriber is charged immediately for a monthly
+// plan they may think is still a trial. A pack is a single purchase of a named
+// amount at a named price, and the person has just pressed a button with that
+// price on it. A second "are you sure" there teaches people to dismiss the one
+// that matters.
+//
+// 404 means the package is no longer active — the list this client is showing
+// is out of date, so saying "couldn't open the payment page" would be a lie
+// about what happened. It gets its own outcome so the caller can refresh.
+export type TopupOutcome = CheckoutOutcome | { kind: "gone" };
+
+export async function startStripeTopup(packageId: number): Promise<TopupOutcome> {
+  const s = S[getLocale()];
+  let url: string | undefined;
+  try {
+    const res = await apiFetch<{ success: boolean; data: { url: string } }>(
+      "/billing/stripe/topup",
+      { method: "POST", body: { package_id: packageId } },
+    );
+    url = res.data?.url;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 503) return { kind: "unavailable", message: s.unavailable };
+    if (err instanceof ApiError && err.status === 404) return { kind: "gone" };
+    return { kind: "failed", message: s.failed };
+  }
+  if (!url) return { kind: "failed", message: s.failed };
+  window.location.href = url;
+  return { kind: "redirected" };
+}
+
 // POST /billing/stripe/portal → { url }. 404 = this account has never had a
 // Stripe customer — not an error, the caller should simply hide the button.
 export async function openStripePortal(): Promise<"redirected" | "none" | "failed"> {

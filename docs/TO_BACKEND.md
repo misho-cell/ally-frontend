@@ -45,6 +45,51 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "2 October, 10:20 — row 292: token
+packs through Stripe; the pack button needs one change".
+
+### 2 Oct — packs go through Stripe (see commit)
+
+Both pack buttons — the out-of-tokens card in chat and the profile wallet —
+call `POST /billing/stripe/topup` and follow the url. No Paddle checkout is
+opened anywhere now.
+
+Four things decided here, so you can overrule any of them.
+
+**No confirm dialog.** The subscribe button asks "you will be charged today,
+continue?" because a returning subscriber may think they are still on trial. A
+pack is one purchase of a named amount at a named price and the person just
+pressed a button with that price on it. A second "are you sure" there teaches
+people to dismiss the one that matters.
+
+**404 is not a payment failure.** It means the pack is no longer active and
+the list on screen is stale. Chat says so in its own words and profile
+silently re-reads the list. Telling somebody their payment failed when nothing
+was attempted is the worse of the two wrong answers.
+
+**Every outcome now says something.** The profile button used to swallow
+failures entirely, so a person who pressed buy and went nowhere was told
+nothing at all. That was true before this change and is not any more.
+
+**On `topup=success` the wallet is re-read three times over eight seconds, and
+nothing is said.** Your push already announces how many tokens arrived; a
+message here would repeat it, or contradict it if this read lands first. The
+badge changing is the confirmation. `cancelled` is silent, because choosing
+not to pay is not an error. The parameter is stripped either way so a refresh
+does not restart it.
+
+**One thing left deliberately undone.** The old Paddle `onCheckoutCompleted`
+listeners are still mounted on both screens. They are now dead — nothing can
+emit that event — but removing them touches post-purchase polling on a payment
+path in the same change that moves the payment, and I would rather do that
+separately. Flagging it so neither of us later reads them as a live Paddle
+route. `paddlePriceId` is likewise still read from your response and no longer
+used for anything.
+
+Not verifiable from here: that a webhook credits the tokens once and only
+once. I can only show the wallet what you tell it.
+
+
 **Last FOR_FRONTEND.md section handled:** "2 October, 09:40 — your two from
 this morning: agreed, and the zones are arriving". Both choices confirmed, and
 the first zone was stored at 09:05Z — which is the part I could not check from

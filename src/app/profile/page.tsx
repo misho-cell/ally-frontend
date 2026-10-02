@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
 import { authHeaders } from "@/lib/deviceId";
-import { ensurePaddle, onCheckoutCompleted, openCheckout } from "@/lib/paddle";
+import { onCheckoutCompleted } from "@/lib/paddle";
+import { startStripeTopup } from "@/lib/stripe";
 import { getLocale, fmtDateLoc } from "@/lib/i18n";
 import { clearUserName } from "@/lib/user";
 import { openStripePortal, portalErrorText } from "@/lib/stripe";
@@ -594,14 +595,20 @@ function TokensWidget() {
     return null;
   }
 
+  // Named so that a 404 from the top-up route can re-read it: that 404 means
+  // the list on screen is out of date, and the honest response is to refresh
+  // it rather than report a payment failure that did not happen.
+  async function loadPackages() {
+    try {
+      const res = await fetch(`${BASE_URL}/billing/topup-packages`, { headers: authHeaders() });
+      const json = await res.json();
+      if (Array.isArray(json?.data)) setPackages(json.data as TopupPackage[]);
+    } catch {}
+  }
+
   useEffect(() => {
     fetchTokens().then((t) => { if (!t) setFailed(true); });
-    fetch(`${BASE_URL}/billing/topup-packages`, { headers: authHeaders() })
-      .then((r) => r.json())
-      .then((json) => {
-        if (Array.isArray(json?.data)) setPackages(json.data as TopupPackage[]);
-      })
-      .catch(() => {});
+    void loadPackages();
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
@@ -646,11 +653,19 @@ function TokensWidget() {
   // Top-up is for subscribers only — trial wallets get the subscribe CTA elsewhere.
   const showTopup = !!tokens && !isTrial && packages.length > 0;
 
+  // Row 292 (2 Oct): packs go through Stripe. The old path swallowed every
+  // failure, so a person who pressed buy and went nowhere was told nothing at
+  // all. Each outcome now says something, and the one that means "this pack
+  // is gone" reloads the list rather than blaming the payment page.
   async function buy(pkg: TopupPackage) {
-    try {
-      await ensurePaddle();
-      openCheckout(pkg.paddlePriceId);
-    } catch {}
+    const out = await startStripeTopup(pkg.id);
+    if (out.kind === "redirected" || out.kind === "cancelled") return;
+    if (out.kind === "gone") {
+      await loadPackages();
+      return;
+    }
+    setToast(out.message);
+    setTimeout(() => setToast(null), 3000);
   }
 
   return (
