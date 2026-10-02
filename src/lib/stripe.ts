@@ -111,6 +111,53 @@ export async function startStripeTopup(packageId: number): Promise<TopupOutcome>
   return { kind: "redirected" };
 }
 
+// #497 (2 Oct). Ninia could not cancel: Stripe's own billing page offered her
+// no way to, and called the product "Ally". So cancelling and resuming are
+// routes now, and the portal is left for cards and invoices.
+//
+// Cancelling always ends the plan at the close of the paid period, never at
+// once — somebody who has paid for this month keeps this month. `runs_until`
+// is that date and is what the screen must show, because "cancelled" without
+// a date reads as "it stops now" and that is not what happens.
+//
+// 404 means the plan was granted by the team: there is no Stripe subscription
+// and nothing to cancel. That is a different fact from a failure and gets its
+// own outcome, so the screen can explain instead of showing an error for a
+// thing that is working as intended.
+export type PlanChange =
+  | { kind: "ok"; cancelAtPeriodEnd: boolean; runsUntil: string | null }
+  | { kind: "granted" }
+  | { kind: "failed"; message: string };
+
+async function planCall(path: string): Promise<PlanChange> {
+  const s = S[getLocale()];
+  try {
+    const res = await apiFetch<{
+      success?: boolean;
+      data?: { cancel_at_period_end?: boolean; runs_until?: string | null };
+      cancel_at_period_end?: boolean;
+      runs_until?: string | null;
+    }>(path, { method: "POST" });
+    const d = res.data ?? res;
+    return {
+      kind: "ok",
+      cancelAtPeriodEnd: d?.cancel_at_period_end === true,
+      runsUntil: typeof d?.runs_until === "string" && d.runs_until ? d.runs_until : null,
+    };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return { kind: "granted" };
+    return { kind: "failed", message: err instanceof ApiError ? err.message : s.failed };
+  }
+}
+
+export function cancelSubscription(): Promise<PlanChange> {
+  return planCall("/billing/stripe/cancel");
+}
+
+export function resumeSubscription(): Promise<PlanChange> {
+  return planCall("/billing/stripe/resume");
+}
+
 // POST /billing/stripe/portal → { url }. 404 = this account has never had a
 // Stripe customer — not an error, the caller should simply hide the button.
 export async function openStripePortal(): Promise<"redirected" | "none" | "failed"> {

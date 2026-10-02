@@ -9,11 +9,12 @@ import { onCheckoutCompleted } from "@/lib/paddle";
 import { startStripeTopup } from "@/lib/stripe";
 import { getLocale, fmtDateLoc } from "@/lib/i18n";
 import { clearUserName } from "@/lib/user";
-import { openStripePortal, portalErrorText } from "@/lib/stripe";
+import { openStripePortal, portalErrorText, cancelSubscription, resumeSubscription } from "@/lib/stripe";
 import PushDiagnostics from "@/components/PushDiagnostics";
 import MicDiagnostics from "@/components/MicDiagnostics";
 import LanguageCard from "@/components/LanguageCard";
 import ReferralRewardsCard from "@/components/ReferralRewardsCard";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { parseTokenBalance, type TokenBalance } from "@/lib/tokens";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -88,6 +89,17 @@ const L = {
     freePlan: "Free plan",
     tapChoose: "Tap below to choose a plan.",
     portalError: "Couldn't open the portal. Please try again.",
+    // #497 (2 Oct). Cancelling ends the plan at the close of the paid period,
+    // so the question names that date: "cancel" with no date reads as "it
+    // stops now", and somebody who has paid for this month keeps this month.
+    cancelPlan: "Cancel subscription",
+    keepPlan: "Keep it",
+    cancelPlanAsk: (d: string) => `The plan will not renew. You keep everything until ${d}, and nothing is charged after that.`,
+    cancelPlanAskNoDate: "The plan will not renew. You keep everything until the end of the period already paid for.",
+    resumePlan: "Resume",
+    // A plan the team granted has no Stripe subscription behind it. Saying
+    // "couldn't cancel" would describe a fault; this describes what is true.
+    grantedPlan: "This plan was given to you by the team, so there is nothing to cancel here.",
     genericError: "Something went wrong",
     editProfile: "Edit profile",
     nameLabel: "Name",
@@ -156,6 +168,12 @@ const L = {
     freePlan: "უფასო გეგმა",
     tapChoose: "გეგმის ასარჩევად დააჭირე ქვემოთ.",
     portalError: "პორტალი ვერ გაიხსნა. სცადე თავიდან.",
+    cancelPlan: "გამოწერის გაუქმება",
+    keepPlan: "დავტოვოთ",
+    cancelPlanAsk: (d: string) => `გამოწერა აღარ განახლდება. ${d}-მდე ყველაფერი გრჩება და შემდეგ თანხა აღარ ჩამოგეჭრება.`,
+    cancelPlanAskNoDate: "გამოწერა აღარ განახლდება. უკვე გადახდილი პერიოდის ბოლომდე ყველაფერი გრჩება.",
+    resumePlan: "განახლება",
+    grantedPlan: "ეს გეგმა გუნდმა მოგცა, ამიტომ აქ გასაუქმებელი არაფერია.",
     genericError: "რაღაც შეცდომა მოხდა",
     editProfile: "პროფილის რედაქტირება",
     nameLabel: "სახელი",
@@ -813,6 +831,21 @@ export default function ProfilePage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [showPortal, setShowPortal] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // #497: cancelling and resuming the paid plan without the Stripe page.
+  const [askCancel, setAskCancel] = useState(false);
+  const [planBusy, setPlanBusy] = useState(false);
+  // Set only after the server has told us this plan was granted by the team.
+  // Not guessed from the profile: nothing there distinguishes a granted plan
+  // from a paid one, and a wrong guess would either hide a real cancel button
+  // or offer one that cannot work.
+  const [granted, setGranted] = useState(false);
+
+  async function reloadProfile() {
+    try {
+      const res = await apiFetch<{ success: boolean; data: Profile }>("/profile");
+      setProfile(res.data);
+    } catch {}
+  }
 
   useEffect(() => {
     apiFetch<{ success: boolean; data: Profile }>("/profile")
@@ -821,6 +854,30 @@ export default function ProfilePage() {
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The plan always runs to the end of the period already paid for, so both
+  // the question and the result name that date. "Cancelled" on its own reads
+  // as "it stops now", which is the one thing that does not happen.
+  async function doCancel() {
+    setPlanBusy(true);
+    setError(null);
+    const out = await cancelSubscription();
+    setPlanBusy(false);
+    setAskCancel(false);
+    if (out.kind === "granted") { setGranted(true); return; }
+    if (out.kind === "failed") { setError(out.message); return; }
+    await reloadProfile();
+  }
+
+  async function doResume() {
+    setPlanBusy(true);
+    setError(null);
+    const out = await resumeSubscription();
+    setPlanBusy(false);
+    if (out.kind === "granted") { setGranted(true); return; }
+    if (out.kind === "failed") { setError(out.message); return; }
+    await reloadProfile();
+  }
 
   // Stripe (6 Sept): same-tab redirect to the Stripe portal (card change,
   // cancel, invoices). 404 = no Stripe customer yet, so no button at all.
@@ -846,6 +903,10 @@ export default function ProfilePage() {
   const status = profile?.subscription_status ?? "";
   const isPastDue = status === "past_due";
   const isFreeOrInactive = !(status === "trialing" || status === "active" || isPastDue);
+  // Only a plan that renews can be stopped from renewing. past_due is left
+  // out: that account's next step is a working card, and offering to cancel
+  // beside "your payment failed" reads as the app suggesting it.
+  const isPaidPlan = status === "trialing" || status === "active";
 
   if (loading) {
     return (
@@ -962,6 +1023,34 @@ export default function ProfilePage() {
                   )}
                 </button>
               ) : null}
+
+              {/* #497. Ninia could not cancel: Stripe's page offered her no
+                  way to and called the product "Ally". The portal above stays
+                  for cards and invoices; stopping the plan happens here.
+
+                  A plan the team granted has no subscription behind it, so
+                  the server answers 404 and this says so rather than showing
+                  a failure for something that is working as intended. */}
+              {granted ? (
+                <p style={{ font: "400 12.5px/18px var(--font-system)", color: "var(--ink-2)" }}>
+                  {s.grantedPlan}
+                </p>
+              ) : isPaidPlan ? (
+                profile.cancels_at ? (
+                  <button onClick={doResume} disabled={planBusy} className="btn-secondary w-full disabled:opacity-60">
+                    {s.resumePlan}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setAskCancel(true)}
+                    disabled={planBusy}
+                    className="w-full transition-colors disabled:opacity-60"
+                    style={{ font: "500 13px/18px var(--font-system)", color: "var(--meta)", padding: "4px 0" }}
+                  >
+                    {s.cancelPlan}
+                  </button>
+                )
+              ) : null}
             </div>
 
             {/* Data rights (C2) */}
@@ -1013,6 +1102,23 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+    {/* #497: the question names the date the plan actually runs until —
+        trial end or paid period end, whichever this account has. Without a
+        date "cancel" reads as "it stops now", and what happens is the
+        opposite: everything already paid for is kept. */}
+    {askCancel && (
+      <ConfirmDialog
+        message={(() => {
+          const until = profile?.current_period_ends_at ?? profile?.trial_ends_at ?? null;
+          return until ? s.cancelPlanAsk(fmtDateLoc(until)) : s.cancelPlanAskNoDate;
+        })()}
+        confirmLabel={s.cancelPlan}
+        cancelLabel={s.keepPlan}
+        busy={planBusy}
+        onConfirm={doCancel}
+        onCancel={() => setAskCancel(false)}
+      />
+    )}
     </div>
   );
 }

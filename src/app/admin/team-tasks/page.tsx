@@ -38,6 +38,22 @@ const PERSON_CLS: Record<string, string> = {
   ai: "bg-gray-200 text-gray-700",
 };
 
+type Board = 1 | 2 | 3;
+
+const BOARDS: Board[] = [1, 2, 3];
+
+const BOARD_LABEL: Record<Board, string> = {
+  1: "გიორგისთან",
+  2: "მიშოსთან",
+  3: "თორნიკეს Claude-თან",
+};
+
+const BOARD_EMPTY: Record<Board, string> = {
+  1: "გიორგისთან ჯერ არაფერია",
+  2: "მიშოსთან ჯერ არაფერია",
+  3: "თორნიკეს Claude-თან ჯერ არაფერია",
+};
+
 const STATUSES = ["to_build", "built", "being_tested", "tested"] as const;
 
 const STATUS_LABEL: Record<string, string> = {
@@ -112,7 +128,8 @@ function fmt(iso?: string | null): string {
 
 export default function TeamTasksPage() {
   const router = useRouter();
-  const [page, setPage] = useState<1 | 2>(1);
+  // #463 (2 Oct): page 3 is the prompt work the tester seat takes.
+  const [page, setPage] = useState<Board>(1);
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
@@ -128,7 +145,7 @@ export default function TeamTasksPage() {
   const [needsAuthor, setNeedsAuthor] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async (p: 1 | 2) => {
+  const load = useCallback(async (p: Board) => {
     setError(null);
     try {
       const res = await apiFetch<unknown>(`/admin/team-tasks?page=${p}`, { admin: true });
@@ -203,25 +220,19 @@ export default function TeamTasksPage() {
     }
   }
 
-  // Page 1 groups by person; page 2 is one ordered list and grouping it by
-  // author would hide the order, which is the only thing page 2 is for.
-  const groups: { person: string; rows: Task[] }[] = [];
-  if (page === 1 && tasks) {
-    const seen = new Map<string, Task[]>();
-    for (const t of tasks) {
-      const key = t.created_by ?? "";
-      const list = seen.get(key);
-      if (list) list.push(t);
-      else seen.set(key, [t]);
-    }
-    // Known people first, in the order the backend names them, then anything
-    // unknown, so a new seat appears rather than disappearing.
-    for (const p of PEOPLE) {
-      const rows = seen.get(p);
-      if (rows) { groups.push({ person: p, rows }); seen.delete(p); }
-    }
-    for (const [person, rows] of seen) groups.push({ person, rows });
-  }
+  // #266 (2 Oct). The server now returns each page in the order Giorgi asked
+  // for: by author, then priority, then newest. This page used to regroup
+  // page 1 by author itself, in ITS own order of people — which quietly
+  // overrode the order that was just asked for, and the two disagreed about
+  // who comes first.
+  //
+  // So nothing is re-sorted here: the list is drawn as it arrives. Rows by
+  // the same person still sit together, because the server sorts by author
+  // too; that was the whole value of the grouping, and it survives without a
+  // second opinion about the order.
+  //
+  // The author badge is therefore on every card, not only on page 2. Without
+  // the group headings it is the only thing that says whose task this is.
 
   const row = (t: Task) => (
     <div key={t.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -231,11 +242,15 @@ export default function TeamTasksPage() {
             {PRIORITY_LABEL[t.priority] ?? `პრიორიტეტი ${t.priority}`}
           </span>
         )}
-        {page === 2 && t.created_by && (
+        {/* On every board now: without the old group headings this is the
+            only thing on the card that says whose task it is. */}
+        {t.created_by && (
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${PERSON_CLS[t.created_by] ?? "bg-gray-100 text-gray-500"}`}>
             {PERSON_LABEL[t.created_by] ?? t.created_by}
           </span>
         )}
+        {/* #430: the number people refer to in conversation. */}
+        <span className="font-mono text-xs text-gray-400">#{t.id}</span>
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_CLS[t.status ?? ""] ?? "bg-gray-100 text-gray-500"}`}>
           {STATUS_LABEL[t.status ?? ""] ?? t.status ?? "სტატუსი უცნობია"}
         </span>
@@ -289,14 +304,23 @@ export default function TeamTasksPage() {
           </button>
         ))}
 
-        <button
-          type="button"
-          disabled={busy === t.id}
-          onClick={() => patch(t.id, { page: page === 1 ? 2 : 1 })}
-          className="ml-auto rounded-xl bg-[#23261F] px-3 py-1.5 text-xs text-white transition hover:opacity-80 disabled:opacity-40"
-        >
-          {page === 1 ? "მიშოსთან გადატანა →" : "← გიორგისთან დაბრუნება"}
-        </button>
+        {/* #463: with three boards a single toggle cannot say where a task
+            goes, so each destination is its own button with its name on it.
+            A move is a decision about whose plate this lands on; it should
+            never be a guess about what the one button means. */}
+        <div className="ml-auto flex flex-wrap gap-2">
+          {BOARDS.filter((p) => p !== page).map((p) => (
+            <button
+              key={p}
+              type="button"
+              disabled={busy === t.id}
+              onClick={() => patch(t.id, { page: p })}
+              className="rounded-xl bg-[#23261F] px-3 py-1.5 text-xs text-white transition hover:opacity-80 disabled:opacity-40"
+            >
+              {BOARD_LABEL[p]} →
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -312,7 +336,7 @@ export default function TeamTasksPage() {
 
       <div className="mx-auto flex max-w-4xl flex-col gap-5 px-4 py-6">
         <div className="flex gap-1 self-start rounded-xl bg-gray-100 p-1">
-          {([1, 2] as const).map((p) => (
+          {BOARDS.map((p) => (
             <button
               key={p}
               type="button"
@@ -321,7 +345,7 @@ export default function TeamTasksPage() {
                 page === p ? "bg-white text-[#23261F] shadow-sm" : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              {p === 1 ? "გიორგისთან" : "მიშოსთან"}
+              {BOARD_LABEL[p]}
             </button>
           ))}
         </div>
@@ -395,21 +419,7 @@ export default function TeamTasksPage() {
             <span className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-[#23261F]" />
           </div>
         ) : tasks.length === 0 ? (
-          <p className="py-8 text-center text-sm text-gray-400">
-            {page === 1 ? "გიორგისთან ჯერ არაფერია" : "მიშოსთან ჯერ არაფერია"}
-          </p>
-        ) : page === 1 ? (
-          groups.map((g) => (
-            <section key={g.person || "unknown"} className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${PERSON_CLS[g.person] ?? "bg-gray-100 text-gray-500"}`}>
-                  {PERSON_LABEL[g.person] ?? g.person ?? "ავტორი უცნობია"}
-                </span>
-                <span className="text-xs text-gray-400">{g.rows.length}</span>
-              </div>
-              {g.rows.map(row)}
-            </section>
-          ))
+          <p className="py-8 text-center text-sm text-gray-400">{BOARD_EMPTY[page]}</p>
         ) : (
           <div className="flex flex-col gap-3">{tasks.map(row)}</div>
         )}
