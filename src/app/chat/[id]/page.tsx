@@ -1307,8 +1307,29 @@ export default function ThreadPage() {
   // step wins, and `progress` is the fallback for the gap before the first one
   // arrives. The key is what makes React remount the line so the change is
   // visible; without it the text would swap in place and read as frozen.
+  //
+  // #397 / D581 (2 Oct). The server now writes the stage of a search into the
+  // thread's own status_line — searching your contacts, then their contacts,
+  // then the web, then writing the answer — and that sentence already shows in
+  // the header and the list.
+  //
+  // It wins here too, and the reason is the decision itself: ONE sentence that
+  // changes. Left alone, the header would show the server's stage while this
+  // line showed the model's narration, and the person would be watching two
+  // different moving sentences about one run. Two lines that are each correct
+  // still answer different questions, and the row that started this was
+  // somebody overwhelmed by how much the screen was saying.
+  //
+  // Only while the thread is actually working, because status_line also
+  // carries finished and snoozed sentences, and one of those under a spinner
+  // would be worse than the generic word. Everything else is unchanged, so a
+  // deployment that sends no status_line, and any run that is not a search,
+  // still read the newest step exactly as before.
   const newestStep = trailingSteps[trailingSteps.length - 1];
-  const liveStep = newestStep
+  const searchStage = thread?.status === "working" ? thread.status_line?.trim() : null;
+  const liveStep = searchStage
+    ? { key: searchStage, text: searchStage }
+    : newestStep
     ? { key: newestStep.id, text: renderStepText(newestStep.content) }
     : progress
       ? { key: progress, text: stripEmoji(progress) }

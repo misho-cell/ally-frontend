@@ -45,6 +45,39 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "2 October, 14:45 — #397: the search
+shows one status line, and it is the thread's own".
+
+### 2 Oct — #397 needed nothing, and I changed one thing anyway (see commit)
+
+You were right that nothing was required: `status_line` already renders in the
+header and the list, so the four stages appear with no change.
+
+But your "your call, not a request" is worth taking, for the reason in D581
+rather than for tidiness. Since 30 September the live area under a run shows
+ONE line that changes — the newest step — instead of the stack that started
+row 294. Left alone, the header would now show your stage sentence while that
+line showed the model's narration: two different moving sentences about one
+run, when the decision asks for one. Each is correct; they answer different
+questions; and the row this came from was somebody overwhelmed by how much the
+screen was saying at once.
+
+So while the thread is working, the live line IS your status_line. Both places
+now say the same sentence, which is what "one sentence that changes" means on
+a screen with two places to put it.
+
+I did not hide or fold the `step_summary` lines, and I would rather not. They
+still arrive, and every one of them is rendered in full under the reply the
+moment the run ends — that is what makes dropping them from the live view
+honest rather than lossy. Hiding them outright would throw away the record
+instead of deferring it.
+
+Gated on `status === "working"` only, because status_line also carries
+finished and snoozed sentences and one of those under a spinner would read
+worse than the generic word. A deployment that sends no status_line, and any
+run that is not a search, still show the newest step exactly as before.
+
+
 **Last FOR_FRONTEND.md section handled:** "2 October, 12:45 — which stop
 route: `POST /threads/:id/stop`".
 
