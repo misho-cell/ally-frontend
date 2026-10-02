@@ -107,6 +107,7 @@ const L = {
     nameLabel: "Name",
     employerLabel: "Employer",
     jobLabel: "Position",
+    linkLabel: "Link (LinkedIn, website)",
     cityLabel: "City",
     save: "Save",
     saved: "Saved",
@@ -183,6 +184,7 @@ const L = {
     nameLabel: "სახელი",
     employerLabel: "სამსახური",
     jobLabel: "თანამდებობა",
+    linkLabel: "ბმული (LinkedIn, ვებგვერდი)",
     cityLabel: "ქალაქი",
     save: "შენახვა",
     saved: "შენახულია",
@@ -205,6 +207,8 @@ type Profile = {
   name: string;
   phone: string;
   employer?: string | null;
+  // #504 (2 Oct): an http(s) address, up to 300 characters, or null.
+  link?: string | null;
   job_position?: string | null;
   city?: string | null;
   referral_code?: string | null;
@@ -428,6 +432,20 @@ function PhotoAvatar({ name }: { name: string }) {
   );
 }
 
+// #504: a stored value only becomes a link when it parses as http(s). Not a
+// pattern test — the URL parser is the thing that actually decides what a
+// browser will follow, and "looks like a url" and "is one" are the pair this
+// field cannot afford to confuse.
+function safeLink(raw: string | null | undefined): string | null {
+  if (!raw || !raw.trim()) return null;
+  try {
+    const u = new URL(raw.trim());
+    return u.protocol === "http:" || u.protocol === "https:" ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 // Edit profile (E9): name / employer / position / city via PATCH /profile.
 // Empty optional fields are sent as null (the contract's "clear" value); name
 // can never be emptied — asks are sent under it.
@@ -438,6 +456,7 @@ function EditProfileCard({ profile, onSaved }: { profile: Profile; onSaved: (p: 
   const [employer, setEmployer] = useState(profile.employer ?? "");
   const [job, setJob] = useState(profile.job_position ?? "");
   const [city, setCity] = useState(profile.city ?? "");
+  const [link, setLink] = useState(profile.link ?? "");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -456,6 +475,9 @@ function EditProfileCard({ profile, onSaved }: { profile: Profile; onSaved: (p: 
       employer: employer.trim() || null,
       job_position: job.trim() || null,
       city: city.trim() || null,
+      // #504: an empty box means "clear it", which is the contract's null —
+      // sending "" would store an address that is not one.
+      link: link.trim() || null,
     };
     try {
       await apiFetch("/profile", { method: "PATCH", body });
@@ -501,6 +523,20 @@ function EditProfileCard({ profile, onSaved }: { profile: Profile; onSaved: (p: 
           {field(s.employerLabel, employer, setEmployer)}
           {field(s.jobLabel, job, setJob)}
           {field(s.cityLabel, city, setCity)}
+          {/* type="url" so a phone offers the right keyboard; the server is
+              still the one that decides what a valid address is, and its 400
+              is shown verbatim rather than guessed at here. */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs" style={{ color: "var(--ink-soft)" }}>{s.linkLabel}</label>
+            <input
+              type="url"
+              inputMode="url"
+              maxLength={300}
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              className="input-pill"
+            />
+          </div>
           {err && <p className="text-sm" style={{ color: "var(--danger)" }}>{err}</p>}
           {msg && <p className="text-sm" style={{ color: "var(--accent-strong)" }}>{msg}</p>}
           <button type="submit" disabled={saving || !name.trim()} className="btn-primary self-start disabled:opacity-60">
@@ -965,6 +1001,28 @@ export default function ProfilePage() {
                   <p style={{ fontSize: "13px", color: "var(--ink-soft)" }}>
                     {groupPhone(profile.phone)}
                   </p>
+                  {/* #504 (2 Oct). Rendered only when it really is an http(s)
+                      address. The server validates on write, but this is the
+                      one field whose value becomes something a person taps,
+                      and a row written before that validation — or by any
+                      other path — must not be able to turn into a javascript:
+                      link because this screen trusted it. Anything else shows
+                      as plain text: still visible, just not clickable. */}
+                  {safeLink(profile.link) ? (
+                    <a
+                      href={safeLink(profile.link)!}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="block truncate"
+                      style={{ fontSize: "13px", color: "var(--accent-strong)", maxWidth: "15rem" }}
+                    >
+                      {profile.link}
+                    </a>
+                  ) : profile.link ? (
+                    <p className="truncate" style={{ fontSize: "13px", color: "var(--meta)", maxWidth: "15rem" }}>
+                      {profile.link}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </div>

@@ -45,6 +45,41 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "2 October, 21:25 — #504: a link in
+the profile (one field)".
+
+### 2 Oct — #504 done (see commit), with one guard and one question
+
+The field is in the edit card, `null` on empty as the contract says, and the
+saved value shows under the phone number.
+
+**The guard.** The value is rendered as a link only when it actually parses as
+http(s) — by the URL parser, not a pattern, because the parser is what decides
+what a browser will follow. Anything else is shown as plain text: still
+visible, just not tappable.
+
+You validate on write, so this should never fire. It is there because this is
+the one profile field whose value becomes something a person taps, and a row
+written before that validation, or by any other path, must not be able to
+become a `javascript:` link because this screen trusted it. Checked against
+`javascript:`, mixed-case `JavaScript:`, `data:`, `vbscript:`, blanks, and
+valid http and https.
+
+**The question: does `PATCH /profile` accept an address with no scheme?**
+`linkedin.com/in/name` is what most people will type, and it is not a URL — my
+guard rejects it and I expect your 400 does too. If you reject it, the person
+gets an error for typing the thing they see printed on business cards. Two
+ways out, and it is your call which:
+
+- you accept it and store `https://` + what they typed, or
+- I prepend `https://` before sending when there is no scheme.
+
+I have not done the second, because it would mean this client quietly
+rewriting what somebody typed before your validation sees it, and if you are
+already doing the first that rewrite would hide the difference between the two
+behaviours. Say which and I will match it.
+
+
 **Last FOR_FRONTEND.md section handled:** "2 October, 21:05 — #503: whom the
 owner invited (one route), and #505's server half exists".
 
