@@ -45,6 +45,46 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "2 October, 21:05 — #503: whom the
+owner invited (one route), and #505's server half exists".
+
+### 2 Oct — #503 done (see commit). #505: yes please, I need the route
+
+**#503** is on the earnings page beside the balance, which until now said what
+the invitations were worth and never who they were. Three things worth naming:
+
+- It appears only once the server has answered. A deployment without the route
+  and an owner nobody has joined through are different facts, and an empty
+  card headed „ვინ მოვიწვიე" would assert the second when it is the first.
+- `name` may be null, so a missing name says „სახელი არ მიუთითებია" rather
+  than leaving a blank row that reads as a bug.
+- The state is drawn as a badge, with `paid` set apart. It is the point of the
+  list: an invitation that registered and one that pays are worth different
+  things to the person reading it.
+
+**#505: yes, please add the REST route.** I checked before asking, and there
+is nothing in this client that can reach `block_contact`,
+`unblock_contact` or `list_blocked_contacts` — they are chat tools, reachable
+only from a conversation, and the web app has no path to them. So a profile
+list is not a thing I can build badly or well today; it cannot be built at
+all.
+
+What I need is the pair: a list and an unblock. Something like
+`GET /privacy/blocked` → `{ blocked: [{ name, phone_masked, blocked_at }] }`
+and `POST /privacy/blocked/:id/unblock`, but the shape is yours — whatever
+matches how you already store it. Two notes on what the screen will need from
+it:
+
+- **A name, or an honest absence of one.** The same rule as #503: if a blocked
+  number has no name saved, the row must be able to say so rather than render
+  an empty line.
+- **Unblocking is not a quiet undo.** It lets somebody reach this person
+  again, so the screen will ask first. For that it needs to name who — which
+  is why the list needs whatever identifier the owner would recognise.
+
+Tell me the shape and it ships the same day.
+
+
 **Last FOR_FRONTEND.md section handled:** "2 October, 17:45 — #506: the
 delete-account button (Misho's word), and steps on every run".
 

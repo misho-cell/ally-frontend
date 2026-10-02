@@ -21,6 +21,16 @@ const L = {
     withdraw: "Withdraw",
     withdrawFrom: (v: string) => `Withdrawals available from ${v}`,
     withdrawSoon: "Withdrawals are coming soon",
+    // #503 (2 Oct, Ninia). The balance said what the invites were worth and
+    // never who they were. Only people who actually registered appear: an
+    // invitation nobody opened has no person to name, and listing it as
+    // somebody would be inventing one.
+    invited: "Who I invited",
+    invitedEmpty: "Nobody has joined through your link yet.",
+    stRegistered: "Registered",
+    stTrial: "On trial",
+    stPaid: "Paying",
+    noName: "Name not given",
     history: "History",
     noActivity: "No activity yet",
     noActivitySub: "Invites you share and payouts will appear here.",
@@ -51,6 +61,12 @@ const L = {
     withdraw: "განაღდება",
     withdrawFrom: (v: string) => `განაღდება შესაძლებელია ${v}-დან`,
     withdrawSoon: "განაღდება მალე დაემატება",
+    invited: "ვინ მოვიწვიე",
+    invitedEmpty: "შენი ბმულით ჯერ არავინ შემოსულა.",
+    stRegistered: "დარეგისტრირდა",
+    stTrial: "საცდელ პერიოდზეა",
+    stPaid: "იხდის",
+    noName: "სახელი არ მიუთითებია",
     history: "ისტორია",
     noActivity: "აქტივობა ჯერ არ არის",
     noActivitySub: "შენი მოსაწვევები და განაღდებები აქ გამოჩნდება.",
@@ -87,6 +103,10 @@ type Referral = {
   canWithdraw: boolean;
   history: HistoryItem[];
 };
+
+// #503: `name` may be null — somebody can register without giving one, and
+// the list must say that rather than leave a blank row that reads as a bug.
+type Invited = { name?: string | null; joined_at?: string | null; state?: string | null };
 
 type TopupPackage = {
   id: number;
@@ -126,6 +146,11 @@ export default function EarningsPage() {
   const [data, setData] = useState<Referral | null>(null);
   const [packages, setPackages] = useState<TopupPackage[]>([]);
   const [referralCode, setReferralCode] = useState<string | null>(null);
+  // #503: null means not loaded or the route is absent on this deployment;
+  // an empty array means the server answered and nobody has joined. The
+  // screen says different things for those two, because "we could not ask"
+  // is not "nobody came".
+  const [invited, setInvited] = useState<Invited[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
@@ -142,6 +167,16 @@ export default function EarningsPage() {
     const json = await res.json().catch(() => ({}));
     if (json?.data) setData(json.data as Referral);
     return json?.data as Referral | undefined;
+  }, []);
+
+  const loadInvited = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/billing/referral/invited`, { headers: authHeaders() });
+      if (!res.ok) return;
+      const json = await res.json().catch(() => ({}));
+      const rows = json?.data?.invited ?? json?.invited;
+      if (Array.isArray(rows)) setInvited(rows as Invited[]);
+    } catch {}
   }, []);
 
   const loadPackages = useCallback(async () => {
@@ -161,13 +196,13 @@ export default function EarningsPage() {
   }, []);
 
   useEffect(() => {
-    Promise.all([loadReferral(), loadPackages(), loadCode()])
+    Promise.all([loadReferral(), loadPackages(), loadCode(), loadInvited()])
       .then(([ref]) => {
         if (!ref) setError(true);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [loadReferral, loadPackages, loadCode]);
+  }, [loadReferral, loadPackages, loadCode, loadInvited]);
 
   function historyLabel(item: HistoryItem): string {
     switch (item.reason) {
@@ -317,6 +352,48 @@ export default function EarningsPage() {
 
             {/* Referral rewards + code (ticket 6 #5) — above Withdraw */}
             <ReferralRewardsCard code={referralCode} />
+
+            {/* #503 (Ninia). The balance said what the invitations were worth
+                and never who they were. Shown only once the server has
+                answered: a deployment without the route, and an owner nobody
+                has joined through, are different facts, and an empty card
+                under "who I invited" would claim the second when it is the
+                first. */}
+            {invited !== null && (
+              <div className="card flex flex-col gap-2">
+                <h2 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{s.invited}</h2>
+                {invited.length === 0 ? (
+                  <p style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>{s.invitedEmpty}</p>
+                ) : (
+                  invited.map((p, i) => (
+                    <div key={`${p.name ?? ""}-${p.joined_at ?? ""}-${i}`} className="flex items-center gap-2">
+                      <span style={{ fontSize: "13.5px", color: p.name ? "var(--ink)" : "var(--meta)" }}>
+                        {p.name?.trim() ? p.name : s.noName}
+                      </span>
+                      {/* The state is the whole point of the list: an invite
+                          that registered and one that pays are worth
+                          different things to the person reading it. */}
+                      <span
+                        className="rounded-full px-2 py-0.5"
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          background: p.state === "paid" ? "var(--accent-tint)" : "var(--sidebar-bg)",
+                          color: p.state === "paid" ? "var(--accent-strong)" : "var(--ink-2)",
+                        }}
+                      >
+                        {p.state === "paid" ? s.stPaid : p.state === "trial" ? s.stTrial : s.stRegistered}
+                      </span>
+                      {p.joined_at && (
+                        <span className="ml-auto" style={{ fontSize: "11.5px", color: "var(--meta)" }}>
+                          {fmtDateLoc(p.joined_at)}
+                        </span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
 
             {/* Withdraw — the ONLY button gated on balance (ticket 6 #6) */}
             <div className="card flex flex-col gap-2">
