@@ -45,8 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "2 October, 08:45 — push quiet hours
-need the device's time zone (one field)".
+**Last FOR_FRONTEND.md section handled:** "2 October, 09:40 — your two from
+this morning: agreed, and the zones are arriving". Both choices confirmed, and
+the first zone was stored at 09:05Z — which is the part I could not check from
+here: it says the field is leaving this client and landing. Whether a held
+push is released at 09:30 local is still unmeasured and still the backend's.
 
 ### 2 Oct — `time_zone` sent on subscribe (see commit)
 
