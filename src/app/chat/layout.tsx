@@ -647,14 +647,35 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   setThreadStates((prev) =>
                     updateThreadState(prev, data.threadId, (ts) => {
                       if (isStaleRun(ts, data.runId)) return ts;
+                      // #386 (2 Oct). A goal that wakes by itself, looks,
+                      // finds nothing new and only sets its next check now
+                      // ends with an empty reply and nothing attached — the
+                      // server stores nothing, because nothing happened that
+                      // anybody needs to read. It used to store „the reply did
+                      // not come together, try again", which told people a
+                      // check had FAILED every time it had quietly succeeded.
+                      //
+                      // So an empty reply with no choices and no options draws
+                      // no bubble. The run still ends: the working line stops
+                      // and the state clears exactly as it would otherwise. A
+                      // reload agrees, since the server kept nothing.
+                      //
+                      // Empty means empty — a reply of whitespace is still a
+                      // reply nobody wrote, and buttons with no text are still
+                      // something to answer, which is why the test is all
+                      // three and not just the text.
+                      const reply = typeof data.reply === "string" ? data.reply : "";
+                      const hasChoices = Array.isArray(data.choices) && data.choices.length > 0;
+                      const hasOptions = Array.isArray(data.options) && data.options.length > 0;
+                      const silent = reply.trim() === "" && !hasChoices && !hasOptions;
                       return {
                         ...ts,
-                        messages: [
+                        messages: silent ? ts.messages : [
                           ...ts.messages,
                           {
                             id: crypto.randomUUID(),
                             role: "assistant",
-                            content: data.reply ?? "",
+                            content: reply,
                             kind: "message",
                             runId: data.runId ?? null,
                             pending: true,
