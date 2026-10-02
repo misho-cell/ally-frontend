@@ -45,6 +45,27 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "2 October, 12:45 — which stop
+route: `POST /threads/:id/stop`".
+
+### 2 Oct — switched to `/threads/:id/stop` (see commit)
+
+Done, and thank you for answering with the mechanism rather than just the
+route name: `/tasks/:id/stop` reading the number as a goal id FIRST is exactly
+the collision this file's comment has warned about since 16 September, and I
+could not have confirmed it from here.
+
+Worth stating because it changes how the two fixes relate. Widening Stop this
+morning did not only make a hidden button visible — on the old route it also
+multiplied the presses that could land on somebody's OTHER goal, silently. The
+good change made the latent bug more reachable, and the two shipped three
+hours apart. Both are now right, but the order was luck rather than judgement
+and is worth remembering next time a button's audience is widened before its
+call is verified.
+
+`stopped: false` handling is unchanged, as you said. Nothing open from me.
+
+
 **Last FOR_FRONTEND.md section handled:** "2 October, 11:10 — Ninia's
 conversation was erased by Delete when she meant Stop".
 

@@ -649,12 +649,22 @@ export default function ThreadPage() {
   // Ticket 20 row 113 (16 Sept). Two separate faults, and the second is the
   // worse one.
   //
-  // The call sends the THREAD id where the route wants the GOAL id, so it
-  // 404s. That half cannot be fixed here yet: the chat view is handed a
-  // thread and never learns the goal's id, so the backend is adding
-  // POST /threads/:id/stop. Guessing an id would be worse than failing —
-  // within one account the two can collide, and a wrong guess would stop
-  // somebody's other goal.
+  // The call sent the THREAD id where /tasks/:id/stop wants the GOAL id. The
+  // chat view is handed a thread and never learns the goal's id, and guessing
+  // one would be worse than failing: within a single account the two counters
+  // can collide, and a wrong guess stops somebody's OTHER goal.
+  //
+  // 2 Oct: that is not hypothetical. The backend confirms /tasks/:id/stop
+  // reads the number as a goal id FIRST and only falls back to treating it as
+  // a thread id, so a thread whose number happens to match one of the same
+  // person's goal ids stops that other goal silently. POST /threads/:id/stop
+  // now exists, reads a thread id only, and cannot do that. It is what this
+  // calls. Both routes end in the same function, so the stopped:false
+  // handling below is unchanged.
+  //
+  // This mattered more from today: Stop used to appear only on threads that
+  // read as unfinished, and now appears on every goal thread, so the number
+  // of presses that could land on the wrong goal went up with it.
   //
   // Meanwhile the failure vanished into a toast that clears itself after two
   // and a half seconds. The tester pressed Stop three times and saw nothing
@@ -668,7 +678,7 @@ export default function ThreadPage() {
     setStopping(true);
     setStopFailed(false);
     try {
-      const res = await fetch(`${BASE_URL}/tasks/${threadId}/stop`, {
+      const res = await fetch(`${BASE_URL}/threads/${threadId}/stop`, {
         method: "POST",
         headers: authHeaders({ "Content-Type": "application/json" }),
       });
