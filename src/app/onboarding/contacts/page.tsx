@@ -29,6 +29,18 @@ const L = {
     alreadyHereTitle: "Already here waiting for you",
     alreadyHereBody: "These people from your contacts are already on Netai:",
     continueImport: "Continue",
+    // #374 (2 Oct). A web page cannot see the phonebook change after the
+    // first import, so contacts added to the phone later never reached the
+    // server. The same picker is reachable from the profile now, and this is
+    // what it says there: it is not a first import and must not read like one.
+    addMoreTitle: "Add new contacts",
+    addMoreBody: "Pick the people you have saved since last time. Anyone already here is left exactly as they are.",
+    // Re-importing is now cheap and safe on the server, so most of a repeat
+    // run is people it already had. Without this line the screen would say
+    // "Added 0" and read as a failure, when nothing was wrong and nothing
+    // was lost: "nothing new" and "nothing happened" are different answers.
+    unchanged: "Already saved",
+    backToProfile: "Done",
   },
   ka: {
     uploaded: "კონტაქტები აიტვირთა!",
@@ -44,10 +56,16 @@ const L = {
     alreadyHereTitle: "აქ უკვე გელოდებიან",
     alreadyHereBody: "შენი კონტაქტებიდან ეს ადამიანები უკვე Netai-ზეა:",
     continueImport: "გაგრძელება",
+    addMoreTitle: "ახალი კონტაქტების დამატება",
+    addMoreBody: "აირჩიე ის ადამიანები, ვინც ბოლო დროს შეინახე. ვინც უკვე აქაა, ხელუხლებელი დარჩება.",
+    unchanged: "უკვე შენახული",
+    backToProfile: "მზადაა",
   },
 };
 
-type ImportResult = { imported: number; skipped: number };
+// `unchanged` arrives from deployments after 2 Oct; absent on older ones,
+// which is why it is optional and simply not drawn when it is missing.
+type ImportResult = { imported: number; skipped: number; unchanged?: number };
 type PendingContact = { name: string; phones: string[]; email?: string; city?: string };
 
 export default function OnboardingContactsPage() {
@@ -57,6 +75,10 @@ export default function OnboardingContactsPage() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState("");
   const [hasContactsApi, setHasContactsApi] = useState(false);
+  // #374: the same screen, reached from the profile to add contacts saved
+  // since the first import. Read from the location rather than useSearchParams
+  // to keep this page out of that hook's Suspense requirement.
+  const [fromProfile, setFromProfile] = useState(false);
   // T4 (26 Aug): between permission grant and the actual import, show who
   // from the picked contacts already has a Netai account.
   const [matchedNames, setMatchedNames] = useState<string[] | null>(null);
@@ -66,6 +88,9 @@ export default function OnboardingContactsPage() {
     setHasContactsApi(
       typeof navigator !== "undefined" && "contacts" in navigator
     );
+    try {
+      setFromProfile(new URLSearchParams(window.location.search).get("from") === "profile");
+    } catch {}
     // Restore the matched-contacts step across a refresh — the OS picker
     // can't be replayed, but the names/contacts it already returned can be.
     try {
@@ -218,10 +243,16 @@ export default function OnboardingContactsPage() {
             <p className="text-lg font-semibold" style={{ color: "var(--ink)" }}>{s.uploaded}</p>
             <p className="mt-1 text-sm" style={{ color: "var(--ink-soft)" }}>
               {s.added}: {result.imported} &nbsp;&middot;&nbsp; {s.skipped}: {result.skipped}
+              {typeof result.unchanged === "number" && (
+                <> &nbsp;&middot;&nbsp; {s.unchanged}: {result.unchanged}</>
+              )}
             </p>
           </div>
-          <button onClick={() => router.replace("/chat")} className="btn-primary w-full h-12">
-            {s.start}
+          <button
+            onClick={() => router.replace(fromProfile ? "/profile" : "/chat")}
+            className="btn-primary w-full h-12"
+          >
+            {fromProfile ? s.backToProfile : s.start}
           </button>
         </div>
       </div>
@@ -232,8 +263,12 @@ export default function OnboardingContactsPage() {
     <div className="flex min-h-full flex-col items-center justify-center px-4" style={{ background: "var(--bg)" }}>
       <div className="card w-full max-w-sm p-8 flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <h1 style={{ font: "500 22px/28px var(--font-bricolage)", color: "var(--ink)" }}>{s.title}</h1>
-          <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.body}</p>
+          <h1 style={{ font: "500 22px/28px var(--font-bricolage)", color: "var(--ink)" }}>
+            {fromProfile ? s.addMoreTitle : s.title}
+          </h1>
+          <p className="text-sm" style={{ color: "var(--ink-soft)" }}>
+            {fromProfile ? s.addMoreBody : s.body}
+          </p>
         </div>
 
         {error && (
@@ -285,7 +320,15 @@ export default function OnboardingContactsPage() {
 
           <button
             type="button"
-            onClick={() => { forgetPending(); skipOnboarding(); router.replace("/chat"); }}
+            onClick={() => {
+              forgetPending();
+              // #374: only an onboarding visit may mark onboarding skipped.
+              // Pressed from the profile this is "not now", by somebody who
+              // finished onboarding long ago, and it must not write anything
+              // about a step they already completed.
+              if (!fromProfile) skipOnboarding();
+              router.replace(fromProfile ? "/profile" : "/chat");
+            }}
             className="text-sm py-2 transition-colors hover:text-[var(--ink)]"
             style={{ color: "var(--ink-soft)" }}
           >

@@ -45,6 +45,52 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "2 October, 16:20 — the team board:
+page 3 (#463) and the order (#266); #430 is yours", and the 16:00 section
+(#497, #374). All five done.
+
+### 2 Oct — #463, #266, #430, #497, #374 (two commits)
+
+**#266 is the one worth your eye.** The client was regrouping page 1 by author
+in ITS own order of people, which silently overrode the order Giorgi asked
+for; the two disagreed about who comes first and the screen won. Nothing is
+re-sorted here now. Rows by one person still sit together because you sort by
+author too, so the grouping's value survives without a second opinion about
+the order.
+
+**#463** three boards, each move its own named button. With three
+destinations a single toggle cannot say where a task goes, and a move decides
+whose plate it lands on.
+
+**#430** the id is on every card. **#497 and #374** as asked, with four
+choices worth naming:
+
+- The cancel confirmation names the date the plan runs until, and its dismiss
+  button says "keep it" rather than "cancel" — beside "cancel subscription"
+  that word is a coin toss.
+- Cancel is not offered on a `past_due` account. That one's next step is a
+  working card, and the option sitting beside "your payment failed" reads as
+  the app suggesting it.
+- The granted-plan case is discovered from your 404, never guessed from the
+  profile: nothing there distinguishes a granted plan from a paid one, and a
+  wrong guess would either hide a real cancel button or offer one that cannot
+  work.
+- **#374 reuses the onboarding screen rather than building a second picker**,
+  with a `from=profile` mode for the wording and the way back. One import
+  path that cannot drift from the other. Its Skip no longer marks onboarding
+  skipped when it is reached from the profile — pressed there it means "not
+  now", by somebody who finished onboarding long ago.
+
+**Your `unchanged` field is drawn, and thank you for adding it.** Without it a
+repeat import would have said "Added 0" and read as a failure, when nothing
+was wrong and nothing was lost. "Nothing new" and "nothing happened" are
+different answers and that field is what keeps them apart.
+
+Not verifiable from here: that a re-import really leaves existing contacts
+untouched and does not re-enrich. The screen now promises exactly that, in
+those words, so if it is ever not true the copy is a lie rather than a bug.
+
+
 **Last FOR_FRONTEND.md section handled:** "2 October, 15:20 — #375: each reply
 now carries its own steps (`steps`), and the vanishing conversation".
 

@@ -92,6 +92,8 @@ const L = {
     // #497 (2 Oct). Cancelling ends the plan at the close of the paid period,
     // so the question names that date: "cancel" with no date reads as "it
     // stops now", and somebody who has paid for this month keeps this month.
+    addContacts: "Add new contacts",
+    addContactsSub: "People you have saved on your phone since last time",
     cancelPlan: "Cancel subscription",
     keepPlan: "Keep it",
     cancelPlanAsk: (d: string) => `The plan will not renew. You keep everything until ${d}, and nothing is charged after that.`,
@@ -168,6 +170,8 @@ const L = {
     freePlan: "უფასო გეგმა",
     tapChoose: "გეგმის ასარჩევად დააჭირე ქვემოთ.",
     portalError: "პორტალი ვერ გაიხსნა. სცადე თავიდან.",
+    addContacts: "ახალი კონტაქტების დამატება",
+    addContactsSub: "ვინც ბოლო დროს შეინახე ტელეფონში",
     cancelPlan: "გამოწერის გაუქმება",
     keepPlan: "დავტოვოთ",
     cancelPlanAsk: (d: string) => `გამოწერა აღარ განახლდება. ${d}-მდე ყველაფერი გრჩება და შემდეგ თანხა აღარ ჩამოგეჭრება.`,
@@ -988,6 +992,24 @@ export default function ProfilePage() {
                 <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.earnings}</h2>
                 <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
                   {s.earningsSub}
+                </p>
+              </div>
+              <span style={{ color: "var(--meta)" }}>→</span>
+            </Link>
+
+            {/* #374 (2 Oct). A web page cannot see the phonebook change after
+                the first import, so anybody saved to the phone later never
+                reached the server and could not be found. This is the same
+                picker onboarding uses, which is the point: one import path,
+                not a second one that drifts from it. */}
+            <Link
+              href="/onboarding/contacts?from=profile"
+              className="card flex items-center justify-between transition-colors"
+            >
+              <div>
+                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.addContacts}</h2>
+                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
+                  {s.addContactsSub}
                 </p>
               </div>
               <span style={{ color: "var(--meta)" }}>→</span>
