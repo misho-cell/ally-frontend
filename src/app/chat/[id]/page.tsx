@@ -246,6 +246,24 @@ function toBlocks(messages: ChatMessage[]): RenderBlock[] {
       const reply = m.content.trim();
       own = (stepsByRun.get(m.runId) ?? []).filter((s) => s.content.trim() !== reply);
     }
+    // #375 (2 Oct): after a reload there are no step ROWS — the messages
+    // endpoint has never returned them — so a finished conversation showed
+    // none at all. The reply now carries its run's steps itself, and they are
+    // used when no live rows exist for it. Live rows win while they do: they
+    // are the same steps, and swapping source mid-run would reorder the list
+    // under somebody reading it.
+    if (own.length === 0 && m.kind === "message" && m.role === "assistant" && m.steps && m.steps.length > 0) {
+      const reply = m.content.trim();
+      own = m.steps
+        .filter((text) => text.trim() !== reply)
+        .map((text, i) => ({
+          id: `${m.id}-step-${i}`,
+          role: "assistant" as const,
+          content: text,
+          kind: "step" as const,
+          runId: m.runId,
+        }));
+    }
     blocks.push({ type: "message", msg: m, steps: own });
     i++;
   }

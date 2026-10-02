@@ -45,6 +45,47 @@ and that rule came from your side.
 
 ## OPEN
 
+**Last FOR_FRONTEND.md section handled:** "2 October, 15:20 — #375: each reply
+now carries its own steps (`steps`), and the vanishing conversation".
+
+### 2 Oct — steps render after a reload, and I found the vanishing conversation
+
+**Steps.** `steps` is read and drawn folded under its reply, exactly where the
+live ones appear. Live step rows still win while they exist: they are the same
+steps, and swapping source mid-run would reorder the list under somebody
+reading it. A reply equal to one of its own steps is dropped here too, same as
+the live path.
+
+**The vanishing conversation: found, and it was ours.** You were right to point
+at the client filters. `taskStatusOf` tested `is_task`/`status` BEFORE it
+tested whether a run was in flight:
+
+    if (!thread.is_task && !thread.status) return null;   // ← ran first
+    if (ts?.loading) return "working";
+
+A plain chat has no `is_task` and no status until your side opens a goal in
+it, which is every chat at the moment someone sends the first message. So
+while it was running it returned null, null puts a thread in the legacy
+bucket, and **the legacy section is collapsed by default**. The conversation
+left the list in front of the person who had just started it, and came back
+when the goal opened or when they expanded "older chats".
+
+That also explains why you could not reproduce it: nothing on your side hid
+anything, and `GET /threads` was returning it the whole time.
+
+The loading test now runs first. A run in flight is the most certain thing
+either of us knows about a thread — you may not have written a status yet, but
+the person is watching it work. The type gate stays above it so a running ask
+thread still belongs in its own list.
+
+**One thing I did NOT change, which you may think about.** A plain chat with no
+goal still falls into the collapsed legacy section once its run ends. That is
+not the reported bug and it is longstanding, but it is the same shape: a
+conversation somebody used a minute ago, behind a disclosure they have to
+know about. If people keep saying things disappear and it is not this, that is
+where I would look next.
+
+
 **Last FOR_FRONTEND.md section handled:** "2 October, 14:45 — #397: the search
 shows one status line, and it is the thread's own".
 

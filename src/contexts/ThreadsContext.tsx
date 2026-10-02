@@ -47,6 +47,8 @@ export type ServerMessage = {
   choices?: string[] | null;
   // Task 39: filled only on the row that requested an invite link.
   share_text?: string | null;
+  // #375 (2 Oct): the steps of this reply's run, newest deployments only.
+  steps?: unknown;
   // Row 306 (30 Sept): { "<button label>": "<one sentence>" }, present only
   // where a button does something its label does not admit. Today that is the
   // plan-approval button alone, because approving is what writes to real
@@ -98,6 +100,16 @@ export type ChatMessage = {
   // straight from run_complete.share_text. Shared verbatim — never rebuilt
   // from the reply, never paired with a separate url.
   shareText?: string;
+  // #375 (2 Oct). The steps this reply's own run wrote, as the server stores
+  // them. Step ROWS are not returned by the messages endpoint — a step is not
+  // a message (row 204) — so after a reload a finished conversation had no
+  // steps at all, however many it had shown while running. This is how they
+  // come back.
+  //
+  // Live step rows still arrive over the stream and are still preferred while
+  // they exist: they are the same steps, and switching source mid-run would
+  // make the list flicker between two orderings of the same thing.
+  steps?: string[];
   // Row 306: one sentence per button label, for the buttons on THIS message.
   choiceNotes?: Record<string, string>;
 };
@@ -199,6 +211,9 @@ export function toChatMessages(raw: unknown): ChatMessage[] {
     ...(typeof m.share_text === "string" && m.share_text ? { shareText: m.share_text } : {}),
     ...(m.choice_notes && typeof m.choice_notes === "object"
       ? { choiceNotes: m.choice_notes }
+      : {}),
+    ...(Array.isArray(m.steps) && m.steps.length > 0
+      ? { steps: m.steps.filter((x): x is string => typeof x === "string" && x.trim() !== "") }
       : {}),
   }));
 }
@@ -335,8 +350,23 @@ export function taskStatusOf(
   // ones needing the user's reply) landed in the collapsed legacy bucket
   // instead of the main list.
   if (thread.type !== "regular" && thread.type !== "campaign_invite") return null;
-  if (!thread.is_task && !thread.status) return null;
+  // #375 (2 Oct), Ninia's test 13: a WORKING conversation vanished from the
+  // list. This is how.
+  //
+  // `loading` means this client has a run in flight on this thread. That test
+  // was below the next line, so a plain chat — is_task false, no status yet,
+  // which is every chat before the server opens a goal in it — returned null
+  // while it was running. Null lands a thread in the legacy bucket, and the
+  // legacy section is COLLAPSED by default. So someone sent a message, the
+  // run started, and the conversation left the list in front of them.
+  //
+  // A run in flight is the most certain thing either side knows about a
+  // thread: the server may not have written a status yet, but the person is
+  // watching it work. It is checked first now. The type gate stays above it,
+  // because an ask thread that is running still belongs in its own list and
+  // not among the goals.
   if (ts?.loading) return "working";
+  if (!thread.is_task && !thread.status) return null;
   const s = thread.status;
   if (s && KNOWN_STATUSES.includes(s)) return s;
   return "working";
