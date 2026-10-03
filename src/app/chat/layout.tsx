@@ -25,6 +25,7 @@ import {
 import { parseTokenBalance } from "@/lib/tokens";
 import { appendedKind } from "@/contexts/ThreadsContext";
 import RequestActions from "@/components/RequestActions";
+import UpdatesBadge from "@/components/UpdatesBadge";
 
 // Row 306: the server's per-button notes, read defensively. It is an optional
 // field that is absent on almost every message, so "not there" is the normal
@@ -1583,6 +1584,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             style={{ borderTop: "1px solid var(--sidebar-border)", paddingTop: "10px", color: "var(--ink-soft)", fontSize: "12.5px", fontWeight: 600 }}
           >
             {t("updatesLink")}
+            <UpdatesBadge />
           </Link>
 
           <div className="flex items-center gap-2.5" style={{ borderTop: "1px solid var(--sidebar-border)", paddingTop: "10px" }}>

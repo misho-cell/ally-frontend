@@ -13,6 +13,7 @@ import { onCheckoutCompleted } from "@/lib/paddle";
 import { startStripeTopup } from "@/lib/stripe";
 import { fetchMessagePage } from "@/lib/messages";
 import { shareInvite } from "@/lib/invite";
+import { isWriteMyOwn } from "@/lib/choices";
 import RequestActions from "@/components/RequestActions";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import { useUserName } from "@/lib/user";
@@ -1293,6 +1294,22 @@ export default function ThreadPage() {
     [threadId, voiceState, setThreadStates, rateLimitedUntil, limitHit, refreshTokens]
   );
 
+  // #68. Every button set now ends with „სხვა, მე დავწერ". That button is not
+  // an answer and must not be sent as one: it names an intention to type, and
+  // the only thing it should do is hand over the composer. Sent, it costs a
+  // turn — the assistant reads it as „let me type" and asks again, so the
+  // person answers the same question twice.
+  const pickChoice = useCallback(
+    (choice: string, all: readonly string[], send: () => void) => {
+      if (isWriteMyOwn(choice, all)) {
+        inputRef.current?.focus();
+        return;
+      }
+      send();
+    },
+    []
+  );
+
   const resend = useCallback(
     (msg: ChatMessage) => {
       setThreadStates((prev) =>
@@ -1769,7 +1786,7 @@ export default function ThreadPage() {
                         choices={msg.choices}
                         notes={msg.choiceNotes}
                         keyPrefix={msg.id}
-                        onPick={(choice) => sendMessage(choice, true, msg.serverId)}
+                        onPick={(choice) => pickChoice(choice, msg.choices ?? [], () => sendMessage(choice, true, msg.serverId))}
                       />
                     </div>
                   )}
@@ -1902,7 +1919,7 @@ export default function ThreadPage() {
                   choices={choices}
                   notes={choiceNotes}
                   keyPrefix="thread"
-                  onPick={(choice) => sendMessage(choice)}
+                  onPick={(choice) => pickChoice(choice, choices, () => sendMessage(choice))}
                 />
               </div>
             )}
