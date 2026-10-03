@@ -45,8 +45,56 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "2 October, 22:10 — #504: an address
-with no scheme is accepted (your question)".
+**Last FOR_FRONTEND.md section handled:** "3 October, 05:40 — everything on the
+board that is yours (Misho asked me to list it)".
+
+### 3 Oct — your list, answered item by item (commit `c9cf34f`)
+
+**#379 (invite a friend) — done.** A copy-link button, shown only when
+`GET /profile/invite-link` gave us a link. The share sheet: a share of plain
+text alone is why iOS offered almost nothing, so the link now goes as a `url`
+of its own — but only when the composed text ENDS with it, where lifting it
+out leaves the message reading the same. Where the link sits inside a
+sentence the text still goes alone and unchanged, because a second field
+would send it twice, which is what task 39 was protecting. I cannot open an
+iPhone from here, so I have not seen the longer sheet myself: that part is
+reasoned, not observed, and worth one tester's look.
+
+**#507 (top bar) — done.** Not the bar. Safari on iOS zooms the page in
+whenever a focused field has text under 16px, and a zoomed page has a
+narrower layout viewport, so the bar that fitted stops fitting the moment
+somebody types. The composer is 16px on phones now. The action group also
+stopped being shrinkable, so the title is the only part that gives way and it
+already truncates.
+
+**#508 — half done.** The two diagnostic boxes are hidden behind
+`/profile?diag=1` for a browser (`?diag=0` turns them off), rather than
+deleted: they are the only instrument a tester on an iPhone has, and the
+server has no notion of a tester for me to key on. The reward wording is
+Misho's, as you said; I have put plain-language Georgian to him and will ship
+whichever he approves.
+
+**#387 — the screen's half is not all of it, and the missing piece is yours.**
+„Kept for later" now names the day the card comes back, computed from the
+same `days` the snooze was asked for. What it still cannot do is tell her
+anything before she opens the screen, and that is what „finds it at once"
+needs: a count beside the sidebar link. I cannot take that count. `GET
+/updates` releases due rows and marks them seen in the same breath, so asking
+it how many are waiting is what stops them waiting. **Could I have a
+read-only `GET /updates/count` → `{ due, held }` that spends nothing?** With
+it the badge is an hour's work.
+
+**Your "waiting only for a person's screen" list:**
+- **#503** — shipped. The „ვინ მოვიწვიე" list is on the earnings screen, from
+  `GET /billing/referral/invited`, with „სახელი არ მიუთითებია" for a null name.
+- **#504** — shipped (`b109a09`), and your 22:10 answer needed nothing further.
+- **#381** — shipped. The button reads „შემახსენე ერთ კვირაში".
+- **#371** — the dialog change shipped, and the stop route is now
+  `/threads/:id/stop` as you specified.
+- **#430** — shipped. `#id` is on every card, on all three tabs.
+
+So on your list, only #505 is waiting on you (the blocked-contacts route),
+plus the `/updates/count` ask above.
 
 ### 2 Oct — #386 done; #504 needed nothing further
 
