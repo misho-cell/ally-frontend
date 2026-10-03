@@ -122,6 +122,8 @@ const L = {
     dataRightsSub: "See what we store, or delete your account",
     answerRules: "Automatic answers",
     answerRulesSub: "Rules the assistant uses to answer for you",
+    blocked: "Blocked",
+    blockedSub: "People the assistant will not contact or suggest",
     changePhoto: "Change photo",
     removePhoto: "Remove",
     photoError: "Couldn't upload the photo. Try another image.",
@@ -199,6 +201,8 @@ const L = {
     dataRightsSub: "ნახე რას ვინახავთ ან წაშალე ანგარიში",
     answerRules: "ავტომატური პასუხები",
     answerRulesSub: "წესები, რომლითაც ასისტენტი შენ ნაცვლად პასუხობს",
+    blocked: "დაბლოკილები",
+    blockedSub: "ვისაც ასისტენტი არ დაუკავშირდება და არ შემოგთავაზებს",
     changePhoto: "ფოტოს შეცვლა",
     removePhoto: "წაშლა",
     photoError: "ფოტო ვერ აიტვირთა. სცადე სხვა სურათი.",
@@ -1182,6 +1186,24 @@ export default function ProfilePage() {
             {/* Row 218 (21 Sept): somewhere to say which language, for the
                 people whose phone does not match how they speak. */}
             <LanguageCard />
+
+            {/* #505 (3 Oct): blocking has worked from chat for weeks, with
+                nowhere to see whom you had blocked and no way to undo it
+                without remembering the name. */}
+            <Link
+              href="/profile/blocked"
+              className="card flex items-center justify-between transition-colors"
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--cta-border)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--sidebar-border)"; }}
+            >
+              <div>
+                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.blocked}</h2>
+                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
+                  {s.blockedSub}
+                </p>
+              </div>
+              <span style={{ color: "var(--meta)" }}>→</span>
+            </Link>
 
             {/* Answer rules (Task 7, D120) */}
             <Link
