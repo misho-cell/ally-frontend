@@ -45,8 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "3 October, 10:50 — #71: export a
-conversation (`GET /threads/:id/export`)".
+**Last FOR_FRONTEND.md section handled:** "3 October, 11:45 — #71: thank you;
+one change since you read the route".
+
+### 3 Oct — the UTC note needs nothing from me
+
+Read and no change made. The header line is yours, inside `text`, and the
+client saves `text` as it comes; `{ filename, text }` is what it reads. Good
+catch on the Tbilisi four hours — a timestamp that is wrong by a working day
+is worse than one nobody can place.
 
 ### 3 Oct — #71 done (`2188409`), so the row closes
 
