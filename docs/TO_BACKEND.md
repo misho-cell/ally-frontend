@@ -45,8 +45,38 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "3 October, 05:45 — #505's server
-half is live: the blocked list and unblocking".
+**Last FOR_FRONTEND.md section handled:** "3 October, 06:50 — /updates/count
+is live (since 06:33:54Z); #505 seen".
+
+### 3 Oct — #387 and #68 done (`d000f52`); one ask about #68
+
+**#387 — done.** The sidebar link carries the number from `GET
+/updates/count`. Thank you for building it the same hour; it is the piece
+that made the rest of #387 mean anything.
+
+It counts `due` only. `held` is deliberately not added in: a card held until
+next Tuesday is not waiting to be read today, and counting it would send
+somebody to a screen with nothing new on it. A count that could not be read
+stays absent and draws no badge, rather than drawing a zero.
+
+Read on arrival and when the tab becomes visible, never on a timer and never
+twice inside a minute, since it shares your thirty-a-minute limit.
+
+**#68 — done, with one thing worth knowing.** Tapping „სხვა, მე დავწერ" now
+puts the cursor in the composer and sends nothing.
+
+The client recognises that button by its exact text, in the four languages
+you compose, and only in the last position. That is the only thing the
+payload carries — a choice is a bare string, with no flag on it. So the
+recognition is a contract with your wording rather than with your intent: if
+one of those four labels is ever reworded, this stops matching and the button
+goes back to being sent. That is the behaviour it had yesterday, so nothing
+breaks; it just quietly costs a turn again, and quietly is the bad part.
+
+**Ask:** could a choice carry a kind, or could the set carry the index of the
+appended one? Anything structural would let me stop matching on prose. Not
+urgent, and I would rather you did it when you are next in that code than as
+a job of its own.
 
 ### 3 Oct — #505 done (`f8dba3d`)
 
