@@ -21,6 +21,10 @@ export type MessagePage = {
   // Choices attached to the newest message (task 22 k) — the server persists
   // them on the message row so they survive a reload.
   choices?: string[];
+  // #68: the index, within those choices, of the server's „other, I'll write
+  // it" button. Lifted with them, or they come back after a reload with the
+  // button present and no longer recognised.
+  otherChoiceIndex?: number;
   // The conversation's language, decided by the server from the OWNER's own
   // messages. Absent when this deployment does not send it, which is why it
   // is optional rather than defaulted: "the server did not say" and "the
@@ -38,14 +42,25 @@ async function get(url: string): Promise<Response> {
   return fetch(url, { headers: authHeaders() });
 }
 
-// The newest message's persisted choices, if any (task 22 k).
-function lastChoices(raw: unknown): string[] | undefined {
+// The newest message's persisted choices, if any (task 22 k), with the index
+// of its „other" button beside them.
+function lastChoices(raw: unknown): { choices: string[]; otherChoiceIndex?: number } | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
-  const last = raw[raw.length - 1] as { kind?: unknown; choices?: unknown };
+  const last = raw[raw.length - 1] as {
+    kind?: unknown;
+    choices?: unknown;
+    other_choice_index?: unknown;
+  };
   // Task 98: a "pending" row renders its buttons under its OWN bubble
   // (ChatMessage.choices) — lifting them here too would show them twice.
   if (last?.kind === "pending") return undefined;
-  return Array.isArray(last?.choices) ? (last.choices as string[]) : undefined;
+  if (!Array.isArray(last?.choices)) return undefined;
+  return {
+    choices: last.choices as string[],
+    ...(typeof last.other_choice_index === "number"
+      ? { otherChoiceIndex: last.other_choice_index }
+      : {}),
+  };
 }
 
 // Returns null when the session is gone (a redirect to /login is under way).
@@ -93,7 +108,7 @@ export async function fetchMessagePage(
       // `language` rides on the envelope, next to data, not on each message.
       setServerLanguage(json?.language);
       const raw = json.data ?? json;
-      return { messages: toChatMessages(raw), paged: true, choices: lastChoices(raw), language: envelopeLanguage(json) };
+      return { messages: toChatMessages(raw), paged: true, ...lastChoices(raw), language: envelopeLanguage(json) };
     }
     pagingSupported = false;
   }
@@ -108,5 +123,5 @@ export async function fetchMessagePage(
   const json = await res.json();
   setServerLanguage(json?.language);
   const raw = json.data ?? json;
-  return { messages: toChatMessages(raw), paged: false, choices: lastChoices(raw), language: envelopeLanguage(json) };
+  return { messages: toChatMessages(raw), paged: false, ...lastChoices(raw), language: envelopeLanguage(json) };
 }

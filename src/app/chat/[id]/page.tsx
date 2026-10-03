@@ -383,7 +383,7 @@ export default function ThreadPage() {
   } = useThreads();
 
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
-  const { messages, options, choices, choiceNotes, loading, error, streaming, progress, hasMoreOlder, result } = st;
+  const { messages, options, choices, choiceNotes, otherChoiceIndex, loading, error, streaming, progress, hasMoreOlder, result } = st;
   const send = SEND[getLocale()];
 
   const [input, setInput] = useState("");
@@ -1022,6 +1022,13 @@ export default function ThreadPage() {
               !ts.loading && Array.isArray(page.choices) && page.choices.length > 0
                 ? page.choices
                 : ts.choices,
+            // #68: the index belongs to the set it came with. It moves only
+            // when the set does, so a restored set keeps its own button and
+            // a kept set keeps the index it already had.
+            otherChoiceIndex:
+              !ts.loading && Array.isArray(page.choices) && page.choices.length > 0
+                ? page.otherChoiceIndex ?? null
+                : ts.otherChoiceIndex,
             // Row 3 note from the backend (24 Sept): the server sends the
             // conversation's language on the envelope. Kept only when it
             // arrives — an older deployment that sends nothing must not
@@ -1221,6 +1228,7 @@ export default function ThreadPage() {
             : ts.messages,
           options: [],
           choices: [],
+          otherChoiceIndex: null,
           error: null,
           loading: true,
           runId: sentinel,
@@ -1300,8 +1308,14 @@ export default function ThreadPage() {
   // turn — the assistant reads it as „let me type" and asks again, so the
   // person answers the same question twice.
   const pickChoice = useCallback(
-    (choice: string, all: readonly string[], send: () => void) => {
-      if (isWriteMyOwn(choice, all)) {
+    (
+      choice: string,
+      index: number,
+      all: readonly string[],
+      otherIndex: number | null | undefined,
+      send: () => void,
+    ) => {
+      if (isWriteMyOwn(choice, index, all, otherIndex)) {
         inputRef.current?.focus();
         return;
       }
@@ -1786,7 +1800,7 @@ export default function ThreadPage() {
                         choices={msg.choices}
                         notes={msg.choiceNotes}
                         keyPrefix={msg.id}
-                        onPick={(choice) => pickChoice(choice, msg.choices ?? [], () => sendMessage(choice, true, msg.serverId))}
+                        onPick={(choice, ci) => pickChoice(choice, ci, msg.choices ?? [], msg.otherChoiceIndex, () => sendMessage(choice, true, msg.serverId))}
                       />
                     </div>
                   )}
@@ -1919,7 +1933,7 @@ export default function ThreadPage() {
                   choices={choices}
                   notes={choiceNotes}
                   keyPrefix="thread"
-                  onPick={(choice) => pickChoice(choice, choices, () => sendMessage(choice))}
+                  onPick={(choice, ci) => pickChoice(choice, ci, choices, otherChoiceIndex, () => sendMessage(choice))}
                 />
               </div>
             )}
@@ -2187,7 +2201,7 @@ function ChoiceButtons({
 }: {
   choices: string[];
   notes?: Record<string, string>;
-  onPick: (choice: string) => void;
+  onPick: (choice: string, index: number) => void;
   keyPrefix: string;
 }) {
   const hasNotes = choices.some((c) => notes?.[c]);
@@ -2199,7 +2213,7 @@ function ChoiceButtons({
           <div key={`${keyPrefix}-${ci}`} className="flex flex-col items-start gap-1">
             <button
               type="button"
-              onClick={() => onPick(choice)}
+              onClick={() => onPick(choice, ci)}
               className="bg-white px-4 py-2 text-left transition-colors"
               style={{
                 border: "1px solid var(--cta-border)",

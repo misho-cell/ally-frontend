@@ -688,11 +688,18 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             ...(readChoiceNotes(data.choice_notes)
                               ? { choiceNotes: readChoiceNotes(data.choice_notes)! }
                               : {}),
+                            ...(typeof data.other_choice_index === "number"
+                              ? { otherChoiceIndex: data.other_choice_index }
+                              : {}),
                           },
                         ],
                         options: Array.isArray(data.options) ? data.options : [],
                         choices: Array.isArray(data.choices) ? data.choices : [],
                         choiceNotes: readChoiceNotes(data.choice_notes) ?? {},
+                        // #68: which button opens the composer instead of
+                        // answering. Absent means every button is an answer.
+                        otherChoiceIndex:
+                          typeof data.other_choice_index === "number" ? data.other_choice_index : null,
                         loading: false,
                         runId: null,
                         error: null,
@@ -739,6 +746,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             ...(Array.isArray(data.choices) && data.choices.length > 0 ? { choices: data.choices as string[] } : {}),
                             ...(readChoiceNotes(data.choice_notes)
                               ? { choiceNotes: readChoiceNotes(data.choice_notes)! }
+                              : {}),
+                            ...(typeof data.other_choice_index === "number"
+                              ? { otherChoiceIndex: data.other_choice_index }
                               : {}),
                           },
                         ],

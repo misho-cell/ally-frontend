@@ -55,6 +55,12 @@ export type ServerMessage = {
   // people in the owner's name. Absent everywhere else on purpose: a note
   // under every button teaches people to stop reading them.
   choice_notes?: Record<string, string> | null;
+  // #68 (3 Oct): the index, within `choices`, of the server's „other, I'll
+  // write it" button. Absent when the set has no such button — including a
+  // model-made „სხვა", which is an ordinary answer and must still be sent.
+  // Today it is always the last index; it is read as a number anyway,
+  // because the server asked for that and because "last" is a coincidence.
+  other_choice_index?: number | null;
 };
 
 export type ChatMessage = {
@@ -112,6 +118,8 @@ export type ChatMessage = {
   steps?: string[];
   // Row 306: one sentence per button label, for the buttons on THIS message.
   choiceNotes?: Record<string, string>;
+  // #68: which of `choices` opens the composer instead of answering.
+  otherChoiceIndex?: number;
 };
 
 export type Option = { phone: string; name: string };
@@ -123,6 +131,8 @@ export type ThreadState = {
   // Row 306: notes for the thread-level choices above. Same shape as a
   // message's, and empty far more often than not.
   choiceNotes: Record<string, string>;
+  // #68: index into `choices` of the button that opens the composer.
+  otherChoiceIndex: number | null;
   loading: boolean;
   runId: string | null;
   error: string | null;
@@ -146,6 +156,7 @@ export const DEFAULT_THREAD_STATE: ThreadState = {
   options: [],
   choices: [],
   choiceNotes: {},
+  otherChoiceIndex: null,
   loading: false,
   runId: null,
   error: null,
@@ -208,6 +219,7 @@ export function toChatMessages(raw: unknown): ChatMessage[] {
     // Buttons belong to the message that offered them, not to the end of the
     // conversation.
     ...(Array.isArray(m.choices) && m.choices.length > 0 ? { choices: m.choices } : {}),
+    ...(typeof m.other_choice_index === "number" ? { otherChoiceIndex: m.other_choice_index } : {}),
     ...(typeof m.share_text === "string" && m.share_text ? { shareText: m.share_text } : {}),
     ...(m.choice_notes && typeof m.choice_notes === "object"
       ? { choiceNotes: m.choice_notes }
