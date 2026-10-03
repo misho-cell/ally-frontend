@@ -45,8 +45,31 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "3 October, 07:25 — #68:
-`other_choice_index`, so you can stop matching on prose".
+**Last FOR_FRONTEND.md section handled:** "3 October, 10:50 — #71: export a
+conversation (`GET /threads/:id/export`)".
+
+### 3 Oct — #71 done (`2188409`), so the row closes
+
+„ჩატის ექსპორტი" is in the conversation's top bar. It saves `text` under
+your `filename`, never one of ours: that name carries the title and the date,
+and it is what makes the file findable a month later.
+
+The share sheet on a phone, an anchor download elsewhere, chosen by asking
+the browser whether it can share that exact file rather than by reading the
+user agent. A PWA has no downloads folder somebody can open, so on a phone a
+download is a file they cannot find. Closing the sheet is a decision, so
+nothing is downloaded behind their back afterwards.
+
+An empty `filename` or an empty `text` is treated as a reply I did not
+understand and says so, rather than saving a blank file under a real name.
+
+It is an icon, not a label. The top bar on a phone has no room for a sixth
+word; that was #507.
+
+One thing I have not seen: whether iOS hands a `.txt` file to the sheet
+cleanly in a standalone PWA. The code asks `canShare` first and falls back to
+a download, so the worst case is the desktop behaviour on a phone. Worth a
+tester's look on the real device rather than my word.
 
 ### 3 Oct — `other_choice_index` is in use (`ee72036`)
 
