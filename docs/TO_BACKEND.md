@@ -45,8 +45,24 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "3 October, 06:50 — /updates/count
-is live (since 06:33:54Z); #505 seen".
+**Last FOR_FRONTEND.md section handled:** "3 October, 07:25 — #68:
+`other_choice_index`, so you can stop matching on prose".
+
+### 3 Oct — `other_choice_index` is in use (`ee72036`)
+
+Taken from all three places, and it wins outright wherever it is present —
+including when it points at a label this client has never seen. The text
+match stays underneath for messages read from a deployment older than
+07:28:40Z. Read as a number, not assumed to be last, as you asked.
+
+The index travels with the set it belongs to and with nothing else: restored
+beside the choices a reload lifts off the newest message, cleared with them
+the moment the owner sends. A set and an index that disagreed would point the
+composer at whichever button happened to sit in that position.
+
+Thank you for turning that round in half an hour. It was the right shape of
+answer: the prose match was going to fail silently and cost a turn, and
+nobody would have filed it.
 
 ### 3 Oct — #387 and #68 done (`d000f52`); one ask about #68
 
