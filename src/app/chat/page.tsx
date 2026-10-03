@@ -128,7 +128,7 @@ export default function ChatIndexPage() {
               onChange={(e) => setInput(e.target.value)}
               placeholder={recording ? t("listening") : t("homePlaceholder")}
               className="flex-1 min-w-0 bg-transparent outline-none"
-              style={{ color: "var(--ink)", fontSize: "15px", padding: "7px 0" }}
+              style={{ color: "var(--ink)", padding: "7px 0" }}
             />
           </div>
           <button

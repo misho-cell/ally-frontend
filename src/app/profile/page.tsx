@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
@@ -16,6 +16,12 @@ import LanguageCard from "@/components/LanguageCard";
 import ReferralRewardsCard from "@/components/ReferralRewardsCard";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { parseTokenBalance, type TokenBalance } from "@/lib/tokens";
+import {
+  applyDiagnosticsFromLocation,
+  subscribeDiagnostics,
+  diagnosticsSnapshot,
+  diagnosticsServerSnapshot,
+} from "@/lib/diagnostics";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const MCP_URL = "https://api.netai.guru/mcp";
@@ -879,6 +885,17 @@ export default function ProfilePage() {
   // from a paid one, and a wrong guess would either hide a real cancel button
   // or offer one that cannot work.
   const [granted, setGranted] = useState(false);
+  // #508. The flag lives in this browser, not in the account, so it is read
+  // as an external store: false on the server, the stored answer here.
+  const showDiagnostics = useSyncExternalStore(
+    subscribeDiagnostics,
+    diagnosticsSnapshot,
+    diagnosticsServerSnapshot,
+  );
+
+  useEffect(() => {
+    applyDiagnosticsFromLocation(window.location.search);
+  }, []);
 
   async function reloadProfile() {
     try {
@@ -1151,9 +1168,16 @@ export default function ProfilePage() {
 
             {/* Row 6 (12 Sept): on-screen push diagnostics — an iPhone has no
                 console, so this is the only way a tester can report the three
-                values that separate a permission problem from a delivery one. */}
-            <PushDiagnostics />
-            <MicDiagnostics />
+                values that separate a permission problem from a delivery one.
+                #508 (3 Oct): hidden unless this browser was switched on with
+                /profile?diag=1. Ninia read the profile cold and these two
+                boxes meant nothing to her; they were never written for her. */}
+            {showDiagnostics && (
+              <>
+                <PushDiagnostics />
+                <MicDiagnostics />
+              </>
+            )}
 
             {/* Row 218 (21 Sept): somewhere to say which language, for the
                 people whose phone does not match how they speak. */}

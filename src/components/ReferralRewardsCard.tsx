@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getLocale } from "@/lib/i18n";
-import { fetchInvite, shareInvite, type Invite } from "@/lib/invite";
+import { copyText, fetchInvite, shareInvite, type Invite } from "@/lib/invite";
 
 const SITE_URL = "https://netai.guru";
 
@@ -17,6 +17,7 @@ const L = {
     copy: "Copy",
     copied: "Copied",
     invite: "Invite friend",
+    copyLink: "Copy link",
   },
   ka: {
     title: "მოიწვიე მეგობრები და მიიღე ჯილდო",
@@ -25,6 +26,7 @@ const L = {
     copy: "დაკოპირება",
     copied: "დაკოპირებულია",
     invite: "მოიწვიე მეგობარი",
+    copyLink: "ბმულის დაკოპირება",
   },
 };
 
@@ -41,7 +43,7 @@ export function inviteShareText(code: string | null): string {
 
 export default function ReferralRewardsCard({ code }: { code: string | null }) {
   const s = L[getLocale()];
-  const [copied, setCopied] = useState<"code" | "text" | null>(null);
+  const [copied, setCopied] = useState<"code" | "text" | "link" | null>(null);
   // Row 320. Fetched when the card mounts, not when the button is pressed:
   // `navigator.share` needs the user activation of the tap itself, and an
   // await in between loses it on iOS Safari. Prefetching is what makes the
@@ -55,7 +57,7 @@ export default function ReferralRewardsCard({ code }: { code: string | null }) {
   // The copied state flips OPTIMISTICALLY, before the async clipboard write —
   // testers reported the state never appearing when clipboard.writeText was
   // rejected silently (task 22 c).
-  function flash(kind: "code" | "text") {
+  function flash(kind: "code" | "text" | "link") {
     setCopied(kind);
     setTimeout(() => setCopied(null), 2000);
   }
@@ -63,21 +65,7 @@ export default function ReferralRewardsCard({ code }: { code: string | null }) {
   async function copyCode() {
     if (!shownCode) return;
     flash("code");
-    try {
-      await navigator.clipboard.writeText(shownCode);
-    } catch {
-      // Fallback for browsers where the async clipboard is blocked.
-      try {
-        const ta = document.createElement("textarea");
-        ta.value = shownCode;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      } catch {}
-    }
+    await copyText(shownCode);
   }
 
   useEffect(() => {
@@ -93,8 +81,20 @@ export default function ReferralRewardsCard({ code }: { code: string | null }) {
   // fetch lands, and for accounts the invite-link flag is still off for.
   async function share() {
     const text = invite?.share_text ?? inviteShareText(shownCode);
-    const outcome = await shareInvite(text);
+    const outcome = await shareInvite(text, invite?.link ?? null);
     if (outcome === "copied") flash("text");
+  }
+
+  // #379. Copying the address is its own act: the share sheet on iOS offered
+  // testers almost nothing, and a link on the clipboard goes wherever the
+  // person wants without a sheet at all. Shown only when the server gave us a
+  // link — there is no second place to invent one from, and a button that
+  // copied nothing would be worse than no button.
+  async function copyLink() {
+    const link = invite?.link;
+    if (!link) return;
+    flash("link");
+    await copyText(link);
   }
 
   return (
@@ -127,9 +127,16 @@ export default function ReferralRewardsCard({ code }: { code: string | null }) {
           </button>
         </div>
       )}
-      <button type="button" onClick={share} className="btn-primary self-start">
-        {copied === "text" ? s.copied : s.invite}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={share} className="btn-primary">
+          {copied === "text" ? s.copied : s.invite}
+        </button>
+        {invite?.link && (
+          <button type="button" onClick={copyLink} className="btn-secondary">
+            {copied === "link" ? s.copied : s.copyLink}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

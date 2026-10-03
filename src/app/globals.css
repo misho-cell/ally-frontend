@@ -414,6 +414,9 @@ body {
 .composer-pill input,
 .composer-pill textarea {
   border: 0; outline: 0; background: transparent; box-shadow: none; border-radius: 0;
+  /* Kept here rather than inline so the phone rule below can raise it: an
+     inline size would win over any stylesheet and the zoom would stay. */
+  font-size: 15px;
 }
 .composer-pill input:focus,
 .composer-pill textarea:focus,
@@ -428,6 +431,15 @@ body {
 
 /* ============ Responsive ============ */
 @media (max-width: 767px) {
+  /* #507 (3 Oct). On the phone, the letters in the top bar sat on top of each
+     other while somebody was typing. The top bar is not what changes when the
+     keyboard opens: Safari on iOS zooms the page in whenever a focused field
+     has text smaller than 16px, and a zoomed page has a narrower layout
+     viewport, so the bar that fitted a moment ago no longer does.
+     16px is the whole fix — the field looks the same size and the page stops
+     being zoomed. Only on phones, because only there does it happen. */
+  .composer-pill input,
+  .composer-pill textarea { font-size: 16px; }
   .thread-header { padding: 11px 14px; gap: 10px; }
   .thread-header .title { font-size: 15px; line-height: 20px; }
   .token-badge { padding: 6px 9px; }

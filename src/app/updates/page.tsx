@@ -42,7 +42,10 @@ const L = {
     // back then. A label that names only the when leaves the what to guess.
     laterDay: "Remind me tomorrow",
     laterWeek: "Remind me in a week",
-    heldOk: "Kept for later.",
+    // #387 (3 Oct, Ninia). "Kept for later" never said WHEN later is, so
+    // after pressing it there was nothing to come back for and no day to come
+    // back on. The date is the whole point of the button.
+    heldOk: (d: string) => `Kept for later. It comes back on ${d}.`,
     failed: "Could not postpone it. It is still here.",
     goal: "Goal",
     // 2 Oct: a question card used to offer only the two remind-me buttons, so
@@ -71,7 +74,7 @@ const L = {
     // B8 (2 Oct). „შემახსენე კვირაში" reads as "remind me weekly", which is a
     // standing arrangement; the button does one thing once. One word fixes it.
     laterWeek: "შემახსენე ერთ კვირაში",
-    heldOk: "გადაიდო.",
+    heldOk: (d: string) => `გადაიდო. დაგიბრუნდება ${d}.`,
     failed: "ვერ გადაიდო. ისევ აქ არის.",
     goal: "მიზანი",
     answer: "უპასუხე",
@@ -280,7 +283,11 @@ export default function UpdatesPage() {
       // held count moves with it so the two never disagree on screen.
       setDue((prev) => prev.filter((u) => u.update_ref !== ref));
       setHeld((n) => (typeof n === "number" ? n + 1 : n));
-      setNotice({ text: s.heldOk, ok: true });
+      // The day is computed from the same `days` the server was asked for,
+      // so the two cannot disagree. It is a date, not a promise of an hour.
+      const back = new Date();
+      back.setDate(back.getDate() + days);
+      setNotice({ text: s.heldOk(fmtDateLoc(back.toISOString())), ok: true });
     } catch {
       // A postponement that failed must not look like one that worked: the row
       // stays exactly where it is and the screen says so.

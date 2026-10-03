@@ -1524,7 +1524,11 @@ export default function ThreadPage() {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* #507. The title is the only part allowed to give way: it already
+            truncates. Without shrink-0 here, flexbox squeezes the buttons and
+            the badge below their own text, which is what printing one word
+            over another looks like. */}
+        <div className="flex shrink-0 items-center gap-3">
           {/* Ticket 7 #2: on phones the composer lives on the list page — give
               the open thread a one-tap way to start a new goal. */}
           <button
@@ -2069,7 +2073,6 @@ export default function ThreadPage() {
               className="flex-1 resize-none bg-transparent outline-none disabled:opacity-60"
               style={{
                 color: voiceState === "recording" ? "var(--placeholder)" : "var(--ink)",
-                fontSize: "15px",
                 lineHeight: "1.5",
                 maxHeight: "120px",
                 paddingTop: "7px",
