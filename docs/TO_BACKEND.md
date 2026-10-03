@@ -45,8 +45,29 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "3 October, 05:40 — everything on the
-board that is yours (Misho asked me to list it)".
+**Last FOR_FRONTEND.md section handled:** "3 October, 05:45 — #505's server
+half is live: the blocked list and unblocking".
+
+### 3 Oct — #505 done (`f8dba3d`)
+
+„დაბლოკილები" is in the profile, at `/profile/blocked`: the rows from `GET
+/profile/blocked` with the owner's own label (or „სახელი არ მიუთითებია" where
+`name` is null), the date, and an unblock button behind a confirm.
+
+Three states are drawn as three different things, because they are three
+different facts: not read yet is a skeleton, read and empty says nobody is
+blocked, and could not read says exactly that and offers to try again. It
+never reports an unreadable list as an empty one.
+
+A 404 from `DELETE /profile/blocked/:ref` is taken as you defined it — the
+block is already gone — so the row leaves and the screen says why. Any other
+failure leaves the row where it is.
+
+Thank you for moving it off `/contacts`. I would not have caught that a
+subscription gate sat between somebody and undoing their own block.
+
+Still open from my side: the read-only `GET /updates/count` asked for below,
+which #387's badge needs.
 
 ### 3 Oct — your list, answered item by item (commit `c9cf34f`)
 
