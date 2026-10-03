@@ -214,6 +214,10 @@ const en = {
   loadFailed: "Couldn't load this goal.",
   share: "Share",
   linkCopied: "Link copied",
+  // #71 (3 Oct): a customer who uses several assistants and will not explain
+  // her business twice asked to take the conversation with her.
+  exportChat: "Export chat",
+  exportFailed: "Could not export this conversation.",
   tokensAdded: "Tokens added",
   tokensLow: "Tokens running low",
   tokensAlmostGone: "Tokens almost gone — {n} left",
@@ -363,6 +367,8 @@ const ka: typeof en = {
   loadFailed: "მიზანი ვერ ჩაიტვირთა.",
   share: "გაზიარება",
   linkCopied: "ლინკი დაკოპირდა",
+  exportChat: "ჩატის ექსპორტი",
+  exportFailed: "საუბრის ექსპორტი ვერ მოხერხდა.",
   tokensAdded: "ტოკენები დაემატა",
   tokensLow: "ტოკენები იწურება",
   tokensAlmostGone: "ტოკენები თითქმის ამოიწურა, დარჩა {n}",

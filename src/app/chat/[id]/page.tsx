@@ -14,6 +14,9 @@ import { startStripeTopup } from "@/lib/stripe";
 import { fetchMessagePage } from "@/lib/messages";
 import { shareInvite } from "@/lib/invite";
 import { isWriteMyOwn } from "@/lib/choices";
+import { apiFetch } from "@/lib/api";
+import { isRecord, unwrapData } from "@/lib/payload";
+import { saveTextFile } from "@/lib/download";
 import RequestActions from "@/components/RequestActions";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import { useUserName } from "@/lib/user";
@@ -663,6 +666,35 @@ export default function ThreadPage() {
       await navigator.clipboard.writeText(url);
       showToast(t("linkCopied"), true);
     } catch {}
+  }
+
+  // #71 (3 Oct). The export is composed by the server — the title, the times,
+  // who said what, the buttons a message offered — in the conversation's own
+  // language. The client's whole job is to turn it into a file and hand it
+  // over, under the name the server chose, because the name carries the
+  // title and the date and is itself part of being able to find it later.
+  const [exporting, setExporting] = useState(false);
+  async function handleExport() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const res = await apiFetch<unknown>(`/threads/${encodeURIComponent(threadId)}/export`);
+      const body = unwrapData(res);
+      const filename = isRecord(body) && typeof body.filename === "string" ? body.filename : "";
+      const text = isRecord(body) && typeof body.text === "string" ? body.text : "";
+      // An empty body is not an empty conversation, it is a reply we did not
+      // understand. Saving a blank file under a real name would be worse
+      // than saying nothing worked.
+      if (!filename || !text) {
+        showToast(t("exportFailed"), false);
+        return;
+      }
+      await saveTextFile(filename, text);
+    } catch {
+      showToast(t("exportFailed"), false);
+    } finally {
+      setExporting(false);
+    }
   }
 
   // Ticket 20 row 113 (16 Sept). Two separate faults, and the second is the
@@ -1630,6 +1662,21 @@ export default function ThreadPage() {
             </span>
           )}
           <NotificationButton />
+          {/* #71: the conversation as a file. An icon, not a word, because
+              the top bar on a phone has no room for a sixth label — see
+              #507, which was that bar running out of width. */}
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            aria-label={t("exportChat")}
+            title={t("exportChat")}
+            className="rounded-lg p-1.5 transition-colors hover:bg-black/5 disabled:opacity-50"
+            style={{ color: "var(--ink-soft)" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M10 3v9M10 12l-3.2-3.2M10 12l3.2-3.2M4 15.5h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
           <button
             onClick={handleShare}
             style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-soft)" }}
