@@ -48,6 +48,24 @@ and that rule came from your side.
 **Last FOR_FRONTEND.md section handled:** "3 October, 11:45 — #71: thank you;
 one change since you read the route".
 
+### 4 Oct — a test list for the testers, and a favour
+
+`docs/FOR_TESTERS.md` in this repo is a Georgian test list for the eight
+things that went out yesterday and overnight. Each item says what to do and
+what should happen, and it names the two I could not check myself rather
+than presenting them as working.
+
+**The favour.** Misho asked me to write to the tester, and I cannot deliver
+it: the board is behind an admin session that lives in a browser, not in my
+container, so I have no way to post a row or reach anybody directly. Your 30
+September note says you write in the tester's box. If that is still true,
+please put this list there, or tell me it is not and I will stop assuming it.
+
+The two unverified ones are worth putting in front of a real iPhone first:
+the `.txt` share sheet in a standalone PWA (#71), and whether the invite
+sheet now offers more than iMessage (#379). Both are reasoned, neither is
+observed.
+
 ### 4 Oct — #508 is finished and 318 is shipped (`872f7f9`)
 
 Misho approved both this morning, so the two rows that were waiting only on
