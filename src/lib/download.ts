@@ -19,7 +19,18 @@ export async function saveTextFile(
   text: string,
   mime = "text/plain",
 ): Promise<SaveOutcome> {
-  const file = new File([text], filename, { type: `${mime};charset=utf-8` });
+  return saveFile(new File([text], filename, { type: `${mime};charset=utf-8` }));
+}
+
+// #894: the worked list arrives as bytes rather than text, and wants the
+// same two ways out. The decision about sheet or download is the file's, not
+// the caller's, so it lives in one place.
+export async function saveBlob(filename: string, blob: Blob): Promise<SaveOutcome> {
+  return saveFile(new File([blob], filename, { type: blob.type || "application/octet-stream" }));
+}
+
+async function saveFile(file: File): Promise<SaveOutcome> {
+  const filename = file.name;
 
   if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
     try {

@@ -17,6 +17,7 @@ import { isWriteMyOwn } from "@/lib/choices";
 import { apiFetch } from "@/lib/api";
 import { isRecord, unwrapData } from "@/lib/payload";
 import { saveTextFile } from "@/lib/download";
+import { FILE_ACCEPT, FILE_MAX_BYTES, uploadThreadFile } from "@/lib/threadFiles";
 import RequestActions from "@/components/RequestActions";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import { useUserName } from "@/lib/user";
@@ -683,6 +684,10 @@ export default function ThreadPage() {
   // over, under the name the server chose, because the name carries the
   // title and the date and is itself part of being able to find it later.
   const [exporting, setExporting] = useState(false);
+  // #892: attaching a list. The hidden input is the only way to open a file
+  // picker from a button that looks like the rest of the composer.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
   // #794: which steps blocks are open, by run. Held here rather than inside
   // the block, because the block is rebuilt by every event the run emits and
   // again when the run ends.
@@ -714,6 +719,61 @@ export default function ThreadPage() {
       showToast(t("exportFailed"), false);
     } finally {
       setExporting(false);
+    }
+  }
+
+  // #892. The server reads the file and writes two rows into the
+  // conversation: the owner's „📎 filename" line and Netai's summary of what
+  // it understood. There is no SSE event for either yet, so they are
+  // appended from this response — the summary with the server's own id and
+  // time, so that when history next loads it recognises the same row rather
+  // than drawing it twice (#793 is what that looks like when it goes wrong).
+  async function handleFile(file: File) {
+    if (uploading) return;
+    // Refused here only to save somebody a two-megabyte upload that ends in
+    // being told it was two megabytes. The server decides either way.
+    if (file.size > FILE_MAX_BYTES) {
+      showToast(t("attachTooBig"), false);
+      return;
+    }
+    setUploading(true);
+    try {
+      const out = await uploadThreadFile(threadId, file, t("attachFailed"));
+      if (!out.ok) {
+        showToast(out.error, false);
+        return;
+      }
+      setThreadStates((prev) =>
+        updateThreadState(prev, threadId, (ts) => ({
+          ...ts,
+          messages: [
+            ...ts.messages,
+            {
+              id: crypto.randomUUID(),
+              role: "user",
+              content: `📎 ${out.filename}`,
+              kind: "message",
+              runId: null,
+              pending: true,
+              createdAt: out.createdAt ?? new Date().toISOString(),
+            },
+            {
+              id: crypto.randomUUID(),
+              serverId: out.messageId ?? undefined,
+              role: "assistant",
+              content: out.summary,
+              kind: "message",
+              runId: null,
+              pending: true,
+              createdAt: out.createdAt ?? new Date().toISOString(),
+            },
+          ],
+        }))
+      );
+    } catch {
+      showToast(t("attachFailed"), false);
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -2186,6 +2246,48 @@ export default function ThreadPage() {
                 paddingBottom: "7px",
               }}
             />
+
+            {/* #892: attach a list. Left of the mic, because it belongs with
+                what the owner is composing rather than with sending it. */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={FILE_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                // Cleared immediately so that choosing the SAME file twice
+                // in a row still fires a change event the second time.
+                e.target.value = "";
+                if (f) void handleFile(f);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || composerBlocked}
+              aria-label={t("attachFile")}
+              title={t("attachFile")}
+              className="flex shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40"
+              style={{ width: 38, height: 38, background: "transparent", color: "var(--meta)" }}
+            >
+              {uploading ? (
+                <span
+                  className="h-4 w-4 rounded-full border-2 animate-spin"
+                  style={{ borderColor: "var(--placeholder)", borderTopColor: "transparent" }}
+                />
+              ) : (
+                <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
+                  <path
+                    d="M13.5 6.5l-5.2 5.2a1.9 1.9 0 002.7 2.7l5.2-5.2a3.3 3.3 0 00-4.7-4.7l-5.2 5.2a4.7 4.7 0 006.6 6.6l4.4-4.4"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </button>
 
             {/* D20 (22 Aug): mic AND send are BOTH available while typing —
                 mic on the left, send rightmost. Send hides only while the mic
