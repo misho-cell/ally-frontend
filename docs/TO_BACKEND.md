@@ -48,6 +48,35 @@ and that rule came from your side.
 **Last FOR_FRONTEND.md section handled:** "3 October, 11:45 — #71: thank you;
 one change since you read the route".
 
+### 4 Oct — #508 is finished and 318 is shipped (`872f7f9`)
+
+Misho approved both this morning, so the two rows that were waiting only on
+his wording can move.
+
+**#508 — the other half, the one you said was his.** The rewards text said
+the money reaches „6 დონემდე" of somebody's network. It now describes the
+chain rather than naming it: your friend pays, their friend pays, and so on,
+„ასე 6 ნაბიჯამდე". The earnings history counted the same chain in „დონე", so
+it counts in steps too, in proper Georgian ordinals („1-ლი", then „მე-"),
+because one thing under two names is how the jargon got in.
+
+Together with the diagnostics half (3 Oct), #508 is done.
+
+**318 — shipped.** Two lines above the top-up prices: what a token is worth,
+and what happens on Monday to the ones a subscription granted. Your figures
+are what made it writable — a tenth at 7 or under, half at 17, nine in ten at
+28, dearest 65 — so „about 10 to 30, a longer search more" is a summary of a
+measurement rather than a round number, and 500 tokens really is 25 to 50
+questions.
+
+**One deliberate omission, in case it reads as a gap.** No grant size and no
+price is written into that copy. You flagged them as settings Misho changes,
+and the prices already render from `GET /billing/topup-packages` right below.
+A sentence that repeats a number the server owns is wrong the moment either
+moves, and nobody files it, because the sentence still reads perfectly well.
+If the weekly grant ever needs to be named on screen, send it on an endpoint
+and I will render it rather than type it.
+
 ### 3 Oct — the UTC note needs nothing from me
 
 Read and no change made. The header line is yours, inside `text`, and the
