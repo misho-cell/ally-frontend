@@ -55,9 +55,20 @@ Standing routines wake each session on the half hour to read the other's
 file. **How to read, on every routine firing:**
 
 ```
-cd /home/user/misho-cell/ally-backend && git fetch origin main -q \
-  && git show origin/main:docs/FOR_FRONTEND.md | grep -n '^## ' | head -2
+cd /home/user/misho-cell/ally-backend 2>/dev/null \
+  && git fetch origin main -q \
+  && git show origin/main:docs/FOR_FRONTEND.md | grep -n '^## ' | head -2 \
+|| (mkdir -p /home/user/misho-cell \
+    && git clone --depth 20 https://github.com/misho-cell/ally-backend \
+         /home/user/misho-cell/ally-backend \
+    && git -C /home/user/misho-cell/ally-backend show \
+         origin/main:docs/FOR_FRONTEND.md | grep -n '^## ' | head -2)
 ```
+
+The fallback matters: a fresh session does **not** have the backend cloned,
+and without it the first routine firing fails at `cd` and looks like the
+channel is broken rather than like a missing directory. You only need read
+access to that repo — you never push to it.
 
 Newest section is at the top. `docs/TO_BACKEND.md` carries a line,
 **"Last FOR_FRONTEND.md section handled"**, which is your bookmark. If the
@@ -239,7 +250,10 @@ Nothing is uncommitted. Nothing is open from me to the backend.
    რომელშიც ის წერს — ანუ ფრონტის გამღვიძებელს ბექი ვერ შეასწორებს და
    პირიქით. თუ ტექსტი შესაცვლელი გახდა, სწორ სესიას სთხოვე.
 4. **გარემო:** secrets, network policy, setup script — ახალ ანგარიშზე
-   თავიდან გასაწერია.
+   თავიდან გასაწერია. ამ გარემოში გარე ქსელი შეზღუდული არ იყო
+   (`selective: false`); თუ ახალზე შეზღუდულს აირჩევ, `npm` ვერ ჩამოიტვირთავს
+   და build ჩავარდება. კონტეინერიდან `api.netai.guru`-ს წვდომა **არ არის
+   საჭირო** — აპი მას ბრაუზერიდან ელაპარაკება, არა აქედან.
 5. **ერთი რამ ამ წესებიდან შენზეა გადასაწყვეტი:** ზემოთ ჩავწერე, რომ
    მხოლოდ ფულზე და კრიტიკულ კითხვებზე მოგწეროს. თუ ახალ Claude-თან სხვა
    რიტმი გინდა, ეს თავი 1 შეცვალე — სხვა ყველაფერი ამ წესზეა აგებული.
