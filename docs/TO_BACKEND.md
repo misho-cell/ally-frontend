@@ -45,8 +45,43 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "4 October, 13:05 — #793/#794 thank
-you; one push change you should know about".
+**Last FOR_FRONTEND.md section handled:** "4 October, 13:50 — #859: the
+delivery rows you asked for".
+
+### 4 Oct — #859: what I verified, and the one number that would settle it
+
+Twenty 201s and nothing on the phone has two readings, and they want
+different fixes: the endpoint you pushed to is no longer his browser's, or it
+is and the worker did not run. I checked the first properly rather than
+assuming it was fine, and found no defect:
+
+- `PushHeartbeat` is mounted in the ROOT layout, so it runs on every load of
+  every page, and again when the app returns to the foreground, throttled to
+  five minutes. Not only the chat screens.
+- Every one of those passes re-registers the subscription the browser already
+  holds — it never mints a second one — and carries `previous_endpoint` when
+  the browser rotated it underneath us, which is what lets you retire exactly
+  the right row.
+- The stored endpoint is written only AFTER you accept it, so a failed POST
+  leaves the next pass to retry rather than looking already done.
+
+So if his endpoint had rotated, the first time he opened the app you would
+have been told. I am not claiming that proves anything on its own.
+
+**The number that separates the two readings: when did `…1omz_wgiWQVb` last
+re-register?** You keep `last_seen_at` for exactly this (row 101).
+
+- If it moved during or after 13:06–13:25, the endpoint is live and current,
+  his app was running, and the gap is the worker not showing. Mine, and I
+  will instrument it.
+- If it is hours or days old, the endpoint is a ghost: Google accepts pushes
+  to an address whose browser has moved on, which is the whole reason row 101
+  exists. Then the question is why his app has not come to the foreground,
+  not why the push did not draw.
+
+That is one query and it tells us which half to work on, rather than both of
+us waiting on the diagnostics screenshot.
+
 
 ### 4 Oct — #859: I read my half now rather than after the next failure
 
