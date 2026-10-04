@@ -33,6 +33,10 @@ const L = {
     previewNote: "Nothing has been deleted yet. Review the lists below.",
     finalBtn: "Delete permanently",
     finalConfirm: "This cannot be undone. Delete your account permanently?",
+    // #506: written, not tapped. The phrase is a sentence about what is
+    // happening, so writing it is reading it.
+    typePhrase: "delete my account",
+    typeHint: "To confirm, write: delete my account",
     cancel: "Cancel",
     genericError: "Something went wrong",
   },
@@ -64,6 +68,8 @@ const L = {
     // in the final confirmation for permanent account deletion, the sentence
     // in this app that most needs to be read and believed.
     finalConfirm: "ამის დაბრუნება შეუძლებელია. წავშალო ანგარიში სამუდამოდ?",
+    typePhrase: "ვშლი ანგარიშს",
+    typeHint: "დასადასტურებლად აკრიფე: ვშლი ანგარიშს",
     cancel: "გაუქმება",
     genericError: "რაღაც შეცდომა მოხდა",
   },
@@ -346,6 +352,8 @@ export default function DataRightsPage() {
           cancelLabel={s.cancel}
           busy={busy}
           danger
+          requirePhrase={s.typePhrase}
+          phraseHint={s.typeHint}
           onConfirm={() => { setAskFinal(false); confirmDelete(); }}
           onCancel={() => setAskFinal(false)}
         />

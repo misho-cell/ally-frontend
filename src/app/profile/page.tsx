@@ -122,6 +122,7 @@ const L = {
     dataRightsSub: "See what we store, or delete your account",
     answerRules: "Automatic answers",
     answerRulesSub: "Rules the assistant uses to answer for you",
+    diagOff: "Diagnostics are on for this browser. Open /profile?diag=0 to hide them again.",
     blocked: "Blocked",
     blockedSub: "People the assistant will not contact or suggest",
     changePhoto: "Change photo",
@@ -201,6 +202,7 @@ const L = {
     dataRightsSub: "ნახე რას ვინახავთ ან წაშალე ანგარიში",
     answerRules: "ავტომატური პასუხები",
     answerRulesSub: "წესები, რომლითაც ასისტენტი შენ ნაცვლად პასუხობს",
+    diagOff: "დიაგნოსტიკა ჩართულია ამ ბრაუზერში. დასამალად გახსენი /profile?diag=0",
     blocked: "დაბლოკილები",
     blockedSub: "ვისაც ასისტენტი არ დაუკავშირდება და არ შემოგთავაზებს",
     changePhoto: "ფოტოს შეცვლა",
@@ -1180,6 +1182,10 @@ export default function ProfilePage() {
               <>
                 <PushDiagnostics />
                 <MicDiagnostics />
+                {/* Whoever switched these on has to be able to switch them
+                    off without being told the trick a second time. The way
+                    out belongs next to the thing it undoes. */}
+                <p style={{ fontSize: "12px", color: "var(--meta)" }}>{s.diagOff}</p>
               </>
             )}
 

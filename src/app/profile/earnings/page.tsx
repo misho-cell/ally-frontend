@@ -29,6 +29,11 @@ const L = {
     // silently. The prices beneath come from the server; the day does not.
     tokensWhat: "A token is what one question costs. An ordinary question is about 10 to 30 tokens, a longer search more, so 500 tokens is roughly 25 to 50 questions.",
     tokensWeekly: "A subscription adds new tokens every Monday. Granted tokens you did not use expire then. Tokens you buy stay, and they do not expire.",
+    // Row 318, added 4 Oct on Misho's word. At zero the server still answers
+    // once a week and refuses after that. Somebody who hit zero got one
+    // answer and then a refusal with nothing on screen explaining either, so
+    // the rule looked like the app breaking rather than the rule it is.
+    tokensZero: "At zero you still get one answer a week. After that a new question waits for Monday or for tokens you buy.",
     buySub: "Buy a subscription",
     perMonth: "1 month",
     withdraw: "Withdraw",
@@ -74,6 +79,7 @@ const L = {
     buyTokens: "ტოკენების ყიდვა",
     tokensWhat: "ტოკენი ერთი კითხვის ფასია. ჩვეულებრივი კითხვა დაახლოებით 10-დან 30 ტოკენამდეა, გრძელი ძებნა მეტი, ანუ 500 ტოკენი დაახლოებით 25-დან 50 კითხვამდეა.",
     tokensWeekly: "გამოწერას ყოველ ორშაბათს ახალი ტოკენები ემატება. გაუხარჯავი ტოკენები მაშინ ამოიწურება. ნაყიდ ტოკენებს კი ვადა არ გასდის და რჩება.",
+    tokensZero: "ნულზეც კვირაში ერთ პასუხს მაინც მიიღებ. მერე ახალი კითხვა ორშაბათს დაგელოდება, ან სანამ ტოკენებს შეიძენ.",
     buySub: "გამოწერის ყიდვა",
     perMonth: "1 თვე",
     withdraw: "განაღდება",
@@ -340,6 +346,7 @@ export default function EarningsPage() {
                     arrives after the decision it was written for. */}
                 <p style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-2)" }}>{s.tokensWhat}</p>
                 <p style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-soft)" }}>{s.tokensWeekly}</p>
+                <p style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-soft)" }}>{s.tokensZero}</p>
                 <div className="flex flex-col gap-2">
                   {packages.map((pkg) => (
                     <button
