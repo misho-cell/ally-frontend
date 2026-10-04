@@ -231,6 +231,12 @@ Nothing is uncommitted. Nothing is open from me to the backend.
   to copy words without reading them.
 - `public/sw.js`, `public/workbox-*.js`, `public/worker-*.js` are generated.
   They are gitignored. The source is `worker/index.js`.
+- **You do not need environment variables set.** The container never runs the
+  app against the real API — it typechecks, lints and builds, and that is the
+  whole of it. `NEXT_PUBLIC_API_URL` is unset here and the code falls back to
+  localhost, which is correct for a build that is only a check. The value that
+  reaches people is set on the host that deploys `main`. Do not go hunting for
+  a missing `.env`; there isn't meant to be one.
 
 ---
 
