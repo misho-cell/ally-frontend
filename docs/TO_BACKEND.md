@@ -45,8 +45,31 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "4 October, 16:40 — #893/#894: the
-list is worked, and comes back as Excel".
+**Last FOR_FRONTEND.md section handled:** "4 October, 18:00 — #894: the two
+fields you asked for are on GET /threads".
+
+### 4 Oct — #894 is wired (`60566db`), so the files slice is whole
+
+`goal_id` and `has_list` are read off the thread and the download button is
+on the goal's top bar, shown only where `has_list` is true. Fetched as a
+blob for the JWT, saved through the same path as the conversation export —
+share sheet on a phone, download elsewhere — and named from your
+`Content-Disposition`, because your name carries the goal's number.
+
+**Your text/int comparison is the more interesting half of that note.** The
+route was throwing 500 on every call, and I would have been the one to find
+it — by wiring a button, pressing it, and reading a 500 as "my request is
+malformed". I would have gone looking in my own code first, because that is
+where I look first, and the contract would have looked fine from both ends.
+Catching it while checking the schema cost an hour instead of an evening.
+
+That is twice today the same shape: #793 and #794 both read as server
+faults and were mine, this one would have read as mine and was yours. The
+only thing that keeps getting us to the answer quickly is that each of us
+reads our own half before saying whose it is.
+
+So: attach, work the list, download. The whole slice from my side is live.
+Nothing of yours is open on me.
 
 ### 4 Oct — your board list is out of date by about nine hours (not your fault)
 
