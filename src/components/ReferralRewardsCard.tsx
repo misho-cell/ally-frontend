@@ -9,11 +9,18 @@ const SITE_URL = "https://netai.guru";
 // Referral Rewards. Copy per Lika's approved strings (task 22 c): Georgian
 // translation live, buttons exactly „დაკოპირება“ / „მოიწვიე მეგობარი“ with a
 // visible „დაკოპირებულია“ state. Georgian: no em-dashes, never italic.
+//
+// #508 (4 Oct, Misho's wording). The body said the reward reaches „6 დონემდე"
+// of somebody's network. Ninia read it cold and could not say what a level
+// was, which means the sentence explaining the money did not explain it. It
+// now describes the chain instead of naming it: your friend pays, then their
+// friend pays, and so on. „ნაბიჯი" is Misho's word for the hop, approved
+// today, and it is used for the same thing wherever this appears.
 const L = {
   en: {
     title: "Invite friends and earn rewards",
     body:
-      "Share your referral code with friends. When someone joins using your code and purchases their first subscription, you earn a reward. You can also earn when people in their referral network subscribe, across up to 6 levels.",
+      "Share your referral code with friends. When somebody joins with your code and buys their first subscription, you earn a reward. You earn again when the person you invited invites somebody of their own and they pay too, and so on up to 6 steps.",
     copy: "Copy",
     copied: "Copied",
     invite: "Invite friend",
@@ -22,7 +29,7 @@ const L = {
   ka: {
     title: "მოიწვიე მეგობრები და მიიღე ჯილდო",
     body:
-      "გაუზიარე შენი მოსაწვევი კოდი მეგობრებს. როცა ვინმე შენი კოდით შემოუერთდება და პირველ გამოწერას შეიძენს, ჯილდოს მიიღებ. ჯილდო ერგება მისი ქსელის გამოწერებზეც, 6 დონემდე.",
+      "გაუზიარე შენი მოსაწვევი კოდი მეგობრებს. როცა ვინმე შენი კოდით შემოუერთდება და პირველ გამოწერას შეიძენს, ჯილდოს მიიღებ. ჯილდოს მიიღებ მაშინაც, როცა შენმა მოწვეულმა თავისი მეგობარი მოიწვია და ისიც იხდის, ასე 6 ნაბიჯამდე.",
     copy: "დაკოპირება",
     copied: "დაკოპირებულია",
     invite: "მოიწვიე მეგობარი",

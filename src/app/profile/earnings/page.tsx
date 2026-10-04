@@ -16,6 +16,19 @@ const L = {
     title: "My earnings",
     totalEarned: (v: string) => `Total earned: ${v} — share your referral code to start.`,
     buyTokens: "Buy tokens",
+    // Row 318 (approved by Misho, 4 Oct). Somebody buying tokens could see
+    // three prices and no way to judge them: the screen never said what a
+    // token is worth or what happens to the ones a subscription grants.
+    //
+    // The ranges are measured (1,241 answers over 7 days: a tenth at 7 or
+    // under, half at 17 or under, nine in ten at 28 or under, dearest 65), so
+    // "about 10 to 30" is a true summary rather than a round number.
+    //
+    // Deliberately no grant size and no price: those are settings Misho
+    // changes, and copy that repeats a number the server owns goes wrong
+    // silently. The prices beneath come from the server; the day does not.
+    tokensWhat: "A token is what one question costs. An ordinary question is about 10 to 30 tokens, a longer search more, so 500 tokens is roughly 25 to 50 questions.",
+    tokensWeekly: "A subscription adds new tokens every Monday. Granted tokens you did not use expire then. Tokens you buy stay, and they do not expire.",
     buySub: "Buy a subscription",
     perMonth: "1 month",
     withdraw: "Withdraw",
@@ -45,7 +58,10 @@ const L = {
     cancel: "Cancel",
     confirm: "Confirm",
     earn: (level: string) => `Referral earnings${level}`,
-    level: (n: number) => ` (level ${n})`,
+    // #508: "level 3" is the same jargon the rewards text used, in the row
+    // that shows the money arriving. The chain is counted in steps now, in
+    // both places, so the line and the explanation agree.
+    level: (n: number) => ` (step ${n})`,
     tokenPurchase: "Token purchase",
     subPurchase: "Subscription purchase",
     withdrawal: "Withdrawal",
@@ -56,6 +72,8 @@ const L = {
     title: "ჩემი შემოსავალი",
     totalEarned: (v: string) => `ჯამური შემოსავალი: ${v}. გააზიარე შენი მოსაწვევი კოდი დასაწყებად.`,
     buyTokens: "ტოკენების ყიდვა",
+    tokensWhat: "ტოკენი ერთი კითხვის ფასია. ჩვეულებრივი კითხვა დაახლოებით 10-დან 30 ტოკენამდეა, გრძელი ძებნა მეტი, ანუ 500 ტოკენი დაახლოებით 25-დან 50 კითხვამდეა.",
+    tokensWeekly: "გამოწერას ყოველ ორშაბათს ახალი ტოკენები ემატება. გაუხარჯავი ტოკენები მაშინ ამოიწურება. ნაყიდ ტოკენებს კი ვადა არ გასდის და რჩება.",
     buySub: "გამოწერის ყიდვა",
     perMonth: "1 თვე",
     withdraw: "განაღდება",
@@ -81,7 +99,10 @@ const L = {
     cancel: "გაუქმება",
     confirm: "დადასტურება",
     earn: (level: string) => `რეფერალური შემოსავალი${level}`,
-    level: (n: number) => ` (დონე ${n})`,
+    // Georgian ordinals are not a suffix you can append: the first is
+    // „1-ლი" and the rest take „მე-". The same two forms the admin screens
+    // already use, so the app counts the same way everywhere.
+    level: (n: number) => (n === 1 ? " (1-ლი ნაბიჯი)" : ` (მე-${n} ნაბიჯი)`),
     tokenPurchase: "ტოკენების ყიდვა",
     subPurchase: "გამოწერის ყიდვა",
     withdrawal: "განაღდება",
@@ -314,6 +335,11 @@ export default function EarningsPage() {
             {packages.length > 0 && (
               <div className="card flex flex-col gap-3">
                 <h2 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{s.buyTokens}</h2>
+                {/* Row 318: above the prices, not below. A person reads the
+                    price first and decides there, so an explanation underneath
+                    arrives after the decision it was written for. */}
+                <p style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-2)" }}>{s.tokensWhat}</p>
+                <p style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-soft)" }}>{s.tokensWeekly}</p>
                 <div className="flex flex-col gap-2">
                   {packages.map((pkg) => (
                     <button
