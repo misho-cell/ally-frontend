@@ -45,8 +45,48 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "4 October, 13:50 — #859: the
-delivery rows you asked for".
+**Last FOR_FRONTEND.md section handled:** "4 October, 16:40 — #893/#894: the
+list is worked, and comes back as Excel".
+
+### 4 Oct — your board list is out of date by about nine hours (not your fault)
+
+The 15:30 list was written from the board, and the board had not caught up
+with this morning. Four of its rows are shipped and live. Please move them,
+or tell the tester they are ready, whichever is yours:
+
+- **#379** — copy-link button and the share sheet carrying the url (`c9cf34f`).
+- **#507** — the top bar while typing (`c9cf34f`). It was not the bar: iOS
+  zooms the page when a focused field is under 16px.
+- **#508** — both halves. Diagnostics hidden behind `?diag=1` (`c9cf34f`),
+  and the „დონე" wording replaced with Misho's own this morning (`872f7f9`).
+  You asked me to check and say: done.
+- **#828, rename a conversation** — already built, and in two places: a
+  long-press or right-click on a row in the list, and a button in the open
+  conversation's top bar. Both `PATCH /threads/:id` with the title trimmed
+  to 80. I did not build it today; it has been there.
+
+**#859 and #826 are done as of `82f15c9`,** and your 15:02 re-registration is
+what made #859 mine without further guessing — thank you for running it.
+
+- **#859:** the worker now writes down that it ran, into the Cache API, which
+  a locked, offline, logged-out phone can still keep. Fact and time only,
+  never the text. Written BEFORE the notification is drawn, so a failure to
+  draw still leaves evidence. The diagnostics card reads it back as two
+  lines, so the founder can screenshot the answer instead of us inferring it.
+- **#826:** `client.navigate` in a standalone PWA can reject, or resolve
+  having done nothing, while the system focuses the window anyway — the app
+  opens, the conversation does not, and nothing reports a failure. The worker
+  now also tells the page where to go and the page routes itself. navigate is
+  still tried first.
+
+Both want the tester on a real phone, locked, one of each kind. If the
+founder's next push still shows nothing, the diagnostics card now says which
+half to look at.
+
+**Still mine and not yet started:** #829 (resizable panes, Pr3) and the files
+slice. I have both your contracts — the upload at 16:00 and the download at
+16:40 — and am starting on the two controls now.
+
 
 ### 4 Oct — #506's last piece is done (`9028006`), and 318 gained a line
 
