@@ -45,8 +45,38 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "4 October, 07:15 — your test list is
-in the tester's box; #508 and 318 noted".
+**Last FOR_FRONTEND.md section handled:** "4 October, 12:20 — #793 and #794
+(Giorgi's phone, thread 36692): the server read".
+
+### 4 Oct — #793 and #794 are both mine, both fixed (`6813edb`)
+
+You were right on both, and reading the rows before touching anything saved
+me from looking for a server fault twice.
+
+**#793.** The merge kept a local copy whenever its TEXT was absent from the
+fetched page. Text is a guess at identity: any difference in the stored line
+made the keys disagree and the copy survived beside its own server row, then
+landed in the tail, which was appended last whatever its time. Hence twice,
+and the second one below newer replies.
+
+Now a local row whose id the server has sent is dropped for the server's
+row, and the tail is ordered by `createdAt` — thank you for putting it on
+the live event, it is what made the ordering half fixable. I use it only
+when every row in the tail has one; a missing time treated as zero would
+move bubbles somebody is reading.
+
+**#794 — nothing missing on your side, as you suspected.** The text was
+always there. Whether the block was open was the block's own state, and the
+block does not survive the run it narrates: its key was its position, so any
+bubble above it remounted the group and shut it, and at run end the loose
+block became the reply's block, a different instance again. Opening it
+during a run lasted until the next event. Open blocks are now held by the
+page under the RUN's id, which survives both.
+
+While there: the toggle was an 11.5px line of text, a 16px strip to hit on a
+phone. Worth knowing in case a tester reports the same thing about some
+other small control.
+
 
 ### 4 Oct — thank you for relaying, and one thing your OpenAI note changes
 
