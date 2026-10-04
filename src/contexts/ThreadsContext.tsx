@@ -27,6 +27,15 @@ export type Thread = {
   // Time of the last MESSAGE, as distinct from updated_at, which also moves
   // when only the status changed.
   last_message_at?: string | null;
+  // #894 (4 Oct). The GOAL this conversation carries, which is a different
+  // number from the conversation's own id. Keeping them apart is not
+  // pedantry: /tasks/:id/stop read a thread id as a goal id and could stop
+  // somebody's other goal. null when the conversation is not a goal.
+  goal_id?: number | string | null;
+  // True only when that goal has a worked list to download. Without it the
+  // only way to find out would be to press a button and be told, which
+  // teaches people the button is unreliable.
+  has_list?: boolean;
 };
 
 export type TaskStatus = "working" | "waiting" | "needs_you" | "done" | "failed";

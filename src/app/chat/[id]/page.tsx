@@ -16,8 +16,8 @@ import { shareInvite } from "@/lib/invite";
 import { isWriteMyOwn } from "@/lib/choices";
 import { apiFetch } from "@/lib/api";
 import { isRecord, unwrapData } from "@/lib/payload";
-import { saveTextFile } from "@/lib/download";
-import { FILE_ACCEPT, FILE_MAX_BYTES, uploadThreadFile } from "@/lib/threadFiles";
+import { saveBlob, saveTextFile } from "@/lib/download";
+import { FILE_ACCEPT, FILE_MAX_BYTES, fetchGoalList, uploadThreadFile } from "@/lib/threadFiles";
 import RequestActions from "@/components/RequestActions";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import { useUserName } from "@/lib/user";
@@ -688,6 +688,7 @@ export default function ThreadPage() {
   // picker from a button that looks like the rest of the composer.
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   // #794: which steps blocks are open, by run. Held here rather than inside
   // the block, because the block is rebuilt by every event the run emits and
   // again when the run ends.
@@ -774,6 +775,28 @@ export default function ThreadPage() {
       showToast(t("attachFailed"), false);
     } finally {
       setUploading(false);
+    }
+  }
+
+  // #894. The worked list, as a spreadsheet. The route takes the GOAL's id,
+  // which arrived on the thread today; the conversation's own id is a
+  // different number and using it here would be the /tasks/:id/stop bug in
+  // a new place.
+  async function handleDownloadList() {
+    const goalId = thread?.goal_id;
+    if (downloading || goalId == null) return;
+    setDownloading(true);
+    try {
+      const out = await fetchGoalList(String(goalId), t("downloadFailed"));
+      if (!out.ok) {
+        showToast(out.error, false);
+        return;
+      }
+      await saveBlob(out.filename, out.blob);
+    } catch {
+      showToast(t("downloadFailed"), false);
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -1745,6 +1768,31 @@ export default function ThreadPage() {
           {/* #71: the conversation as a file. An icon, not a word, because
               the top bar on a phone has no room for a sixth label — see
               #507, which was that bar running out of width. */}
+          {/* #894: only on a goal that has a list. The flag is what keeps
+              this from being a button that exists everywhere and 404s to
+              tell you it did not apply here. */}
+          {thread?.has_list === true && thread.goal_id != null && (
+            <button
+              onClick={handleDownloadList}
+              disabled={downloading}
+              aria-label={t("downloadList")}
+              title={t("downloadList")}
+              className="rounded-lg p-1.5 transition-colors hover:bg-black/5 disabled:opacity-50"
+              style={{ color: "var(--ink-soft)" }}
+            >
+              {downloading ? (
+                <span
+                  className="block h-4 w-4 rounded-full border-2 animate-spin"
+                  style={{ borderColor: "var(--placeholder)", borderTopColor: "transparent" }}
+                />
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                  <rect x="3.5" y="3" width="13" height="14" rx="2" stroke="currentColor" strokeWidth="1.4" />
+                  <path d="M7 8h6M7 11h6M7 14h3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+              )}
+            </button>
+          )}
           <button
             onClick={handleExport}
             disabled={exporting}
