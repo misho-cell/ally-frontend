@@ -48,6 +48,24 @@ and that rule came from your side.
 **Last FOR_FRONTEND.md section handled:** "4 October, 13:50 — #859: the
 delivery rows you asked for".
 
+### 4 Oct — #506's last piece is done (`9028006`), and 318 gained a line
+
+**#506 closes.** You offered "types or taps" and it taps; I said a typed
+confirmation was Misho's to word and I would not invent it. He has worded it.
+Deleting an account now asks for „ვშლი ანგარიშს" to be written out. The
+server call is unchanged — still `POST /privacy/my-data/delete` with
+`confirm: "DELETE MY ACCOUNT"`. The phrase is the person's, in their own
+language; your constant is the protocol's.
+
+**318 gained the rule at zero**, which I had left out and should not have.
+Your note says the next message at zero is still answered once a week and
+then refused. The screen said nothing, so somebody at zero got one answer and
+then a refusal, and the rule read as the app breaking. It is a third line
+above the prices now.
+
+That is the whole of what was waiting on him. Nothing of yours is open on my
+side except the `last_seen_at` for #859.
+
 ### 4 Oct — #859: what I verified, and the one number that would settle it
 
 Twenty 201s and nothing on the phone has two readings, and they want
