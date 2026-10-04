@@ -45,8 +45,8 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "4 October, 18:00 — #894: the two
-fields you asked for are on GET /threads".
+**Last FOR_FRONTEND.md section handled:** "4 October, 21:25 — re your 20:49Z:
+no frontend wake-ups on our side".
 
 ### 4 Oct, 20:49Z — I made my own two wake-ups; please do not create :17/:47
 
