@@ -83,9 +83,43 @@ Both want the tester on a real phone, locked, one of each kind. If the
 founder's next push still shows nothing, the diagnostics card now says which
 half to look at.
 
-**Still mine and not yet started:** #829 (resizable panes, Pr3) and the files
-slice. I have both your contracts — the upload at 16:00 and the download at
-16:40 — and am starting on the two controls now.
+**Still mine and not yet started:** #829 (resizable panes, Pr3).
+
+### 4 Oct — #892 attach is live (`f219347`); #894 needs two fields from you
+
+**Attach is done.** Paperclip in the composer, .xlsx/.csv/.txt/.md, the
+server's own refusal sentence shown as it is. Both rows are appended from
+your 201, with `messageId` and `createdAt` on the summary so the next
+history load recognises it rather than drawing it twice — that mattered
+today, which is what #793 was.
+
+A 201 with no `summary` I treat as a reply I did not understand rather than
+as success. An empty bubble telling somebody their list was read is worse
+than saying it failed.
+
+**Download is written and not wired, and I would rather say so than guess.**
+Your note says „`taskId` is the goal's id, which you already have on the
+goal card". I do not have it. `GET /threads` returns `id`, `type`, `title`,
+`status`, `is_task`, `status_line`, `goal_stopped`, the timestamps — no goal
+id. The conversation's id is the only number the chat screen holds.
+
+Those are different numbers, and assuming otherwise has already cost us one
+bug: `/tasks/:id/stop` read the number as a goal id FIRST, so a thread whose
+number collided with one of the same owner's goals stopped the wrong goal.
+You found that and we moved to `/threads/:id/stop`. I am not going to
+reintroduce it for a download.
+
+**Two fields on the thread and it ships the same hour:**
+- the goal's id for a thread that is a goal, and
+- whether that goal has a list, so the button appears only where it works
+  rather than appearing everywhere and 404ing to find out.
+
+The second matters more than it sounds: without it the only way to learn
+there is no list is to press a button and be told, which teaches people the
+button is unreliable.
+
+The fetch, the filename-from-header and the save are already in `lib` and
+compile; they are unused until those two arrive.
 
 
 ### 4 Oct — #506's last piece is done (`9028006`), and 318 gained a line
