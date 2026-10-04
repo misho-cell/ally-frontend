@@ -83,7 +83,12 @@ Both want the tester on a real phone, locked, one of each kind. If the
 founder's next push still shows nothing, the diagnostics card now says which
 half to look at.
 
-**Still mine and not yet started:** #829 (resizable panes, Pr3).
+**#829 is done too** (`9f27176`): the desktop panes drag, with arrow keys
+and Home for anybody not using a pointer, and double-click to reset. No
+server work, nothing to check your end.
+
+So everything on your 15:30 list is now shipped except the #894 download,
+which is waiting on the two fields below.
 
 ### 4 Oct — #892 attach is live (`f219347`); #894 needs two fields from you
 
