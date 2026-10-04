@@ -742,7 +742,16 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             kind: appendedKind(data.kind),
                             runId: data.runId ?? null,
                             pending: true,
-                            createdAt: new Date().toISOString(),
+                            // #793: the stored row's own time when the server
+                            // sends it (it does since 4 Oct), not this
+                            // phone's. They are the same message, so they
+                            // must sort to the same place; a clock that is a
+                            // few seconds out was enough to put the live copy
+                            // under a reply written after it.
+                            createdAt:
+                              typeof data.createdAt === "string" && data.createdAt
+                                ? data.createdAt
+                                : new Date().toISOString(),
                             ...(Array.isArray(data.choices) && data.choices.length > 0 ? { choices: data.choices as string[] } : {}),
                             ...(readChoiceNotes(data.choice_notes)
                               ? { choiceNotes: readChoiceNotes(data.choice_notes)! }

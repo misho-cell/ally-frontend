@@ -258,7 +258,23 @@ export function mergeMessages(fresh: ChatMessage[], existing: ChatMessage[]): Ch
       )
     : [];
 
-  const pending = existing.filter((m) => (m.pending || m.failed) && !freshKeys.has(contentKey(m)));
+  // #793 (4 Oct, Giorgi's phone). A local copy was kept only when its TEXT
+  // was absent from the fetched page. The waiting line arrives live as
+  // `message_appended` carrying the id of the very row history returns, so
+  // the two are one message — but any difference in the stored text, down to
+  // a space, made the content keys disagree and the local copy survived
+  // beside its own server row. It then landed in `pending`, which is appended
+  // last, so the duplicate reappeared BELOW replies written after it.
+  //
+  // An id is an identity and text is a guess at one. When the server has sent
+  // us a row with this id, that row is the message and ours is a stale copy
+  // of it, whatever either of them says.
+  const pending = existing.filter(
+    (m) =>
+      (m.pending || m.failed) &&
+      !freshKeys.has(contentKey(m)) &&
+      !(m.serverId != null && freshIds.has(String(m.serverId)))
+  );
 
   // SSE-only extras (share text, per-bubble buttons) live on the local copy.
   // When the server row replaces it, carry them across — otherwise the refetch
@@ -290,6 +306,18 @@ export function mergeMessages(fresh: ChatMessage[], existing: ChatMessage[]): Ch
     };
   });
 
+  // #793, second half: the tail went on at the end regardless of when it was
+  // written, so a live row the fetch had not caught yet sat under replies
+  // that came after it. Both sides carry the server's own `createdAt` now, so
+  // they are ordered by it — but only when every row in the tail has one.
+  // A sort that silently treats "no time" as "the beginning of time" would
+  // move bubbles the person is watching.
+  if (pending.length > 0 && pending.every((m) => m.createdAt) && kept.every((m) => m.createdAt)) {
+    const tail = [...kept, ...pending].sort((a, b) =>
+      a.createdAt! < b.createdAt! ? -1 : a.createdAt! > b.createdAt! ? 1 : 0
+    );
+    return [...older, ...tail];
+  }
   return [...older, ...kept, ...pending];
 }
 

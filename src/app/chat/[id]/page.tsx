@@ -179,6 +179,15 @@ function renderStepText(text: string): React.ReactNode {
   return parts.map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part));
 }
 
+// #794: a steps block is identified by the run it narrates. A run that has
+// not told us its id falls back to its first step's id, which is stable for
+// as long as that row exists — the point is only that it does not change
+// when something is drawn above it.
+function stepsGroupId(steps: ChatMessage[]): string {
+  const run = steps.find((s) => s.runId != null)?.runId;
+  return run != null ? `run-${run}` : `step-${steps[0]?.id ?? "none"}`;
+}
+
 type RenderBlock =
   // `steps` are the steps of THIS reply's own run, rendered with it.
   | { type: "message"; msg: ChatMessage; steps: ChatMessage[] }
@@ -674,6 +683,17 @@ export default function ThreadPage() {
   // over, under the name the server chose, because the name carries the
   // title and the date and is itself part of being able to find it later.
   const [exporting, setExporting] = useState(false);
+  // #794: which steps blocks are open, by run. Held here rather than inside
+  // the block, because the block is rebuilt by every event the run emits and
+  // again when the run ends.
+  const [openSteps, setOpenSteps] = useState<Set<string>>(() => new Set());
+  const toggleSteps = useCallback((id: string) => {
+    setOpenSteps((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  }, []);
   async function handleExport() {
     if (exporting) return;
     setExporting(true);
@@ -1741,13 +1761,16 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {renderBlocks.map((block, bi) => {
+            {renderBlocks.map((block) => {
               if (block.type === "steps") {
+                const gid = stepsGroupId(block.steps);
                 return (
                   <StepGroup
-                    key={`steps-${bi}`}
+                    key={gid}
                     steps={block.steps}
                     label={chrome.steps.replace("{n}", String(block.steps.length))}
+                    open={openSteps.has(gid)}
+                    onToggle={() => toggleSteps(gid)}
                   />
                 );
               }
@@ -1802,12 +1825,18 @@ export default function ThreadPage() {
               return (
                 <div key={msg.id} className="flex flex-col gap-3">
                   {/* Row 312: this reply's own steps, and no others. */}
-                  {block.steps.length > 0 && (
-                    <StepGroup
-                      steps={block.steps}
-                      label={chrome.steps.replace("{n}", String(block.steps.length))}
-                    />
-                  )}
+                  {block.steps.length > 0 && (() => {
+                    const gid = stepsGroupId(block.steps);
+                    return (
+                      <StepGroup
+                        key={gid}
+                        steps={block.steps}
+                        label={chrome.steps.replace("{n}", String(block.steps.length))}
+                        open={openSteps.has(gid)}
+                        onToggle={() => toggleSteps(gid)}
+                      />
+                    );
+                  })()}
                   <div className="flex items-start" style={{ gap: "10px" }}>
                     <AllyAvatar />
                     <div className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: "4px" }}>
@@ -2282,16 +2311,40 @@ function ChoiceButtons({
   );
 }
 
-function StepGroup({ steps, label }: { steps: ChatMessage[]; label: string }) {
-  const [open, setOpen] = useState(false);
-
+// #794 (4 Oct, Giorgi's phone). The block showed a count that climbed from 8
+// to 13 and listed nothing. The text was never missing — the server stores it
+// and sends it, and the client had it — the list would not stay open.
+//
+// Whether it is open was this component's own state, and this component does
+// not survive the run it is narrating. Its key was the block's INDEX, so any
+// bubble appearing above it remounted the group and shut it; and when the run
+// finished, the loose block became the reply's own block, which is a
+// different instance again. Opening it during a run therefore lasted until
+// the next event, which is to say not at all.
+//
+// So the open ones are held by the page, under an id that belongs to the RUN
+// rather than to a position in a list. The same run keeps its id when a
+// bubble lands above it and when its reply finally arrives, which is exactly
+// when this used to close.
+function StepGroup({
+  steps,
+  label,
+  open,
+  onToggle,
+}: {
+  steps: ChatMessage[];
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
   return (
     <div className="flex items-start" style={{ gap: "10px" }}>
       <AllyAvatar />
       <div className="steps" style={{ marginLeft: 0, flex: 1 }}>
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={onToggle}
+          aria-expanded={open}
           className="steps-toggle"
         >
           <span style={{ fontSize: "10px" }}>{open ? "▾" : "▸"}</span>
