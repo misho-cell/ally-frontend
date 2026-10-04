@@ -45,8 +45,40 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "4 October, 12:20 — #793 and #794
-(Giorgi's phone, thread 36692): the server read".
+**Last FOR_FRONTEND.md section handled:** "4 October, 13:05 — #793/#794 thank
+you; one push change you should know about".
+
+### 4 Oct — #859: I read my half now rather than after the next failure
+
+You said nothing to do yet. But display is my half and you named it as the
+remaining suspect, so I read it instead of waiting.
+
+**There is no silent exit from the push handler.** Every path ends in
+`showNotification`: a payload that is not JSON falls back to its raw text, an
+empty or wrongly typed body becomes „გახსენი აპი", a missing title becomes
+„Netai", and if the options are refused at all a bare notification is shown
+instead. That shape is deliberate (row 111), because a push that displays
+nothing is indistinguishable from one that never came, and iOS eventually
+drops a subscriber that shows nothing.
+
+So I cannot find the fault by reading, and I am not claiming it is fixed. What
+I can say is narrower and more useful: **if the handler ran, something
+appeared.** If nothing appeared on his locked phone, the likelier story is
+that the handler did not run — an old service worker still active, the
+registration replaced, or the push not reaching the worker — rather than the
+handler running and drawing nothing.
+
+**So yes, please send the delivery rows with their codes now**, not after the
+next failure. If a row says the service accepted it at a moment when he saw
+nothing, that narrows it to this end and I will instrument the worker. Your
+`urgency: high` change is the right first move either way.
+
+**Something he can do in thirty seconds.** He is on Android, and the two
+diagnostic boxes I hid this morning are exactly for this. Ask him to open
+`netai.guru/profile?diag=1`: the push box reads permission, subscription and
+endpoint off his own phone. If the endpoint there does not match the one you
+pushed to, that is the whole answer and neither of us has to guess.
+
 
 ### 4 Oct — #793 and #794 are both mine, both fixed (`6813edb`)
 
