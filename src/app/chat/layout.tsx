@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore, memo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
@@ -26,6 +26,12 @@ import { parseTokenBalance } from "@/lib/tokens";
 import { appendedKind } from "@/contexts/ThreadsContext";
 import RequestActions from "@/components/RequestActions";
 import UpdatesBadge from "@/components/UpdatesBadge";
+import PaneResizer, {
+  subscribeSidebarWidth,
+  sidebarWidthSnapshot,
+  sidebarWidthServerSnapshot,
+  setSidebarWidth,
+} from "@/components/PaneResizer";
 
 // Row 306: the server's per-button notes, read defensively. It is an optional
 // field that is absent on almost every message, so "not there" is the normal
@@ -194,6 +200,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [renameBusy, setRenameBusy] = useState(false);
+  // #829. null means "whatever the stylesheet says", which is not the same
+  // as a number: it is how a person who has never dragged the handle keeps
+  // getting the responsive default instead of one frozen at today's width.
+  const sidebarWidth = useSyncExternalStore(
+    subscribeSidebarWidth,
+    sidebarWidthSnapshot,
+    sidebarWidthServerSnapshot,
+  );
   const router = useRouter();
   const pathname = usePathname();
   const abortRef = useRef<AbortController | null>(null);
@@ -1179,6 +1193,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     q && visibleRequests.length === 0 && asks.length === 0 && active.length === 0 && finished.length === 0 && legacyThreads.length === 0;
 
   const sidebarClass = isOnThread ? "hidden md:flex" : "flex w-full md:flex";
+
+  const setWidth = useCallback((px: number) => setSidebarWidth(px), []);
+  const resetWidth = useCallback(() => setSidebarWidth(null), []);
   const mainClass = isOnThread ? "flex flex-1 flex-col min-w-0" : "hidden md:flex md:flex-1 md:flex-col";
 
   const renameModal = renameTarget && (
@@ -1296,12 +1313,15 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           <div className="toast" role="status" aria-live="polite">{toast}</div>
         )}
         <aside
-          className={`${sidebarClass} sidebar flex-col shrink-0 w-full md:w-[300px] lg:w-[380px]`}
+          className={`${sidebarClass} sidebar sidebar-resizable flex-col shrink-0 w-full`}
           style={{
             background: "var(--sidebar-bg)",
             borderRight: "1px solid var(--sidebar-border)",
             padding: "14px 12px 12px",
             gap: "12px",
+            ...(sidebarWidth != null
+              ? ({ ["--sidebar-w" as string]: `${sidebarWidth}px` } as React.CSSProperties)
+              : {}),
           }}
         >
           <div className="flex items-center gap-2.5 pl-1">
@@ -1624,6 +1644,17 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </button>
           </div>
         </aside>
+
+        {/* #829. Rendered beside the expanded list only — the collapsed rail
+            returns earlier, and it is a fixed strip of icons with nothing to
+            give. The handle hides itself below md, where there is one pane
+            and nothing to divide. */}
+        <PaneResizer
+          width={sidebarWidth}
+          onChange={setWidth}
+          onReset={resetWidth}
+          label={t("resizePanes")}
+        />
 
         <main className={mainClass}>
           {/* Row 111 (26 Sept). The ask lived only in the thread list, and on
