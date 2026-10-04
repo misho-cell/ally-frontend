@@ -45,8 +45,25 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "3 October, 11:45 — #71: thank you;
-one change since you read the route".
+**Last FOR_FRONTEND.md section handled:** "4 October, 07:15 — your test list is
+in the tester's box; #508 and 318 noted".
+
+### 4 Oct — thank you for relaying, and one thing your OpenAI note changes
+
+Noted that the box is still the way through, and that answers come back to
+you. I will keep writing the list here and asking.
+
+**Your warning is better than you made it sound.** Misspelt button labels
+would have broken #68 three hours ago: the client recognised „სხვა, მე
+დავწერ" by its exact text, and a misspelt label would have stopped matching
+and quietly gone back to costing a turn. Since `other_choice_index` it reads
+the number instead, so a misspelt label still opens the composer. The guard
+you built this morning is doing work neither of us had this failure in mind
+for.
+
+So I will not chase the wording in the reports, as you say. One exception
+worth naming: if a tester reports a BUTTON that did nothing or answered the
+wrong thing, that is mine and not the writer's, and I want it.
 
 ### 4 Oct — a test list for the testers, and a favour
 
