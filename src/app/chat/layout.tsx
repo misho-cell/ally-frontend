@@ -23,9 +23,11 @@ import {
   type TaskStatus,
 } from "@/contexts/ThreadsContext";
 import { parseTokenBalance } from "@/lib/tokens";
+import { FILE_ACCEPT, FILE_MAX_BYTES, uploadThreadFile } from "@/lib/threadFiles";
 import { appendedKind } from "@/contexts/ThreadsContext";
 import RequestActions from "@/components/RequestActions";
 import UpdatesBadge from "@/components/UpdatesBadge";
+import AttachIcon from "@/components/AttachIcon";
 import PaneResizer, {
   subscribeSidebarWidth,
   sidebarWidthSnapshot,
@@ -191,6 +193,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [showLegacy, setShowLegacy] = useState(false);
   const [homeInput, setHomeInput] = useState("");
   const [creating, setCreating] = useState(false);
+  // Only the file path: the paperclip spins for a file, not for a typed line.
+  const [fileCreating, setFileCreating] = useState(false);
   const [recording, setRecording] = useState(false);
   // 22 Aug #5: the header counter comes from GET /tasks/summary (open_goals) —
   // the same number the assistant reports. Local count stays as fallback only.
@@ -222,6 +226,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const lastCompletedRunIdRef = useRef<Record<string, string>>({});
   const pathnameRef = useRef(pathname);
   const homeInputRef = useRef<HTMLInputElement>(null);
+  const homeFileRef = useRef<HTMLInputElement>(null);
   // True only between pressing "+ ახალი მიზანი" and the next send from the home
   // box. It is a ref, not state, because nothing renders from it and a stale
   // closure here would hand as_goal to the wrong line.
@@ -951,6 +956,56 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     }
   }, [creating, router, sendIntoThread]);
 
+  // #1222 (5 Oct, Lika on an iPhone). The upload route takes a conversation
+  // id, and a new conversation has none until something creates it, so a
+  // list could only be attached after a first line had been sent. Here the
+  // file is what creates it: the conversation is opened, the file is read
+  // into it, and only then is it shown. Navigating after the upload means
+  // the page draws both rows from the server's history, with the server's
+  // ids, instead of drawing them once here and again when history loads.
+  //
+  // A conversation that was created but whose file was refused is still
+  // opened: it exists now, and its own attach button can take a second try.
+  const createWithFile = useCallback(async (file: File) => {
+    if (creating) return;
+    if (file.size > FILE_MAX_BYTES) {
+      showToast(t("attachTooBig"));
+      return;
+    }
+    setCreating(true);
+    setFileCreating(true);
+    try {
+      const res = await fetch(`${BASE_URL}/threads`, {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+      });
+      if (!res.ok) {
+        if (res.status === 401) { forceLogin(); return; }
+        const body = await res.json().catch(() => ({}));
+        if (handleAdminTokenMisuse(res.status, body)) return;
+        if (isSubscriptionError(res.status, body)) {
+          router.replace("/pricing");
+          return;
+        }
+        showToast(t("attachFailed"));
+        return;
+      }
+      const json = await res.json();
+      const thread: Thread = json.data ?? json;
+      const id = String(thread.id);
+      knownIdsRef.current?.set(id, thread.updated_at ?? new Date().toISOString());
+      setThreads((prev) => dedup([thread, ...prev.filter((th) => String(th.id) !== id)]));
+      const out = await uploadThreadFile(id, file, t("attachFailed"));
+      if (!out.ok) showToast(out.error);
+      router.push(`/chat/${id}`);
+    } catch {
+      showToast(t("attachFailed"));
+    } finally {
+      setCreating(false);
+      setFileCreating(false);
+    }
+  }, [creating, router, showToast]);
+
   // Item 5 (20 Sept): accepting an introduction is two different decisions,
   // and until today the button only made one of them. "direct" hands the
   // requester the target's phone number; "via_mediator" hands out nothing and
@@ -1232,7 +1287,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       <ThreadsContext.Provider
         value={{
           threads, setThreads, threadsLoaded, threadStates, setThreadStates,
-          reconnectNonce, tokens, refreshTokens, createThread, createTask,
+          reconnectNonce, tokens, refreshTokens, createThread, createTask, createWithFile,
           titles, resolveRequest, resolvedRequests, threadBumps,
         }}
       >
@@ -1304,7 +1359,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     <ThreadsContext.Provider
       value={{
         threads, setThreads, threadsLoaded, threadStates, setThreadStates,
-        reconnectNonce, tokens, refreshTokens, createThread, createTask,
+        reconnectNonce, tokens, refreshTokens, createThread, createTask, createWithFile,
         titles, resolveRequest, resolvedRequests, threadBumps,
       }}
     >
@@ -1384,8 +1439,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               value={searchQ}
               onChange={(e) => setSearchQ(e.target.value)}
               placeholder={t("searchGoals")}
-              className="flex-1 min-w-0 bg-transparent outline-none"
-              style={{ color: "var(--ink)", fontSize: "13px" }}
+              className="search-field flex-1 min-w-0 bg-transparent outline-none"
+              style={{ color: "var(--ink)" }}
             />
             {searchQ && (
               <button onClick={() => setSearchQ("")} aria-label="clear" style={{ color: "var(--meta)", fontSize: "14px", lineHeight: 1 }}>
@@ -1566,9 +1621,42 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 onChange={(e) => setHomeInput(e.target.value)}
                 placeholder={recording ? t("listening") : t("homePlaceholder")}
                 className="flex-1 min-w-0 bg-transparent outline-none"
-                style={{ color: "var(--ink)", fontSize: "14px", padding: "6px 0" }}
+                // No inline size: .composer-pill sets it, and raises it to
+                // 16px on a phone. An inline 14px here beat that rule and
+                // kept the #507 zoom alive on this one box.
+                style={{ color: "var(--ink)", padding: "6px 0" }}
               />
             </div>
+            {/* #1222: a list can open a conversation, the same as a line. */}
+            <input
+              ref={homeFileRef}
+              type="file"
+              accept={FILE_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void createWithFile(f);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => homeFileRef.current?.click()}
+              disabled={creating}
+              aria-label={t("attachFile")}
+              title={t("attachFile")}
+              className="flex shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40"
+              style={{ width: 38, height: 44, background: "transparent", color: "var(--meta)" }}
+            >
+              {fileCreating ? (
+                <span
+                  className="h-4 w-4 rounded-full border-2 animate-spin"
+                  style={{ borderColor: "var(--placeholder)", borderTopColor: "transparent" }}
+                />
+              ) : (
+                <AttachIcon />
+              )}
+            </button>
             <button
               type="button"
               onClick={startHomeMic}

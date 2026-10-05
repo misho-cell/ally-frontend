@@ -45,6 +45,7 @@ const L = {
     // somebody would be inventing one.
     invited: "Who I invited",
     invitedEmpty: "Nobody has joined through your link yet.",
+    invitedError: "Couldn't load the list. Try again later.",
     stRegistered: "Registered",
     stTrial: "On trial",
     stPaid: "Paying",
@@ -87,6 +88,7 @@ const L = {
     withdrawSoon: "განაღდება მალე დაემატება",
     invited: "ვინ მოვიწვიე",
     invitedEmpty: "შენი ბმულით ჯერ არავინ შემოსულა.",
+    invitedError: "სია ვერ ჩაიტვირთა. სცადე მოგვიანებით.",
     stRegistered: "დარეგისტრირდა",
     stTrial: "საცდელ პერიოდზეა",
     stPaid: "იხდის",
@@ -178,6 +180,11 @@ export default function EarningsPage() {
   // screen says different things for those two, because "we could not ask"
   // is not "nobody came".
   const [invited, setInvited] = useState<Invited[] | null>(null);
+  // 5 Oct: #503 came back as "no list" from a phone. The card used to vanish
+  // when the request failed, which reads exactly like a list that was never
+  // built. The route is live everywhere now, so a failure is a failure and
+  // says so.
+  const [invitedFailed, setInvitedFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
@@ -199,11 +206,14 @@ export default function EarningsPage() {
   const loadInvited = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/billing/referral/invited`, { headers: authHeaders() });
-      if (!res.ok) return;
+      if (!res.ok) { setInvitedFailed(true); return; }
       const json = await res.json().catch(() => ({}));
       const rows = json?.data?.invited ?? json?.invited;
       if (Array.isArray(rows)) setInvited(rows as Invited[]);
-    } catch {}
+      else setInvitedFailed(true);
+    } catch {
+      setInvitedFailed(true);
+    }
   }, []);
 
   const loadPackages = useCallback(async () => {
@@ -392,6 +402,12 @@ export default function EarningsPage() {
                 has joined through, are different facts, and an empty card
                 under "who I invited" would claim the second when it is the
                 first. */}
+            {invited === null && invitedFailed && (
+              <div className="card flex flex-col gap-2">
+                <h2 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{s.invited}</h2>
+                <p style={{ fontSize: "12.5px", color: "var(--meta)" }}>{s.invitedError}</p>
+              </div>
+            )}
             {invited !== null && (
               <div className="card flex flex-col gap-2">
                 <h2 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{s.invited}</h2>

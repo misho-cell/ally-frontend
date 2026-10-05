@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import InstallPrompt from "@/components/InstallPrompt";
 import BuildTag from "@/components/BuildTag";
+import SwUpdater from "@/components/SwUpdater";
 import LocaleHtml from "@/components/LocaleHtml";
 import PastDueBanner from "@/components/PastDueBanner";
 import CheckoutReturn from "@/components/CheckoutReturn";
@@ -49,6 +50,7 @@ export default function RootLayout({
         {children}
         <InstallPrompt />
         <BuildTag />
+        <SwUpdater />
       </body>
     </html>
   );

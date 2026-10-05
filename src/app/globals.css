@@ -118,6 +118,9 @@ body {
   font: 400 15px/22px var(--font-system); width: 100%;
 }
 .input-pill::placeholder { color: var(--placeholder); }
+/* The goal search. A class rather than an inline size so the phone rule
+   below can raise it to 16px (#507). */
+.search-field { font-size: 13px; }
 .input-pill:focus { outline: none; border-color: var(--accent); box-shadow: var(--input-focus-ring); }
 
 /* ============ Cards ============ */
@@ -466,6 +469,12 @@ body {
      being zoomed. Only on phones, because only there does it happen. */
   .composer-pill input,
   .composer-pill textarea { font-size: 16px; }
+  /* 5 Oct, #507 came back from the phone tests. The rule above never reached
+     the home screen's box (an inline 14px won over it), nor the goal search
+     (13px) or any .input-pill field (15px): the profile, renaming a
+     conversation, the login code. Each one zoomed the page the same way. */
+  .input-pill,
+  .search-field { font-size: 16px; }
   .thread-header { padding: 11px 14px; gap: 10px; }
   .thread-header .title { font-size: 15px; line-height: 20px; }
   .token-badge { padding: 6px 9px; }

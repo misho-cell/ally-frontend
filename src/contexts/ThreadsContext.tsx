@@ -353,6 +353,8 @@ type Ctx = {
   refreshTokens: () => void;
   createThread: () => void;
   createTask: (text: string) => Promise<void>;
+  // #1222: a new conversation that starts with a file rather than a line.
+  createWithFile: (file: File) => Promise<void>;
   titles: Record<string, string>;
   // Item 5 (20 Sept): an accept must say HOW — "direct" gives the requester
   // the target's number, "via_mediator" gives out nothing. There is no bare
@@ -377,6 +379,7 @@ export const ThreadsContext = createContext<Ctx>({
   refreshTokens: () => {},
   createThread: () => {},
   createTask: async () => {},
+  createWithFile: async () => {},
   titles: {},
   resolveRequest: () => {},
   resolvedRequests: {},

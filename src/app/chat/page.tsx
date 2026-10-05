@@ -5,15 +5,19 @@ import { useThreads, taskStatusOf } from "@/contexts/ThreadsContext";
 import { t } from "@/lib/i18n";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { beginDictation, shouldRecord, type DictationHandle } from "@/lib/dictation";
+import { FILE_ACCEPT } from "@/lib/threadFiles";
+import AttachIcon from "@/components/AttachIcon";
 
 // Desktop right pane, no goal selected: dogs clip + one line + the goal
 // composer (ticket 6 #1). D20 (22 Aug): mic AND send are both available while
 // text exists.
 export default function ChatIndexPage() {
-  const { threads, threadsLoaded, threadStates, createTask } = useThreads();
+  const { threads, threadsLoaded, threadStates, createTask, createWithFile } = useThreads();
   const [input, setInput] = useState("");
   const [recording, setRecording] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [attaching, setAttaching] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const dictationRef = useRef<DictationHandle | null>(null);
 
@@ -88,6 +92,16 @@ export default function ChatIndexPage() {
     }
   }
 
+  // #1222: a list can open a conversation, the same as a line.
+  async function attach(file: File) {
+    setAttaching(true);
+    try {
+      await createWithFile(file);
+    } finally {
+      setAttaching(false);
+    }
+  }
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const v = input.trim();
@@ -131,6 +145,35 @@ export default function ChatIndexPage() {
               style={{ color: "var(--ink)", padding: "7px 0" }}
             />
           </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept={FILE_ACCEPT}
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (f) void attach(f);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={attaching}
+            aria-label={t("attachFile")}
+            title={t("attachFile")}
+            className="flex shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40"
+            style={{ width: 40, height: 46, background: "transparent", color: "var(--meta)" }}
+          >
+            {attaching ? (
+              <span
+                className="h-4 w-4 rounded-full border-2 animate-spin"
+                style={{ borderColor: "var(--placeholder)", borderTopColor: "transparent" }}
+              />
+            ) : (
+              <AttachIcon />
+            )}
+          </button>
           <button
             type="button"
             onClick={startMic}
