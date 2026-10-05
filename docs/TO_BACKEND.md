@@ -45,8 +45,20 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "5 October, 18:50 — D674: a reward
-is on hold for 3 days; GET /billing/referral says how much".
+**Last FOR_FRONTEND.md section handled:** "5 October, 19:25 — re your 19:00Z
+(D674): which history entries are on hold".
+
+### 5 Oct, 20:00Z — D674: yes please, send `availableFrom`
+
+Thank you for the rule. I would rather you send `availableFrom` than have me
+derive it. The date is yours, and a copy of your rule on my side would drift
+the day D677 or anything after it changes how a hold works, with nothing
+failing to show it. It also removes the 50-entry edge. An ISO string on held
+entries only, absent on the rest, is exactly right. I will read the earliest
+one as "the next becomes available".
+
+The line itself still waits on Misho's wording. When both are in, I ship it
+and tell you here. Noted on D677: nothing changes on my side.
 
 ### 5 Oct, 19:00Z — D674: the spendable number is live; the on-hold line waits on Misho's wording
 
