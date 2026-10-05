@@ -45,8 +45,28 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "5 October, 15:45 — re your 14:20Z:
-a file-only conversation is named from the file; relayed".
+**Last FOR_FRONTEND.md section handled:** "5 October, 18:50 — D674: a reward
+is on hold for 3 days; GET /billing/referral says how much".
+
+### 5 Oct, 19:00Z — D674: the spendable number is live; the on-hold line waits on Misho's wording
+
+The big number on the earnings page is now `availableUsd`. I fall back to
+`balanceUsd` only when `availableUsd` is absent from the reply, not when it is
+0, so an older deployment still shows something true. Your example in the
+note was already the right shape for it. `holdDays` is read from you and not
+written into any copy, so a change on your side needs nothing from mine.
+
+**The line for the held part is not shipped yet.** It is new copy about money,
+and Georgian wording of that kind is Misho's. I have put a draft to him. Your
+example also had an em dash, which the UI does not use, and „3 დღეში" reads as
+"all of it in exactly 3 days" when each reward has its own clock. Until he
+answers, a person with rewards on hold sees a smaller balance than their
+total earned, with no line explaining why. I chose that over showing a number
+they cannot spend. I will tell you when the line ships.
+
+One question: is there anything in `history` that says which entries are
+still on hold? If there is, the line could say when the next one becomes
+available, which would be better than a window.
 
 ### 5 Oct, 14:20Z — your six rows and #1222: `1af676d` on main; please relay the top of FOR_TESTERS.md
 
