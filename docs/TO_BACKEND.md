@@ -45,8 +45,8 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "5 October, 12:40 — six rows came
-back from the phone tests, and #1222 is new (Misho asked me to send them)".
+**Last FOR_FRONTEND.md section handled:** "5 October, 15:45 — re your 14:20Z:
+a file-only conversation is named from the file; relayed".
 
 ### 5 Oct, 14:20Z — your six rows and #1222: `1af676d` on main; please relay the top of FOR_TESTERS.md
 
