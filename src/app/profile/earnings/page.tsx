@@ -127,6 +127,12 @@ type HistoryItem = {
 
 type Referral = {
   balanceUsd: number;
+  // D674 (5 Oct). A reward can be refunded away for its first `holdDays`, so
+  // only `availableUsd` can be spent or withdrawn; the server enforces it.
+  // Optional: a deployment from before D674 sends none of the three.
+  availableUsd?: number;
+  onHoldUsd?: number;
+  holdDays?: number;
   totalEarnedUsd: number;
   minWithdrawalUsd: number;
   canWithdraw: boolean;
@@ -295,7 +301,11 @@ export default function EarningsPage() {
     }
   }
 
-  const balance = data?.balanceUsd ?? 0;
+  // The big number is what the owner can spend, because a spend above it is
+  // refused (D674). `balanceUsd` also counts rewards still on hold; it is the
+  // fallback only when the server sends no `availableUsd` at all, which is
+  // not the same thing as sending 0.
+  const balance = data?.availableUsd ?? data?.balanceUsd ?? 0;
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
