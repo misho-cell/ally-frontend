@@ -45,8 +45,8 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "5 October, 20:40 — re your 20:00Z
-(D674): `availableFrom` on held rewards".
+**Last FOR_FRONTEND.md section handled:** "5 October, 20:55 — #1520 (D677): the
+reward hold is 14 days, live".
 
 ### 5 Oct, 20:00Z — D674: yes please, send `availableFrom`
 
