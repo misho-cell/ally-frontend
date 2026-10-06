@@ -310,6 +310,47 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     return Boolean(th.updated_at && th.updated_at > watermark);
   }
 
+  // #1817 (6 Oct, Ninia). A goal finished while she was away, dropped to the
+  // finished list at the bottom, and she took it for deleted: she had never
+  // seen its answer. A finished goal now stays among the open ones until its
+  // answer has been opened. "Opened" is the server's `seen_at`, not this
+  // device's memory, because the answer read on a laptop has been read.
+  // `seenNow` covers the moment between opening and the next list load.
+  const [seenNow, setSeenNow] = useState<Record<string, string>>({});
+  function answerUnseen(th: Thread): boolean {
+    if (th.seen_at === undefined) return false;
+    const id = String(th.id);
+    if (pathname === `/chat/${id}`) return false;
+    const last = Date.parse(th.last_message_at ?? th.updated_at ?? "");
+    const seen = Math.max(
+      th.seen_at ? Date.parse(th.seen_at) : -Infinity,
+      seenNow[id] ? Date.parse(seenNow[id]) : -Infinity
+    );
+    if (seen === -Infinity) return true;
+    return Number.isFinite(last) && last > seen;
+  }
+
+  // Tell the server a conversation was seen: on opening it, and again when
+  // an answer lands while it is on screen. Only once the server sends
+  // `seen_at`, so a deployment without the endpoint is never called.
+  const openId = pathname.match(/^\/chat\/(.+)$/)?.[1] ?? null;
+  const openThread = openId ? threads.find((x) => String(x.id) === openId) : undefined;
+  const openTracked = openThread !== undefined && openThread.seen_at !== undefined;
+  const openLast = openThread?.last_message_at ?? openThread?.updated_at ?? null;
+  useEffect(() => {
+    if (!openId || !openTracked) return;
+    const at = new Date().toISOString();
+    fetch(`${BASE_URL}/threads/${openId}/seen`, { method: "POST", headers: authHeaders() })
+      .then((res) => {
+        // Marked here only once the server has it, so this list never
+        // claims "seen" for something the next load would call new.
+        if (res.ok) setSeenNow((prev) => ({ ...prev, [openId]: at }));
+      })
+      .catch(() => {
+        // Not worth a toast: the row shows as new once more, which is true.
+      });
+  }, [openId, openTracked, openLast]);
+
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -1236,8 +1277,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     if (st) goalThreads.push({ thread: th, status: st });
     else legacyThreads.push(th);
   }
-  const active = goalThreads.filter((g) => g.status !== "done");
-  const finished = goalThreads.filter((g) => g.status === "done");
+  // An unseen answer sits at the top of the open goals (#1817).
+  const unseenDone = goalThreads.filter((g) => g.status === "done" && answerUnseen(g.thread));
+  const active = [...unseenDone, ...goalThreads.filter((g) => g.status !== "done")];
+  const finished = goalThreads.filter((g) => g.status === "done" && !answerUnseen(g.thread));
   // Header counter: /tasks/summary open_goals when available (22 Aug #5),
   // otherwise the local server-status count (ticket 6 #8).
   const localPresenceN = threads.filter(
@@ -1525,7 +1568,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       stopped={thread.goal_stopped === true}
                       href={`/chat/${thread.id}`}
                       active={pathname === `/chat/${thread.id}`}
-                      unread={isUnread(thread)}
+                      unread={isUnread(thread) || answerUnseen(thread)}
                       onLongPress={() => openRename(thread, goalTitle(thread))}
                     />
                   ))}

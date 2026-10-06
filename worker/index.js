@@ -126,7 +126,14 @@ self.addEventListener("notificationclick", (event) => {
   const url = event.notification.data?.url ?? "/chat";
   event.waitUntil(noteEvent({ kind: "click", url }));
   event.waitUntil(
-    clients
+    // #1816 (6 Oct, Ninia): the tap still opened the app and not the
+    // conversation. Both paths below need a page that is already running.
+    // When the app was closed, openWindow is all there is, and a standalone
+    // PWA may start at its own start page instead of the address asked for.
+    // So the address is also left where the page can find it as it starts
+    // (PushRouter reads it once and removes it). Written first, so a page
+    // that comes up quickly cannot look before it is there.
+    leavePendingOpen(url).then(() => clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clientList) => {
         // FE-2 (4 Sept): the old code only focused an existing window when
@@ -174,6 +181,22 @@ self.addEventListener("notificationclick", (event) => {
         }
         tell();
         return target.focus();
-      })
+      }))
   );
 });
+
+const OPEN_URL = "/__push-open";
+
+async function leavePendingOpen(url) {
+  try {
+    const cache = await caches.open(LOG_CACHE);
+    await cache.put(
+      OPEN_URL,
+      new Response(JSON.stringify({ url, at: Date.now() }), {
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+  } catch {
+    // Without the note the live-page paths still work, as they did before.
+  }
+}

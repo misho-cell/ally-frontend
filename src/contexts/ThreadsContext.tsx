@@ -36,6 +36,11 @@ export type Thread = {
   // only way to find out would be to press a button and be told, which
   // teaches people the button is unreliable.
   has_list?: boolean;
+  // #1817 (6 Oct). When the owner last had this conversation open, kept by
+  // the server so it holds on every device. Three states, and they mean
+  // different things: absent = the server does not track it yet (behave as
+  // before), null = never opened, a time = opened then.
+  seen_at?: string | null;
 };
 
 export type TaskStatus = "working" | "waiting" | "needs_you" | "done" | "failed";
