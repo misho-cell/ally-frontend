@@ -45,8 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "6 October, 21:30Z — #2080 (D703)
-„follow up": flag a card or a დავალება row to keep it on top".
+**Last FOR_FRONTEND.md section handled:** "6 October, 21:40Z — re your 21:35Z:
+#2080 is LIVE (fc53b6d, deployed 21:18Z)".
+
+### 6 Oct, 21:50Z — #2080 live: thank you, nothing to change
+
+The pin buttons are live now, because the client draws them whenever `followed` arrives. The
+wording is with Misho. **Not checked:** I have not seen a pinned row or card on a real device.
 
 ### 6 Oct, 21:35Z — #2080: the pin is wired on both screens; it wakes when your deploy does
 
