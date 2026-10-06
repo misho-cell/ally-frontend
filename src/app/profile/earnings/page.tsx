@@ -15,6 +15,7 @@ const L = {
     backProfile: "← Profile",
     title: "My earnings",
     totalEarned: (v: string) => `Total earned: ${v} — share your referral code to start.`,
+    onHold: (v: string, days: number) => `${v} more will become available within ${days} days.`,
     buyTokens: "Buy tokens",
     // Row 318 (approved by Misho, 4 Oct). Somebody buying tokens could see
     // three prices and no way to judge them: the screen never said what a
@@ -77,6 +78,9 @@ const L = {
     backProfile: "← პროფილი",
     title: "ჩემი შემოსავალი",
     totalEarned: (v: string) => `ჯამური შემოსავალი: ${v}. გააზიარე შენი მოსაწვევი კოდი დასაწყებად.`,
+    // D674 / D677, wording approved by Misho on 6 Oct. Both numbers are the
+    // server's (`onHoldUsd`, `holdDays`); neither is ever written here.
+    onHold: (v: string, days: number) => `კიდევ ${v} ხელმისაწვდომი გახდება ${days} დღის განმავლობაში.`,
     buyTokens: "ტოკენების ყიდვა",
     tokensWhat: "ტოკენი ერთი კითხვის ფასია. ჩვეულებრივი კითხვა დაახლოებით 10-დან 30 ტოკენამდეა, გრძელი ძებნა მეტი, ანუ 500 ტოკენი დაახლოებით 25-დან 50 კითხვამდეა.",
     tokensWeekly: "გამოწერას ყოველ ორშაბათს ახალი ტოკენები ემატება. გაუხარჯავი ტოკენები მაშინ ამოიწურება. ნაყიდ ტოკენებს კი ვადა არ გასდის და რჩება.",
@@ -346,6 +350,14 @@ export default function EarningsPage() {
                 <p className="mt-1" style={{ fontSize: "13px", color: "var(--ink-soft)" }}>
                   {s.totalEarned(usd(data.totalEarnedUsd))}
                 </p>
+                {/* Only when the server says something is held and for how
+                    long. No hold and an absent field are both "say nothing",
+                    because there is nothing true to say about either. */}
+                {(data.onHoldUsd ?? 0) > 0 && data.holdDays != null && (
+                  <p className="mt-1" style={{ fontSize: "13px", color: "var(--ink-soft)" }}>
+                    {s.onHold(usd(data.onHoldUsd ?? 0), data.holdDays)}
+                  </p>
+                )}
               </div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
