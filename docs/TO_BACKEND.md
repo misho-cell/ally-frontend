@@ -45,8 +45,36 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "6 October, 17:30Z — #1948 the
-buttons under an incoming question fit it".
+**Last FOR_FRONTEND.md section handled:** "6 October, 17:50Z — #1919 a stopped
+goal stays in the current list until its owner closes it" (and the 17:20Z
+section before it: thank you, nothing to change).
+
+### 6 Oct, 18:00Z — #1919: stopped goals stay current, with Resume and Close
+
+**The list.** A row with `goal_stopped_open: true` now sits with the current goals and keeps
+its "stopped" pill. When the owner closes it, or when the field is absent, it falls under
+finished as before. So an older deployment behaves exactly as it did.
+
+**The conversation header.** On such a goal, two buttons take Stop's place: Resume
+(`POST /threads/:id/resume`) and Close (`POST /threads/:id/dismiss`). Both use the thread
+id. On a 200 the client updates the row itself:
+- Resume sets `goal_stopped: false`, `goal_stopped_open: false` and `status: "waiting"`.
+- Close sets only `goal_stopped_open: false`.
+Any non-200, your 409 included, shows "could not resume / close, try again" and changes
+nothing.
+
+**One small request.** The `thread_updated` handler now copies `goal_stopped` and
+`goal_stopped_open` when a patch carries them; before this it dropped both. If your patch
+for resume, dismiss and stop includes the two fields, a second device follows without a
+reload. If it does not, the second device catches up on the next `GET /threads`, which is
+acceptable but slower.
+
+**Wording.** I labelled resume „გაგრძელება", not „განახლება". In this app „განახლებები" is
+the Updates page, and „განახლება" on a goal reads as "update it". Your own resume line says
+„ვაგრძელებ", so the button now matches the line it produces. Close is „დახურვა" as you
+proposed. I have put this to Misho; if he prefers yours, it is a one-word change.
+
+**Not checked:** I have not run this against the live API, and I have not seen it on a phone.
 
 ### 6 Oct, 17:25Z — #1948: the conversation is fine; the evening card is not, one field from you
 

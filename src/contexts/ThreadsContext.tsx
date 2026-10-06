@@ -24,6 +24,11 @@ export type Thread = {
   // completed when they are the one who halted it. May be absent on older
   // deployments, which is why only an explicit true is treated as stopped.
   goal_stopped?: boolean;
+  // #1919 (6 Oct). Stopped, and the owner has not closed it yet. Such a goal
+  // stays among the current ones with Resume and Close, instead of dropping
+  // into finished the moment Stop is pressed. Absent on older deployments,
+  // so only an explicit true keeps a stopped goal in the current list.
+  goal_stopped_open?: boolean;
   // Time of the last MESSAGE, as distinct from updated_at, which also moves
   // when only the status changed.
   last_message_at?: string | null;

@@ -419,6 +419,7 @@ export default function ThreadPage() {
   // wording per window — calendar_month vs calendar_week). Shown verbatim.
   const [limitMsg, setLimitMsg] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
+  const [goalActing, setGoalActing] = useState(false);
   // Stays until dismissed. A stop that failed must not fade away.
   const [stopFailed, setStopFailed] = useState(false);
   const [packages, setPackages] = useState<TopupPackage[]>([]);
@@ -850,6 +851,37 @@ export default function ThreadPage() {
       setStopFailed(true);
     } finally {
       setStopping(false);
+    }
+  }
+
+  // #1919 (6 Oct). A stopped goal now waits in the current list for its owner
+  // to either resume it or close it. Both calls take the THREAD id; the
+  // server finds the goal itself, so the thread/goal mix-up cannot recur here.
+  // The list is updated from the reply rather than waiting for an event, so
+  // the buttons do not linger under a goal that has already moved on.
+  async function stoppedGoalAction(kind: "resume" | "dismiss") {
+    if (goalActing) return;
+    setGoalActing(true);
+    try {
+      const res = await fetch(`${BASE_URL}/threads/${threadId}/${kind}`, {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+      });
+      if (res.status === 401) { forceLogin(); return; }
+      if (!res.ok) { showToast(t(kind === "resume" ? "resumeFailed" : "closeFailed"), false); return; }
+      setThreads((prev) =>
+        prev.map((th) =>
+          String(th.id) !== threadId
+            ? th
+            : kind === "resume"
+            ? { ...th, goal_stopped: false, goal_stopped_open: false, status: "waiting" }
+            : { ...th, goal_stopped_open: false }
+        )
+      );
+    } catch {
+      showToast(t(kind === "resume" ? "resumeFailed" : "closeFailed"), false);
+    } finally {
+      setGoalActing(false);
     }
   }
 
@@ -1713,7 +1745,27 @@ export default function ThreadPage() {
               lost the whole conversation, which Delete does not undo.
               Offering Stop when there is nothing to stop costs a sentence
               saying so. Hiding it cost somebody their conversation. */}
-          {thread?.is_task === true && (
+          {thread?.is_task === true && thread.goal_stopped_open === true && (
+            <>
+              <button
+                onClick={() => stoppedGoalAction("resume")}
+                disabled={goalActing}
+                className="transition-colors disabled:opacity-50"
+                style={{ fontSize: "13px", fontWeight: 600, color: "var(--accent)" }}
+              >
+                {t("resumeGoal")}
+              </button>
+              <button
+                onClick={() => stoppedGoalAction("dismiss")}
+                disabled={goalActing}
+                className="transition-colors disabled:opacity-50"
+                style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-soft)" }}
+              >
+                {t("closeGoal")}
+              </button>
+            </>
+          )}
+          {thread?.is_task === true && thread.goal_stopped_open !== true && (
             <button
               onClick={stopTask}
               disabled={stopping}
