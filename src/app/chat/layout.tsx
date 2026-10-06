@@ -564,6 +564,21 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
               case "thread_updated": {
                 const patch = data.thread;
+                // #1817: "the owner opened it" arrives on its own, from this
+                // device or another. That is not news about the conversation,
+                // so it must not stamp updated_at: that would make every other
+                // device show it as new because it was read, and on this one
+                // the changed time would ask to mark it seen again.
+                const onlySeen =
+                  patch?.id != null &&
+                  patch.seen_at !== undefined &&
+                  Object.keys(patch).every((k) => k === "id" || k === "seen_at");
+                if (onlySeen) {
+                  setThreads((prev) =>
+                    prev.map((th) => (String(th.id) === String(patch.id) ? { ...th, seen_at: patch.seen_at } : th))
+                  );
+                  break;
+                }
                 if (patch?.id != null) {
                   // Stamp updated_at so unread detection sees the change even when
                   // the SSE patch doesn't carry a timestamp (ticket 6 #13).
@@ -579,6 +594,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         ...(patch.is_task !== undefined ? { is_task: patch.is_task } : null),
                         ...(patch.request_ref !== undefined ? { request_ref: patch.request_ref } : null),
                         ...(patch.title ? { title: patch.title } : null),
+                        ...(patch.seen_at !== undefined ? { seen_at: patch.seen_at } : null),
                       };
                     })
                   );
