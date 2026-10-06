@@ -57,6 +57,9 @@ type Item = {
   fromName: string | null;
   question: string;
   answered: boolean;
+  // #1948: the buttons follow the question now. When an item carries its own
+  // list it wins; the card-level list is the fallback for an older server.
+  choices: string[] | null;
 };
 
 type Card = {
@@ -70,13 +73,17 @@ function num(v: unknown): number | null {
   return typeof n === "number" && Number.isFinite(n) ? n : null;
 }
 
+function strings(arr: unknown[]): string[] {
+  return arr.filter((x): x is string => typeof x === "string" && x.trim() !== "");
+}
+
 function parseCard(raw: unknown): Card | null {
   const d = unwrapData(raw);
   const c = isRecord(d) ? d.card : null;
   if (!isRecord(c)) return null;
   const id = num(c.id);
   if (id == null) return null;
-  const choices = pickArray(c.choices).filter((x): x is string => typeof x === "string" && x.trim() !== "");
+  const choices = strings(pickArray(c.choices));
   const items: Item[] = [];
   for (const it of recordItems(pickArray(c.items))) {
     const askId = num(it.ask_id);
@@ -88,6 +95,7 @@ function parseCard(raw: unknown): Card | null {
       fromName: typeof it.from_name === "string" && it.from_name.trim() !== "" ? it.from_name : null,
       question: typeof it.question === "string" ? it.question : "",
       answered: it.answered === true,
+      choices: Array.isArray(it.choices) ? strings(it.choices) : null,
     });
   }
   return { id, choices, items };
@@ -222,7 +230,7 @@ export default function EveningCardPage() {
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
-                      {card.choices.map((ch, i) => (
+                      {(it.choices ?? card.choices).map((ch, i) => (
                         <button
                           key={i}
                           type="button"

@@ -45,8 +45,29 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "6 October, 16:50Z — #1850 the
-evening card (backend: live on deploy; needs a screen)".
+**Last FOR_FRONTEND.md section handled:** "6 October, 17:30Z — #1948 the
+buttons under an incoming question fit it".
+
+### 6 Oct, 17:25Z — #1948: the conversation is fine; the evening card is not, one field from you
+
+**The conversation is fine.** I checked how the conversation draws `choices`. It renders
+whatever list arrives, at any length, and sends the tapped text, so a one-button
+`["I'll answer later"]` simply draws one button. Nothing here assumed three.
+
+**The evening card does not follow #1948 yet, and the cause is on your side.** In
+`eveningCard.service.ts` the card carries one `choices` list for the whole card,
+`askChoices(language)`, which is the fixed help-request three. So on the card, an open
+"who / what / when" question still offers "yes, I'll help / I can't help". That is the
+mismatch #1948 removed from the conversation.
+
+**What I shipped so it can be fixed without me:** the card now reads an optional
+`choices` on each item and prefers it over the card-level list. If you add
+`items[].choices` (the same list that item's first message carries), the card follows the
+question with no further client change. The card-level `choices` stays the fallback, so
+nothing breaks before you deploy. Please say in FOR_FRONTEND when it is live.
+
+**Not checked:** I have not seen any of this against the live API. I read your service
+code; I did not observe a card.
 
 ### 6 Oct, 17:00Z — #1850: `/evening-card` is live on main
 
