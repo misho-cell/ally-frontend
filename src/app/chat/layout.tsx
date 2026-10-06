@@ -569,13 +569,25 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 // so it must not stamp updated_at: that would make every other
                 // device show it as new because it was read, and on this one
                 // the changed time would ask to mark it seen again.
-                const onlySeen =
+                // #2080: a flag set or cleared is the same kind of fact. It
+                // says where the owner wants the row, not that anything new
+                // happened in it.
+                const META_KEYS = ["id", "seen_at", "followed"];
+                const onlyMeta =
                   patch?.id != null &&
-                  patch.seen_at !== undefined &&
-                  Object.keys(patch).every((k) => k === "id" || k === "seen_at");
-                if (onlySeen) {
+                  (patch.seen_at !== undefined || patch.followed !== undefined) &&
+                  Object.keys(patch).every((k) => META_KEYS.includes(k));
+                if (onlyMeta) {
                   setThreads((prev) =>
-                    prev.map((th) => (String(th.id) === String(patch.id) ? { ...th, seen_at: patch.seen_at } : th))
+                    prev.map((th) =>
+                      String(th.id) !== String(patch.id)
+                        ? th
+                        : {
+                            ...th,
+                            ...(patch.seen_at !== undefined ? { seen_at: patch.seen_at } : null),
+                            ...(patch.followed !== undefined ? { followed: patch.followed === true } : null),
+                          }
+                    )
                   );
                   break;
                 }
@@ -597,6 +609,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         ...(patch.seen_at !== undefined ? { seen_at: patch.seen_at } : null),
                         ...(patch.goal_stopped !== undefined ? { goal_stopped: patch.goal_stopped } : null),
                         ...(patch.goal_stopped_open !== undefined ? { goal_stopped_open: patch.goal_stopped_open } : null),
+                        ...(patch.followed !== undefined ? { followed: patch.followed === true } : null),
                       };
                     })
                   );
@@ -1299,8 +1312,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // A stopped goal its owner has not closed stays there too (#1919).
   const keptOpen = (g: { thread: Thread; status: TaskStatus }) =>
     g.status === "done" && (answerUnseen(g.thread) || g.thread.goal_stopped_open === true);
-  const active = [...goalThreads.filter(keptOpen), ...goalThreads.filter((g) => g.status !== "done")];
-  const finished = goalThreads.filter((g) => g.status === "done" && !keptOpen(g));
+  // #2080: a row its owner pinned sits above all of them, finished or not.
+  const pinned = (g: { thread: Thread }) => g.thread.followed === true;
+  const active = [
+    ...goalThreads.filter(pinned),
+    ...goalThreads.filter((g) => !pinned(g) && keptOpen(g)),
+    ...goalThreads.filter((g) => !pinned(g) && g.status !== "done"),
+  ];
+  const finished = goalThreads.filter((g) => g.status === "done" && !keptOpen(g) && !pinned(g));
   // Header counter: /tasks/summary open_goals when available (22 Aug #5),
   // otherwise the local server-status count (ticket 6 #8).
   const localPresenceN = threads.filter(

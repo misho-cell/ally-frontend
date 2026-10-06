@@ -29,6 +29,10 @@ export type Thread = {
   // into finished the moment Stop is pressed. Absent on older deployments,
   // so only an explicit true keeps a stopped goal in the current list.
   goal_stopped_open?: boolean;
+  // #2080 (D703, 6 Oct). The owner flagged this conversation to come back to.
+  // A flagged row stays at the top of the list on every device until the
+  // owner clears it. Absent on older deployments: only an explicit true lifts.
+  followed?: boolean;
   // Time of the last MESSAGE, as distinct from updated_at, which also moves
   // when only the status changed.
   last_message_at?: string | null;

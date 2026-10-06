@@ -61,6 +61,9 @@ const L = {
     weekClose: "Hide",
     weekDone: "Read it",
     asks: (sent: number, answered: number) => `${answered} of ${sent} answered`,
+    follow: "Pin",
+    unfollow: "Unpin",
+    followFailed: "Could not change it, try again",
   },
   ka: {
     back: "← ჩატი",
@@ -86,6 +89,9 @@ const L = {
     weekClose: "დამალვა",
     weekDone: "წავიკითხე",
     asks: (sent: number, answered: number) => `${sent}-დან ${answered}-ს უპასუხეს`,
+    follow: "მიმაგრება",
+    unfollow: "მოხსნა",
+    followFailed: "ვერ შეიცვალა, სცადე თავიდან",
   },
 };
 
@@ -117,6 +123,10 @@ type Update = {
   // is the same fault in a new place — the card would again be saying
   // something other than what happened.
   answered?: boolean | null;
+  // #2080 (D703). The owner pinned this card to come back to. Pinned cards
+  // arrive in their own `followed` list and are drawn first; absent means an
+  // older server, and then no pin button is offered at all.
+  followed?: boolean | null;
   payload?: unknown;
   task_id?: number | string | null;
   created_at?: string | null;
@@ -188,6 +198,7 @@ export default function UpdatesPage() {
   const s = L[getLocale()];
   const [due, setDue] = useState<Update[]>([]);
   const [seen, setSeen] = useState<Update[]>([]);
+  const [followed, setFollowed] = useState<Update[]>([]);
   const [held, setHeld] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -208,6 +219,7 @@ export default function UpdatesPage() {
       const body = isRecord(unwrapData(res)) ? (unwrapData(res) as Record<string, unknown>) : {};
       setDue(recordItems(pickArray(body, ["due"])) as Update[]);
       setSeen(recordItems(pickArray(body, ["seen"])) as Update[]);
+      setFollowed(recordItems(pickArray(body, ["followed"])) as Update[]);
       // A count of nothing is 0; a count nobody sent is not 0, so it stays null
       // and the line is simply absent rather than claiming "0 kept".
       setHeld(typeof body.held === "number" ? body.held : null);
@@ -246,7 +258,41 @@ export default function UpdatesPage() {
   // read, never both, and when the two disagree the unread state wins. A
   // person shown one thing twice stops believing either copy.
   const dueRefs = new Set(due.map((u) => u.update_ref));
-  const seenRest = seen.filter((u) => u.kind !== WEEKLY_KIND && !dueRefs.has(u.update_ref));
+  const followedRefs = new Set(followed.map((u) => u.update_ref));
+  const followedRest = followed.filter((u) => u.kind !== WEEKLY_KIND && !dueRefs.has(u.update_ref));
+  const seenRest = seen.filter(
+    (u) => u.kind !== WEEKLY_KIND && !dueRefs.has(u.update_ref) && !followedRefs.has(u.update_ref)
+  );
+
+  // #2080. One tap pins, a second clears. The card moves from the reply:
+  // pinned goes to the top list, unpinned goes back among the read ones. A
+  // due card keeps its place and only changes its button, as the server
+  // keeps it in `due`.
+  const toggleFollow = async (u: Update) => {
+    const ref = u.update_ref;
+    if (!ref || busy) return;
+    const next = u.followed !== true;
+    setBusy(ref);
+    setNotice(null);
+    try {
+      await apiFetch(`/updates/${encodeURIComponent(ref)}/follow`, { method: next ? "PUT" : "DELETE" });
+      const flipped = { ...u, followed: next };
+      setDue((prev) => prev.map((x) => (x.update_ref === ref ? flipped : x)));
+      if (!dueRefs.has(ref)) {
+        if (next) {
+          setSeen((prev) => prev.filter((x) => x.update_ref !== ref));
+          setFollowed((prev) => [flipped, ...prev.filter((x) => x.update_ref !== ref)]);
+        } else {
+          setFollowed((prev) => prev.filter((x) => x.update_ref !== ref));
+          setSeen((prev) => [flipped, ...prev.filter((x) => x.update_ref !== ref)]);
+        }
+      }
+    } catch {
+      setNotice({ text: s.followFailed, ok: false });
+    } finally {
+      setBusy(null);
+    }
+  };
 
   // Tapping is what marks it read, and the server is the one that records it.
   // This was briefly a flag in this browser, because opening the screen spent
@@ -337,6 +383,18 @@ export default function UpdatesPage() {
             <span className="ml-auto" style={{ font: "400 11px/15px var(--font-system)", color: "var(--meta)" }}>
               {fmtDateLoc(u.created_at, { day: "numeric", month: "short" })}
             </span>
+          )}
+          {ref && typeof u.followed === "boolean" && (
+            <button
+              type="button"
+              aria-pressed={u.followed}
+              disabled={busy === ref}
+              onClick={() => toggleFollow(u)}
+              className={u.created_at ? undefined : "ml-auto"}
+              style={{ font: "600 12px/16px var(--font-system)", color: u.followed ? "var(--accent)" : "var(--ink-soft)" }}
+            >
+              {u.followed ? s.unfollow : s.follow}
+            </button>
           )}
         </div>
 
@@ -521,6 +579,9 @@ export default function UpdatesPage() {
           <span className="sk-bar" style={{ width: "80%" }} />
         ) : (
           <>
+            {followedRest.length > 0 && (
+              <div className="flex flex-col gap-3">{followedRest.map((u, i) => card(u, i, false))}</div>
+            )}
             {dueRest.length === 0 ? (
               <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--meta)" }}>{s.dueEmpty}</p>
             ) : (

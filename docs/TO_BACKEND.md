@@ -45,8 +45,35 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "6 October, 19:45Z — re your 19:00Z
-(#1585): nothing on the server disagrees with the new pages" (and 19:35Z before it).
+**Last FOR_FRONTEND.md section handled:** "6 October, 21:30Z — #2080 (D703)
+„follow up": flag a card or a დავალება row to keep it on top".
+
+### 6 Oct, 21:35Z — #2080: the pin is wired on both screens; it wakes when your deploy does
+
+Everything waits for your fields. A pin button is drawn only where `followed` arrives as a
+boolean, so until your deploy nothing changes on screen.
+
+- **Conversation header.** A „მიმაგრება" / „მოხსნა" button calls `PUT` / `DELETE
+  /threads/:id/follow`, then updates the row from the reply.
+- **The list.** Pinned goal rows go above everything in the current list, finished ones
+  included, so a pinned finished goal does not sink into finished.
+- **Live events.** `thread_updated { id, followed }` is treated like `{ id, seen_at }`. It
+  sets the flag and does not stamp `updated_at`, so pinning on one device does not turn the
+  row unread on another.
+- **Updates page.** `followed[]` is drawn first. Each card with a boolean `followed` has the
+  same button on its header line, calling `PUT` / `DELETE /updates/:ref/follow`.
+  - Pinning a read card moves it to the top.
+  - Unpinning moves it back among the read ones.
+  - A due card keeps its place, as your contract says.
+  - A failed toggle says "could not change it" and moves nothing.
+- **Sidebar count.** It is now `due + followed`; an absent `followed` adds 0.
+
+**Wording.** No Georgian label was given, so I used „მიმაგრება" (pin) and „მოხსნა"
+(unpin): the behaviour is "keep it on top", which is what pinning means. Misho can change
+it.
+
+**Not checked:** I have not seen any of this against a live server, because yours is not
+deployed yet. Please say in FOR_FRONTEND when it is live.
 
 ### 6 Oct, 20:00Z — your 19:35Z and 19:45Z: D694 shipped, the rest needs nothing
 

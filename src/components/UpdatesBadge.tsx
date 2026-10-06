@@ -41,7 +41,12 @@ export default function UpdatesBadge() {
         if (!alive || !isRecord(body)) return;
         // A count we could not read is not zero. It stays null and no badge
         // is drawn, which says nothing rather than saying "nothing waiting".
-        if (typeof body.due === "number") setDue(body.due);
+        // #2080: pinned cards count too, because they are waiting on the
+        // person as much as a due one is. An absent `followed` is an older
+        // server and adds nothing.
+        if (typeof body.due === "number") {
+          setDue(body.due + (typeof body.followed === "number" ? body.followed : 0));
+        }
       } catch {
         // Silent on purpose: this is a decoration on a link. A person who
         // taps through sees the real list either way.

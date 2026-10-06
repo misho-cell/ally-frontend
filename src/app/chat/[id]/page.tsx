@@ -420,6 +420,7 @@ export default function ThreadPage() {
   const [limitMsg, setLimitMsg] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
   const [goalActing, setGoalActing] = useState(false);
+  const [following, setFollowing] = useState(false);
   // Stays until dismissed. A stop that failed must not fade away.
   const [stopFailed, setStopFailed] = useState(false);
   const [packages, setPackages] = useState<TopupPackage[]>([]);
@@ -882,6 +883,30 @@ export default function ThreadPage() {
       showToast(t(kind === "resume" ? "resumeFailed" : "closeFailed"), false);
     } finally {
       setGoalActing(false);
+    }
+  }
+
+  // #2080 (D703). Pin a conversation so it stays at the top of the list until
+  // its owner clears it. One tap sets, a second clears; the row moves from the
+  // reply, and other devices hear thread_updated.
+  async function toggleFollow() {
+    if (following || !thread) return;
+    const next = thread.followed !== true;
+    setFollowing(true);
+    try {
+      const res = await fetch(`${BASE_URL}/threads/${threadId}/follow`, {
+        method: next ? "PUT" : "DELETE",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+      });
+      if (res.status === 401) { forceLogin(); return; }
+      if (!res.ok) { showToast(t("followFailed"), false); return; }
+      setThreads((prev) =>
+        prev.map((th) => (String(th.id) === threadId ? { ...th, followed: next } : th))
+      );
+    } catch {
+      showToast(t("followFailed"), false);
+    } finally {
+      setFollowing(false);
     }
   }
 
@@ -1745,6 +1770,20 @@ export default function ThreadPage() {
               lost the whole conversation, which Delete does not undo.
               Offering Stop when there is nothing to stop costs a sentence
               saying so. Hiding it cost somebody their conversation. */}
+          {/* #2080: only once the server says whether this row is pinned. A
+              button guessing "not pinned" on an older deploy would offer to
+              set something the server cannot hold. */}
+          {thread && typeof thread.followed === "boolean" && (
+            <button
+              onClick={toggleFollow}
+              disabled={following}
+              aria-pressed={thread.followed}
+              className="transition-colors disabled:opacity-50"
+              style={{ fontSize: "13px", fontWeight: 600, color: thread.followed ? "var(--accent)" : "var(--ink-soft)" }}
+            >
+              {t(thread.followed ? "unfollow" : "follow")}
+            </button>
+          )}
           {thread?.is_task === true && thread.goal_stopped_open === true && (
             <>
               <button
