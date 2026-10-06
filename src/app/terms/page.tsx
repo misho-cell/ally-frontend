@@ -12,7 +12,7 @@ export default function TermsPage() {
       <main className="mx-auto max-w-4xl px-6 py-12">
         <div className="legal-body max-w-none">
           <h1 className="legal-h1 mb-2">Terms and Conditions</h1>
-          <p className="legal-meta mb-8">Effective Date: January 1, 2026 · Last Updated: June 2026</p>
+          <p className="legal-meta mb-8">Effective Date: January 1, 2026 · Last Updated: October 2026</p>
 
           <blockquote className="legal-quote mb-8">
             Please read these Terms and Conditions carefully before using Netai. By creating an account or using the service, you agree to be bound by these terms in their entirety.
@@ -60,7 +60,7 @@ export default function TermsPage() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-4">Every new account begins with a <strong>5-day full-feature trial</strong>. The trial begins on your first assistant conversation, not on registration. Payment is processed by <strong>Paddle (Paddle.com Market Ltd)</strong>, our Merchant of Record.</p>
+            <p className="mt-4">Every new account begins with a <strong>5-day full-feature trial</strong>. The trial begins on your first assistant conversation, not on registration. Netai purchases are sold by <strong>Ally, Inc.</strong> Payments are processed by <strong>Stripe</strong>.</p>
             <p className="mt-3">Subscriptions renew automatically until cancelled. You may cancel at any time from Settings. No partial refunds for unused subscription time, except where required by law.</p>
           </Section>
 

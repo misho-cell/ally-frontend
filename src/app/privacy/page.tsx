@@ -12,7 +12,7 @@ export default function PrivacyPage() {
       <main className="mx-auto max-w-4xl px-6 py-12">
         <div className="legal-body max-w-none">
           <h1 className="legal-h1 mb-2">Privacy Policy</h1>
-          <p className="legal-meta mb-8">Effective Date: January 1, 2026 · Last Updated: June 2026</p>
+          <p className="legal-meta mb-8">Effective Date: January 1, 2026 · Last Updated: October 2026</p>
 
           <Section title="1. Who We Are">
             <p><strong>Ally, Inc.</strong> is a Delaware C Corporation (EIN: 37-2215465) operating the Netai assistant at netai.guru. We are the data controller for all personal data processed through Netai.</p>
@@ -47,7 +47,7 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 space-y-1">
               <li>Provide and personalise the Netai assistant</li>
               <li>Enable network intelligence features</li>
-              <li>Process payments via Paddle (Merchant of Record)</li>
+              <li>Process payments via Stripe</li>
               <li>Detect and prevent fraud</li>
               <li>Train AI models using anonymised, aggregated patterns (k-anonymity ≥10)</li>
             </ul>
@@ -62,7 +62,7 @@ export default function PrivacyPage() {
                   <tr><td>Anthropic (Claude API)</td><td>AI conversation processing; no data retained beyond the API call</td></tr>
                   <tr><td>Supabase (Frankfurt, Germany)</td><td>Database hosting</td></tr>
                   <tr><td>Railway (Frankfurt, Germany)</td><td>Backend hosting</td></tr>
-                  <tr><td>Paddle (Paddle.com Market Ltd)</td><td>Merchant of Record: billing, payments, tax</td></tr>
+                  <tr><td>Stripe, Inc.</td><td>Payment processing</td></tr>
                   <tr><td>Bridge (USA)</td><td>USDT payout processing and KYC for withdrawals</td></tr>
                 </tbody>
               </table>

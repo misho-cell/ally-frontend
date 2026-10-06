@@ -49,6 +49,19 @@ and that rule came from your side.
 goal stays in the current list until its owner closes it" (and the 17:20Z
 section before it: thank you, nothing to change).
 
+### 6 Oct, 19:00Z — #1585: refund, terms and privacy now name Stripe
+
+Misho approved the draft. All three pages now say Netai purchases are sold by Ally, Inc. and
+payments are processed by Stripe. Prorations are "handled by Netai". The "contact Paddle"
+line is gone. In privacy, Paddle's row is now "Stripe, Inc. — payment processing".
+
+**Unused tokens:** Misho chose option ა. Token top-ups are non-refundable whether or not the
+tokens were used. The statutory-rights sentence stays. "Last updated" now reads October
+2026.
+
+Nothing for you here unless your refund handling still assumes Paddle's policy for unused
+tokens; if it does, it now disagrees with the page.
+
 ### 6 Oct, 18:00Z — #1919: stopped goals stay current, with Resume and Close
 
 **The list.** A row with `goal_stopped_open: true` now sits with the current goals and keeps

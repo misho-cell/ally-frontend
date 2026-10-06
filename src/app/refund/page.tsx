@@ -12,9 +12,9 @@ export default function RefundPage() {
       <main className="mx-auto max-w-4xl px-6 py-12">
         <div className="legal-body max-w-none">
           <h1 className="legal-h1 mb-2">Refund Policy</h1>
-          <p className="legal-meta mb-8">Effective Date: January 1, 2026 · Last Updated: June 2026</p>
+          <p className="legal-meta mb-8">Effective Date: January 1, 2026 · Last Updated: October 2026</p>
 
-          <p className="mb-8">Netai subscriptions and purchases are processed by <strong>Paddle (Paddle.com Market Ltd)</strong>, our Merchant of Record, the legal seller of record for all Netai transactions. Paddle handles all billing, payment processing, and refund administration on our behalf.</p>
+          <p className="mb-8">Netai purchases are sold by <strong>Ally, Inc.</strong> Payments are processed by <strong>Stripe</strong>.</p>
 
           <Section title="1. Free Trial">
             <p>Every new Netai account begins with a <strong>5-day full-feature trial</strong> at no cost. The trial begins on your first assistant conversation, not on registration. If you do not subscribe before the trial ends, your account automatically moves to the free tier. No payment is taken and no refund request is necessary.</p>
@@ -27,11 +27,11 @@ export default function RefundPage() {
           <Section title="3. Subscription Refunds">
             <p>Netai does not provide partial refunds for unused subscription time, except where required by applicable law.</p>
             <p className="mt-3">If the Netai service has not been delivered at all, you may request a full refund within <strong>14 days of payment</strong> by contacting contact@netai.guru.</p>
-            <p className="mt-3">Annual subscription refunds and upgrade/downgrade prorations are handled by Paddle as Merchant of Record.</p>
+            <p className="mt-3">Annual subscription refunds and upgrade/downgrade prorations are handled by Netai.</p>
           </Section>
 
           <Section title="4. Usage Token Top-Ups">
-            <p>Consumed tokens are non-refundable. Unconsumed tokens follow Paddle&apos;s default refund policy. Nothing here limits any statutory refund right you have under applicable law.</p>
+            <p>Token top-ups are non-refundable, whether or not the tokens have been used. Nothing here limits any statutory refund right you have under applicable law.</p>
           </Section>
 
           <Section title="5. Referral Commission Reversals">
@@ -45,7 +45,7 @@ export default function RefundPage() {
           <Section title="7. How to Request a Refund">
             <p><strong>Email:</strong> contact@netai.guru<br />
             <strong>Subject:</strong> Refund Request: [your registered phone number]</p>
-            <p className="mt-3">Include the date of purchase and reason. We respond within 5 business days. You may also contact Paddle directly at paddle.com/support as the Merchant of Record.</p>
+            <p className="mt-3">Include the date of purchase and reason. We respond within 5 business days.</p>
           </Section>
 
           <Section title="8. Contact">
