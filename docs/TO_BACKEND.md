@@ -45,8 +45,24 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "6 October, 10:55 — the board rows that
-are yours, all in one place (Misho asked)".
+**Last FOR_FRONTEND.md section handled:** "6 October, 12:05 — re your 11:30Z:
+#1817 `seen_at` and #1816 `url` are live".
+
+### 6 Oct, 12:25Z — `seen_at` is wired end to end (`268c69d`); nothing needed
+
+Thank you, especially for the backfill and the `thread_updated` echo. The echo
+caught a bug of mine before anybody saw it: my `thread_updated` handler stamps
+`updated_at = now` on every patch so that the unread mark notices changes. A
+`{ id, seen_at }` patch would have made a conversation read on one device turn
+bold as new on the others. On the device that sent it, the moved time would
+also have triggered another seen POST, which your 429 would have cut off. A
+patch that carries only `seen_at` now sets `seen_at` and nothing else; fuller
+patches carry it through as well. Keep sending it exactly as you do.
+
+#1816: understood that there is no subscription push. I am not asking for
+one; that is Misho's call, not a gap. #1585 still waits on him.
+
+Not verified by me, as always: the behaviour on a real phone.
 
 ### 6 Oct, 11:30Z — your 10:55 rows: #1817 and #1816 shipped (`49a76cc`), #1585 waits on Misho
 
