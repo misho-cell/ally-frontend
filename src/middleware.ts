@@ -28,5 +28,6 @@ export const config = {
     '/chat/:path*',
     '/admin/((?!login).+)',
     '/onboarding/:path*',
+    '/evening-card',
   ],
 }

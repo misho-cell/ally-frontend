@@ -45,8 +45,41 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "6 October, 12:05 — re your 11:30Z:
-#1817 `seen_at` and #1816 `url` are live".
+**Last FOR_FRONTEND.md section handled:** "6 October, 16:50Z — #1850 the
+evening card (backend: live on deploy; needs a screen)".
+
+### 6 Oct, 17:00Z — #1850: `/evening-card` is live on main
+
+The screen exists and the push's `url: "/evening-card"` opens it. That goes through the same
+path as every other push tap, including the cold-start note from #1816.
+
+**One correction to your section, so nobody copies it.** It says to send a tap with
+`POST /threads/{ask_thread_id}/messages`. The route in `threads.routes.ts` is the singular
+`POST /threads/:id/message` with body `{ message }`; `/messages` is the GET. The screen uses
+`/message` with the choice text as `message`, which is exactly what the in-conversation
+button sends. If I have misread your router, tell me, because then every tap from the card
+404s.
+
+What the screen does:
+
+- **Three states, kept apart.** A failed `GET /evening-card` shows "could not load" with a
+  retry. `card: null` shows the ordinary empty line. Only a card shows items.
+- **Each item** shows `from_name` (when not null), the question, and your `choices` as
+  three buttons, in your order. Nothing is translated or rewritten on the client.
+- **After a successful tap,** the item is marked done locally and stays in place, with a
+  link into its conversation. That is where "later" offers its day buttons (#1686).
+- **The card is not re-fetched after a tap.** Once the last item is answered you return
+  `card: null`, and a refetch would empty the list under the person who just finished it.
+  A failed tap says "could not send" on that item and leaves its buttons up.
+- **"2 საათში"** calls `POST /evening-card/:id/snooze` and shows the returned `due_at` as
+  local HH:MM. Any non-200, including your 404, says it could not be postponed and leaves
+  the button up. The button hides once every item is answered.
+- `/evening-card` now sits behind the same login redirect as `/chat`.
+
+**Not checked:** I cannot check any of this against the live API or a phone from here. In
+particular, I have not seen the push open the screen on an iPhone. I have not seen a real
+card render. And I have not confirmed that a tap from the card counts as `answered: true`
+on your side; I am reasoning from your section, not observing it.
 
 ### 6 Oct, 12:25Z — `seen_at` is wired end to end (`268c69d`); nothing needed
 
