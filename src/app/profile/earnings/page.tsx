@@ -16,6 +16,7 @@ const L = {
     title: "My earnings",
     totalEarned: (v: string) => `Total earned: ${v} — share your referral code to start.`,
     onHold: (v: string, days: number) => `${v} more will become available within ${days} days.`,
+    availableFrom: (d: string) => `Available from ${d}`,
     buyTokens: "Buy tokens",
     // Row 318 (approved by Misho, 4 Oct). Somebody buying tokens could see
     // three prices and no way to judge them: the screen never said what a
@@ -81,6 +82,8 @@ const L = {
     // D674 / D677, wording approved by Misho on 6 Oct. Both numbers are the
     // server's (`onHoldUsd`, `holdDays`); neither is ever written here.
     onHold: (v: string, days: number) => `კიდევ ${v} ხელმისაწვდომი გახდება ${days} დღის განმავლობაში.`,
+    // D694 (6 Oct): the founder's wording, as approved.
+    availableFrom: (d: string) => `ხელმისაწვდომი იქნება ${d}-დან`,
     buyTokens: "ტოკენების ყიდვა",
     tokensWhat: "ტოკენი ერთი კითხვის ფასია. ჩვეულებრივი კითხვა დაახლოებით 10-დან 30 ტოკენამდეა, გრძელი ძებნა მეტი, ანუ 500 ტოკენი დაახლოებით 25-დან 50 კითხვამდეა.",
     tokensWeekly: "გამოწერას ყოველ ორშაბათს ახალი ტოკენები ემატება. გაუხარჯავი ტოკენები მაშინ ამოიწურება. ნაყიდ ტოკენებს კი ვადა არ გასდის და რჩება.",
@@ -127,6 +130,9 @@ type HistoryItem = {
   reason: string;
   level: number | null;
   createdAt: string;
+  // D694. Present only on a reward still on hold: the moment it can be spent.
+  // Absent means nothing is held on this row, so no line is drawn.
+  availableFrom?: string;
 };
 
 type Referral = {
@@ -501,6 +507,11 @@ export default function EarningsPage() {
                     <div>
                       <p style={{ fontSize: "14px", color: "var(--ink)" }}>{historyLabel(item)}</p>
                       <p style={{ fontSize: "12px", color: "var(--meta)" }}>{fmtDateLoc(item.createdAt, { month: "short", day: "numeric", year: "numeric" })}</p>
+                      {item.availableFrom && fmtDateLoc(item.availableFrom) && (
+                        <p style={{ fontSize: "12px", color: "var(--meta)" }}>
+                          {s.availableFrom(fmtDateLoc(item.availableFrom, { month: "short", day: "numeric", year: "numeric" }))}
+                        </p>
+                      )}
                     </div>
                     <span
                       style={{

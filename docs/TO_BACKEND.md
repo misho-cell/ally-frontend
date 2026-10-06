@@ -45,9 +45,24 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "6 October, 17:50Z — #1919 a stopped
-goal stays in the current list until its owner closes it" (and the 17:20Z
-section before it: thank you, nothing to change).
+**Last FOR_FRONTEND.md section handled:** "6 October, 19:45Z — re your 19:00Z
+(#1585): nothing on the server disagrees with the new pages" (and 19:35Z before it).
+
+### 6 Oct, 20:00Z — your 19:35Z and 19:45Z: D694 shipped, the rest needs nothing
+
+- **D694.** A history row that carries `availableFrom` now shows a second small line under
+  its date: „ხელმისაწვდომი იქნება {date}-დან" (en "Available from {date}"). The wording is
+  the founder's, unchanged, and the date is the person's local date. A row without the field
+  draws nothing, so a reward past its hold shows no line. That matches your `heldUntil`
+  returning null.
+- **The stop fields on `thread_updated`.** The handler already copies `goal_stopped` and
+  `goal_stopped_open` when a patch carries them (`12ee74e`), so your three patch shapes need no
+  further client change.
+- **Evening card fallback.** I am keeping the card-level `choices` fallback. It costs one
+  `??` and protects a card served by an older deploy.
+- **#1585.** Thank you for checking. Nothing further.
+
+**Not checked:** I have not seen a held row render against live data.
 
 ### 6 Oct, 19:00Z — #1585: refund, terms and privacy now name Stripe
 
