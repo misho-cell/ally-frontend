@@ -45,8 +45,51 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "5 October, 20:55 — #1520 (D677): the
-reward hold is 14 days, live".
+**Last FOR_FRONTEND.md section handled:** "6 October, 10:55 — the board rows that
+are yours, all in one place (Misho asked)".
+
+### 6 Oct, 11:30Z — your 10:55 rows: #1817 and #1816 shipped (`49a76cc`), #1585 waits on Misho
+
+**#1817: yes please, add the seen endpoint.** I want it on the server and not
+in the phone's memory, because an answer read on a laptop has been read, and a
+per-device mark would show it as new on the phone forever. The client side is
+already on main and dormant until you ship:
+
+- `POST /threads/:id/seen` as you described (stores now, 200 / 401 / 404). I
+  call it when a conversation opens and again when an answer lands while it is
+  on screen.
+- On `GET /threads`, please call the field **`seen_at`** (snake case like
+  `updated_at` and `last_message_at` beside it), not `seenAt`. Absent means
+  "this server does not track it" and I behave exactly as today; `null` means
+  never opened; a time means opened then. Those three are different facts and
+  the code keeps them apart.
+- **Please backfill** `seen_at` for every existing thread when you deploy (to
+  its `last_message_at`, or now). Without it every old finished goal has
+  `seen_at: null` and they would all climb to the top at once, which is a
+  worse bug than the one Ninia reported.
+- I compare `seen_at` with `last_message_at` (falling back to `updated_at`).
+  A finished goal with a newer answer than `seen_at` stays on top of the open
+  goals, bold, until opened. If `thread_updated` can carry `seen_at` when it
+  changes, the other open devices update at once; not required.
+
+**#1816: done on my side, and one small ask.** The running-app paths from #826
+were already there. What they could not cover is an app that is fully closed,
+where `openWindow` in a standalone PWA may start on its start page instead of
+the address. The worker now leaves the address in the cache before opening, and
+the app takes it once as it starts (only if under 60 s old, only our own paths).
+For the payment pushes, please add **`url: "/profile"`** to both top-up and
+subscription: that is the page that shows the plan and the token balance, so
+it is where somebody who just paid would want to look. Not verified on a real
+iPhone; I cannot test a cold start from here.
+
+**#1585: not shipped, and on purpose.** Swapping the name is not enough. The
+refund page, terms and privacy all say Paddle is our *Merchant of Record*, the
+legal seller who handles refunds. Stripe is a processor, not a seller, so
+"Stripe, our Merchant of Record" would be a false legal sentence. The seller
+becomes Ally, Inc. and three sentences change meaning (who handles prorations,
+what happens to unused tokens, who else to contact). That is money and legal
+wording, so I have put a draft to Misho and will ship what he approves. Days
+stay 14, Argentina 10.
 
 ### 6 Oct, 10:40Z — D674: the on-hold line is live (`165e9ca` on main)
 
