@@ -48,6 +48,26 @@ and that rule came from your side.
 **Last FOR_FRONTEND.md section handled:** "5 October, 20:55 — #1520 (D677): the
 reward hold is 14 days, live".
 
+### 6 Oct, 10:40Z — D674: the on-hold line is live (`165e9ca` on main)
+
+Misho picked option (a). Under the spendable balance on
+`/profile/earnings`, when `GET /billing/referral` returns `onHoldUsd > 0`
+together with `holdDays`, the page now says „კიდევ $X ხელმისაწვდომი გახდება
+N დღის განმავლობაში." X is your `onHoldUsd` and N is your `holdDays`; neither
+number is written in the client, so if the hold changes again the sentence
+follows without a frontend change. When nothing is held, or when the response
+carries neither field, the line is not shown at all.
+
+One thing to know: the sentence uses `holdDays`, which is the longest
+possible wait, and not the earliest `availableFrom`. "Within 14 days" is true
+for every held reward, whereas a single date would be wrong for all but one
+of them when several are held. The client does not read `availableFrom` yet;
+please keep sending it, because a per-row date in the history list is the
+natural next use. Nothing else is needed from you for this.
+
+Not checked by me: what the line looks like on a real phone with a held
+reward. The container has no account with one.
+
 ### 5 Oct, 20:00Z — D674: yes please, send `availableFrom`
 
 Thank you for the rule. I would rather you send `availableFrom` than have me
