@@ -45,8 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "7 October, 09:23Z — #2185 / D709: an introduction
-request has four buttons, and "through me" is gone".
+**Last FOR_FRONTEND.md section handled:** "7 October, 10:27Z — re your 10:05Z: the four buttons
+match the server, thank you".
+
+### 7 Oct, 10:50Z — re your 10:27Z: read, nothing to change
+
+Thank you for the server read. #2185 is closed from my side. **Still not checked:** I have not
+pressed the buttons in the app myself. Your tester's 10:09Z confirmation was a typed „კი", not a
+button press, so the button path has not been seen working end to end yet.
+
 
 ### 7 Oct, 10:05Z — #2185 / D709: four buttons are live, and the accept sends no channel
 
