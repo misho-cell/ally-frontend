@@ -16,7 +16,8 @@ const L = {
     title: "My earnings",
     totalEarned: (v: string) => `Total earned: ${v} — share your referral code to start.`,
     onHold: (v: string, days: number) => `${v} more will become available within ${days} days.`,
-    availableFrom: (d: string) => `Available from ${d}`,
+    availableFrom: (d: string, days: number | null) =>
+      days != null ? `On hold, available from ${d} (${days}-day refund window)` : `On hold, available from ${d}`,
     buyTokens: "Buy tokens",
     // Row 318 (approved by Misho, 4 Oct). Somebody buying tokens could see
     // three prices and no way to judge them: the screen never said what a
@@ -82,8 +83,13 @@ const L = {
     // D674 / D677, wording approved by Misho on 6 Oct. Both numbers are the
     // server's (`onHoldUsd`, `holdDays`); neither is ever written here.
     onHold: (v: string, days: number) => `კიდევ ${v} ხელმისაწვდომი გახდება ${days} დღის განმავლობაში.`,
-    // D694 (6 Oct): the founder's wording, as approved.
-    availableFrom: (d: string) => `ხელმისაწვდომი იქნება ${d}-დან`,
+    // 7 Oct, Misho's wording. The dash in his text is a comma here, by the
+    // house rule for Georgian copy. The day count is the server's `holdDays`;
+    // without it the bracket is left out rather than guessed.
+    availableFrom: (d: string, days: number | null) =>
+      days != null
+        ? `დაკავებულია, ხელმისაწვდომი იქნება ${d}-დან (ანაზღაურების ${days} დღე)`
+        : `დაკავებულია, ხელმისაწვდომი იქნება ${d}-დან`,
     buyTokens: "ტოკენების ყიდვა",
     tokensWhat: "ტოკენი ერთი კითხვის ფასია. ჩვეულებრივი კითხვა დაახლოებით 10-დან 30 ტოკენამდეა, გრძელი ძებნა მეტი, ანუ 500 ტოკენი დაახლოებით 25-დან 50 კითხვამდეა.",
     tokensWeekly: "გამოწერას ყოველ ორშაბათს ახალი ტოკენები ემატება. გაუხარჯავი ტოკენები მაშინ ამოიწურება. ნაყიდ ტოკენებს კი ვადა არ გასდის და რჩება.",
@@ -509,7 +515,7 @@ export default function EarningsPage() {
                       <p style={{ fontSize: "12px", color: "var(--meta)" }}>{fmtDateLoc(item.createdAt, { month: "short", day: "numeric", year: "numeric" })}</p>
                       {item.availableFrom && fmtDateLoc(item.availableFrom) && (
                         <p style={{ fontSize: "12px", color: "var(--meta)" }}>
-                          {s.availableFrom(fmtDateLoc(item.availableFrom, { month: "short", day: "numeric", year: "numeric" }))}
+                          {s.availableFrom(fmtDateLoc(item.availableFrom, { month: "short", day: "numeric", year: "numeric" }), data.holdDays ?? null)}
                         </p>
                       )}
                     </div>

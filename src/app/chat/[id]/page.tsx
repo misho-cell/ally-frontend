@@ -19,6 +19,7 @@ import { isRecord, unwrapData } from "@/lib/payload";
 import { saveBlob, saveTextFile } from "@/lib/download";
 import { FILE_ACCEPT, FILE_MAX_BYTES, fetchGoalList, uploadThreadFile } from "@/lib/threadFiles";
 import RequestActions from "@/components/RequestActions";
+import StagedFile from "@/components/StagedFile";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import { useUserName } from "@/lib/user";
 import {
@@ -690,6 +691,10 @@ export default function ThreadPage() {
   // picker from a button that looks like the rest of the composer.
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  // #2346: a chosen file waits for Send. Held with the conversation it was
+  // chosen in, so moving to another conversation does not carry it along.
+  const [staged, setStaged] = useState<{ threadId: string; file: File } | null>(null);
+  const stagedFile = staged?.threadId === threadId ? staged.file : null;
   const [downloading, setDownloading] = useState(false);
   // #794: which steps blocks are open, by run. Held here rather than inside
   // the block, because the block is rebuilt by every event the run emits and
@@ -731,20 +736,13 @@ export default function ThreadPage() {
   // appended from this response — the summary with the server's own id and
   // time, so that when history next loads it recognises the same row rather
   // than drawing it twice (#793 is what that looks like when it goes wrong).
-  async function handleFile(file: File) {
-    if (uploading) return;
-    // Refused here only to save somebody a two-megabyte upload that ends in
-    // being told it was two megabytes. The server decides either way.
-    if (file.size > FILE_MAX_BYTES) {
-      showToast(t("attachTooBig"), false);
-      return;
-    }
+  async function handleFile(file: File): Promise<boolean> {
     setUploading(true);
     try {
       const out = await uploadThreadFile(threadId, file, t("attachFailed"));
       if (!out.ok) {
         showToast(out.error, false);
-        return;
+        return false;
       }
       setThreadStates((prev) =>
         updateThreadState(prev, threadId, (ts) => ({
@@ -773,11 +771,39 @@ export default function ThreadPage() {
           ],
         }))
       );
+      return true;
     } catch {
       showToast(t("attachFailed"), false);
+      return false;
     } finally {
       setUploading(false);
     }
+  }
+
+  // Refused at the choice only to save somebody a two-megabyte upload that
+  // ends in being told it was two megabytes. The server decides either way.
+  function stageFile(file: File) {
+    if (file.size > FILE_MAX_BYTES) {
+      showToast(t("attachTooBig"), false);
+      return;
+    }
+    setStaged({ threadId, file });
+  }
+
+  // #2346: Send uploads the waiting file first, then sends the line, so the
+  // line reads after the list it is about. A file the server refused keeps
+  // both the file and the line in the composer: nothing the person prepared
+  // is lost, and nothing goes out half.
+  async function submit() {
+    if (uploading) return;
+    if (stagedFile) {
+      const ok = await handleFile(stagedFile);
+      if (!ok) return;
+      setStaged(null);
+      if (input.trim()) sendMessage(input);
+      return;
+    }
+    sendMessage(input);
   }
 
   // #894. The worked list, as a spreadsheet. The route takes the GOAL's id,
@@ -1532,7 +1558,7 @@ export default function ThreadPage() {
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage(input);
+      void submit();
     }
   }
 
@@ -1594,6 +1620,7 @@ export default function ThreadPage() {
   const lastHasOwnChoices = (lastMsg?.choices?.length ?? 0) > 0;
   const showChoices = !loading && lastIsAssistantMessage && choices.length > 0 && !lastHasOwnChoices;
   const composerBlocked = rateLimited || limitHit;
+  const canSend = (!!input.trim() || !!stagedFile) && !composerBlocked && !uploading;
   const lastUserText = [...messages].reverse().find((m) => m.kind === "message" && m.role === "user")?.content;
 
   const showInitialLoad = loadPhase !== "done" && messages.length === 0;
@@ -2354,7 +2381,10 @@ export default function ThreadPage() {
             50% { box-shadow: 0 0 0 6px rgba(179,64,46,0); }
           }
         `}</style>
-        <div className="mx-auto" style={{ maxWidth: "720px" }}>
+        <div className="mx-auto flex flex-col gap-2" style={{ maxWidth: "720px" }}>
+          {stagedFile && (
+            <StagedFile name={stagedFile.name} onRemove={() => setStaged(null)} disabled={uploading} />
+          )}
           <div
             className="composer-pill flex items-end gap-2"
             style={{
@@ -2402,7 +2432,7 @@ export default function ThreadPage() {
                 // Cleared immediately so that choosing the SAME file twice
                 // in a row still fires a change event the second time.
                 e.target.value = "";
-                if (f) void handleFile(f);
+                if (f) stageFile(f);
               }}
             />
             <button
@@ -2474,20 +2504,20 @@ export default function ThreadPage() {
             {voiceState !== "recording" && (
               <button
                 type="button"
-                onClick={() => sendMessage(input)}
-                disabled={!input.trim() || composerBlocked}
+                onClick={() => void submit()}
+                disabled={!canSend}
                 className="flex shrink-0 items-center justify-center rounded-full transition-colors"
                 style={{
                   width: 38,
                   height: 38,
-                  background: input.trim() && !composerBlocked ? "var(--accent)" : "var(--skeleton)",
-                  color: input.trim() && !composerBlocked ? "#FBFAF4" : "var(--meta)",
+                  background: canSend ? "var(--accent)" : "var(--skeleton)",
+                  color: canSend ? "#FBFAF4" : "var(--meta)",
                 }}
                 onMouseEnter={(e) => {
-                  if (input.trim() && !composerBlocked) e.currentTarget.style.background = "var(--accent-strong)";
+                  if (canSend) e.currentTarget.style.background = "var(--accent-strong)";
                 }}
                 onMouseLeave={(e) => {
-                  if (input.trim() && !composerBlocked) e.currentTarget.style.background = "var(--accent)";
+                  if (canSend) e.currentTarget.style.background = "var(--accent)";
                 }}
                 aria-label={t("send")}
               >

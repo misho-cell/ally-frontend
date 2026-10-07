@@ -5,8 +5,9 @@ import { useThreads, taskStatusOf } from "@/contexts/ThreadsContext";
 import { t } from "@/lib/i18n";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { beginDictation, shouldRecord, type DictationHandle } from "@/lib/dictation";
-import { FILE_ACCEPT } from "@/lib/threadFiles";
+import { FILE_ACCEPT, FILE_MAX_BYTES } from "@/lib/threadFiles";
 import AttachIcon from "@/components/AttachIcon";
+import StagedFile from "@/components/StagedFile";
 
 // Desktop right pane, no goal selected: dogs clip + one line + the goal
 // composer (ticket 6 #1). D20 (22 Aug): mic AND send are both available while
@@ -18,6 +19,9 @@ export default function ChatIndexPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [attaching, setAttaching] = useState(false);
+  // #2346: the chosen file waits here for Send.
+  const [staged, setStaged] = useState<File | null>(null);
+  const [tooBig, setTooBig] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const dictationRef = useRef<DictationHandle | null>(null);
 
@@ -92,11 +96,12 @@ export default function ChatIndexPage() {
     }
   }
 
-  // #1222: a list can open a conversation, the same as a line.
-  async function attach(file: File) {
+  // #1222: a list can open a conversation, the same as a line. #2346: on
+  // Send, not on choosing it, and with the line typed beside it.
+  async function attach(file: File, text: string) {
     setAttaching(true);
     try {
-      await createWithFile(file);
+      await createWithFile(file, text);
     } finally {
       setAttaching(false);
     }
@@ -104,7 +109,15 @@ export default function ChatIndexPage() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (attaching) return;
     const v = input.trim();
+    if (staged) {
+      const f = staged;
+      setStaged(null);
+      setInput("");
+      void attach(f, v);
+      return;
+    }
     if (!v) return;
     setInput("");
     createTask(v);
@@ -130,6 +143,17 @@ export default function ChatIndexPage() {
         className="px-6 py-4"
         style={{ borderTop: "1px solid var(--header-border)", background: "var(--bg)" }}
       >
+        {(staged || tooBig) && (
+          <div className="mx-auto mb-2 flex flex-col gap-1" style={{ maxWidth: "720px" }}>
+            {staged && <StagedFile name={staged.name} onRemove={() => setStaged(null)} disabled={attaching} />}
+            {/* This box has no toast of its own, so the refusal is said here. */}
+            {tooBig && (
+              <p role="status" style={{ font: "500 13px/19px var(--font-system)", color: "var(--danger)" }}>
+                {t("attachTooBig")}
+              </p>
+            )}
+          </div>
+        )}
         <form onSubmit={submit} className="mx-auto flex items-center gap-2" style={{ maxWidth: "720px" }}>
           <div
             className="composer-pill flex flex-1 items-center gap-2 min-w-0"
@@ -153,12 +177,14 @@ export default function ChatIndexPage() {
             onChange={(e) => {
               const f = e.target.files?.[0];
               e.target.value = "";
-              if (f) void attach(f);
+              if (!f) return;
+              setTooBig(f.size > FILE_MAX_BYTES);
+              if (f.size <= FILE_MAX_BYTES) setStaged(f);
             }}
           />
           <button
             type="button"
-            onClick={() => fileRef.current?.click()}
+            onClick={() => { setTooBig(false); fileRef.current?.click(); }}
             disabled={attaching}
             aria-label={t("attachFile")}
             title={t("attachFile")}
@@ -198,9 +224,10 @@ export default function ChatIndexPage() {
               </svg>
             )}
           </button>
-          {input.trim() && !recording && (
+          {(input.trim() || staged) && !recording && (
             <button
               type="submit"
+              disabled={attaching}
               aria-label={t("send")}
               className="flex shrink-0 items-center justify-center rounded-full"
               style={{ width: 46, height: 46, background: "var(--accent)", color: "#FBFAF4" }}

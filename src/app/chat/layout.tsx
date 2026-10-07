@@ -26,6 +26,7 @@ import { parseTokenBalance } from "@/lib/tokens";
 import { FILE_ACCEPT, FILE_MAX_BYTES, uploadThreadFile } from "@/lib/threadFiles";
 import { appendedKind } from "@/contexts/ThreadsContext";
 import RequestActions from "@/components/RequestActions";
+import StagedFile from "@/components/StagedFile";
 import UpdatesBadge from "@/components/UpdatesBadge";
 import AttachIcon from "@/components/AttachIcon";
 import PaneResizer, {
@@ -227,6 +228,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const pathnameRef = useRef(pathname);
   const homeInputRef = useRef<HTMLInputElement>(null);
   const homeFileRef = useRef<HTMLInputElement>(null);
+  // #2346: the file chosen on the phone home box, waiting for Send.
+  const [homeStaged, setHomeStaged] = useState<File | null>(null);
   // True only between pressing "+ ახალი მიზანი" and the next send from the home
   // box. It is a ref, not state, because nothing renders from it and a stale
   // closure here would hand as_goal to the wrong line.
@@ -1038,12 +1041,19 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   //
   // A conversation that was created but whose file was refused is still
   // opened: it exists now, and its own attach button can take a second try.
-  const createWithFile = useCallback(async (file: File) => {
+  //
+  // #2346: this runs on Send now, not on choosing the file. A line typed with
+  // the file goes in after the upload, so it reads after the list it is
+  // about. It goes in even when the file was refused: the person pressed
+  // Send on it, and the conversation they land in is where they would look
+  // for it.
+  const createWithFile = useCallback(async (file: File, text?: string) => {
     if (creating) return;
     if (file.size > FILE_MAX_BYTES) {
       showToast(t("attachTooBig"));
       return;
     }
+    const line = text?.trim() ?? "";
     setCreating(true);
     setFileCreating(true);
     try {
@@ -1062,6 +1072,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         showToast(t("attachFailed"));
         return;
       }
+      if (line) setHomeInput("");
       const json = await res.json();
       const thread: Thread = json.data ?? json;
       const id = String(thread.id);
@@ -1070,13 +1081,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       const out = await uploadThreadFile(id, file, t("attachFailed"));
       if (!out.ok) showToast(out.error);
       router.push(`/chat/${id}`);
+      if (line) await sendIntoThread(id, line, true);
     } catch {
       showToast(t("attachFailed"));
     } finally {
       setCreating(false);
       setFileCreating(false);
     }
-  }, [creating, router, showToast]);
+  }, [creating, router, sendIntoThread, showToast]);
 
   // Item 5 (20 Sept) made the accept carry a channel, because the server read
   // a missing one as direct and a mediator could give a number away unasked.
@@ -1681,9 +1693,23 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           {/* Mobile home composer — D20 (22 Aug): mic AND send together while
               text exists; mic stays available during typing. */}
           <form
-            onSubmit={(e) => { e.preventDefault(); createTask(homeInput); }}
-            className="flex items-center gap-2 md:hidden"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (homeStaged) {
+                const f = homeStaged;
+                setHomeStaged(null);
+                void createWithFile(f, homeInput);
+              } else {
+                createTask(homeInput);
+              }
+            }}
+            className="flex flex-wrap items-center gap-2 md:hidden"
           >
+            {homeStaged && (
+              <div className="flex w-full">
+                <StagedFile name={homeStaged.name} onRemove={() => setHomeStaged(null)} disabled={creating} />
+              </div>
+            )}
             <div
               className="composer-pill flex flex-1 items-center gap-2 min-w-0"
               style={{ padding: "6px 14px", borderColor: recording ? "var(--danger)" : undefined }}
@@ -1710,7 +1736,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 e.target.value = "";
-                if (f) void createWithFile(f);
+                if (!f) return;
+                if (f.size > FILE_MAX_BYTES) { showToast(t("attachTooBig")); return; }
+                setHomeStaged(f);
               }}
             />
             <button
@@ -1755,9 +1783,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 </svg>
               )}
             </button>
-            {homeInput.trim() && !recording && (
+            {(homeInput.trim() || homeStaged) && !recording && (
               <button
                 type="submit"
+                disabled={creating}
                 aria-label={t("send")}
                 className="flex shrink-0 items-center justify-center rounded-full"
                 style={{ width: 44, height: 44, background: "var(--accent)", color: "#FBFAF4" }}

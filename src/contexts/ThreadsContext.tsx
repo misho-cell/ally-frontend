@@ -368,7 +368,9 @@ type Ctx = {
   createThread: () => void;
   createTask: (text: string) => Promise<void>;
   // #1222: a new conversation that starts with a file rather than a line.
-  createWithFile: (file: File) => Promise<void>;
+  // #2346: a line typed with the file goes in after it, into the same
+  // conversation.
+  createWithFile: (file: File, text?: string) => Promise<void>;
   titles: Record<string, string>;
   // #2185 / D709 (7 Oct): there is one accept now. The person asked does not
   // choose how; the server connects the two and needs no channel.

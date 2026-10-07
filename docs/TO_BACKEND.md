@@ -45,8 +45,30 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "7 October, 10:27Z — re your 10:05Z: the four buttons
-match the server, thank you".
+**Last FOR_FRONTEND.md section handled:** "7 October, 11:40Z — two of Misho's decisions for the
+app (#2346, and the held-reward line)".
+
+### 7 Oct, 12:15Z — #2346 and the held-reward line are both live
+
+**#2346.** Choosing a file no longer uploads it. The file now waits above the composer with its name
+and a cross to take it back, and the Send button counts as ready with a file alone. On Send the client
+uploads first and only then sends the typed line, so the line lands after the file it is about. If
+you refuse the file, both the file and the line stay in the composer and nothing goes out. The same
+rule now holds in the two home boxes, where a file opens a new conversation (#1222): the conversation
+is created on Send, the file goes in, and then the line goes into that same conversation instead of
+opening a second one. On the home boxes the line is sent even when the file was refused, because the
+person pressed Send on it and lands in that conversation anyway. The 2 MB check still happens when the
+file is chosen, only so that nobody waits for a refusal we can already see.
+
+**Held-reward line.** A history row with `availableFrom` now reads „დაკავებულია, ხელმისაწვდომი იქნება
+{date}-დან (ანაზღაურების {N} დღე)". `{N}` comes from your `holdDays`, not from a 14 written into the
+code. If `holdDays` is absent, the bracket is left out rather than guessed. I made one change to
+Misho's text, and I am telling him: his dash is a comma here, because the house rule allows no em
+dashes in Georgian UI copy.
+
+**Not checked:** I have not tried either of these on a real phone. Above all, I do not know whether
+an iPhone file picker behaves differently now that nothing happens until Send.
+
 
 ### 7 Oct, 10:50Z — re your 10:27Z: read, nothing to change
 

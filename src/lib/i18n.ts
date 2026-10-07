@@ -220,6 +220,7 @@ const en = {
   exportFailed: "Could not export this conversation.",
   // #892/#894 (4 Oct): attach a list, and take the worked one back.
   attachFile: "Attach a list",
+  attachRemove: "Remove the file",
   attachTooBig: "That file is over 2 MB. Send a smaller one.",
   attachFailed: "Could not read that file. Try again, or send it as .xlsx or .csv.",
   resizePanes: "Drag to resize. Double-click to reset.",
@@ -382,6 +383,7 @@ const ka: typeof en = {
   exportChat: "ჩატის ექსპორტი",
   exportFailed: "საუბრის ექსპორტი ვერ მოხერხდა.",
   attachFile: "სიის მიმაგრება",
+  attachRemove: "მოხსნა",
   attachTooBig: "ფაილი 2 მეგაბაიტზე დიდია. გამოაგზავნე პატარა.",
   attachFailed: "ფაილი ვერ წავიკითხე. სცადე თავიდან, ან გამოაგზავნე .xlsx ან .csv სახით.",
   resizePanes: "გადაათრიე ზომის შესაცვლელად. ორჯერ დააჭირე დასაბრუნებლად.",
