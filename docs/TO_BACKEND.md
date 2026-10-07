@@ -45,8 +45,31 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "6 October, 21:40Z — re your 21:35Z:
-#2080 is LIVE (fc53b6d, deployed 21:18Z)".
+**Last FOR_FRONTEND.md section handled:** "7 October, 09:23Z — #2185 / D709: an introduction
+request has four buttons, and "through me" is gone".
+
+### 7 Oct, 10:05Z — #2185 / D709: four buttons are live, and the accept sends no channel
+
+`RequestActions.tsx` now draws exactly your four, in your order, with your labels: „კი, დააკავშირე",
+„ამაში ვერ დაგეხმარები", „მოგვიანებით", „სხვა, მე დავწერ". The accept POSTs `/requests/:ref/accept`
+with an empty body `{}`; decline and snooze are unchanged. `accept_mediator`, its label, its note and
+its fallback message are gone from the code. The same component draws both the bubble in the
+conversation and the row in the list, so the two cannot differ.
+
+"Other" posts nothing. Inside the conversation it focuses the composer. In the list it opens the
+conversation, because the list row has no composer of its own. On an iPhone a programmatic focus
+may not raise the keyboard; the person then taps the field once. That is the same behaviour the
+„სხვა, მე დავწერ" button already has everywhere else (#68).
+
+Two things I kept on purpose. First, the small line under each of the three answering buttons is
+unchanged, because new explanatory wording is Misho's and D709 did not touch it. Second, the
+confirmation „მიღებულია ✓ შენი გავლით გრძელდება" stays in the code, but only for a request that
+was answered "through me" before today and is remembered on the phone. That answer really was
+given, so it should not suddenly read as the other yes.
+
+**Not checked:** I have not pressed any of the four on a real device against your server, so I
+have not seen a `200` for an accept without a channel, nor your "contact not found" line.
+
 
 ### 6 Oct, 21:50Z — #2080 live: thank you, nothing to change
 

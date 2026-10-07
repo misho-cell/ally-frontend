@@ -57,9 +57,9 @@ const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
 // to every device — the cross-device signal to hide a snoozed request.
 const SNOOZE_STATUS_LINE = "გადადებულია";
 
-// Accepting an introduction must say HOW: there is deliberately no bare
-// "accept" here, so no code path can send one.
-type ResolveAction = "accept_direct" | "accept_mediator" | "deny" | "later";
+// #2185 / D709 (7 Oct): one accept. The person asked no longer chooses how
+// the two are connected, so the accept carries no channel.
+type ResolveAction = "accept_direct" | "deny" | "later";
 
 function getToken() {
   return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
@@ -1078,17 +1078,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     }
   }, [creating, router, showToast]);
 
-  // Item 5 (20 Sept): accepting an introduction is two different decisions,
-  // and until today the button only made one of them. "direct" hands the
-  // requester the target's phone number; "via_mediator" hands out nothing and
-  // keeps the thread going through the mediator. The server stored the choice
-  // as NULL when the app did not send it, and a NULL reads as direct — so a
-  // mediator who pressed one button gave away somebody's number without ever
-  // being asked. The backend's guard lived on the chat tool, a path no
-  // mediator has ever used; the button is how this is actually answered.
-  //
-  // So the accept action now carries its channel from the button that was
-  // pressed, and there is no button that accepts without saying how.
+  // Item 5 (20 Sept) made the accept carry a channel, because the server read
+  // a missing one as direct and a mediator could give a number away unasked.
+  // #2185 / D709 (7 Oct) removed the choice itself: on yes, Netai connects the
+  // two, the server reads an accept without a channel as exactly that, and
+  // tells the requester honestly when there is no contact to give.
   const resolveRequest = useCallback((threadId: string, action: ResolveAction) => {
     const next = { ...resolvedRequests, [threadId]: { action, at: Date.now() } };
     setResolvedRequests(next);
@@ -1104,23 +1098,21 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     };
 
     const ref = threadsRef.current.find((x) => String(x.id) === threadId)?.request_ref;
-    const channel: "direct" | "via_mediator" | null =
-      action === "accept_direct" ? "direct" : action === "accept_mediator" ? "via_mediator" : null;
     const fallbackMsg =
       action === "accept_direct" ? t("reqAcceptMsg") :
-      action === "accept_mediator" ? t("reqAcceptMediatorMsg") :
       action === "deny" ? t("reqDenyMsg") : t("reqLaterMsg");
 
     (async () => {
       for (let i = 0; i < 3; i++) {
         try {
           if (ref) {
-            const path = channel ? "accept" : action === "deny" ? "decline" : "snooze";
+            const path = action === "accept_direct" ? "accept" : action === "deny" ? "decline" : "snooze";
             const res = await fetch(`${BASE_URL}/requests/${ref}/${path}`, {
               method: "POST",
               headers: authHeaders({ "Content-Type": "application/json" }),
-              // Declining arranges nothing, so it carries no channel.
-              body: JSON.stringify(channel ? { channel } : {}),
+              // D709: no channel. The server reads an accept without one as
+              // "connect them" and answers honestly when there is no contact.
+              body: JSON.stringify({}),
             });
             if (res.status === 401) { forceLogin(); return; }
             if (res.ok) return;
@@ -1946,6 +1938,8 @@ function RequestActionRow({
   const quote = thread.last_message?.replace(/\s+/g, " ").trim();
   const confirmation =
     resolved === "accept_direct" ? t("reqAcceptedDirect") :
+    // An answer given before D709 removed this button. It still happened, so
+    // it still says what it was rather than reading as the other yes.
     resolved === "accept_mediator" ? t("reqAcceptedMediator") :
     resolved === "deny" ? t("reqDenied") :
     resolved === "later" ? t("reqSnoozed") : null;
@@ -1983,10 +1977,8 @@ function RequestActionRow({
       {confirmation ? (
         <p style={{ font: "600 13px/18px var(--font-system)", color: "var(--accent-strong)" }}>{confirmation}</p>
       ) : (
-        // Two ways to say yes, because they are two different answers for the
-        // person whose number is at stake. There is no plain accept, and since
-        // row 306 each one states what it does.
-        <RequestActions onResolve={onResolve} stopPropagation />
+        // "Other" opens the conversation, where the composer is.
+        <RequestActions onResolve={onResolve} onOther={() => router.push(`/chat/${thread.id}`)} stopPropagation />
       )}
     </div>
   );

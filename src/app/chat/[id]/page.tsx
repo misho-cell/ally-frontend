@@ -2094,11 +2094,12 @@ export default function ThreadPage() {
                         {reqQuote && <blockquote className="rc-quote">„{reqQuote}“</blockquote>}
                       </div>
                       {!reqResolved && (
-                        /* Item 5: the same two ways to say yes as the list
-                           row, and now literally the same component, so a
-                           number cannot move on one screen for a reason that
-                           was never written on the other. */
-                        <RequestActions onResolve={(a) => resolveRequest(threadId, a)} />
+                        /* Item 5: literally the same component as the list
+                           row, so the two screens cannot drift apart. */
+                        <RequestActions
+                          onResolve={(a) => resolveRequest(threadId, a)}
+                          onOther={() => inputRef.current?.focus()}
+                        />
                       )}
                     </div>
                   )}
@@ -2222,7 +2223,10 @@ export default function ThreadPage() {
             {carriesRequest && !reqResolved && (
               <div style={{ marginLeft: "36px" }} className="flex flex-col gap-2">
                 <div className="rc-label">{t("introRequestLabel")}</div>
-                <RequestActions onResolve={(a) => resolveRequest(threadId, a)} />
+                <RequestActions
+                  onResolve={(a) => resolveRequest(threadId, a)}
+                  onOther={() => inputRef.current?.focus()}
+                />
               </div>
             )}
 

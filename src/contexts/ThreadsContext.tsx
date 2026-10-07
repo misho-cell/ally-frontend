@@ -370,12 +370,9 @@ type Ctx = {
   // #1222: a new conversation that starts with a file rather than a line.
   createWithFile: (file: File) => Promise<void>;
   titles: Record<string, string>;
-  // Item 5 (20 Sept): an accept must say HOW — "direct" gives the requester
-  // the target's number, "via_mediator" gives out nothing. There is no bare
-  // accept in this union on purpose: the server reads a missing channel as
-  // direct, so a button that could not say which one was a button that gave
-  // away somebody's number in silence.
-  resolveRequest: (threadId: string, action: "accept_direct" | "accept_mediator" | "deny" | "later") => void;
+  // #2185 / D709 (7 Oct): there is one accept now. The person asked does not
+  // choose how; the server connects the two and needs no channel.
+  resolveRequest: (threadId: string, action: "accept_direct" | "deny" | "later") => void;
   resolvedRequests: Record<string, { action: string; at: number }>;
   // Bumped per-thread on thread_updated — an open thread refetches its
   // messages so task-engine messages appear without any user action (v68 #5).
