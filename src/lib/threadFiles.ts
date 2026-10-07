@@ -20,7 +20,17 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 // trip. The server decides; this just avoids making somebody wait on a 2 MB
 // upload to be told it was 2 MB.
 export const FILE_MAX_BYTES = 2 * 1024 * 1024;
-export const FILE_ACCEPT = ".xlsx,.csv,.txt,.md";
+// #2378 (7 Oct, Lika): Word and PDF are offered too, although the server
+// does not read them yet. Greyed out in the picker, they gave no reason at
+// all; chosen, the server answers with its own sentence naming the formats it
+// reads, and that sentence is shown as it comes. The MIME types are there for
+// iPhone, whose picker goes by type rather than by extension.
+export const FILE_ACCEPT = [
+  ".xlsx", ".csv", ".txt", ".md", ".doc", ".docx", ".pdf",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+].join(",");
 
 export type UploadResult =
   | {

@@ -119,7 +119,9 @@ const L = {
     saved: "Saved",
     nameRequired: "Name can't be empty",
     dataRights: "Data & privacy",
-    dataRightsSub: "See what we store, or delete your account",
+    // #1920 (7 Oct): the download lives one screen in, and nothing on this
+    // card said so, so nobody found it.
+    dataRightsSub: "See what we store, download it, or delete your account",
     answerRules: "Automatic answers",
     answerRulesSub: "Rules the assistant uses to answer for you",
     diagOff: "Diagnostics are on for this browser. Open /profile?diag=0 to hide them again.",
@@ -199,7 +201,7 @@ const L = {
     saved: "შენახულია",
     nameRequired: "სახელი აუცილებელია",
     dataRights: "მონაცემები და კონფიდენციალურობა",
-    dataRightsSub: "ნახე რას ვინახავთ ან წაშალე ანგარიში",
+    dataRightsSub: "ნახე რას ვინახავთ, გადმოწერე ან წაშალე ანგარიში",
     answerRules: "ავტომატური პასუხები",
     answerRulesSub: "წესები, რომლითაც ასისტენტი შენ ნაცვლად პასუხობს",
     diagOff: "დიაგნოსტიკა ჩართულია ამ ბრაუზერში. დასამალად გახსენი /profile?diag=0",

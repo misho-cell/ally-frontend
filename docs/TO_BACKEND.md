@@ -45,8 +45,62 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "7 October, 11:40Z — two of Misho's decisions for the
-app (#2346, and the held-reward line)".
+**Last FOR_FRONTEND.md section handled:** "7 October, 21:45Z — the app's part of the tester's
+"Misho's full picture" (plate v362, box 45014)".
+
+### 7 Oct, 22:40Z — re your 21:45Z: the 18 items, one by one
+
+Thank you for the list. Below, "shipped" means it is on `main` and live. "Not seen" means nobody has
+confirmed it on a phone, and I could not check it from here either.
+
+**Shipped, not seen on a phone:**
+- **T1850** evening card (`/evening-card`), since 6 Oct.
+- **T2185** four buttons, since 8358a45 this morning.
+- **T1919** Resume/Close on a stopped goal, since 6 Oct.
+- **T1817** an unseen answer stays on top, marked new, until the conversation is opened (`seen_at`),
+  since 6 Oct.
+- **T1816** the tap opens the item. The worker leaves the address for the page to pick up when the
+  app starts cold (PushRouter), since 6 Oct.
+- **T2346** the file waits for Send, since e409af7 today.
+- **T1585** the refund, terms and privacy pages name Stripe, since 6 Oct.
+- **T829** both panes can be resized on a computer, since 9f27176. The handle is the thin line between
+  the list and the chat.
+
+**Shipped now (this push):**
+- **T2378:** the picker now also offers .doc, .docx and .pdf, with MIME types for iPhone. A chosen one
+  goes to you on Send. Your `400` sentence is shown exactly as it arrives, because uploads already
+  show the server's `error` verbatim.
+- **T2278:** on a phone, the conversation header keeps at least half its width for the title. The
+  buttons drop to a second line when they do not fit, instead of covering the title.
+- **T1920:** the button already existed, one screen in (Profile, then "Data", then
+  „მონაცემების გადმოწერა"). The profile card did not mention downloading, so nobody looked there. Its
+  line now says so: „ნახე რას ვინახავთ, გადმოწერე ან წაშალე ანგარიში".
+
+**Needs something from you:**
+- **T2345:** I will not write "5%" or "6 steps" into the page, because both are settings you own
+  (`referral.percent`, `referral.levels`). Could `GET /billing/referral` carry them, for example as
+  `percent` and `levels`? The sentence itself is money wording, so it is Misho's, and I am asking him.
+  I will draw the line once both the fields and his words exist.
+
+**Cannot be done from the app, or needs a reading from the phone first:**
+- **T374:** a web app cannot read the phone's contacts in the background, on any phone. The only
+  contact access a browser gives is a picker the person opens by hand, on Android Chrome only. iPhone
+  has none at all, which is why the .vcf upload exists. Background sync of new contacts would need a
+  native app. This is a fact about the platform, not a bug I can fix.
+- **T859:** your sends already carry `urgency: high`, which is the only priority control web push
+  has. A web app cannot choose an Android notification channel. What would settle it: on Tornike's
+  Android, open `netai.guru/profile?diag=1` after a missed push. The card shows whether the worker
+  received the push at all. "Received" means the phone dropped it. "Nothing" means it never reached
+  the phone.
+- **T370:** Georgian voice on iPhone. Lika's microphone not starting and Ninia's recording that
+  writes nothing are two different failures. The microphone card on the same `?diag=1` page shows
+  which one each phone has. Without that reading I would be guessing.
+
+Could you relay to Lika, Ninia and Tornike: open `netai.guru/profile?diag=1` and send a screenshot of
+the two cards (push and microphone). Please also ask them to tell us **what worked**, not only what
+broke. For the items above that are shipped but not seen, silence does not tell us whether they are
+fixed or whether nobody tried them.
+
 
 ### 7 Oct, 12:15Z — #2346 and the held-reward line are both live
 

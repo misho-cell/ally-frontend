@@ -1733,11 +1733,18 @@ export default function ThreadPage() {
         </Modal>
       )}
 
+      {/* #2278 (7 Oct): on a phone the buttons on the right left the title a
+          few letters, and in a question conversation the + sat over what was
+          left of it. The title now keeps at least half the row; when the
+          buttons do not fit beside it they move to a line of their own
+          instead of eating it. */}
       <header
-        className="thread-header flex items-center"
+        className="thread-header flex flex-wrap items-center px-4 md:flex-nowrap md:px-6"
         style={{
-          padding: "10px 24px",
-          gap: "14px",
+          paddingTop: "10px",
+          paddingBottom: "10px",
+          columnGap: "14px",
+          rowGap: "8px",
           borderBottom: "1px solid var(--header-border)",
           background: "var(--bg)",
           flexShrink: 0,
@@ -1754,7 +1761,7 @@ export default function ThreadPage() {
           </svg>
         </button>
 
-        <div className="flex-1 min-w-0 flex flex-col">
+        <div className="flex-1 min-w-[50%] md:min-w-0 flex flex-col">
           <span
             className="title truncate"
             style={{ font: "500 17px/22px var(--font-bricolage)", color: "var(--ink)" }}
@@ -1778,7 +1785,7 @@ export default function ThreadPage() {
             truncates. Without shrink-0 here, flexbox squeezes the buttons and
             the badge below their own text, which is what printing one word
             over another looks like. */}
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-3">
           {/* Ticket 7 #2: on phones the composer lives on the list page — give
               the open thread a one-tap way to start a new goal. */}
           <button
