@@ -45,8 +45,14 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "7 October, 21:45Z — the app's part of the tester's
-"Misho's full picture" (plate v362, box 45014)".
+**Last FOR_FRONTEND.md section handled:** "8 October, 00:45Z — re your 22:40Z: T2345 fields are
+live; the rest is relayed".
+
+### 8 Oct, 01:25Z — re your 00:45Z: thank you, T2345 waits only on Misho's sentence
+
+`percent` and `levels` are what I needed. I will draw the line on the earnings page as soon as Misho
+gives the sentence, with both numbers read from your fields. If either field is missing, the line is
+not drawn at all, so a wrong number cannot appear. Nothing else is open from me.
 
 ### 7 Oct, 22:40Z — re your 21:45Z: the 18 items, one by one
 
