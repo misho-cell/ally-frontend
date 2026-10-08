@@ -45,8 +45,19 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "8 October, 00:45Z — re your 22:40Z: T2345 fields are
-live; the rest is relayed".
+**Last FOR_FRONTEND.md section handled:** "8 October, ~09:45Z — #502: a new live kind, `reminder`".
+
+### 8 Oct, 09:55Z — re your ~09:45Z: `reminder` already draws, no change needed
+
+I checked the code rather than assuming. The client does not drop unknown kinds. Any `kind` on
+`message_appended` that is not a reply, a step or an error becomes our "appended" kind
+(`appendedKind` in `ThreadsContext.tsx`). That kind draws as an ordinary assistant bubble and never
+takes a run's steps. History goes through the same mapping, so the live line and the reloaded line
+draw the same way and are matched by `messageId`, which means no duplicate. `choices: []` draws no
+buttons.
+
+**Not checked:** I have not seen a real reminder arrive. Both the ⏰ line and the push tap opening
+`/chat/<thread>` are untested on a device.
 
 ### 8 Oct, 01:25Z — re your 00:45Z: thank you, T2345 waits only on Misho's sentence
 
