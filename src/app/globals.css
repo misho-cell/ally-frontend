@@ -167,22 +167,29 @@ body {
 .token-badge.low { background: var(--request-tint); }
 .token-badge.low .dot { background: var(--request-accent); }
 .token-badge.low .count { color: var(--request-accent); }
+/* On the teal task header the badge is a pale glass pill with white type. */
+.token-badge.on-teal { background: rgba(255, 255, 255, 0.16); }
+.token-badge.on-teal .count { color: #FFFFFF; }
+.token-badge.on-teal .dot { background: #FFFFFF !important; }
+.token-badge.on-teal.low { background: var(--apricot); }
+.token-badge.on-teal.low .count { color: var(--request-accent); }
 
 /* ============ Steps block ============ */
 /* FE-4 (30 Aug): a quiet left-rule instead of a filled card — steps are
    secondary to the eventual answer and shouldn't compete for attention. */
 .steps {
-  margin-left: 36px; max-width: 560px; background: transparent;
-  border-left: 2px solid var(--sidebar-border); padding: 2px 0 2px 12px;
+  /* 9 Oct: the design's steps block is its own quiet card, collapsed. */
+  max-width: 720px; background: #FFFFFF;
+  border: 1px solid var(--sidebar-border); border-radius: var(--radius-card); padding: 12px 16px;
 }
 /* #794: the label is 11.5px, which as a tap target on a phone is a 16px
    strip. The text stays that size; the button around it does not. */
 .steps-toggle {
   display: flex; align-items: center; gap: 6px; border: 0; background: none;
   padding: 6px 8px 6px 0; margin: -6px 0 -6px 0;
-  font: 500 11.5px/16px var(--font-system); color: var(--meta); cursor: pointer;
+  font: 600 13px/18px var(--font-system); color: var(--accent); cursor: pointer;
 }
-.steps-toggle:hover { color: var(--ink-soft); }
+.steps-toggle:hover { color: var(--accent-strong); }
 .steps-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .step { display: flex; gap: 8px; }
 .step > span { color: var(--meta); flex: none; font-size: 11.5px; }
@@ -276,8 +283,10 @@ body {
 
 /* Pending decision card (in-thread) */
 .decision-card {
+  /* 9 Oct: the design's answer card is a plain white card; the warm edge
+     stays only on person-to-person requests (.request-card). */
   background: #FFFFFF; border: 1px solid var(--sidebar-border);
-  border-left: 3px solid var(--request-accent); border-radius: 14px;
+  border-radius: var(--radius-card);
   padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;
   box-shadow: var(--shadow-card); max-width: 520px;
 }
@@ -446,7 +455,13 @@ body {
 
 /* FE-2 (30 Aug): reserve one line's height so the assistant bubble doesn't
    pop from 0 to full height the instant the first streamed token arrives. */
-.msg-ally { min-height: 27px; }
+.msg-ally { min-height: 24px; font: 400 15px/24px var(--font-system); color: var(--ink); }
+/* 9 Oct, the new design: the assistant's white card. The small corner sits
+   toward the speaker, at the bottom by the figure. */
+.ally-bubble {
+  max-width: min(85%, 620px); background: #FFFFFF; border: 1px solid var(--sidebar-border);
+  border-radius: 16px 16px 16px 6px; padding: 12px 16px 8px;
+}
 
 /* ============ Resizable panes (#829) ============ */
 /* The width is carried as a custom property so the inline value applies only
@@ -494,7 +509,7 @@ body {
   .token-badge .count { display: none; }
   .messages { padding: 16px 14px; gap: 14px; }
   .msg-user { max-width: 84%; font-size: 14.5px; }
-  .msg-ally { font-size: 16px; line-height: 26px; }
+  .msg-ally { font-size: 15px; line-height: 24px; }
   .steps { margin-left: 0; }
   .row-request, .thread-row { min-height: 44px; }
   .legal-h1 { font-size: 25px; line-height: 32px; }

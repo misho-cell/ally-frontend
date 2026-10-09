@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
-import NotificationButton from "@/components/NotificationButton";
 import Modal from "@/components/Modal";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition as beginRecognition, type SpeechRecognitionLike } from "@/lib/speech";
@@ -22,7 +21,6 @@ import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import ThreadMenu from "@/components/ThreadMenu";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
-import { useUserName } from "@/lib/user";
 import {
   useThreads,
   updateThreadState,
@@ -452,7 +450,6 @@ export default function ThreadPage() {
   msgCountRef.current = messages.length;
 
   const thread = threads.find((th) => String(th.id) === threadId);
-  const { initial: userInitial } = useUserName();
   const isRequest = thread?.type === "incoming_request";
   // Row 305b (1 Oct, D530). A request for an introduction now continues the
   // conversation the owner already had with that person instead of opening a
@@ -1746,16 +1743,18 @@ export default function ThreadPage() {
           paddingBottom: "10px",
           columnGap: "14px",
           rowGap: "8px",
-          borderBottom: "1px solid var(--header-border)",
-          background: "var(--bg)",
+          // 9 Oct, the new design: the task's header is the teal band, on the
+          // phone and the desktop alike.
+          background: "var(--accent)",
+          color: "#FFFFFF",
           flexShrink: 0,
         }}
       >
         <button
           onClick={() => router.push("/chat")}
-          className="md:hidden rounded-lg p-1.5 transition-colors hover:bg-black/5"
+          className="flex shrink-0 items-center justify-center transition-opacity hover:opacity-90"
           aria-label={t("backLabel")}
-          style={{ color: "var(--ink-muted)" }}
+          style={{ width: 36, height: 36, borderRadius: 11, background: "#FFFFFF", color: "var(--accent)" }}
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
@@ -1765,18 +1764,27 @@ export default function ThreadPage() {
         <div className="flex-1 min-w-[50%] md:min-w-0 flex flex-col">
           <span
             className="title truncate"
-            style={{ font: "500 17px/22px var(--font-bricolage)", color: "var(--ink)" }}
+            style={{ font: "600 16px/22px var(--font-bricolage)", color: "#FFFFFF" }}
           >
             {isRequest && reqNames ? (
               <>
-                {reqNames[0]} <span style={{ color: "var(--request-accent)" }}>→</span> {reqNames[1]}
+                {reqNames[0]} <span style={{ color: "var(--apricot)" }}>→</span> {reqNames[1]}
               </>
             ) : (
               displayTitle
             )}
           </span>
           {statusLabel && (
-            <span style={{ font: "600 11px/15px var(--font-system)", color: !thread?.status_line && (taskStatus === "needs_you" || taskStatus === "failed") ? "var(--request-accent)" : "var(--ink-soft)" }}>
+            <span className="flex items-center gap-1.5" style={{ font: "500 11.5px/16px var(--font-system)", color: "rgba(255,255,255,0.86)" }}>
+              {/* The warm dot keeps what the warm word used to say: this one
+                  waits on you. */}
+              <i
+                aria-hidden="true"
+                style={{
+                  width: 6, height: 6, borderRadius: "50%", display: "inline-block",
+                  background: !thread?.status_line && (taskStatus === "needs_you" || taskStatus === "failed") ? "var(--apricot)" : "rgba(255,255,255,0.86)",
+                }}
+              />
               {statusLabel}
             </span>
           )}
@@ -1794,7 +1802,7 @@ export default function ThreadPage() {
             aria-label={t("newTask")}
             title={t("newTask")}
             className="md:hidden flex items-center justify-center rounded-full"
-            style={{ width: 30, height: 30, background: "var(--accent)", color: "#FFFFFF", fontSize: "17px", lineHeight: 1 }}
+            style={{ width: 32, height: 32, background: "#FFFFFF", color: "var(--accent)", fontSize: "18px", lineHeight: 1 }}
           >
             +
           </button>
@@ -1812,14 +1820,13 @@ export default function ThreadPage() {
               no badge. It showed 0 to people who had tokens, and a wrong
               number about someone's money is worse than no number. */}
           {balance != null && (
-            <span className={`token-badge${balanceLow ? " low" : ""}`}>
+            <span className={`token-badge on-teal${balanceLow ? " low" : ""}`}>
               <i className="dot" style={{ width: 8, height: 8, borderRadius: "50%", background: balanceLow ? "var(--request-accent)" : "var(--accent)", display: "inline-block" }} />
               <span className="count">
                 {fmtTokens(Math.max(0, balance))}{balanceLow ? ` · ${t("lowSuffix")}` : ""}
               </span>
             </span>
           )}
-          <NotificationButton />
           {/* 9 Oct, the new design: everything that acts on this task sits
               behind one "…" button. The conditions are the ones each
               separate button had; see the notes on stop (2 Oct), pin
@@ -1850,9 +1857,6 @@ export default function ThreadPage() {
               ...(thread ? [{ key: "delete", label: t("deleteGoal"), onSelect: () => setDeleteOpen(true), danger: true }] : []),
             ]}
           />
-          <div className="initial-avatar shrink-0" style={{ width: 30, height: 30, fontSize: "12px" }}>
-            {userInitial}
-          </div>
         </div>
       </header>
 
@@ -1983,16 +1987,18 @@ export default function ThreadPage() {
                       />
                     );
                   })()}
-                  <div className="flex items-start" style={{ gap: "10px" }}>
+                  <div className="flex items-end" style={{ gap: "10px" }}>
                     <AllyAvatar />
-                    <div className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: "4px" }}>
-                      <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)" }}>
+                    {/* 9 Oct, the new design: the assistant speaks from a white
+                        card with its time inside, like the person's bubble. */}
+                    <div className="ally-bubble flex flex-col" style={{ minWidth: 0, gap: "6px" }}>
+                      <div className="msg-ally">
                         <ReactMarkdown components={markdownComponents} urlTransform={mdUrlTransform}>
                           {mdSource(msg.content)}
                         </ReactMarkdown>
                       </div>
                       {stamp && (
-                        <span style={{ font: "400 10.5px/14px var(--font-system)", color: "var(--meta)" }}>{stamp}</span>
+                        <span className="self-end" style={{ font: "400 10.5px/14px var(--font-system)", color: "var(--meta)" }}>{stamp}</span>
                       )}
                     </div>
                   </div>
@@ -2057,10 +2063,12 @@ export default function ThreadPage() {
             {streamingActive && (
               <div className="flex items-start" style={{ gap: "10px" }}>
                 <AllyAvatar />
-                <div className="msg-ally" style={{ font: "400 17px/27px var(--font-bricolage)", color: "var(--ink)", flex: 1, minWidth: 0 }}>
-                  <ReactMarkdown components={markdownComponents} urlTransform={mdUrlTransform}>
-                    {mdSource(revealedStreamText)}
-                  </ReactMarkdown>
+                <div className="ally-bubble" style={{ minWidth: 0 }}>
+                  <div className="msg-ally">
+                    <ReactMarkdown components={markdownComponents} urlTransform={mdUrlTransform}>
+                      {mdSource(revealedStreamText)}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             )}
@@ -2488,7 +2496,7 @@ function ChoiceButtons({
               className="bg-white px-4 py-2 text-left transition-colors"
               style={{
                 border: "1px solid var(--cta-border)",
-                borderRadius: "var(--radius-pill)",
+                borderRadius: 12,
                 color: "var(--accent-strong)",
                 fontSize: "14px",
                 fontWeight: 500,
@@ -2533,8 +2541,7 @@ function StepGroup({
   onToggle: () => void;
 }) {
   return (
-    <div className="flex items-start" style={{ gap: "10px" }}>
-      <AllyAvatar />
+    <div className="flex items-start">
       <div className="steps" style={{ marginLeft: 0, flex: 1 }}>
         <button
           type="button"
