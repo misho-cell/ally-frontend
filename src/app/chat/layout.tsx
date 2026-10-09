@@ -29,6 +29,7 @@ import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import UpdatesBadge from "@/components/UpdatesBadge";
 import NewsCard from "@/components/NewsCard";
+import { OnlineDot, OutageLine } from "@/components/AssistantStatus";
 import AttachIcon from "@/components/AttachIcon";
 import PaneResizer, {
   subscribeSidebarWidth,
@@ -1438,6 +1439,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               <PushPrompt />
             </div>
           )}
+          {/* The collapsed sidebar has no room for the outage line, so it
+              stands over the main pane instead. */}
+          <OutageLine className="m-3" />
           {children}
         </main>
           {renameModal}
@@ -1471,9 +1475,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           }}
         >
           <div className="flex items-center gap-2.5 pl-1">
-            <span className="ally-avatar" style={{ width: 30, height: 30 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+            <span className="relative shrink-0">
+              <span className="ally-avatar" style={{ width: 30, height: 30 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              </span>
+              {/* D699: lit only while the server says the assistant answers. */}
+              <OnlineDot />
             </span>
             <div className="flex min-w-0 flex-1 flex-col">
               <span style={{ font: "500 20px/24px var(--font-bricolage)", color: "var(--ink)" }}>
@@ -1494,6 +1502,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               </svg>
             </button>
           </div>
+
+          <OutageLine />
 
           {/* Task 22 (d): new-goal button in the EXPANDED sidebar too, desktop
               and phone list alike. 9 Oct: the design makes it the full-width
@@ -1910,6 +1920,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               <PushPrompt />
             </div>
           )}
+          {/* On a phone inside a task the sidebar is hidden, and with it the
+              outage line; the thread is where the person is waiting. */}
+          {isOnThread && <OutageLine className="m-3 md:hidden" />}
           {children}
         </main>
         {renameModal}

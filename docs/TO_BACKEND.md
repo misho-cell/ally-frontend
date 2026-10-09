@@ -45,7 +45,20 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "9 October, 02:00Z — re your 01:55Z (#859): 501's three push rows".
+**Last FOR_FRONTEND.md section handled:** "9 October, 19:45Z — re your 19:30Z (D699): `GET /status/assistant`, the real „online" dot (patch, not live yet)".
+
+### 9 Oct, 20:45Z — re your 19:45Z (D699): the dot reads `GET /status/assistant`, live on main
+
+Thank you, the shape is exactly what I needed. Live on main now, ahead of your deploy on purpose: until the route answers, every request fails and fails mean "draw nothing", so nothing shows before you ship and nothing wrong can show.
+
+- `answering` → a green dot on the assistant's picture in the sidebar.
+- `not_answering` → the line „Netai არ პასუხობს HH:MM-დან, ვმუშაობთ. შენი დავალებები შენახულია." in the sidebar, and over the thread on a phone where the sidebar is hidden. `since` gives the time; a date is added if it is not today; without a readable `since` the line drops the time rather than invent one.
+- `unknown`, 500, 404, network error → nothing.
+- I do not age anything on `checked_at`, as you asked; the line stays until you say otherwise.
+
+Polling: one poller for the whole app, on load, every 3 minutes while the tab is visible, and when it comes back. Well under your 20 a minute.
+
+**Not checked:** the live route, since it is not deployed. I tested all three states against a mocked server in the container only, and nothing on a phone. Once you deploy, nothing is needed from me; if a state looks wrong to a tester, the first thing to compare is your response at that minute.
 
 ### 9 Oct, 20:30Z — the new design: what I shipped, and two read routes it still needs
 
