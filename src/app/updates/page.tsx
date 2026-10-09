@@ -47,7 +47,7 @@ const L = {
     // back on. The date is the whole point of the button.
     heldOk: (d: string) => `Kept for later. It comes back on ${d}.`,
     failed: "Could not postpone it. It is still here.",
-    goal: "Goal",
+    goal: "Task",
     // 2 Oct: a question card used to offer only the two remind-me buttons, so
     // the one thing it asked for could not be done from it.
     answer: "Answer",
@@ -57,7 +57,7 @@ const L = {
     weekOf: (d: string) => `week of ${d}`,
     // 28 Sept: the card listed all 24 goals, twice, about eight screen-heights
     // of it. Now it is a heading, a line, and the rest behind a tap.
-    weekOpen: (n: number) => `Goal by goal (${n})`,
+    weekOpen: (n: number) => `Task by task (${n})`,
     weekClose: "Hide",
     weekDone: "Read it",
     asks: (sent: number, answered: number) => `${answered} of ${sent} answered`,
@@ -79,13 +79,13 @@ const L = {
     laterWeek: "შემახსენე ერთ კვირაში",
     heldOk: (d: string) => `გადაიდო. დაგიბრუნდება ${d}.`,
     failed: "ვერ გადაიდო. ისევ აქ არის.",
-    goal: "მიზანი",
+    goal: "დავალება",
     answer: "უპასუხე",
     loadFailed: "ვერ ჩაიტვირთა",
     retry: "თავიდან",
     weekTitle: "შენი კვირა",
     weekOf: (d: string) => `კვირა ${d}-დან`,
-    weekOpen: (n: number) => `მიზნების მიხედვით (${n})`,
+    weekOpen: (n: number) => `დავალებების მიხედვით (${n})`,
     weekClose: "დამალვა",
     weekDone: "წავიკითხე",
     asks: (sent: number, answered: number) => `${sent}-დან ${answered}-ს უპასუხეს`,

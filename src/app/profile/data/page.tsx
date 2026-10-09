@@ -84,7 +84,7 @@ type Dict = Record<string, unknown>;
 const TABLE_LABELS: Record<string, { ka: string; en: string }> = {
   conversations: { ka: "საუბრის შეტყობინები", en: "Conversation messages" },
   threads: { ka: "საუბრები", en: "Conversations" },
-  tasks: { ka: "მიზნები", en: "Goals" },
+  tasks: { ka: "დავალებები", en: "Tasks" },
   task_asks: { ka: "გაგზავნილი კითხვები", en: "Sent questions" },
   user_notes: { ka: "შენი ჩანაწერები", en: "Your notes" },
   user_private_context: { ka: "პირადი კონტექსტი", en: "Private context" },
