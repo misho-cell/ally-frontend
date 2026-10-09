@@ -217,6 +217,7 @@ const en = {
   // #71 (3 Oct): a customer who uses several assistants and will not explain
   // her business twice asked to take the conversation with her.
   exportChat: "Export chat",
+  moreActions: "More actions",
   exportFailed: "Could not export this conversation.",
   // #892/#894 (4 Oct): attach a list, and take the worked one back.
   attachFile: "Attach a list",
@@ -381,6 +382,7 @@ const ka: typeof en = {
   share: "გაზიარება",
   linkCopied: "ლინკი დაკოპირდა",
   exportChat: "ჩატის ექსპორტი",
+  moreActions: "სხვა მოქმედებები",
   exportFailed: "საუბრის ექსპორტი ვერ მოხერხდა.",
   attachFile: "სიის მიმაგრება",
   attachRemove: "მოხსნა",

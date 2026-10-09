@@ -20,6 +20,7 @@ import { saveBlob, saveTextFile } from "@/lib/download";
 import { FILE_ACCEPT, FILE_MAX_BYTES, fetchGoalList, uploadThreadFile } from "@/lib/threadFiles";
 import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
+import ThreadMenu from "@/components/ThreadMenu";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import { useUserName } from "@/lib/user";
 import {
@@ -1807,77 +1808,6 @@ export default function ThreadPage() {
           {/* #2080: only once the server says whether this row is pinned. A
               button guessing "not pinned" on an older deploy would offer to
               set something the server cannot hold. */}
-          {thread && typeof thread.followed === "boolean" && (
-            <button
-              onClick={toggleFollow}
-              disabled={following}
-              aria-pressed={thread.followed}
-              className="transition-colors disabled:opacity-50"
-              style={{ fontSize: "13px", fontWeight: 600, color: thread.followed ? "var(--accent)" : "var(--ink-soft)" }}
-            >
-              {t(thread.followed ? "unfollow" : "follow")}
-            </button>
-          )}
-          {thread?.is_task === true && thread.goal_stopped_open === true && (
-            <>
-              <button
-                onClick={() => stoppedGoalAction("resume")}
-                disabled={goalActing}
-                className="transition-colors disabled:opacity-50"
-                style={{ fontSize: "13px", fontWeight: 600, color: "var(--accent)" }}
-              >
-                {t("resumeGoal")}
-              </button>
-              <button
-                onClick={() => stoppedGoalAction("dismiss")}
-                disabled={goalActing}
-                className="transition-colors disabled:opacity-50"
-                style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-soft)" }}
-              >
-                {t("closeGoal")}
-              </button>
-            </>
-          )}
-          {thread?.is_task === true && thread.goal_stopped_open !== true && (
-            <button
-              onClick={stopTask}
-              disabled={stopping}
-              className="transition-colors disabled:opacity-50"
-              style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-soft)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--danger)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--ink-soft)"; }}
-            >
-              {t("stopGoal")}
-            </button>
-          )}
-          {!isRequest && thread && (
-            <button
-              onClick={() => { setRenameValue(thread?.title ?? ""); setRenameOpen(true); }}
-              aria-label={t("renameGoal")}
-              title={t("renameGoal")}
-              className="rounded-lg p-1.5 transition-colors hover:bg-black/5"
-              style={{ color: "var(--ink-soft)" }}
-            >
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                <path d="M13.5 3.5l3 3L7 16H4v-3l9.5-9.5z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          )}
-          {thread && (
-            <button
-              onClick={() => setDeleteOpen(true)}
-              aria-label={t("deleteGoal")}
-              title={t("deleteGoal")}
-              className="rounded-lg p-1.5 transition-colors hover:bg-black/5"
-              style={{ color: "var(--ink-soft)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--danger)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--ink-soft)"; }}
-            >
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                <path d="M3.5 5.5h13M8 5V3.5h4V5M6 5.5l.7 10.3a1 1 0 001 .95h4.6a1 1 0 001-.95L14 5.5M8.3 8.5v5M11.7 8.5v5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          )}
           {/* Row 282: the badge is the balance, so with no balance there is
               no badge. It showed 0 to people who had tokens, and a wrong
               number about someone's money is worse than no number. */}
@@ -1890,53 +1820,36 @@ export default function ThreadPage() {
             </span>
           )}
           <NotificationButton />
-          {/* #71: the conversation as a file. An icon, not a word, because
-              the top bar on a phone has no room for a sixth label — see
-              #507, which was that bar running out of width. */}
-          {/* #894: only on a goal that has a list. The flag is what keeps
-              this from being a button that exists everywhere and 404s to
-              tell you it did not apply here. */}
-          {thread?.has_list === true && thread.goal_id != null && (
-            <button
-              onClick={handleDownloadList}
-              disabled={downloading}
-              aria-label={t("downloadList")}
-              title={t("downloadList")}
-              className="rounded-lg p-1.5 transition-colors hover:bg-black/5 disabled:opacity-50"
-              style={{ color: "var(--ink-soft)" }}
-            >
-              {downloading ? (
-                <span
-                  className="block h-4 w-4 rounded-full border-2 animate-spin"
-                  style={{ borderColor: "var(--placeholder)", borderTopColor: "transparent" }}
-                />
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-                  <rect x="3.5" y="3" width="13" height="14" rx="2" stroke="currentColor" strokeWidth="1.4" />
-                  <path d="M7 8h6M7 11h6M7 14h3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-                </svg>
-              )}
-            </button>
-          )}
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            aria-label={t("exportChat")}
-            title={t("exportChat")}
-            className="rounded-lg p-1.5 transition-colors hover:bg-black/5 disabled:opacity-50"
-            style={{ color: "var(--ink-soft)" }}
-          >
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-              <path d="M10 3v9M10 12l-3.2-3.2M10 12l3.2-3.2M4 15.5h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
-            onClick={handleShare}
-            style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-soft)" }}
-            className="hidden sm:block transition-colors hover:text-[var(--ink)]"
-          >
-            {t("share")}
-          </button>
+          {/* 9 Oct, the new design: everything that acts on this task sits
+              behind one "…" button. The conditions are the ones each
+              separate button had; see the notes on stop (2 Oct), pin
+              (#2080), the list (#894) and the export (#71) further up. */}
+          <ThreadMenu
+            label={t("moreActions")}
+            items={[
+              ...(thread && typeof thread.followed === "boolean"
+                ? [{ key: "follow", label: t(thread.followed ? "unfollow" : "follow"), onSelect: toggleFollow, disabled: following }]
+                : []),
+              ...(thread?.is_task === true && thread.goal_stopped_open === true
+                ? [
+                    { key: "resume", label: t("resumeGoal"), onSelect: () => stoppedGoalAction("resume"), disabled: goalActing },
+                    { key: "close", label: t("closeGoal"), onSelect: () => stoppedGoalAction("dismiss"), disabled: goalActing },
+                  ]
+                : []),
+              ...(thread?.is_task === true && thread.goal_stopped_open !== true
+                ? [{ key: "stop", label: t("stopGoal"), onSelect: stopTask, disabled: stopping }]
+                : []),
+              ...(!isRequest && thread
+                ? [{ key: "rename", label: t("renameGoal"), onSelect: () => { setRenameValue(thread?.title ?? ""); setRenameOpen(true); } }]
+                : []),
+              ...(thread?.has_list === true && thread.goal_id != null
+                ? [{ key: "list", label: t("downloadList"), onSelect: handleDownloadList, disabled: downloading }]
+                : []),
+              { key: "export", label: t("exportChat"), onSelect: handleExport, disabled: exporting },
+              { key: "share", label: t("share"), onSelect: handleShare },
+              ...(thread ? [{ key: "delete", label: t("deleteGoal"), onSelect: () => setDeleteOpen(true), danger: true }] : []),
+            ]}
+          />
           <div className="initial-avatar shrink-0" style={{ width: 30, height: 30, fontSize: "12px" }}>
             {userInitial}
           </div>
