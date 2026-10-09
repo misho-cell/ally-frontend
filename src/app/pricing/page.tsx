@@ -100,13 +100,13 @@ export default function PricingPage() {
           }}
         >
           <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-bold" style={{ color: "#FBFAF4" }}>{s.price}</span>
+            <span className="text-3xl font-bold" style={{ color: "#FFFFFF" }}>{s.price}</span>
             <span className="text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>{s.period}</span>
           </div>
 
           <ul className="flex flex-col gap-2 flex-1">
             {s.features.map((f) => (
-              <li key={f} className="flex items-center gap-2 text-sm" style={{ color: "#FBFAF4" }}>
+              <li key={f} className="flex items-center gap-2 text-sm" style={{ color: "#FFFFFF" }}>
                 <svg className="h-4 w-4 shrink-0" style={{ color: "rgba(255,255,255,0.8)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
@@ -119,7 +119,7 @@ export default function PricingPage() {
             onClick={subscribe}
             disabled={loading || unavailable}
             className="w-full h-11 rounded-full text-sm font-semibold transition-all disabled:opacity-60"
-            style={{ background: "#FBFAF4", color: "var(--accent-strong)" }}
+            style={{ background: "#FFFFFF", color: "var(--accent-strong)" }}
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -135,7 +135,7 @@ export default function PricingPage() {
           {error && (
             <div
               className="flex items-center justify-between gap-3 px-3 py-2 text-xs"
-              style={{ background: "rgba(255,255,255,0.14)", color: "#FBFAF4", borderRadius: "var(--radius-tile)" }}
+              style={{ background: "rgba(255,255,255,0.14)", color: "#FFFFFF", borderRadius: "var(--radius-tile)" }}
             >
               <span>{error}</span>
               {!unavailable && (

@@ -74,7 +74,7 @@ export default function UpdatesBadge() {
         marginLeft: 6,
         borderRadius: 9,
         background: "var(--accent)",
-        color: "#FBFAF4",
+        color: "#FFFFFF",
         font: "600 11px/18px var(--font-system)",
       }}
     >

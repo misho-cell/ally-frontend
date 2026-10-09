@@ -1396,7 +1396,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               onClick={() => { explicitGoalRef.current = true; router.push("/chat"); window.dispatchEvent(new Event("netai:focus-composer")); }}
               aria-label={t("newTask")}
               className="flex items-center justify-center rounded-full"
-              style={{ width: 32, height: 32, background: "var(--accent)", color: "#FBFAF4", fontSize: "18px" }}
+              style={{ width: 32, height: 32, background: "var(--accent)", color: "#FFFFFF", fontSize: "18px" }}
             >
               +
             </button>
@@ -1490,7 +1490,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               aria-label={t("newTask")}
               title={t("newTask")}
               className="flex items-center justify-center rounded-full"
-              style={{ width: 28, height: 28, background: "var(--accent)", color: "#FBFAF4", fontSize: "16px", lineHeight: 1 }}
+              style={{ width: 28, height: 28, background: "var(--accent)", color: "#FFFFFF", fontSize: "16px", lineHeight: 1 }}
             >
               +
             </button>
@@ -1767,7 +1767,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               style={{
                 width: 44, height: 44,
                 background: recording ? "var(--danger)" : "var(--accent)",
-                color: "#FBFAF4",
+                color: "#FFFFFF",
               }}
             >
               {recording ? (
@@ -1789,7 +1789,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 disabled={creating}
                 aria-label={t("send")}
                 className="flex shrink-0 items-center justify-center rounded-full"
-                style={{ width: 44, height: 44, background: "var(--accent)", color: "#FBFAF4" }}
+                style={{ width: 44, height: 44, background: "var(--accent)", color: "#FFFFFF" }}
               >
                 <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
                   <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

@@ -76,7 +76,7 @@ export default function PastDueBanner() {
         onClick={fixCard}
         disabled={busy}
         className="ml-auto rounded-full px-3.5 py-1.5 text-xs font-semibold disabled:opacity-60"
-        style={{ background: "var(--danger)", color: "#FBFAF4" }}
+        style={{ background: "var(--danger)", color: "#FFFFFF" }}
       >
         {busy ? "…" : s.cta}
       </button>

@@ -1793,7 +1793,7 @@ export default function ThreadPage() {
             aria-label={t("newTask")}
             title={t("newTask")}
             className="md:hidden flex items-center justify-center rounded-full"
-            style={{ width: 30, height: 30, background: "var(--accent)", color: "#FBFAF4", fontSize: "17px", lineHeight: 1 }}
+            style={{ width: 30, height: 30, background: "var(--accent)", color: "#FFFFFF", fontSize: "17px", lineHeight: 1 }}
           >
             +
           </button>
@@ -2026,7 +2026,7 @@ export default function ThreadPage() {
                       style={{
                         maxWidth: "74%",
                         background: "var(--user-bubble-bg)",
-                        color: "var(--ink)",
+                        color: "var(--user-bubble-ink)",
                         padding: "12px 16px",
                         borderRadius: "16px 16px 4px 16px",
                         font: "400 15px/22px var(--font-system)",
@@ -2518,7 +2518,7 @@ export default function ThreadPage() {
                   width: 38,
                   height: 38,
                   background: canSend ? "var(--accent)" : "var(--skeleton)",
-                  color: canSend ? "#FBFAF4" : "var(--meta)",
+                  color: canSend ? "#FFFFFF" : "var(--meta)",
                 }}
                 onMouseEnter={(e) => {
                   if (canSend) e.currentTarget.style.background = "var(--accent-strong)";

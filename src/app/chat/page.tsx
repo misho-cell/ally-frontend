@@ -208,7 +208,7 @@ export default function ChatIndexPage() {
             style={{
               width: 46, height: 46,
               background: recording ? "var(--danger)" : "var(--accent)",
-              color: "#FBFAF4",
+              color: "#FFFFFF",
             }}
           >
             {recording ? (
@@ -230,7 +230,7 @@ export default function ChatIndexPage() {
               disabled={attaching}
               aria-label={t("send")}
               className="flex shrink-0 items-center justify-center rounded-full"
-              style={{ width: 46, height: 46, background: "var(--accent)", color: "#FBFAF4" }}
+              style={{ width: 46, height: 46, background: "var(--accent)", color: "#FFFFFF" }}
             >
               <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
                 <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

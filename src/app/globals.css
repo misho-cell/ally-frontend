@@ -1,54 +1,64 @@
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..600&family=Newsreader:ital,opsz,wght@0,6..72,400..600&family=Noto+Sans+Georgian:wght@400..700&family=Noto+Serif+Georgian:wght@400..600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400..700&display=swap');
 
 :root {
-  /* ---- brand ---- */
-  --accent: #2F6B4F;
-  --accent-strong: #24523C;
-  --accent-tint: #E1EBE2;
-  --cta-border: #B9CDBB;
+  /* ---- brand ----
+     8 Oct, the new design (Lagoon, NETAI_DESIGN_TOKENS_2026-10-07). The
+     values were read from the rendered design file, not guessed. Every
+     screen takes its colours from here, so this block IS the reskin. */
+  --accent: #007F78;
+  --accent-strong: #006960;
+  --accent-tint: #DCEFE9;
+  --cta-border: #89BEB1;
 
   /* ---- ink ---- */
-  --ink: #20241D;
-  --ink-strong: #121510;
-  --ink-2: #44483E;
-  --ink-muted: #44483E;
-  --ink-soft: #63665A;
-  --placeholder: #8E8A7A;
-  --meta: #8E8A7A;
+  --ink: #243B36;
+  --ink-strong: #193D3A;
+  --ink-2: #60736A;
+  --ink-muted: #60736A;
+  --ink-soft: #63817C;
+  --placeholder: #8A9B95;
+  --meta: #7D908A;
 
   /* ---- surfaces ---- */
-  --bg: #FBFAF4;
-  --sidebar-bg: #F5F3EA;
-  --sidebar-border: #E3DFCF;
-  --header-border: #E3DFCF;
-  --thread-active-bg: #E1EBE2;
-  --user-bubble-bg: #E1EBE2;
+  --bg: #F6F8F5;
+  --sidebar-bg: #EAF0EC;
+  --sidebar-border: #CEDCD6;
+  --header-border: #CEDCD6;
+  --thread-active-bg: #DCEFE9;
+  --user-bubble-bg: #DCEBFF;
+  --user-bubble-ink: #183F74;
 
-  /* ---- type ---- */
-  --font-system: 'Instrument Sans', 'Noto Sans Georgian', -apple-system, 'Helvetica Neue', Arial, sans-serif;
-  --font-hanken: 'Instrument Sans', 'Noto Sans Georgian', -apple-system, 'Helvetica Neue', Arial, sans-serif;
-  --font-bricolage: 'Newsreader', 'Noto Serif Georgian', Georgia, 'Times New Roman', serif;
+  /* ---- type ----
+     The design sets everything in Noto Sans Georgian, headings included.
+     --font-bricolage keeps its name so no call site has to change; it is
+     no longer a serif. */
+  --font-system: 'Noto Sans Georgian', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-hanken: 'Noto Sans Georgian', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-bricolage: 'Noto Sans Georgian', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-ibm-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
-  /* ---- requests (terracotta — person→person moments ONLY) ---- */
-  --request-accent: #B65C3F;
-  --request-tint: #F6E8E1;
-  --request-chip-bg: #F1DFD6;
-  --request-quote-bar: #E8C9B8;
-  --terra-tint: rgba(182, 92, 63, 0.09);
+  /* ---- requests (person-to-person moments ONLY) ----
+     The design's apricot replaces the terracotta. */
+  --request-accent: #8D4920;
+  --request-tint: #F9E9DA;
+  --request-chip-bg: #F4D9C2;
+  --request-quote-bar: #F4AD78;
+  --terra-tint: rgba(244, 173, 120, 0.14);
+  --apricot: #F4AD78;
 
   /* ---- states ---- */
-  --danger: #B3402E;
-  --danger-strong: #8F3325;
-  --skeleton: #ECE9DC;
-  --focus-ring: 0 0 0 3px rgba(47, 107, 79, 0.25);
-  --input-focus-ring: 0 0 0 3px rgba(47, 107, 79, 0.18);
+  --danger: #AE4141;
+  --danger-strong: #8C3333;
+  --skeleton: #E4ECE8;
+  --focus-ring: 0 0 0 3px rgba(0, 127, 120, 0.25);
+  --input-focus-ring: 0 0 0 3px rgba(0, 127, 120, 0.18);
 
   /* ---- elevation ---- */
-  --shadow-card: 0 1px 2px rgba(32, 36, 29, 0.05);
-  --shadow-pop: 0 8px 24px rgba(32, 36, 29, 0.14);
+  --shadow-card: 0 1px 2px rgba(36, 59, 54, 0.05);
+  --shadow-pop: 0 8px 24px rgba(36, 59, 54, 0.14);
+  --shadow-news: 0 6px 18px -6px rgba(0, 127, 120, 0.18);
 
   /* ---- radius ---- */
   --radius-row: 9px;
@@ -57,9 +67,9 @@
   --radius-pill: 999px;
 
   /* ---- toast ---- */
-  --toast-bg: #121510;
-  --toast-fg: #FBFAF4;
-  --toast-check: #9DBCA7;
+  --toast-bg: #193D3A;
+  --toast-fg: #F6F8F5;
+  --toast-check: #89BEB1;
 
   --background: var(--bg);
   --foreground: var(--ink);
@@ -86,7 +96,7 @@ body {
 /* ============ Buttons ============ */
 .btn-primary {
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  background: var(--accent); color: #FBFAF4; border: 0; border-radius: var(--radius-pill);
+  background: var(--accent); color: #FFFFFF; border: 0; border-radius: var(--radius-pill);
   padding: 11px 22px; font: 600 13.5px/20px var(--font-system); cursor: pointer;
 }
 .btn-primary:hover { background: var(--accent-strong); }
@@ -249,7 +259,7 @@ body {
   border-radius: var(--radius-pill); padding: 7px 14px;
   font: 600 12.5px/17px var(--font-system); cursor: pointer; border: 1px solid transparent;
 }
-.req-btn.accept { background: var(--accent); color: #FBFAF4; }
+.req-btn.accept { background: var(--accent); color: #FFFFFF; }
 .req-btn.accept:hover { background: var(--accent-strong); }
 .req-btn.deny { background: none; border-color: var(--danger); color: var(--danger); }
 .req-btn.deny:hover { background: var(--terra-tint); }
