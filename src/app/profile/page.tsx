@@ -122,8 +122,6 @@ const L = {
     // #1920 (7 Oct): the download lives one screen in, and nothing on this
     // card said so, so nobody found it.
     dataRightsSub: "See what we store, download it, or delete your account",
-    answerRules: "Automatic answers",
-    answerRulesSub: "Rules the assistant uses to answer for you",
     diagOff: "Diagnostics are on for this browser. Open /profile?diag=0 to hide them again.",
     blocked: "Blocked",
     blockedSub: "People the assistant will not contact or suggest",
@@ -202,8 +200,6 @@ const L = {
     nameRequired: "სახელი აუცილებელია",
     dataRights: "მონაცემები და კონფიდენციალურობა",
     dataRightsSub: "ნახე რას ვინახავთ, გადმოწერე ან წაშალე ანგარიში",
-    answerRules: "ავტომატური პასუხები",
-    answerRulesSub: "წესები, რომლითაც ასისტენტი შენ ნაცვლად პასუხობს",
     diagOff: "დიაგნოსტიკა ჩართულია ამ ბრაუზერში. დასამალად გახსენი /profile?diag=0",
     blocked: "დაბლოკილები",
     blockedSub: "ვისაც ასისტენტი არ დაუკავშირდება და არ შემოგთავაზებს",
@@ -1208,22 +1204,6 @@ export default function ProfilePage() {
                 <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.blocked}</h2>
                 <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
                   {s.blockedSub}
-                </p>
-              </div>
-              <span style={{ color: "var(--meta)" }}>→</span>
-            </Link>
-
-            {/* Answer rules (Task 7, D120) */}
-            <Link
-              href="/profile/answer-rules"
-              className="card flex items-center justify-between transition-colors"
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--cta-border)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--sidebar-border)"; }}
-            >
-              <div>
-                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.answerRules}</h2>
-                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
-                  {s.answerRulesSub}
                 </p>
               </div>
               <span style={{ color: "var(--meta)" }}>→</span>
