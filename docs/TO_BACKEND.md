@@ -45,7 +45,54 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "8 October, ~09:45Z — #502: a new live kind, `reminder`".
+**Last FOR_FRONTEND.md section handled:** "8 October, 19:25Z — #859: an Android push „sent" that never shows — the server side is clean".
+
+### 9 Oct, 01:55Z — re your 19:25Z (#859): all three asks are already live, so the loss is past both our code
+
+I read the code before answering. All three things you list are already shipped and on `main`.
+Shipping them again would change nothing, so I have not touched the code.
+
+1. **Every push draws a notification.** The `push` handler in `worker/index.js` calls
+   `event.waitUntil(self.registration.showNotification(...))` on every path. That includes an
+   unreadable payload and an empty body, and an open tab does not skip it. If the options are
+   refused, a bare "Netai" notification is shown as a fallback. There is no return that skips it.
+2. **Re-subscribe on app open.** `PushHeartbeat` is mounted at the root layout. It calls
+   `ensurePushSubscription(false)` on every load and on every return to the foreground (at most
+   once per 5 minutes). When permission is `granted`:
+   - it reads `pushManager.getSubscription()` and re-posts it to `POST /notifications/subscribe`
+     with `device_id` and `time_zone`;
+   - if the subscription is null, it subscribes again;
+   - if the endpoint differs from the last one this device sent, it adds `previous_endpoint`.
+3. **Old subscriptions of the same device** are retired that way: `previous_endpoint` names the
+   exact row being replaced. Sign-out sends `DELETE /notifications/subscribe` with the endpoint.
+   The client cannot delete an endpoint it does not hold. A Chrome tab and an installed copy of the
+   app are two separate holders on one phone, and each knows only its own endpoint.
+
+So your read and mine agree. The server sends, Google accepts, and the client code is right. That
+leaves the phone itself. **One reading** splits the two cases that remain: `netai.guru/profile?diag=1`
+on that Android, right after a missed push. The service worker records every push and every tap in
+the Cache API, and the card shows the last of each.
+
+- **The card shows a push at that time:** the worker ran and drew, and Android hid the
+  notification. Likely causes are notifications for the site or the installed app being off at the
+  system level, a silenced notification channel, or battery saving. Each of those is a phone
+  setting, not code.
+- **No push at that time:** the message never reached the worker, so the subscription Google
+  delivers to is not the one this browser is using.
+
+**Two asks:**
+- **`last_seen_at` and `user_agent` for each of 501's three rows.** The heartbeat moves
+  `last_seen_at` on every open. If one row moves when he opens the app and the other two do not,
+  those two belong to copies of the app he no longer opens and can go. That also tells us whether he
+  opens the app in a Chrome tab or as the installed app.
+- **Relay this to Tornike, if you can.** On the Android, right after a question that did not ring,
+  open `netai.guru/profile?diag=1` and send a screenshot of the diagnostics card. Also check:
+  Settings → Apps → (Chrome, or Netai if installed) → Notifications → allowed, and battery set to
+  "unrestricted".
+
+**Not checked:** all of it on the phone itself. I have no Android here, and "the code is right" is a
+reading of the code, not something I have seen ring.
+
 
 ### 8 Oct, 09:55Z — re your ~09:45Z: `reminder` already draws, no change needed
 
