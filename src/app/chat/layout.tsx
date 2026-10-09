@@ -1322,6 +1322,12 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     ...goalThreads.filter((g) => !pinned(g) && g.status !== "done"),
   ];
   const finished = goalThreads.filter((g) => g.status === "done" && !keptOpen(g) && !pinned(g));
+  // 9 Oct, the new design: what waits on the person is its own group at the
+  // top, with its count. The order inside each group is the one above, so a
+  // pinned row still leads its group.
+  const waitsOnYou = (g: { status: TaskStatus }) => g.status === "needs_you" || g.status === "failed";
+  const needsYou = active.filter(waitsOnYou);
+  const ongoing = active.filter((g) => !waitsOnYou(g));
   // Header counter: /tasks/summary open_goals when available (22 Aug #5),
   // otherwise the local server-status count (ticket 6 #8).
   const localPresenceN = threads.filter(
@@ -1604,28 +1610,35 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   </section>
                 )}
 
-                <section className="flex flex-col gap-[3px]">
-                  <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("inProgress")}</p>
-                  {active.map(({ thread, status }) => (
-                    <TaskRow
-                      key={thread.id}
-                      title={goalTitle(thread)}
-                      status={status}
-                      statusLine={thread.status_line}
-                      stopped={thread.goal_stopped === true}
-                      href={`/chat/${thread.id}`}
-                      active={pathname === `/chat/${thread.id}`}
-                      unread={isUnread(thread) || answerUnseen(thread)}
-                      onLongPress={() => openRename(thread, goalTitle(thread))}
-                      time={fmtClock(thread.updated_at, clock?.today ?? null)}
-                    />
-                  ))}
-                  {active.length === 0 && !q && (
-                    <p style={{ padding: "2px 6px", fontSize: "12px", color: "var(--meta)" }}>
-                      {t("threadsHint")}
-                    </p>
-                  )}
-                </section>
+                {/* One map for both groups, so the rows are drawn by exactly one
+                    piece of code and cannot drift apart. */}
+                {[
+                  { key: "needs", label: t("needsYouGroup"), rows: needsYou, warm: true, show: needsYou.length > 0 },
+                  { key: "ongoing", label: t("inProgress"), rows: ongoing, warm: false, show: ongoing.length > 0 || active.length === 0 },
+                ].filter((g) => g.show).map((g) => (
+                  <section key={g.key} className={`flex flex-col gap-[3px]${g.key === "needs" ? " mb-2" : ""}`}>
+                    <GroupHead label={g.label} count={g.rows.length} warm={g.warm} />
+                    {g.rows.map(({ thread, status }) => (
+                      <TaskRow
+                        key={thread.id}
+                        title={goalTitle(thread)}
+                        status={status}
+                        statusLine={thread.status_line}
+                        stopped={thread.goal_stopped === true}
+                        href={`/chat/${thread.id}`}
+                        active={pathname === `/chat/${thread.id}`}
+                        unread={isUnread(thread) || answerUnseen(thread)}
+                        onLongPress={() => openRename(thread, goalTitle(thread))}
+                        time={fmtClock(thread.updated_at, clock?.today ?? null)}
+                      />
+                    ))}
+                    {g.key === "ongoing" && active.length === 0 && !q && (
+                      <p style={{ padding: "2px 6px", fontSize: "12px", color: "var(--meta)" }}>
+                        {t("threadsHint")}
+                      </p>
+                    )}
+                  </section>
+                ))}
 
                 {finished.length > 0 && (
                   <section className="mt-2 flex flex-col gap-[3px]" style={{ opacity: 0.65 }}>
@@ -1870,6 +1883,28 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         {renameModal}
       </div>
     </ThreadsContext.Provider>
+  );
+}
+
+// The design's group head: the words, then the count in a small pill, warm
+// for the group that waits on the person.
+function GroupHead({ label, count, warm }: { label: string; count: number; warm?: boolean }) {
+  return (
+    <p className="section-label flex items-center gap-2" style={{ padding: "0 6px 2px" }}>
+      {warm && <span aria-hidden="true" className="rounded-full" style={{ width: 7, height: 7, background: "var(--danger)" }} />}
+      <span className="flex-1">{label}</span>
+      {count > 0 && (
+        <span
+          style={{
+            font: "600 11px/16px var(--font-system)", borderRadius: 8, padding: "0 7px",
+            background: warm ? "var(--request-tint)" : "var(--accent-tint)",
+            color: warm ? "var(--request-accent)" : "var(--accent-strong)",
+          }}
+        >
+          {count}
+        </span>
+      )}
+    </p>
   );
 }
 
