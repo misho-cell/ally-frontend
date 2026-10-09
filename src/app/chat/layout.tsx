@@ -156,19 +156,17 @@ const AnimBox = memo(function AnimBox({ status, size }: { status: TaskStatus; si
   );
 });
 
-// Badge lives only on needs_you (tester C.1); waiting keeps its quiet pill,
-// working keeps green, done rows carry NO pill — the section already says it.
-function StatusPill({ status, stopped }: { status: TaskStatus; stopped?: boolean }) {
-  // A goal the owner halted also arrives as "done". Saying nothing there
-  // would let "I stopped this" read as "this finished", which is the app
-  // telling someone the opposite of what they did.
-  if (status === "done") return stopped ? <span className="task-pill done">{t("stStopped")}</span> : null;
-  const label =
-    status === "working" ? t("stWorking") :
+// 9 Oct, the new design: the row carries a status WORD under the title,
+// not a coloured pill beside it. The rules of the old pill still hold (tester
+// C.1): only "needs you" is drawn in the warm colour, a finished row says
+// nothing because its section already does, and a goal the owner halted says
+// so, because "I stopped this" must not read as "this finished".
+function statusWord(status: TaskStatus, stopped?: boolean): string | null {
+  if (status === "done") return stopped ? t("stStopped") : null;
+  return status === "working" ? t("stWorking") :
     status === "waiting" ? t("stWaiting") :
     status === "needs_you" ? t("stNeedsYou") :
     t("stFailed");
-  return <span className={`task-pill ${status}`}>{label}</span>;
 }
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
@@ -1613,6 +1611,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       active={pathname === `/chat/${thread.id}`}
                       unread={isUnread(thread) || answerUnseen(thread)}
                       onLongPress={() => openRename(thread, goalTitle(thread))}
+                      time={fmtClock(thread.updated_at, clock?.today ?? null)}
                     />
                   ))}
                   {active.length === 0 && !q && (
@@ -1636,6 +1635,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         active={pathname === `/chat/${thread.id}`}
                         unread={isUnread(thread)}
                         onLongPress={() => openRename(thread, goalTitle(thread))}
+                        time={fmtClock(thread.updated_at, clock?.today ?? null)}
                       />
                     ))}
                     {finished.length > 5 && !showAllDone && !q && (
@@ -1868,9 +1868,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 }
 
 function TaskRow({
-  title, status, statusLine, stopped, href, active, unread, onLongPress,
+  title, status, statusLine, stopped, href, active, unread, onLongPress, time,
 }: {
   title: string;
+  // The design shows when the row last moved, on the title's line.
+  time?: string;
   status: TaskStatus;
   stopped?: boolean;
   // 20 Sept: the server's own sentence about this goal, already written in
@@ -1933,20 +1935,35 @@ function TaskRow({
         }
       }}
     >
-      <span className="flex-1 min-w-0 flex flex-col">
-        <span className="truncate" style={{ font: `${active || unread ? 700 : 500} 13.5px/18px var(--font-system)`, color: "var(--ink)" }}>
-          {title}
+      <span className="flex-1 min-w-0 flex flex-col" style={{ gap: 2 }}>
+        <span className="flex items-baseline gap-2">
+          <span className="flex-1 truncate" style={{ font: `${active || unread ? 700 : 600} 13.5px/18px var(--font-system)`, color: "var(--ink)" }}>
+            {title}
+          </span>
+          {time && (
+            <span className="shrink-0" style={{ font: "400 11px/16px var(--font-system)", color: "var(--meta)" }}>
+              {time}
+            </span>
+          )}
         </span>
-        {statusLine && (
-          <span className="truncate" title={statusLine} style={{ font: "500 12px/16px var(--font-system)", color: "var(--meta)" }}>
-            {statusLine}
+        {/* The server's own sentence wins over the generic word (20 Sept):
+            the generic word is the part that was wrong for Lika. */}
+        {(statusLine || statusWord(status, stopped)) && (
+          <span
+            className="truncate"
+            title={statusLine ?? undefined}
+            style={{
+              font: "500 11.5px/16px var(--font-system)",
+              color: !statusLine && (status === "needs_you" || status === "failed") ? "var(--request-accent)" : "var(--meta)",
+            }}
+          >
+            {statusLine || statusWord(status, stopped)}
           </span>
         )}
       </span>
       {unread && !active && (
         <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, background: "var(--accent)" }} />
       )}
-      {!statusLine && <StatusPill status={status} stopped={stopped} />}
       <AnimBox status={status} size={40} />
     </Link>
   );
