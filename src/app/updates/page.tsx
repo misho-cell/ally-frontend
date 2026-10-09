@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import SheetPage from "@/components/SheetPage";
 import { apiFetch, ApiError } from "@/lib/api";
 import { getLocale, fmtDateLoc } from "@/lib/i18n";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
@@ -30,8 +31,9 @@ import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 
 const L = {
   en: {
-    back: "← Chat",
-    title: "Updates",
+    back: "Back to chat",
+    // 9 Oct, the new design (D696): the page is named for what it answers.
+    title: "What happened",
     intro: "What the assistant has found for you. Opening this page counts as reading them, so they move to the list below rather than waiting again.",
     dueEmpty: "Nothing new right now.",
     seenTitle: "Already read",
@@ -61,13 +63,24 @@ const L = {
     weekClose: "Hide",
     weekDone: "Read it",
     asks: (sent: number, answered: number) => `${answered} of ${sent} answered`,
-    follow: "Pin",
-    unfollow: "Unpin",
+    // D703. The design names the flag for what the person means by it.
+    follow: "Return later",
+    unfollow: "Clear",
+    view: "View",
+    kinds: {
+      reply: "Reply received",
+      question: "A question needs you",
+      reminder: "Reminder",
+      helped: "Did it help?",
+      chorus: "Chorus",
+      thanks: "Thank you",
+      weekly: "Weekly summary",
+    },
     followFailed: "Could not change it, try again",
   },
   ka: {
-    back: "← ჩატი",
-    title: "განახლებები",
+    back: "ჩატში დაბრუნება",
+    title: "რა მოხდა",
     intro: "რაც ასისტენტმა შენთვის გაიგო. ამ გვერდის გახსნა წაკითხვად ითვლება, ამიტომ ისინი ქვემოთ სიაში გადადის და თავიდან აღარ დაგელოდება.",
     dueEmpty: "ახალი ჯერ არაფერია.",
     seenTitle: "უკვე წაკითხული",
@@ -89,8 +102,18 @@ const L = {
     weekClose: "დამალვა",
     weekDone: "წავიკითხე",
     asks: (sent: number, answered: number) => `${sent}-დან ${answered}-ს უპასუხეს`,
-    follow: "მიმაგრება",
+    follow: "მოგვიანებით დავუბრუნდები",
     unfollow: "მოხსნა",
+    view: "ვნახოთ",
+    kinds: {
+      reply: "პასუხი მოვიდა",
+      question: "კითხვა გელოდება",
+      reminder: "შეხსენება",
+      helped: "დაგეხმარა?",
+      chorus: "Chorus",
+      thanks: "მადლობა",
+      weekly: "კვირის შეჯამება",
+    },
     followFailed: "ვერ შეიცვალა, სცადე თავიდან",
   },
 };
@@ -192,6 +215,36 @@ function payloadText(payload: unknown): string {
     if (typeof v === "string" && v.trim()) return v;
   }
   return "";
+}
+
+// 9 Oct, the new design (D696). Each card carries a small pill saying what
+// kind of news it is. The pill is a reader's word, never the schema's: a kind
+// this build does not know gets no pill at all rather than its code name,
+// which is what the 28 Sept fix took off these cards.
+type KindKey = keyof (typeof L)["ka"]["kinds"];
+function kindKey(u: Update): KindKey | null {
+  switch (u.kind) {
+    case "debrief":
+      return u.answered === true ? "reply" : "reminder";
+    case "found":
+      return "reply";
+    case "goal_question":
+      return "question";
+    case "goal_feedback":
+      return "helped";
+    case "search_followup":
+    case "intro_expired":
+    case "no_luck":
+      return "reminder";
+    case "chorus_ask":
+      return "chorus";
+    case "thanks_loop":
+      return "thanks";
+    case WEEKLY_KIND:
+      return "weekly";
+    default:
+      return null;
+  }
 }
 
 export default function UpdatesPage() {
@@ -351,36 +404,14 @@ export default function UpdatesPage() {
     const heading = typeof u.title === "string" && u.title.trim() ? u.title : null;
     const detail = typeof u.detail === "string" ? u.detail : null;
     const text = detail ?? payloadText(u.payload);
+    const kind = kindKey(u);
+    const headStyle = { font: "600 16px/22px var(--font-system)", color: "var(--ink)" } as const;
     return (
-      <div key={ref || i} className="card flex flex-col gap-2">
+      <div key={ref || i} className="card flex flex-col gap-2" style={{ padding: "18px 18px 16px" }}>
         <div className="flex flex-wrap items-center gap-2">
-          {/* The card says what it is about. The kind was a schema word and
-              the number was a number; neither told anybody anything. The
-              kind is not drawn at all now — it is how the code routes, not
-              how a person reads. */}
-          {heading ? (
-            u.task_id != null ? (
-              <Link
-                href={`/chat/${u.task_id}`}
-                style={{ font: "600 14px/20px var(--font-system)", color: "var(--ink)" }}
-              >
-                {heading}
-              </Link>
-            ) : (
-              <span style={{ font: "600 14px/20px var(--font-system)", color: "var(--ink)" }}>{heading}</span>
-            )
-          ) : (
-            u.task_id != null && (
-              <Link
-                href={`/chat/${u.task_id}`}
-                style={{ font: "600 11px/15px var(--font-system)", color: "var(--accent)" }}
-              >
-                {s.goal} #{u.task_id}
-              </Link>
-            )
-          )}
+          {kind && <span className="kind-pill">{s.kinds[kind]}</span>}
           {u.created_at && (
-            <span className="ml-auto" style={{ font: "400 11px/15px var(--font-system)", color: "var(--meta)" }}>
+            <span style={{ font: "400 11.5px/15px var(--font-system)", color: "var(--meta)" }}>
               {fmtDateLoc(u.created_at, { day: "numeric", month: "short" })}
             </span>
           )}
@@ -390,48 +421,65 @@ export default function UpdatesPage() {
               aria-pressed={u.followed}
               disabled={busy === ref}
               onClick={() => toggleFollow(u)}
-              className={u.created_at ? undefined : "ml-auto"}
-              style={{ font: "600 12px/16px var(--font-system)", color: u.followed ? "var(--accent)" : "var(--ink-soft)" }}
+              className="ml-auto"
+              style={{ font: "500 13px/18px var(--font-system)", color: u.followed ? "var(--ink-soft)" : "var(--accent)" }}
             >
               {u.followed ? s.unfollow : s.follow}
             </button>
           )}
         </div>
 
+        {/* The card says what it is about. The number is a fallback only for
+            a server that sends no title. */}
+        {heading ? (
+          u.task_id != null ? (
+            <Link href={`/chat/${u.task_id}`} style={headStyle}>{heading}</Link>
+          ) : (
+            <span style={headStyle}>{heading}</span>
+          )
+        ) : (
+          u.task_id != null && (
+            <Link href={`/chat/${u.task_id}`} style={headStyle}>
+              {s.goal} #{u.task_id}
+            </Link>
+          )
+        )}
+
         {text && (
-          <p style={{ font: "400 15px/22px var(--font-system)", color: "var(--ink)", whiteSpace: "pre-wrap" }}>
+          <p style={{ font: "400 14.5px/22px var(--font-system)", color: "var(--ink-soft)", whiteSpace: "pre-wrap" }}>
             {text}
           </p>
         )}
 
         {(() => {
-          // 2 Oct. A goal_question card's text IS a question — „should I follow
-          // this plan and act?" — and under it stood two buttons that both
-          // said "later". The card asked for the one thing it could not take.
+          // 2 Oct. A goal_question card's text IS a question, so the card
+          // offers the answer, drawn as what it is. Every other card that
+          // belongs to a task offers to look at it (the design's „ვნახოთ").
           //
-          // The answer lives in the goal's own thread, which the heading has
-          // always linked to, but a heading is not where somebody looks for a
-          // way to reply. The same link, drawn as what it is.
-          //
-          // It is NOT gated on `withActions`: a question is answerable whether
-          // or not this card may still be snoozed, and the remind-me buttons
-          // are the part that stops making sense once it is read, not this one.
+          // Neither is gated on `withActions`: a question is answerable and a
+          // task is viewable whether or not this card may still be snoozed.
           const canAnswer = u.kind === "goal_question" && u.task_id != null;
+          const canView = !canAnswer && u.task_id != null;
           const canSnooze = withActions && ref && u.answered !== true;
-          if (!canAnswer && !canSnooze) return null;
+          if (!canAnswer && !canView && !canSnooze) return null;
           return (
-            <div className="flex flex-wrap gap-2">
+            <div className="mt-1 flex flex-wrap gap-2">
               {canAnswer && (
-                <Link href={`/chat/${u.task_id}`} className="btn-primary">
+                <Link href={`/chat/${u.task_id}`} className="btn-primary" style={{ padding: "8px 16px" }}>
                   {s.answer}
+                </Link>
+              )}
+              {canView && (
+                <Link href={`/chat/${u.task_id}`} className="btn-secondary" style={{ padding: "8px 16px" }}>
+                  {s.view}
                 </Link>
               )}
               {canSnooze && (
                 <>
-                  <button type="button" className="btn-secondary" disabled={busy === ref} onClick={() => snooze(ref, 1)}>
+                  <button type="button" className="btn-secondary" style={{ padding: "8px 16px" }} disabled={busy === ref} onClick={() => snooze(ref, 1)}>
                     {s.laterDay}
                   </button>
-                  <button type="button" className="btn-secondary" disabled={busy === ref} onClick={() => snooze(ref, 7)}>
+                  <button type="button" className="btn-secondary" style={{ padding: "8px 16px" }} disabled={busy === ref} onClick={() => snooze(ref, 7)}>
                     {s.laterWeek}
                   </button>
                 </>
@@ -444,18 +492,16 @@ export default function UpdatesPage() {
   };
 
   return (
-    <div className="min-h-full" style={{ background: "var(--bg)" }}>
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-6">
-        <Link href="/chat" style={{ font: "500 13px/18px var(--font-system)", color: "var(--ink-soft)" }}>
-          {s.back}
-        </Link>
-
-        <div className="flex flex-wrap items-baseline gap-2">
-          <h1 style={{ font: "500 24px/30px var(--font-bricolage)", color: "var(--ink)" }}>{s.title}</h1>
-          {held != null && held > 0 && (
-            <span style={{ font: "500 12.5px/17px var(--font-system)", color: "var(--meta)" }}>{s.held(held)}</span>
-          )}
-        </div>
+    <SheetPage
+      title={s.title}
+      backHref="/chat"
+      backLabel={s.back}
+      action={
+        held != null && held > 0 ? (
+          <span className="kind-pill shrink-0" style={{ alignSelf: "center" }}>{s.held(held)}</span>
+        ) : undefined
+      }
+    >
 
         <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--ink-soft)" }}>{s.intro}</p>
 
@@ -484,6 +530,7 @@ export default function UpdatesPage() {
             className="card flex flex-col gap-3"
             style={{ borderColor: "var(--accent)", borderWidth: "1.5px" }}
           >
+            <span className="kind-pill">{s.kinds.weekly}</span>
             <div className="flex flex-wrap items-baseline gap-2">
               {/* This heading stays ours, not the payload's, and that is a
                   choice rather than an oversight: the server's `title`
@@ -493,7 +540,7 @@ export default function UpdatesPage() {
                   title is the goal's own words and only the server can know
                   them; here it is a fixed label we already hold in both
                   languages. */}
-              <h2 style={{ font: "500 17px/22px var(--font-bricolage)", color: "var(--ink)" }}>{s.weekTitle}</h2>
+              <h2 style={{ font: "600 16px/22px var(--font-system)", color: "var(--ink)" }}>{s.weekTitle}</h2>
               {weeklyWeek && (
                 <span style={{ font: "400 12px/16px var(--font-system)", color: "var(--meta)" }}>
                   {s.weekOf(fmtDateLoc(weeklyWeek, { day: "numeric", month: "short" }))}
@@ -588,7 +635,7 @@ export default function UpdatesPage() {
               <div className="flex flex-col gap-3">{dueRest.map((u, i) => card(u, i, true))}</div>
             )}
 
-            <h2 style={{ font: "500 15px/20px var(--font-system)", color: "var(--ink)", marginTop: "8px" }}>
+            <h2 className="section-label" style={{ marginTop: "8px" }}>
               {s.seenTitle}
             </h2>
             {seenRest.length === 0 ? (
@@ -598,7 +645,6 @@ export default function UpdatesPage() {
             )}
           </>
         )}
-      </div>
-    </div>
+    </SheetPage>
   );
 }

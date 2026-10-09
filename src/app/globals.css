@@ -65,6 +65,8 @@
   --radius-tile: 12px;
   --radius-card: 16px;
   --radius-pill: 999px;
+  /* The design (D696) draws every button with a 12px corner, not a pill. */
+  --radius-btn: 12px;
 
   /* ---- toast ---- */
   --toast-bg: #193D3A;
@@ -96,7 +98,7 @@ body {
 /* ============ Buttons ============ */
 .btn-primary {
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  background: var(--accent); color: #FFFFFF; border: 0; border-radius: var(--radius-pill);
+  background: var(--accent); color: #FFFFFF; border: 0; border-radius: var(--radius-btn);
   padding: 11px 22px; font: 600 13.5px/20px var(--font-system); cursor: pointer;
 }
 .btn-primary:hover { background: var(--accent-strong); }
@@ -107,7 +109,7 @@ body {
 .btn-secondary {
   display: flex; align-items: center; justify-content: center; gap: 6px;
   background: #FFFFFF; color: var(--accent-strong);
-  border: 1px solid var(--cta-border); border-radius: var(--radius-pill);
+  border: 1px solid var(--cta-border); border-radius: var(--radius-btn);
   padding: 11px 22px; font: 600 13.5px/20px var(--font-system); cursor: pointer;
 }
 .btn-secondary:hover { background: var(--accent-tint); }
@@ -134,6 +136,12 @@ body {
 .input-pill:focus { outline: none; border-color: var(--accent); box-shadow: var(--input-focus-ring); }
 
 /* ============ Cards ============ */
+.kind-pill {
+  display: inline-flex; align-self: flex-start; align-items: center;
+  background: var(--accent-tint); color: var(--accent-strong);
+  border-radius: 6px; padding: 3px 8px; font: 500 11.5px/15px var(--font-system);
+}
+
 .card {
   background: #FFFFFF; border: 1px solid var(--sidebar-border);
   border-radius: var(--radius-card); box-shadow: var(--shadow-card);

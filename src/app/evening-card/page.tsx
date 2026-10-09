@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import SheetPage from "@/components/SheetPage";
 import { apiFetch, ApiError } from "@/lib/api";
 import { getLocale } from "@/lib/i18n";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
@@ -22,29 +23,34 @@ import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 
 const L = {
   en: {
-    back: "← Chat",
-    title: "Evening card",
+    back: "Back to chat",
+    // 9 Oct, the new design (D696).
+    title: "Evening summary",
+    intro: "Questions held during the day. Answer when you have time.",
+    today: "today",
     empty: "Nothing new right now.",
     loadFailed: "Could not load",
     retry: "Try again",
     answered: "Answer sent",
     open: "Open the conversation",
     sendFailed: "Could not send.",
-    snooze: "In 2 hours",
+    snooze: "Postpone all by 2 hours",
     snoozed: (t: string) => `Postponed. It comes back at ${t}.`,
     snoozedNoTime: "Postponed.",
     snoozeFailed: "Could not postpone it. It is still here.",
   },
   ka: {
-    back: "← ჩატი",
-    title: "საღამოს ბარათი",
+    back: "ჩატში დაბრუნება",
+    title: "საღამოს შეჯამება",
+    intro: "დღის განმავლობაში შეკავებული კითხვები. უპასუხე მაშინ, როცა გცალია.",
+    today: "დღეს",
     empty: "ახალი ჯერ არაფერია.",
     loadFailed: "ვერ ჩაიტვირთა",
     retry: "თავიდან",
     answered: "პასუხი გაიგზავნა",
     open: "საუბრის გახსნა",
     sendFailed: "ვერ გაიგზავნა.",
-    snooze: "2 საათში",
+    snooze: "ყველა 2 საათით გადაიდოს",
     snoozed: (t: string) => `გადაიდო. დაგიბრუნდება ${t}.`,
     snoozedNoTime: "გადაიდო.",
     snoozeFailed: "ვერ გადაიდო. ისევ აქ არის.",
@@ -64,6 +70,7 @@ type Item = {
 
 type Card = {
   id: number;
+  dueAt: string | null;
   choices: string[];
   items: Item[];
 };
@@ -98,7 +105,8 @@ function parseCard(raw: unknown): Card | null {
       choices: Array.isArray(it.choices) ? strings(it.choices) : null,
     });
   }
-  return { id, choices, items };
+  const dueAt = typeof c.due_at === "string" ? c.due_at : null;
+  return { id, dueAt, choices, items };
 }
 
 // Local wall-clock time. Written by hand rather than toLocaleTimeString so a
@@ -176,88 +184,112 @@ export default function EveningCardPage() {
 
   const snoozed = notice?.ok === true;
 
+  const canSnooze = !!card && card.items.some((it) => !it.answered) && !snoozed;
+  const sameDay = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
+
   return (
-    <div className="min-h-full" style={{ background: "var(--bg)" }}>
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-6">
-        <Link href="/chat" style={{ font: "500 13px/18px var(--font-system)", color: "var(--ink-soft)" }}>
-          {s.back}
-        </Link>
-
-        <h1 style={{ font: "500 24px/30px var(--font-bricolage)", color: "var(--ink)" }}>{s.title}</h1>
-
-        {notice && (
-          <p
-            role="status"
-            style={{
-              font: "500 13px/19px var(--font-system)",
-              color: notice.ok ? "var(--ink-soft)" : "var(--danger)",
-            }}
+    <SheetPage
+      title={s.title}
+      backHref="/chat"
+      backLabel={s.back}
+      wideAction
+      action={
+        !error && card && canSnooze ? (
+          <button
+            type="button"
+            className="btn-secondary shrink-0"
+            style={{ padding: "8px 14px", fontWeight: 500 }}
+            disabled={snoozing}
+            onClick={snooze}
           >
-            {notice.text}
-          </p>
-        )}
+            {s.snooze}
+          </button>
+        ) : undefined
+      }
+    >
+      {!error && card && (
+        <div className="flex flex-col gap-2">
+          {/* The hour is the card's own, from the server. The design's
+              „19:00" is a demo value; the person's hour may differ, and a
+              snoozed card comes back at another one. */}
+          {card.dueAt && fmtTime(card.dueAt) && (
+            <span className="kind-pill">
+              {fmtTime(card.dueAt)}
+              {sameDay(card.dueAt) ? ` · ${s.today}` : ""}
+            </span>
+          )}
+          <p style={{ font: "400 14.5px/22px var(--font-system)", color: "var(--ink-soft)" }}>{s.intro}</p>
+        </div>
+      )}
 
-        {error && (
-          <div className="flex flex-col items-start gap-2">
-            <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--danger)" }}>{error}</p>
-            <button type="button" className="btn-secondary" onClick={load}>{s.retry}</button>
-          </div>
-        )}
+      {notice && (
+        <p
+          role="status"
+          style={{
+            font: "500 13px/19px var(--font-system)",
+            color: notice.ok ? "var(--ink-soft)" : "var(--danger)",
+          }}
+        >
+          {notice.text}
+        </p>
+      )}
 
-        {!error && card === undefined && <span className="sk-bar" style={{ width: "80%" }} />}
+      {error && (
+        <div className="flex flex-col items-start gap-2">
+          <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--danger)" }}>{error}</p>
+          <button type="button" className="btn-secondary" onClick={load}>{s.retry}</button>
+        </div>
+      )}
 
-        {!error && card === null && (
-          <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--meta)" }}>{s.empty}</p>
-        )}
+      {!error && card === undefined && <span className="sk-bar" style={{ width: "80%" }} />}
 
-        {!error && card && (
-          <>
-            <div className="flex flex-col gap-3">
-              {card.items.map((it) => (
-                <div key={it.askId} className="card flex flex-col gap-2" style={it.answered ? { opacity: 0.7 } : undefined}>
-                  {it.fromName && (
-                    <span style={{ font: "500 12.5px/17px var(--font-system)", color: "var(--meta)" }}>{it.fromName}</span>
-                  )}
-                  <p style={{ font: "400 15px/22px var(--font-system)", color: "var(--ink)", whiteSpace: "pre-wrap" }}>
-                    {it.question}
-                  </p>
-                  {it.answered ? (
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span style={{ font: "500 13px/19px var(--font-system)", color: "var(--ink-soft)" }}>{s.answered}</span>
-                      <Link href={`/chat/${it.threadId}`} style={{ font: "500 13px/19px var(--font-system)", color: "var(--ink-soft)", textDecoration: "underline" }}>
-                        {s.open}
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {(it.choices ?? card.choices).map((ch, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          className={i === 0 ? "btn-primary" : "btn-secondary"}
-                          disabled={busy != null}
-                          onClick={() => answer(it, ch)}
-                        >
-                          {ch}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {failedAsk === it.askId && (
-                    <p role="status" style={{ font: "500 13px/19px var(--font-system)", color: "var(--danger)" }}>{s.sendFailed}</p>
-                  )}
+      {!error && card === null && (
+        <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--meta)" }}>{s.empty}</p>
+      )}
+
+      {!error && card && (
+        <div className="flex flex-col gap-3">
+          {card.items.map((it) => (
+            <div key={it.askId} className="card flex flex-col gap-2" style={it.answered ? { opacity: 0.7 } : undefined}>
+              {it.fromName && (
+                <span style={{ font: "600 16px/22px var(--font-system)", color: "var(--ink)" }}>{it.fromName}</span>
+              )}
+              <p style={{ font: "400 14.5px/22px var(--font-system)", color: "var(--ink-soft)", whiteSpace: "pre-wrap" }}>
+                {it.question}
+              </p>
+              {it.answered ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <span style={{ font: "500 13px/19px var(--font-system)", color: "var(--ink-soft)" }}>{s.answered}</span>
+                  <Link href={`/chat/${it.threadId}`} style={{ font: "500 13px/19px var(--font-system)", color: "var(--accent)" }}>
+                    {s.open}
+                  </Link>
                 </div>
-              ))}
+              ) : (
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {/* The buttons are the server's, per question (#1948), not
+                      the design's fixed four: a question that only takes
+                      "later" must not be offered a yes. */}
+                  {(it.choices ?? card.choices).map((ch, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: "8px 16px", fontWeight: 500 }}
+                      disabled={busy != null}
+                      onClick={() => answer(it, ch)}
+                    >
+                      {ch}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {failedAsk === it.askId && (
+                <p role="status" style={{ font: "500 13px/19px var(--font-system)", color: "var(--danger)" }}>{s.sendFailed}</p>
+              )}
             </div>
-
-            {card.items.some((it) => !it.answered) && !snoozed && (
-              <button type="button" className="btn-secondary self-start" disabled={snoozing} onClick={snooze}>
-                {s.snooze}
-              </button>
-            )}
-          </>
-        )}
-      </div>
-    </div>
+          ))}
+        </div>
+      )}
+    </SheetPage>
   );
 }
