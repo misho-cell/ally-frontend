@@ -392,8 +392,10 @@ body {
 
 /* ============ Section label ============ */
 .section-label {
-  font: 600 10.5px/14px var(--font-system); letter-spacing: 1.6px;
-  text-transform: uppercase; color: var(--meta);
+  /* 9 Oct, the design's group heads: plain weight-600 words. Georgian has
+     no capitals, so the old letter-spaced caps only spread the letters. */
+  font: 600 12.5px/17px var(--font-system); letter-spacing: 0;
+  text-transform: none; color: var(--ink-soft);
 }
 
 /* ============ Legal pages (terms / privacy / refund) ============ */
@@ -424,7 +426,8 @@ body {
    border, no outline, no focus ring, ever. */
 .composer-pill {
   background: #FFFFFF; border: 1px solid var(--header-border);
-  border-radius: var(--radius-pill); box-shadow: var(--shadow-card);
+  /* 9 Oct: the design's composer is a 16px card, not a capsule. */
+  border-radius: var(--radius-card); box-shadow: var(--shadow-card);
 }
 .composer-pill:focus-within { border-color: var(--accent); box-shadow: var(--input-focus-ring); }
 .composer-pill input,

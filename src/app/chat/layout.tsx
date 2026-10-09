@@ -1476,22 +1476,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 {presenceN > 0 ? tf("presenceWorking", { n: presenceN }) : t("presenceReady")}
               </span>
             </div>
-            {/* Task 22 (d): new-goal button in the EXPANDED sidebar too — desktop
-                and phone list alike. */}
-            <button
-              onClick={() => {
-                explicitGoalRef.current = true;
-                router.push("/chat");
-                homeInputRef.current?.focus();
-                window.dispatchEvent(new Event("netai:focus-composer"));
-              }}
-              aria-label={t("newTask")}
-              title={t("newTask")}
-              className="flex items-center justify-center rounded-full"
-              style={{ width: 28, height: 28, background: "var(--accent)", color: "#FFFFFF", fontSize: "16px", lineHeight: 1 }}
-            >
-              +
-            </button>
             <button
               onClick={toggleCollapsed}
               aria-label="collapse sidebar"
@@ -1504,14 +1488,36 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             </button>
           </div>
 
+          {/* Task 22 (d): new-goal button in the EXPANDED sidebar too, desktop
+              and phone list alike. 9 Oct: the design makes it the full-width
+              teal button under the name, with its words, not a bare "+". */}
+          <button
+            onClick={() => {
+              explicitGoalRef.current = true;
+              router.push("/chat");
+              homeInputRef.current?.focus();
+              window.dispatchEvent(new Event("netai:focus-composer"));
+            }}
+            className="flex w-full items-center justify-center gap-2 transition-colors"
+            style={{
+              height: 42, borderRadius: 12, background: "var(--accent)", color: "#FFFFFF",
+              font: "600 13.5px/18px var(--font-system)",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-strong)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--accent)"; }}
+          >
+            <span aria-hidden="true" style={{ fontSize: 17, lineHeight: 1 }}>+</span>
+            {t("newTask")}
+          </button>
+
           {/* Search over everything already loaded (E2). */}
           <div
             className="flex items-center gap-2"
             style={{
               background: "#FFFFFF",
               border: "1px solid var(--header-border)",
-              borderRadius: "var(--radius-pill)",
-              padding: "7px 12px",
+              borderRadius: 12,
+              padding: "9px 12px",
             }}
           >
             <svg width="13" height="13" viewBox="0 0 20 20" fill="none">

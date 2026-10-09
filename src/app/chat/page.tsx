@@ -8,6 +8,11 @@ import { beginDictation, shouldRecord, type DictationHandle } from "@/lib/dictat
 import { FILE_ACCEPT, FILE_MAX_BYTES } from "@/lib/threadFiles";
 import AttachIcon from "@/components/AttachIcon";
 import StagedFile from "@/components/StagedFile";
+import Link from "next/link";
+import { tf } from "@/lib/i18n";
+import { apiFetch } from "@/lib/api";
+import { isRecord, unwrapData } from "@/lib/payload";
+import { useUserName } from "@/lib/user";
 
 // Desktop right pane, no goal selected: dogs clip + one line + the goal
 // composer (ticket 6 #1). D20 (22 Aug): mic AND send are both available while
@@ -28,6 +33,31 @@ export default function ChatIndexPage() {
   const hasGoals = threads.some((th) =>
     taskStatusOf(th, threadStates[String(th.id)]) !== null
   );
+  const { name } = useUserName();
+  const firstName = name.trim().split(/\s+/)[0] ?? "";
+
+  // 9 Oct, the new design's news card. It reads only the count: GET /updates
+  // releases and marks seen what it returns (#387), so opening the home screen
+  // must never call it, or the person would lose the very updates the card
+  // points at. A count we could not read draws no card, rather than a card
+  // that says there is nothing new.
+  const [newsCount, setNewsCount] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const body = unwrapData(await apiFetch<unknown>("/updates/count"));
+        if (!alive || !isRecord(body) || typeof body.due !== "number") return;
+        setNewsCount(body.due + (typeof body.followed === "number" ? body.followed : 0));
+      } catch { /* no card */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  function suggest(text: string) {
+    setInput(`${text}: `);
+    inputRef.current?.focus();
+  }
 
   useEffect(() => {
     const focus = () => inputRef.current?.focus();
@@ -124,25 +154,60 @@ export default function ChatIndexPage() {
   }
 
   return (
-    <div className="hidden md:flex flex-1 h-full flex-col" style={{ background: "var(--bg)" }}>
-      {threadsLoaded && (
-        <div className="empty flex-1">
-          <video
-            className="ally-anim"
-            style={{ width: "auto", height: 160 }}
-            autoPlay muted loop playsInline
-            src="/assets/ally/anim/ally-dogs.mp4"
-            poster="/assets/ally/anim/ally-dogs-poster.jpg"
-            onError={(e) => { e.currentTarget.style.display = "none"; }}
-          />
-          <h2>{hasGoals ? t("selectThread") : t("emptyHome")}</h2>
-        </div>
-      )}
+    <div className="hidden md:flex flex-1 h-full flex-col justify-center overflow-y-auto py-8" style={{ background: "var(--bg)" }}>
+      <div className="flex flex-col items-center px-6 pb-6">
+        {threadsLoaded && (
+          <div className="flex w-full flex-col items-center gap-5" style={{ maxWidth: 720 }}>
+            <p style={{ font: "500 17px/24px var(--font-system)", color: "var(--ink)" }}>
+              {firstName ? `${t("homeHello")}, ${firstName}` : t("homeHello")}
+            </p>
+            <div className="flex w-full items-center justify-center gap-5">
+              <video
+                className="ally-anim shrink-0"
+                style={{ width: "auto", height: 96 }}
+                autoPlay muted loop playsInline
+                src="/assets/ally/anim/ally-dogs.mp4"
+                poster="/assets/ally/anim/ally-dogs-poster.jpg"
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
+              {newsCount != null && newsCount > 0 && (
+                <Link
+                  href="/updates"
+                  className="flex flex-1 flex-col gap-1.5"
+                  style={{
+                    maxWidth: 510, padding: "16px 18px", background: "#FFFFFF",
+                    border: "1px solid var(--cta-border)", borderRadius: 15,
+                    boxShadow: "var(--shadow-news)", textDecoration: "none",
+                  }}
+                >
+                  <span className="flex items-center justify-between">
+                    <span style={{ font: "600 13px/18px var(--font-system)", color: "var(--ink)" }}>{t("homeNewsTitle")}</span>
+                    <span style={{ font: "600 11px/16px var(--font-system)", color: "var(--accent)", background: "var(--accent-tint)", borderRadius: 8, padding: "1px 8px" }}>
+                      {newsCount}
+                    </span>
+                  </span>
+                  <span style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-soft)" }}>
+                    {tf("homeNewsCount", { n: newsCount })}
+                  </span>
+                  <span style={{ font: "600 12px/16px var(--font-system)", color: "var(--accent)" }}>{t("homeNewsMore")} ›</span>
+                </Link>
+              )}
+            </div>
+            <div className="flex flex-col items-center gap-1 text-center">
+              <h2 style={{ font: "600 30px/38px var(--font-bricolage)", color: "var(--ink)" }}>
+                {t("homeAsk")}
+              </h2>
+              <p style={{ font: "400 13.5px/20px var(--font-system)", color: "var(--ink-soft)" }}>
+                {hasGoals ? t("homeAskSub") : t("emptyHome")}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
 
-      <div
-        className="px-6 py-4"
-        style={{ borderTop: "1px solid var(--header-border)", background: "var(--bg)" }}
-      >
+      {/* The design puts the composer under the question, not pinned to the
+          bottom edge: on this screen it is the whole point of the page. */}
+      <div className="px-6">
         {(staged || tooBig) && (
           <div className="mx-auto mb-2 flex flex-col gap-1" style={{ maxWidth: "720px" }}>
             {staged && <StagedFile name={staged.name} onRemove={() => setStaged(null)} disabled={attaching} />}
@@ -238,6 +303,24 @@ export default function ChatIndexPage() {
             </button>
           )}
         </form>
+        <div className="mx-auto mt-3 flex flex-wrap justify-center gap-2" style={{ maxWidth: "720px" }}>
+          {(["homeChipSpecialist", "homeChipRecommend", "homeChipIntro"] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => suggest(t(k))}
+              className="transition-colors"
+              style={{
+                padding: "7px 14px", borderRadius: 9, border: "1px solid var(--header-border)",
+                background: "#FFFFFF", font: "500 12.5px/17px var(--font-system)", color: "var(--ink-soft)",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--cta-border)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--header-border)"; }}
+            >
+              {t(k)}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
