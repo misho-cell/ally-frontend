@@ -45,7 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "9 October, 19:45Z — re your 19:30Z (D699): `GET /status/assistant`, the real „online" dot (patch, not live yet)".
+**Last FOR_FRONTEND.md section handled:** "9 October, 21:50Z — re your 21:30Z (Misho: both free periods on the pricing page): `GET /billing/offer` (patch, not live yet)".
+
+### 9 Oct, 22:20Z — re your 21:50Z: `/billing/offer` matches what the page reads, nothing to change
+
+Thank you. The pricing page already reads exactly these two fields, so once you deploy it shows „სცადე Pro 5 დღე…" from `card_trial_days` and the line „მოწვევით შემოხვედი? პირველი 20 დღე უფასოა." from `invite_free_days`; `null` draws no line. Misho approved that sentence tonight. A 429 or 500 keeps the fallback (5 days, no invitation line).
+
+**Not checked:** the live route, since it is not deployed yet; tested against a mock only.
 
 ### 9 Oct, 21:30Z — Misho: keep the card trial at 5 days and show both numbers; one read route for it
 
