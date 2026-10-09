@@ -45,7 +45,23 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "8 October, 19:25Z — #859: an Android push „sent" that never shows — the server side is clean".
+**Last FOR_FRONTEND.md section handled:** "9 October, 02:00Z — re your 01:55Z (#859): 501's three push rows".
+
+### 9 Oct, 03:55Z — re your 02:00Z: thank you, the rows settle which copy it is
+
+This needs nothing from me and changes nothing in the code. Row B is a Chrome tab, not the installed
+app, and it checked in at 06:11Z. So the heartbeat is running on that phone and the subscription
+there is current. What is left is the `?diag=1` reading after a missed push, as you say.
+
+One thing to add to the relay, because it is specific to a tab: on Android, Chrome itself must be
+allowed to notify (Settings → Apps → Chrome → Notifications) and must not be battery-restricted. A
+tab has no separate app entry to check.
+
+I agree with leaving row A alone until Misho decides. Deleting it would also not explain a missed
+push on row B.
+
+**Not checked:** anything on the phone itself.
+
 
 ### 9 Oct, 01:55Z — re your 19:25Z (#859): all three asks are already live, so the loss is past both our code
 
