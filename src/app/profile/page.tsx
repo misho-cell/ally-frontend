@@ -64,6 +64,8 @@ const L = {
     addTokens: "Add tokens",
     tokensAdded: "Tokens added",
     earnings: "My earnings",
+    moneyTitle: "Plan and money",
+    moneyTabs: { plan: "Plan", tokens: "Tokens", earnings: "Earnings", invite: "Invite" },
     earningsSub: "Invite friends, earn from their subscriptions",
     claudeTitle: "Netai in Claude",
     claudeBody: "Use your Netai network directly from Claude — search, intro requests and replies, without leaving the chat.",
@@ -149,6 +151,8 @@ const L = {
     addTokens: "ტოკენების დამატება",
     tokensAdded: "ტოკენები დაემატა",
     earnings: "ჩემი შემოსავალი",
+    moneyTitle: "გეგმა და თანხები",
+    moneyTabs: { plan: "გეგმა", tokens: "ტოკენები", earnings: "შემოსავალი", invite: "მოწვევა" },
     earningsSub: "დაპატიჟე მეგობრები და მიიღე წილი მათი გამოწერებიდან",
     claudeTitle: "Netai Claude-ში",
     claudeBody: "გამოიყენე შენი Netai ქსელი პირდაპირ Claude-დან: ძიება, გაცნობის თხოვნები და პასუხები, ჩეთიდან გაუსვლელად.",
@@ -885,6 +889,7 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   // #497: cancelling and resuming the paid plan without the Stripe page.
   const [askCancel, setAskCancel] = useState(false);
+  const [moneyTab, setMoneyTab] = useState<"plan" | "tokens" | "earnings" | "invite">("plan");
   const [planBusy, setPlanBusy] = useState(false);
   // Set only after the server has told us this plan was granted by the team.
   // Not guessed from the profile: nothing there distinguishes a granted plan
@@ -1040,50 +1045,35 @@ export default function ProfilePage() {
               onSaved={(p) => setProfile((prev) => (prev ? { ...prev, ...p } : prev))}
             />
 
-            {/* Referral rewards + code (ticket 6 #5, closes E8/E10) */}
-            <ReferralRewardsCard code={profile.referral_code ?? null} />
-
-            {/* Token wallet */}
-            <TokensWidget />
-
-            {/* Referral earnings */}
-            <Link
-              href="/profile/earnings"
-              className="card flex items-center justify-between transition-colors"
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--cta-border)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--sidebar-border)"; }}
-            >
-              <div>
-                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.earnings}</h2>
-                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
-                  {s.earningsSub}
-                </p>
+            {/* 9 Oct, the new design (4.9): the money cards under one block
+                with four tabs, plan / tokens / earnings / invite. The cards
+                are the same ones that stood here one under another; only
+                their arrangement changed, so every number in them is still
+                the server's. */}
+            <div className="flex flex-col gap-3">
+              <h2 className="section-label" style={{ padding: "0 2px" }}>{s.moneyTitle}</h2>
+              <div role="tablist" className="grid grid-cols-4 gap-1 rounded-xl p-1" style={{ background: "var(--accent-tint)" }}>
+                {(["plan", "tokens", "earnings", "invite"] as const).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    role="tab"
+                    aria-selected={moneyTab === k}
+                    onClick={() => setMoneyTab(k)}
+                    className="rounded-lg px-1 py-2 transition-colors"
+                    style={{
+                      font: "600 12px/16px var(--font-system)",
+                      overflowWrap: "anywhere",
+                      background: moneyTab === k ? "#FFFFFF" : "transparent",
+                      color: moneyTab === k ? "var(--accent-strong)" : "var(--ink-soft)",
+                      boxShadow: moneyTab === k ? "var(--shadow-card)" : undefined,
+                    }}
+                  >
+                    {s.moneyTabs[k]}
+                  </button>
+                ))}
               </div>
-              <span style={{ color: "var(--meta)" }}>→</span>
-            </Link>
-
-            {/* #374 (2 Oct). A web page cannot see the phonebook change after
-                the first import, so anybody saved to the phone later never
-                reached the server and could not be found. This is the same
-                picker onboarding uses, which is the point: one import path,
-                not a second one that drifts from it. */}
-            <Link
-              href="/onboarding/contacts?from=profile"
-              className="card flex items-center justify-between transition-colors"
-            >
-              <div>
-                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.addContacts}</h2>
-                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
-                  {s.addContactsSub}
-                </p>
-              </div>
-              <span style={{ color: "var(--meta)" }}>→</span>
-            </Link>
-
-            {/* Netai in Claude (MCP connector guide) */}
-            <AllyInClaudeCard />
-
-            {/* Subscription card */}
+              {moneyTab === "plan" && (
             <div className="card flex flex-col gap-4">
               <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>
                 {s.subscription}
@@ -1139,6 +1129,55 @@ export default function ProfilePage() {
                 )
               ) : null}
             </div>
+
+              )}
+              {moneyTab === "tokens" && (
+            <TokensWidget />
+
+              )}
+              {moneyTab === "earnings" && (
+            <Link
+              href="/profile/earnings"
+              className="card flex items-center justify-between transition-colors"
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--cta-border)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--sidebar-border)"; }}
+            >
+              <div>
+                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.earnings}</h2>
+                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
+                  {s.earningsSub}
+                </p>
+              </div>
+              <span style={{ color: "var(--meta)" }}>→</span>
+            </Link>
+
+              )}
+              {moneyTab === "invite" && (
+            <ReferralRewardsCard code={profile.referral_code ?? null} />
+
+              )}
+            </div>
+
+            {/* #374 (2 Oct). A web page cannot see the phonebook change after
+                the first import, so anybody saved to the phone later never
+                reached the server and could not be found. This is the same
+                picker onboarding uses, which is the point: one import path,
+                not a second one that drifts from it. */}
+            <Link
+              href="/onboarding/contacts?from=profile"
+              className="card flex items-center justify-between transition-colors"
+            >
+              <div>
+                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.addContacts}</h2>
+                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
+                  {s.addContactsSub}
+                </p>
+              </div>
+              <span style={{ color: "var(--meta)" }}>→</span>
+            </Link>
+
+            {/* Netai in Claude (MCP connector guide) */}
+            <AllyInClaudeCard />
 
             {/* Data rights (C2) */}
             <Link
