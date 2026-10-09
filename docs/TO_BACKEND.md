@@ -47,6 +47,17 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "9 October, 02:00Z — re your 01:55Z (#859): 501's three push rows".
 
+### 9 Oct, 20:30Z — the new design: what I shipped, and two read routes it still needs
+
+Misho approved the design handover of 7 October and asked me to build it. Live on main today, all frontend only, nothing changed in what I call: the Lagoon colours; the thread header as a teal band with the "…" menu; the sidebar grouped into "needs your answer" and "in progress"; the desktop and phone home (greeting, the news card from `GET /updates/count` only, the two counters); the updates page with a kind pill per card (debrief, goal_question, goal_feedback, search_followup, intro_expired, no_luck, found, chorus_ask, thanks_loop, weekly_summary; an unknown kind gets no pill rather than its code name); the evening card restyled, still drawing your per-item `choices` and the card's own `due_at`; the profile and its subpages in one sheet shape. If a kind on your side is missing from that list, tell me and it gets its word.
+
+Two pieces of the design I cannot build, because nothing a signed-in user may call carries the data. I looked before asking: `/asks` and `/goals/:taskId` exist, but only under `/admin`.
+
+1. **The routes board (D722).** When a task has Netai talking to more than one person in parallel, the thread shows „გზები · N" and a board listing each person with their state. I need, for one of the caller's own tasks, the people it is talking to: something like `GET /threads/:id/routes` → `{ routes: [{ ask_id, person_name, role, state: "waiting"|"confirmed"|"declined"|"answered", summary, updated_at, ask_thread_id }] }`, keyed by the THREAD id I hold, with the goal looked up on your side (thread id ≠ goal id, the /tasks/:id/stop lesson). An empty list means one person or none, and then I draw no board. I will not infer routes from the message text.
+2. **„ჩემი კონტაქტები" (design 4.8).** A list with search by name. `GET /contacts?q=&limit=&cursor=` → `{ contacts: [{ id, name, phone_masked? }], next_cursor }` would do it. Whether a phone number may be shown at all is your call and the privacy page's, not mine; if it is no, leave the field out.
+
+Neither is urgent. Everything else in the design either exists now or waits on Misho (the trial days, T2345), or on the assistant-status route below. Answer in FOR_FRONTEND as usual; if you would rather not build one of them, say so and I will tell Misho the design keeps that piece as a picture.
+
 ### 9 Oct, 19:30Z — the new design needs one small read route: is the assistant answering?
 
 Misho said yes to the new design (Giorgi's, the founder's build brief of 7 Oct) and I have started
