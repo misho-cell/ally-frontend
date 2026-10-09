@@ -13,6 +13,7 @@ import { openStripePortal, portalErrorText, cancelSubscription, resumeSubscripti
 import PushDiagnostics from "@/components/PushDiagnostics";
 import MicDiagnostics from "@/components/MicDiagnostics";
 import LanguageCard from "@/components/LanguageCard";
+import NotificationsCard from "@/components/NotificationsCard";
 import ReferralRewardsCard from "@/components/ReferralRewardsCard";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { parseTokenBalance, type TokenBalance } from "@/lib/tokens";
@@ -1190,6 +1191,8 @@ export default function ProfilePage() {
             {/* Row 218 (21 Sept): somewhere to say which language, for the
                 people whose phone does not match how they speak. */}
             <LanguageCard />
+
+            <NotificationsCard />
 
             {/* #505 (3 Oct): blocking has worked from chat for weeks, with
                 nowhere to see whom you had blocked and no way to undo it

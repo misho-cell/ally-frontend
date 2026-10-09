@@ -59,9 +59,10 @@ export default function LanguageCard() {
             style={{
               fontSize: "13px",
               fontWeight: 600,
-              border: "1px solid var(--sidebar-border)",
-              background: current === loc ? "var(--ink)" : "transparent",
-              color: current === loc ? "var(--bg)" : "var(--ink)",
+              // The design's active chip: teal on its pale tint.
+              border: `1px solid ${current === loc ? "var(--cta-border)" : "var(--sidebar-border)"}`,
+              background: current === loc ? "var(--accent-tint)" : "transparent",
+              color: current === loc ? "var(--accent)" : "var(--ink)",
             }}
           >
             {s[loc]}
