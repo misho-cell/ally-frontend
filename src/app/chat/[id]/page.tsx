@@ -20,6 +20,7 @@ import { FILE_ACCEPT, FILE_MAX_BYTES, fetchGoalList, uploadThreadFile } from "@/
 import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import ThreadMenu from "@/components/ThreadMenu";
+import ContextPanel, { ContextPanelToggle } from "@/components/ContextPanel";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import {
   useThreads,
@@ -1659,7 +1660,8 @@ export default function ThreadPage() {
   ];
 
   return (
-    <div className="flex h-full flex-col" style={{ background: "var(--bg)" }}>
+    <div className="flex h-full">
+    <div className="flex h-full min-w-0 flex-1 flex-col" style={{ background: "var(--bg)" }}>
       {/* Ticket 20: a failed stop stays on screen. The goal is still running,
           so the person needs to know now, not for two seconds. */}
       {stopFailed && (
@@ -1831,6 +1833,7 @@ export default function ThreadPage() {
               behind one "…" button. The conditions are the ones each
               separate button had; see the notes on stop (2 Oct), pin
               (#2080), the list (#894) and the export (#71) further up. */}
+          <ContextPanelToggle />
           <ThreadMenu
             label={t("moreActions")}
             items={[
@@ -2457,6 +2460,12 @@ export default function ThreadPage() {
           </div>
         </div>
       </div>
+    </div>
+    <ContextPanel
+      thread={thread ?? null}
+      statusLabel={statusLabel || null}
+      warm={!thread?.status_line && (taskStatus === "needs_you" || taskStatus === "failed")}
+    />
     </div>
   );
 }
