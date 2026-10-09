@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import SheetPage from "@/components/SheetPage";
 import { apiFetch, ApiError } from "@/lib/api";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { getLocale } from "@/lib/i18n";
@@ -358,13 +359,7 @@ export default function DataRightsPage() {
           onCancel={() => setAskFinal(false)}
         />
       )}
-      <div className="mx-auto flex flex-col" style={{ maxWidth: "620px", padding: "28px 24px 40px", gap: "14px" }}>
-        <div className="flex items-center gap-3 mb-1">
-          <Link href="/profile" className="transition-colors" style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-soft)" }}>
-            {s.back}
-          </Link>
-          <span style={{ font: "500 22px/28px var(--font-bricolage)", color: "var(--ink)" }}>{s.title}</span>
-        </div>
+      <SheetPage title={s.title} backHref="/profile" backLabel={s.back.replace(/^←\s*/, "")}>
 
         <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.intro}</p>
 
@@ -463,7 +458,7 @@ export default function DataRightsPage() {
             </div>
           </>
         )}
-      </div>
+      </SheetPage>
     </div>
   );
 }

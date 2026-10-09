@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import Link from "next/link";
+import SheetPage from "@/components/SheetPage";
 import { apiFetch, ApiError } from "@/lib/api";
 import { getLocale, fmtDateLoc } from "@/lib/i18n";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
@@ -128,11 +128,7 @@ export default function BlockedPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
-      <div className="mx-auto flex flex-col" style={{ maxWidth: "620px", padding: "28px 24px 40px", gap: "14px" }}>
-        <div className="mb-1 flex items-center gap-3">
-          <Link href="/profile" className="transition-colors" style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-soft)" }}>{s.back}</Link>
-          <span style={{ font: "500 22px/28px var(--font-bricolage)", color: "var(--ink)" }}>{s.title}</span>
-        </div>
+      <SheetPage title={s.title} backHref="/profile" backLabel={s.back.replace(/^←\s*/, "")}>
 
         <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.intro}</p>
 
@@ -171,7 +167,7 @@ export default function BlockedPage() {
             ))}
           </div>
         )}
-      </div>
+      </SheetPage>
 
       {asking && (
         <ConfirmDialog

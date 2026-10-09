@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import SheetPage from "@/components/SheetPage";
 import { authHeaders } from "@/lib/deviceId";
 import { getLocale, fmtDateLoc } from "@/lib/i18n";
 import ReferralRewardsCard from "@/components/ReferralRewardsCard";
@@ -332,16 +332,7 @@ export default function EarningsPage() {
         </div>
       )}
 
-      <div
-        className="profile-col mx-auto flex flex-col"
-        style={{ maxWidth: "620px", padding: "28px 24px 40px", gap: "14px" }}
-      >
-        <div className="flex items-center gap-3 mb-3">
-          <Link href="/profile" className="transition-colors" style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-soft)" }}>
-            {s.backProfile}
-          </Link>
-          <span style={{ font: "500 22px/28px var(--font-bricolage)", color: "var(--ink)" }}>{s.title}</span>
-        </div>
+      <SheetPage title={s.title} backHref="/profile" backLabel={s.backProfile.replace(/^←\s*/, "")}>
 
         {loading ? (
           <div className="flex flex-col gap-3">
@@ -534,7 +525,7 @@ export default function EarningsPage() {
             </div>
           </>
         )}
-      </div>
+      </SheetPage>
 
       {/* Confirm dialog */}
       {confirm && (
