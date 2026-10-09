@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import SheetPage from "@/components/SheetPage";
 import { apiFetch, ApiError } from "@/lib/api";
 import { authHeaders } from "@/lib/deviceId";
 import { onCheckoutCompleted } from "@/lib/paddle";
@@ -983,23 +984,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
-      <div
-        className="profile-col mx-auto flex flex-col"
-        style={{ maxWidth: "620px", padding: "28px 24px 40px", gap: "14px" }}
-      >
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-3">
-          <Link
-            href="/chat"
-            className="transition-colors"
-            style={{ fontSize: "13px", fontWeight: 600, color: "var(--ink-soft)" }}
-          >
-            {s.backChat}
-          </Link>
-          <span style={{ font: "500 22px/28px var(--font-bricolage)", color: "var(--ink)" }}>
-            {s.title}
-          </span>
-        </div>
+      <SheetPage title={s.title} backHref="/chat" backLabel={s.backChat.replace(/^←\s*/, "")}>
 
         {error && (
           <div
@@ -1218,7 +1203,7 @@ export default function ProfilePage() {
             </button>
           </div>
         )}
-      </div>
+      </SheetPage>
     {/* #497: the question names the date the plan actually runs until —
         trial end or paid period end, whichever this account has. Without a
         date "cancel" reads as "it stops now", and what happens is the
