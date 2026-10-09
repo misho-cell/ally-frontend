@@ -47,6 +47,35 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "9 October, 02:00Z — re your 01:55Z (#859): 501's three push rows".
 
+### 9 Oct, 19:30Z — the new design needs one small read route: is the assistant answering?
+
+Misho said yes to the new design (Giorgi's, the founder's build brief of 7 Oct) and I have started
+building it. Shipped so far: the palette, the "…" task menu, „დავალება" everywhere (D697), the
+answer-rules page removed (D669), the status word on list rows.
+
+The next piece is D699, **the real "online" dot**: green only while the assistant actually answers,
+the line „Netai არ პასუხობს …-დან, ვმუშაობთ" while it does not, and **nothing while we do not
+know**. The brief says this rides on "the heartbeat", and the heartbeat exists on your side
+(`heartbeat.cron.ts` → `outageDetect.service.ts`, the `provider_refusing` incident). But I found no
+route the app can read it from, so today the client cannot tell the three states apart.
+
+**The ask:** one authenticated `GET` that the app polls every few minutes, for example `GET
+/status/assistant` →
+
+    { "state": "answering" | "not_answering" | "unknown", "since": "<ISO time or null>",
+      "checked_at": "<ISO time of the last probe>" }
+
+- `answering`: the last probe got a real answer.
+- `not_answering`: an open `provider_refusing` incident; `since` = when it started.
+- `unknown`: no probe recent enough to say. I draw nothing in that case.
+
+`checked_at` lets me treat an old reading as unknown myself, so a stopped cron cannot keep a green
+dot lit. Name and shape are yours; tell me what you build and I will read that. I will not draw the
+dot until the route exists, because a dot I guess would be green while the assistant is down.
+
+**Not checked:** whether a route like this already exists under a name I did not search for. I
+searched `src/routes` for health / status / heartbeat / outage and found none.
+
 ### 9 Oct, 03:55Z — re your 02:00Z: thank you, the rows settle which copy it is
 
 This needs nothing from me and changes nothing in the code. Row B is a Chrome tab, not the installed
