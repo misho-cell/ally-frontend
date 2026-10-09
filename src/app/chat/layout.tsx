@@ -28,6 +28,7 @@ import { appendedKind } from "@/contexts/ThreadsContext";
 import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import UpdatesBadge from "@/components/UpdatesBadge";
+import NewsCard from "@/components/NewsCard";
 import AttachIcon from "@/components/AttachIcon";
 import PaneResizer, {
   subscribeSidebarWidth,
@@ -1582,6 +1583,37 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   </section>
                 )}
 
+                {/* 9 Oct, the new design's phone home: a greeting, the news
+                    card, and two counters over the list. Phone only; the
+                    desktop home draws its own in the main pane. The counters
+                    are the lengths of the two groups below and jump to them. */}
+                {!q && (
+                  <div className="mb-3 flex flex-col gap-3 md:hidden" style={{ padding: "0 2px" }}>
+                    <p style={{ font: "500 16px/22px var(--font-system)", color: "var(--ink)", padding: "0 4px" }}>
+                      {user.name.trim() ? `${t("homeHello")}, ${user.name.trim().split(/\s+/)[0]}` : t("homeHello")}
+                    </p>
+                    <NewsCard />
+                    {(needsYou.length > 0 || ongoing.length > 0) && (
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { key: "needs", n: needsYou.length, label: t("homeTileNeeds"), bg: "var(--accent)", ink: "#FFFFFF" },
+                          { key: "ongoing", n: ongoing.length, label: t("homeTileWorking"), bg: "var(--apricot)", ink: "#3B2414" },
+                        ].map((tile) => (
+                          <a
+                            key={tile.key}
+                            href={`#group-${tile.key}`}
+                            className="flex items-start gap-2"
+                            style={{ background: tile.bg, color: tile.ink, borderRadius: 16, padding: "14px 14px 16px", textDecoration: "none" }}
+                          >
+                            <span style={{ font: "700 34px/36px var(--font-system)" }}>{tile.n}</span>
+                            <span style={{ font: "500 13px/18px var(--font-system)", paddingTop: 2 }}>{tile.label}</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {asks.length > 0 && (
                   <section className="mb-2 flex flex-col gap-[3px]">
                     <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("asksLabel")}</p>
@@ -1616,7 +1648,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   { key: "needs", label: t("needsYouGroup"), rows: needsYou, warm: true, show: needsYou.length > 0 },
                   { key: "ongoing", label: t("inProgress"), rows: ongoing, warm: false, show: ongoing.length > 0 || active.length === 0 },
                 ].filter((g) => g.show).map((g) => (
-                  <section key={g.key} className={`flex flex-col gap-[3px]${g.key === "needs" ? " mb-2" : ""}`}>
+                  <section key={g.key} id={`group-${g.key}`} className={`flex scroll-mt-3 flex-col gap-[3px]${g.key === "needs" ? " mb-2" : ""}`}>
                     <GroupHead label={g.label} count={g.rows.length} warm={g.warm} />
                     {g.rows.map(({ thread, status }) => (
                       <TaskRow

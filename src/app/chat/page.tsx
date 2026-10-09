@@ -8,10 +8,7 @@ import { beginDictation, shouldRecord, type DictationHandle } from "@/lib/dictat
 import { FILE_ACCEPT, FILE_MAX_BYTES } from "@/lib/threadFiles";
 import AttachIcon from "@/components/AttachIcon";
 import StagedFile from "@/components/StagedFile";
-import Link from "next/link";
-import { tf } from "@/lib/i18n";
-import { apiFetch } from "@/lib/api";
-import { isRecord, unwrapData } from "@/lib/payload";
+import NewsCard from "@/components/NewsCard";
 import { useUserName } from "@/lib/user";
 
 // Desktop right pane, no goal selected: dogs clip + one line + the goal
@@ -35,24 +32,6 @@ export default function ChatIndexPage() {
   );
   const { name } = useUserName();
   const firstName = name.trim().split(/\s+/)[0] ?? "";
-
-  // 9 Oct, the new design's news card. It reads only the count: GET /updates
-  // releases and marks seen what it returns (#387), so opening the home screen
-  // must never call it, or the person would lose the very updates the card
-  // points at. A count we could not read draws no card, rather than a card
-  // that says there is nothing new.
-  const [newsCount, setNewsCount] = useState<number | null>(null);
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      try {
-        const body = unwrapData(await apiFetch<unknown>("/updates/count"));
-        if (!alive || !isRecord(body) || typeof body.due !== "number") return;
-        setNewsCount(body.due + (typeof body.followed === "number" ? body.followed : 0));
-      } catch { /* no card */ }
-    })();
-    return () => { alive = false; };
-  }, []);
 
   function suggest(text: string) {
     setInput(`${text}: `);
@@ -170,28 +149,7 @@ export default function ChatIndexPage() {
                 poster="/assets/ally/anim/ally-dogs-poster.jpg"
                 onError={(e) => { e.currentTarget.style.display = "none"; }}
               />
-              {newsCount != null && newsCount > 0 && (
-                <Link
-                  href="/updates"
-                  className="flex flex-1 flex-col gap-1.5"
-                  style={{
-                    maxWidth: 510, padding: "16px 18px", background: "#FFFFFF",
-                    border: "1px solid var(--cta-border)", borderRadius: 15,
-                    boxShadow: "var(--shadow-news)", textDecoration: "none",
-                  }}
-                >
-                  <span className="flex items-center justify-between">
-                    <span style={{ font: "600 13px/18px var(--font-system)", color: "var(--ink)" }}>{t("homeNewsTitle")}</span>
-                    <span style={{ font: "600 11px/16px var(--font-system)", color: "var(--accent)", background: "var(--accent-tint)", borderRadius: 8, padding: "1px 8px" }}>
-                      {newsCount}
-                    </span>
-                  </span>
-                  <span style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-soft)" }}>
-                    {tf("homeNewsCount", { n: newsCount })}
-                  </span>
-                  <span style={{ font: "600 12px/16px var(--font-system)", color: "var(--accent)" }}>{t("homeNewsMore")} ›</span>
-                </Link>
-              )}
+              <NewsCard className="flex-1" style={{ maxWidth: 510 }} />
             </div>
             <div className="flex flex-col items-center gap-1 text-center">
               <h2 style={{ font: "600 30px/38px var(--font-bricolage)", color: "var(--ink)" }}>
