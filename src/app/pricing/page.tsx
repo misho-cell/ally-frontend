@@ -1,22 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getLocale } from "@/lib/i18n";
 import { startStripeCheckout } from "@/lib/stripe";
+import { apiFetch } from "@/lib/api";
+import { isRecord, unwrapData } from "@/lib/payload";
 
 // Stripe (6 Sept): one plan, one price. The button copy that depends on
 // trial_days (5 vs 0) can only be known AFTER the checkout call returns, so
 // the page shows the trial framing and startStripeCheckout() confirms the
 // "charged today" case before redirecting.
+//
+// 9 Oct (Misho): two different free periods exist and the page shows both.
+// The card trial is the server's STRIPE_TRIAL_DAYS (5 today); the days an
+// invitation carries are the `invite_free_days` setting (20 today), which the
+// founder can switch off or lower to 10 or 5 from the dashboard. Neither is
+// ours to write down, so both are read from GET /billing/offer. Until the
+// server answers, the card trial falls back to the 5 this page has always
+// said, and the invitation line is not drawn at all: a missing number must
+// not become a promise of free days that may be switched off.
+const CARD_TRIAL_FALLBACK = 5;
 const L = {
   en: {
     title: "Netai Pro",
-    subtitle: "Try Pro free for 5 days. Your card won't be charged until the trial ends.",
+    subtitle: (n: number) => `Try Pro free for ${n} days. Your card won't be charged until the trial ends.`,
+    invite: (n: number) => `Joined with an invitation? Your first ${n} days are free.`,
     price: "$19.99",
     period: "/mo",
-    cta: "Start your 5-day free trial",
-    ctaNote: "A card is required, but nothing is charged for 5 days.",
+    cta: (n: number) => `Start your ${n}-day free trial`,
+    ctaNote: (n: number) => `A card is required, but nothing is charged for ${n} days.`,
     ctaNoTrial: "Subscribe: $19.99/mo",
     ctaNoTrialNote: "You've already used your free trial. You'll be charged today.",
     opening: "Opening…",
@@ -26,11 +39,12 @@ const L = {
   },
   ka: {
     title: "Netai Pro",
-    subtitle: "სცადე Pro 5 დღე უფასოდ. ბარათიდან თანხა საცდელი პერიოდის ბოლომდე არ ჩამოგეჭრება.",
+    subtitle: (n: number) => `სცადე Pro ${n} დღე უფასოდ. ბარათიდან თანხა საცდელი პერიოდის ბოლომდე არ ჩამოგეჭრება.`,
+    invite: (n: number) => `მოწვევით შემოხვედი? პირველი ${n} დღე უფასოა.`,
     price: "$19.99",
     period: "/თვე",
-    cta: "დაიწყე 5 დღიანი უფასო პერიოდი",
-    ctaNote: "ბარათი დაგჭირდება, მაგრამ 5 დღის განმავლობაში არაფერი ჩამოგეჭრება.",
+    cta: (n: number) => `დაიწყე ${n} დღიანი უფასო პერიოდი`,
+    ctaNote: (n: number) => `ბარათი დაგჭირდება, მაგრამ ${n} დღის განმავლობაში არაფერი ჩამოგეჭრება.`,
     ctaNoTrial: "გამოწერა: $19.99/თვე",
     ctaNoTrialNote: "უფასო პერიოდით უკვე ისარგებლე. თანხა დღესვე ჩამოიჭრება.",
     opening: "იხსნება…",
@@ -45,6 +59,24 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
+  const [cardDays, setCardDays] = useState<number>(CARD_TRIAL_FALLBACK);
+  // null = unknown or switched off; either way no line.
+  const [inviteDays, setInviteDays] = useState<number | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    apiFetch<unknown>("/billing/offer")
+      .then((raw) => {
+        const d = unwrapData(raw);
+        if (!alive || !isRecord(d)) return;
+        const pos = (v: unknown) => (typeof v === "number" && Number.isInteger(v) && v > 0 ? v : null);
+        const c = pos(d.card_trial_days);
+        if (c != null) setCardDays(c);
+        setInviteDays(pos(d.invite_free_days));
+      })
+      .catch(() => { /* keep the fallback, draw no invitation line */ });
+    return () => { alive = false; };
+  }, []);
 
   async function subscribe() {
     if (loading || unavailable) return;
@@ -85,8 +117,13 @@ export default function PricingPage() {
           </div>
           <h1 className="mb-3" style={{ font: "500 26px/32px var(--font-bricolage)", color: "var(--ink)" }}>{s.title}</h1>
           <p className="max-w-md mx-auto" style={{ font: "400 14px/21px var(--font-system)", color: "var(--ink-soft)" }}>
-            {s.subtitle}
+            {s.subtitle(cardDays)}
           </p>
+          {inviteDays != null && (
+            <p className="mt-2 max-w-md mx-auto" style={{ font: "500 14px/21px var(--font-system)", color: "var(--accent-strong)" }}>
+              {s.invite(inviteDays)}
+            </p>
+          )}
         </div>
 
         <div
@@ -127,10 +164,10 @@ export default function PricingPage() {
                 {s.opening}
               </span>
             ) : (
-              s.cta
+              s.cta(cardDays)
             )}
           </button>
-          <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.75)" }}>{s.ctaNote}</p>
+          <p className="text-xs text-center" style={{ color: "rgba(255,255,255,0.75)" }}>{s.ctaNote(cardDays)}</p>
 
           {error && (
             <div

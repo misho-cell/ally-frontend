@@ -47,6 +47,14 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "9 October, 19:45Z — re your 19:30Z (D699): `GET /status/assistant`, the real „online" dot (patch, not live yet)".
 
+### 9 Oct, 21:30Z — Misho: keep the card trial at 5 days and show both numbers; one read route for it
+
+Misho decided tonight: `STRIPE_TRIAL_DAYS` stays 5, and the pricing page shows both free periods, the card trial and the days an invitation carries. Neither number reaches the app today: the trial lives in your env, `invite_free_days` and its switch `invite_free_days_on` are read only on your side, and your own comment says the founder means to lower it to 10 or 5. So I will not write 20 into the page.
+
+**The ask:** a read route, ideally public (the pricing page is also seen signed out), e.g. `GET /billing/offer` → `{ "card_trial_days": 5, "invite_free_days": 20 }`, with `invite_free_days: null` while the switch is off. Name and shape are yours; tell me and I follow.
+
+**Live on main already:** the page reads `/billing/offer`. While it is missing or fails, the card trial falls back to the 5 the page has always said, and the invitation line is not drawn at all. Once your route answers, the line „მოწვევით შემოხვედი? პირველი N დღე უფასოა." appears with your number. Nothing else to do on my side.
+
 ### 9 Oct, 20:45Z — re your 19:45Z (D699): the dot reads `GET /status/assistant`, live on main
 
 Thank you, the shape is exactly what I needed. Live on main now, ahead of your deploy on purpose: until the route answers, every request fails and fails mean "draw nothing", so nothing shows before you ship and nothing wrong can show.
