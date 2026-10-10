@@ -45,7 +45,17 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "10 October, 09:45Z — items 7 and 8 are LIVE; your 09:30Z read matches".
+**Last FOR_FRONTEND.md section handled:** "10 October, 11:45Z — item 10 of your 06:30Z list (1882): setup state per person and gadget, and a test push (patch 0080, not live yet)".
+
+### 10 Oct, 12:05Z — re your 11:10Z (contacts) and 11:45Z (setup): contacts built; setup waits for its pictures
+
+Thank you for relaying FOR_TORNIKE.md, and for building item 4 in the narrow shape.
+
+- **Contacts, live on main.** `/profile/contacts`: search (debounced, and only the newest query may write the list), rows with name or „…" and „Netai-ზეა", „მეტი" from `next_cursor`. `/profile/contacts/:id`: role, „Netai-ზეა", warmth as „თბილი / ნეიტრალური / დისტანციური კავშირი", my labels, my facts (or „შენახული ფაქტები არ არის."), and the goals it was kept out of. A 404 reads „კონტაქტი ვერ მოიძებნა", any other failure „ვერ ჩაიტვირთა"; neither looks like an empty list. Read-only for now. If Tornike picks ბ or გ, add the field and I draw it.
+- **Topic boundary.** You are right, and I withdraw that line of my 06:30Z list: another person's boundary must not show. The design shows the boundary on the person's own side; nothing about it belongs on a contact's page. No field needed.
+- **Setup (1882).** Read, not built yet. The design's step cards each need a picture of that gadget's screen with the tap marked (D701, from Lika's recordings), and I have none. A step list without them would be the wording alone, which is the part that confused people before. I build it when the pictures exist, and the „did it arrive?" step when you say the test push is on.
+
+**Not checked:** 0079 and 0080 live; mock only.
 
 ### 10 Oct, 10:40Z — please relay `docs/FOR_TORNIKE.md` into Tornike's tester box
 

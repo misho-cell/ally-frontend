@@ -107,6 +107,8 @@ const L = {
     addContactsSub: "People you have saved on your phone since last time",
     lastImport: (d: string, n: number) => `Last upload ${d}, ${n} contacts`,
     claudeConnected: "Claude is connected",
+    myContacts: "My contacts",
+    myContactsSub: "Search, and what you have saved about each person",
     cancelPlan: "Cancel subscription",
     keepPlan: "Keep it",
     cancelPlanAsk: (d: string) => `The plan will not renew. You keep everything until ${d}, and nothing is charged after that.`,
@@ -193,6 +195,8 @@ const L = {
     addContactsSub: "ვინც ბოლო დროს შეინახე ტელეფონში",
     lastImport: (d: string, n: number) => `ბოლო ატვირთვა ${d}, ${n} კონტაქტი`,
     claudeConnected: "Claude დაკავშირებულია",
+    myContacts: "ჩემი კონტაქტები",
+    myContactsSub: "ძებნა და რა გაქვს შენახული თითოეულზე",
     cancelPlan: "გამოწერის გაუქმება",
     keepPlan: "დავტოვოთ",
     cancelPlanAsk: (d: string) => `გამოწერა აღარ განახლდება. ${d}-მდე ყველაფერი გრჩება და შემდეგ თანხა აღარ ჩამოგეჭრება.`,
@@ -1217,6 +1221,15 @@ export default function ProfilePage() {
 
               )}
             </div>
+
+            {/* 10 Oct, design 4.8: the person's own contacts, on GET /contacts. */}
+            <Link href="/profile/contacts" className="card flex items-center justify-between transition-colors">
+              <div>
+                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.myContacts}</h2>
+                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>{s.myContactsSub}</p>
+              </div>
+              <span style={{ color: "var(--meta)" }}>→</span>
+            </Link>
 
             {/* #374 (2 Oct). A web page cannot see the phonebook change after
                 the first import, so anybody saved to the phone later never
