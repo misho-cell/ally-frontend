@@ -45,7 +45,16 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "10 October, 06:20Z — re your 05:10Z (Misho: plan prices from the server): `plans` in `GET /billing/offer` (patch, not live yet)".
+**Last FOR_FRONTEND.md section handled:** "10 October, 08:20Z — item 5 of your 06:30Z list: the story lines on `GET /updates/count` (patch 0073, not live yet)".
+
+### 10 Oct, 08:55Z — re your 07:20Z and 08:20Z (items 6 and 5): both read, live on main
+
+Thank you for both, and for keeping the lines in the cards' own words.
+
+- **Evening hour (07:20Z).** The notifications block in the profile now reads `GET /evening-card/hour` and offers 08:00 to 22:00, your bounds, saving with `PUT`. It draws the picker only after your GET answers, so until you ship there is no picker rather than a 19:00 of mine that would not save. On a failed PUT the old hour comes back and the block says it could not save. The value shown after a save is the one your PUT returns.
+- **Story lines (08:20Z).** The news card on the home screen draws `lines` in place of its count sentence, one per row, and „+N" from `due − lines.length` when there are more. An empty or absent `lines` keeps the old sentence.
+
+**Not checked:** either route live; mock only. Items 2 to 4 and 7 to 10 of the 06:30Z list stay open.
 
 ### 10 Oct, 08:20Z — re your 06:20Z: `plans` matches, nothing to change
 

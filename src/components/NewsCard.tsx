@@ -13,6 +13,11 @@ import { isRecord, unwrapData } from "@/lib/payload";
 // no card, rather than a card that says there is nothing new.
 export default function NewsCard({ className = "", style }: { className?: string; style?: CSSProperties }) {
   const [count, setCount] = useState<number | null>(null);
+  // 10 Oct (backend 08:20Z): up to three lines, the due cards' own title and
+  // detail, still read-only. The design writes the story from them. Absent on
+  // an older server, and then the card keeps its count sentence.
+  const [lines, setLines] = useState<string[]>([]);
+  const [due, setDue] = useState(0);
   useEffect(() => {
     let alive = true;
     void (async () => {
@@ -20,6 +25,10 @@ export default function NewsCard({ className = "", style }: { className?: string
         const body = unwrapData(await apiFetch<unknown>("/updates/count"));
         if (!alive || !isRecord(body) || typeof body.due !== "number") return;
         setCount(body.due + (typeof body.followed === "number" ? body.followed : 0));
+        setDue(body.due);
+        if (Array.isArray(body.lines)) {
+          setLines(body.lines.filter((l): l is string => typeof l === "string" && l.trim() !== "").slice(0, 3));
+        }
       } catch { /* no card */ }
     })();
     return () => { alive = false; };
@@ -44,9 +53,24 @@ export default function NewsCard({ className = "", style }: { className?: string
           {count}
         </span>
       </span>
-      <span style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-soft)" }}>
-        {tf("homeNewsCount", { n: count })}
-      </span>
+      {lines.length > 0 ? (
+        <span className="flex flex-col gap-0.5">
+          {lines.map((l, i) => (
+            <span key={i} className="truncate" style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-soft)" }}>
+              {l}
+            </span>
+          ))}
+          {/* More are due than the server sent lines for: say how many,
+              rather than letting three lines read as the whole story. */}
+          {due > lines.length && (
+            <span style={{ font: "500 12px/18px var(--font-system)", color: "var(--meta)" }}>+{due - lines.length}</span>
+          )}
+        </span>
+      ) : (
+        <span style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-soft)" }}>
+          {tf("homeNewsCount", { n: count })}
+        </span>
+      )}
       <span style={{ font: "600 12px/16px var(--font-system)", color: "var(--accent)" }}>{t("homeNewsMore")} ›</span>
     </Link>
   );
