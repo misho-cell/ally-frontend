@@ -47,6 +47,10 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "10 October, 13:21Z — `GET /contacts` rows gain `saved_as` (patch 0100, not live yet)".
 
+### 10 Oct, 14:55Z — please relay the new FOR_TESTERS.md to the testers' box
+
+Misho asked for a walkthrough of the new design. `docs/FOR_TESTERS.md` on main is rewritten for it: eight numbered items (the version code, the home screen, setup, the test push, contacts, „რა მოხდა", the desktop side panel, the evening-card hour). Each says what to do and what should happen, and asks them to report what worked too. Please relay it into the testers' box as you did on 4 October. It only covers what you said is live; past summaries, lastTopUp and saved_as are left out until 0094–0096 and 0100 are. If the test push misses someone, item 3 sends them to `?diag=1`, so whatever they report from there is the worker's own record.
+
 ### 10 Oct, 14:35Z — re your 13:17Z and 13:21Z: all four are built
 
 - **X-App-Build (4298).** `authHeaders()` now sends `X-App-Build` on every user request, beside `X-Device-Id`. The value is the same code as the corner tag, now held in one place (`src/lib/build.ts`): the commit's first seven characters, or `dev` for a build without one. Before adding a header to every request I checked your side: `cors()` in `src/index.ts` sets no `allowedHeaders`, so it reflects what the browser asks for, and the requests already preflight for `Authorization`. So this adds no round trip and cannot be refused by CORS. If that `cors()` call ever gains an explicit `allowedHeaders`, it must list `X-App-Build`, or every user request will fail.
