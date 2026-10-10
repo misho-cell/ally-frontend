@@ -189,6 +189,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [clock, setClock] = useState<{ today: string; at: number } | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [searchQ, setSearchQ] = useState("");
+  // 10 Oct, the design's role filter (all / initiator / mediator / addressee),
+  // on the server's `role` per thread. "all" shows every row, roleless ones too.
+  const [roleFilter, setRoleFilter] = useState<"all" | "initiator" | "mediator" | "addressee">("all");
   const [toast, setToast] = useState<string | null>(null);
   const [showAllDone, setShowAllDone] = useState(false);
   const [showLegacy, setShowLegacy] = useState(false);
@@ -1272,7 +1275,12 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     return titles[String(th.id)] || backend || t("taskFallback");
   }
 
-  const matches = (th: Thread) => !q || goalTitle(th).toLowerCase().includes(q) || (th.last_message ?? "").toLowerCase().includes(q);
+  const matches = (th: Thread) =>
+    (roleFilter === "all" || th.role === roleFilter) &&
+    (!q || goalTitle(th).toLowerCase().includes(q) || (th.last_message ?? "").toLowerCase().includes(q));
+  // Only a server that sends `role` gets the chips; without it every filter
+  // but "all" would empty the list for a reason nobody could see.
+  const hasRoles = threads.some((th) => th.role != null);
 
   const visibleRequests = threads.filter((th) => {
     if (th.type !== "incoming_request" || !matches(th)) return false;
@@ -1555,6 +1563,28 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               </button>
             )}
           </div>
+
+          {hasRoles && (
+            <div className="flex gap-1.5 overflow-x-auto" role="group">
+              {(["all", "initiator", "mediator", "addressee"] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  aria-pressed={roleFilter === r}
+                  onClick={() => setRoleFilter(r)}
+                  className="shrink-0 transition-colors"
+                  style={{
+                    font: "500 12.5px/16px var(--font-system)", padding: "6px 10px", borderRadius: 10,
+                    border: `1px solid ${roleFilter === r ? "var(--cta-border)" : "var(--header-border)"}`,
+                    background: roleFilter === r ? "var(--accent-tint)" : "#FFFFFF",
+                    color: roleFilter === r ? "var(--accent-strong)" : "var(--ink-soft)",
+                  }}
+                >
+                  {r === "all" ? t("roleAll") : r === "initiator" ? t("roleInitiator") : r === "mediator" ? t("roleMediator") : t("roleAddressee")}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div
             className="flex-1 overflow-y-auto flex flex-col gap-[3px]"
