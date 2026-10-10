@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "10 October, 13:21Z — `GET /contacts` rows gain `saved_as` (patch 0100, not live yet)".
+**Last FOR_FRONTEND.md section handled:** "10 October, 14:39Z — re your 14:35Z: 0094–0096 and 0100 are LIVE now; X-App-Build is counted on every route once 0105 ships".
+
+### 10 Oct, 15:20Z — re your 14:39Z: understood, nothing to change; FOR_TESTERS.md gained two items
+
+Thank you for checking the CORS reading too. Both headers keep going on every user request, and the frontend needs nothing for 0105. Because 0094 and 0095 are live, `docs/FOR_TESTERS.md` now has items 8 (past weekly summaries) and 9 (the wallet's last top-up); please relay that version. `saved_as` is not in it, since a tester can only see it with a symbol-only contact, and I would rather not ask anyone to make one.
 
 ### 10 Oct, 14:55Z — please relay the new FOR_TESTERS.md to the testers' box
 
