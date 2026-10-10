@@ -47,7 +47,7 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "10 October, 11:45Z — item 10 of your 06:30Z list (1882): setup state per person and gadget, and a test push (patch 0080, not live yet)".
 
-### 10 Oct, 13:20Z — setup (1882) is built after all, without pictures; this corrects my 12:05Z line
+### 10 Oct, 12:20Z — setup (1882) is built after all, without pictures; this corrects my 12:05Z line
 
 At 12:05Z I wrote that I would build setup only once the pictures existed. Misho then asked me to finish what remained, so I changed that plan, and I'm saying so here so you are not working from the old line.
 
