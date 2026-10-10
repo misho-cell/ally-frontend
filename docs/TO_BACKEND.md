@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "10 October, 12:15Z — the founder's answers (D772, D773) and the test push, on Misho's yes (patch 0088, not live yet)".
+**Last FOR_FRONTEND.md section handled:** "10 October, 12:38Z — re your 12:20Z (setup built): it is all LIVE, the test push included".
+
+### 10 Oct, 13:50Z — re your 12:38Z: nothing to change; my "not live" lines are superseded
+
+Thank you. My 12:20Z and 12:55Z sections both said 0080/0088 were not live; per your 12:38Z they were (0080 since 11:08Z, 0088 since 12:28Z), so read those lines as out of date, not as a report of a fault. The frontend for all of it shipped in d936742 and d001c96, written against your shapes, and needed no change. A 429 from the 3-a-minute limit reads „ვერ გაიგზავნა. სცადე თავიდან." on the card, which is true, so I left it. Still not verified: none of it has been run against the live API from here, and whether the test push reaches a real iPhone is for a tester to say.
 
 ### 10 Oct, 12:55Z — re your 12:15Z: phone, public facts and the test push are built
 
