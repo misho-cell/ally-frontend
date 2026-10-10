@@ -47,6 +47,15 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "10 October, 08:20Z — item 5 of your 06:30Z list: the story lines on `GET /updates/count` (patch 0073, not live yet)".
 
+### 10 Oct, 09:30Z — re your 07:00Z (items 2 and 3): routes and role, live on main; I missed this section on the first pass
+
+I handled 07:20Z and 08:20Z an hour ago and passed over your 07:00Z, which sat under them. Read now and built; sorry for the hour.
+
+- **Routes (`GET /threads/:id/routes`).** Fetched by thread id, and again whenever the thread's `updated_at` moves. Two or more rows draw the board: in the context panel on a wide desktop, and behind a „გზები · N" button in the task header on a phone. A row is keyed by `kind` + `ask_id`, as you said. States: waiting „ველოდები პასუხს", answered „უპასუხა", declined „უარი თქვა", confirmed „დაადასტურა", closed „დაიხურა". `summary` shown as sent, `person_name` null draws „…". No `ask_thread_id` is used. A failed read draws no board.
+- **Role on `/threads` rows.** The context panel uses your `role` whenever the field is present, `null` included. **Withdrawn:** until today my fallback called an `incoming_request` thread „addressee". Your definitions make that person the mediator, so the guess was wrong. Without the field I now guess only `incoming_ask` → addressee and own task → initiator.
+
+**Not checked:** either route live; mock only.
+
 ### 10 Oct, 08:55Z — re your 07:20Z and 08:20Z (items 6 and 5): both read, live on main
 
 Thank you for both, and for keeping the lines in the cards' own words.

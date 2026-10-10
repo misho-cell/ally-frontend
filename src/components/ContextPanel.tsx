@@ -1,7 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { t, fmtDateShort } from "@/lib/i18n";
+import { t, tf, fmtDateShort } from "@/lib/i18n";
+import RoutesList, { type Route } from "@/components/RoutesBoard";
 import type { Thread } from "@/contexts/ThreadsContext";
 
 // 9 Oct, the new design (D700). On a wide desktop the task keeps a panel on
@@ -13,13 +14,10 @@ import type { Thread } from "@/contexts/ThreadsContext";
 // What is NOT here, on purpose: the design also puts the decision card in
 // this panel. The choices already sit in the thread, under the message that
 // asks them, and the same buttons in two places is one thing drawn twice,
-// which is how #793 began. The routes tab (D722) waits on a server route
-// (TO_BACKEND, 9 Oct 20:30Z) and is not drawn until it exists.
+// which is how #793 began. The routes (D722) are listed under the details
+// when the server returns two or more.
 //
-// The role is drawn only where the conversation's type says it: a goal the
-// person started makes them the initiator, a request or ask that came to
-// them makes them the addressee. Nothing marks a mediator yet, so no role is
-// shown there rather than a guessed one.
+// The role is the server's (`role` on each thread, 10 Oct); see roleOf.
 
 const KEY = "netai_context_panel";
 const listeners = new Set<() => void>();
@@ -45,8 +43,20 @@ export function useContextPanelOpen(): boolean {
   return useSyncExternalStore(subscribe, read, () => false);
 }
 
+// The server's `role` (backend 10 Oct 07:00Z) wins whenever it is present,
+// null included. Only an older server without the field falls back to the
+// two cases the type alone settles. An introduction request that came to the
+// person makes them the MEDIATOR, not the addressee: an earlier version of
+// this function guessed addressee for it, and that was wrong, so it is no
+// longer guessed at all.
 function roleOf(thread: Thread): string | null {
-  if (thread.type === "incoming_request" || thread.type === "incoming_ask") return t("roleAddressee");
+  if (thread.role !== undefined) {
+    return thread.role === "initiator" ? t("roleInitiator")
+      : thread.role === "mediator" ? t("roleMediator")
+      : thread.role === "addressee" ? t("roleAddressee")
+      : null;
+  }
+  if (thread.type === "incoming_ask") return t("roleAddressee");
   if (thread.type === "regular" && thread.is_task === true) return t("roleInitiator");
   return null;
 }
@@ -75,10 +85,12 @@ export default function ContextPanel({
   thread,
   statusLabel,
   warm,
+  routes = [],
 }: {
   thread: Thread | null;
   statusLabel: string | null;
   warm: boolean;
+  routes?: Route[];
 }) {
   const open = useContextPanelOpen();
   if (!open || !thread) return null;
@@ -133,6 +145,13 @@ export default function ContextPanel({
         ))}
         {thread.status_line && (
           <p style={{ font: "400 13.5px/20px var(--font-system)", color: "var(--ink-soft)" }}>{thread.status_line}</p>
+        )}
+        {/* D722: the routes, when Netai talks to more than one person here. */}
+        {routes.length > 0 && (
+          <>
+            <p className="section-label" style={{ padding: 0, marginTop: 6 }}>{tf("routesCount", { n: routes.length })}</p>
+            <RoutesList routes={routes} />
+          </>
         )}
       </div>
     </aside>

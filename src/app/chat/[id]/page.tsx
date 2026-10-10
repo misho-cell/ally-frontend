@@ -21,6 +21,7 @@ import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import ThreadMenu from "@/components/ThreadMenu";
 import ContextPanel, { ContextPanelToggle } from "@/components/ContextPanel";
+import RoutesList, { useRoutes } from "@/components/RoutesBoard";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import {
   useThreads,
@@ -451,6 +452,9 @@ export default function ThreadPage() {
   msgCountRef.current = messages.length;
 
   const thread = threads.find((th) => String(th.id) === threadId);
+  // D722: the people Netai is talking to for this task, re-read when it moves.
+  const routes = useRoutes(threadId, thread?.updated_at);
+  const [routesOpen, setRoutesOpen] = useState(false);
   const isRequest = thread?.type === "incoming_request";
   // Row 305b (1 Oct, D530). A request for an introduction now continues the
   // conversation the owner already had with that person instead of opening a
@@ -1714,6 +1718,15 @@ export default function ThreadPage() {
         </Modal>
       )}
 
+      {routesOpen && routes.length > 0 && (
+        <Modal onClose={() => setRoutesOpen(false)}>
+          <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--ink)" }}>{tf("routesCount", { n: routes.length })}</p>
+          <div className="max-h-[60vh] overflow-y-auto">
+            <RoutesList routes={routes} />
+          </div>
+        </Modal>
+      )}
+
       {deleteOpen && (
         <Modal onClose={() => setDeleteOpen(false)}>
           <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--ink)" }}>{t("modalDeleteTitle")}</p>
@@ -1833,6 +1846,18 @@ export default function ThreadPage() {
               behind one "…" button. The conditions are the ones each
               separate button had; see the notes on stop (2 Oct), pin
               (#2080), the list (#894) and the export (#71) further up. */}
+          {/* On a phone the board opens from here; on a wide desktop it sits in
+              the context panel instead. */}
+          {routes.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setRoutesOpen(true)}
+              className="shrink-0 xl:hidden"
+              style={{ font: "600 12.5px/16px var(--font-system)", color: "var(--accent-strong)", background: "#FFFFFF", borderRadius: 10, padding: "8px 10px" }}
+            >
+              {tf("routesCount", { n: routes.length })}
+            </button>
+          )}
           <ContextPanelToggle />
           <ThreadMenu
             label={t("moreActions")}
@@ -2462,6 +2487,7 @@ export default function ThreadPage() {
       </div>
     </div>
     <ContextPanel
+      routes={routes}
       thread={thread ?? null}
       statusLabel={statusLabel || null}
       warm={!thread?.status_line && (taskStatus === "needs_you" || taskStatus === "failed")}

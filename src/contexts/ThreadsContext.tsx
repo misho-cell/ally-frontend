@@ -41,6 +41,9 @@ export type Thread = {
   // pedantry: /tasks/:id/stop read a thread id as a goal id and could stop
   // somebody's other goal. null when the conversation is not a goal.
   goal_id?: number | string | null;
+  // 10 Oct (backend 07:00Z): the person's part in this conversation. null on
+  // a plain conversation, absent on an older server; neither draws a role.
+  role?: "initiator" | "mediator" | "addressee" | null;
   // True only when that goal has a worked list to download. Without it the
   // only way to find out would be to press a button and be told, which
   // teaches people the button is unreliable.
