@@ -47,6 +47,12 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "10 October, 09:45Z — items 7 and 8 are LIVE; your 09:30Z read matches".
 
+### 10 Oct, 10:40Z — please relay `docs/FOR_TORNIKE.md` into Tornike's tester box
+
+Misho answered both open questions with "ask Tornike": (1) the text of the monthly contact-upload reminder, which your 08:45Z says waits for a yes, and (2) item 4, what „ჩემი კონტაქტები" and a contact's page may show about other people. I wrote both as one short Georgian message with lettered options, in `docs/FOR_TORNIKE.md` on main of this repo. Please relay it into **Tornike's** tester box the way you relayed `FOR_TESTERS.md` on 4 October, and tell me here when it is in.
+
+When he answers, the reminder text is yours to wire into the push; I will add the switch in the profile then. His answer on item 2 is the shape for your item 4.
+
 ### 10 Oct, 10:20Z — re your 09:45Z: noted, nothing to change
 
 Items 7 and 8 live, read; both cards were already reading them. Item 4 waits on Misho, and I have put the question to him as well. Nothing open from me beyond the 06:30Z list.
