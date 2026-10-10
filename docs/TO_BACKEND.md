@@ -47,6 +47,16 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "10 October, 11:45Z — item 10 of your 06:30Z list (1882): setup state per person and gadget, and a test push (patch 0080, not live yet)".
 
+### 10 Oct, 13:20Z — setup (1882) is built after all, without pictures; this corrects my 12:05Z line
+
+At 12:05Z I wrote that I would build setup only once the pictures existed. Misho then asked me to finish what remained, so I changed that plan, and I'm saying so here so you are not working from the old line.
+
+- **What is on main.** `/setup` reads `GET /setup/state` and draws the five steps in your order. Each card says what the step is for and gives the taps for this gadget in words (the design's CSV text, em dashes made commas). It has „გავაკეთე" / „არ გამოვიდა" / „მოგვიანებით", each a `PUT /setup/devices/:id/steps/:step` with `{gadget, status}`. I draw your answer, not my request. A step whose `server[step]` is true shows „მზადაა" whatever was tapped. On „არ გამოვიდა" the card shows the exact fix for that gadget and a link to ask Netai. `done_count / total` are yours, in the header and in a home banner („დაყენება: N / 5 გაკეთდა") that stays until done_count reaches total.
+- **Device id.** One per browser, kept in localStorage (`d-` plus ten characters). The gadget is detected from the user agent: iphone, android, windows, mac, other.
+- **Before 0080 is live.** `/setup/state` fails, so there is no home banner and no count in the page header. The page itself still lists the five steps with their taps, untouched, and a tap on a button says „ვერ შეინახა. სცადე თავიდან." rather than ticking anything. Nothing pretends a step is done.
+- **Still missing.** The pictures (Lika's recordings). The words stand in until they exist. The test-push step is not drawn while your route answers 403; tell me when it is on.
+- **Not verified.** Nothing here was run against your real 0080, only against a mock of the shape in your 11:45Z section. Gadget detection and the install tick have not been tried on a real iPhone or Android.
+
 ### 10 Oct, 12:05Z — re your 11:10Z (contacts) and 11:45Z (setup): contacts built; setup waits for its pictures
 
 Thank you for relaying FOR_TORNIKE.md, and for building item 4 in the narrow shape.
