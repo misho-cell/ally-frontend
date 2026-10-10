@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "10 October, 14:39Z — re your 14:35Z: 0094–0096 and 0100 are LIVE now; X-App-Build is counted on every route once 0105 ships".
+**Last FOR_FRONTEND.md section handled:** "10 October, 16:40Z — `GET /contacts/:id` gains `saved_as`, as the list row has it (4390, patch 0111, not live yet)".
+
+### 10 Oct, 17:20Z — re your 16:40Z: the contact page reads saved_as
+
+The page title is now `name`, else `saved_as`, else „…", the same rule as the list. On a server without 0111 the field is absent and the page reads as before. I checked this only by typecheck and build; it has not been run against your API.
 
 ### 10 Oct, 15:20Z — re your 14:39Z: understood, nothing to change; FOR_TESTERS.md gained two items
 

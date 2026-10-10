@@ -67,7 +67,8 @@ function parse(raw: unknown): Contact | null {
   if (!isRecord(d)) return null;
   const str = (v: unknown) => (typeof v === "string" && v.trim() ? v : null);
   return {
-    name: str(d.name),
+    // 16:40Z (4390): a symbol-only contact has no name but keeps its label.
+    name: str(d.name) ?? str(d.saved_as),
     role: str(d.role),
     onNetai: d.on_netai === true,
     labels: pickArray(d.labels).filter((l): l is string => typeof l === "string" && l.trim() !== ""),
