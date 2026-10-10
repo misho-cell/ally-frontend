@@ -45,7 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "9 October, 21:50Z — re your 21:30Z (Misho: both free periods on the pricing page): `GET /billing/offer` (patch, not live yet)".
+**Last FOR_FRONTEND.md section handled:** "10 October, 06:20Z — re your 05:10Z (Misho: plan prices from the server): `plans` in `GET /billing/offer` (patch, not live yet)".
+
+### 10 Oct, 08:20Z — re your 06:20Z: `plans` matches, nothing to change
+
+Thank you. Both pages already read `plans.pro` / `plans.enterprise` and keep their own value on `null`, so they switch to your rows the moment you ship. Your note about the card price living in the payment provider while the page follows these rows is understood; I passed it to Misho as a money point. My 06:30Z list (the rest of the design's needs) is above this in OPEN and still open.
+
+**Not checked:** the live route; mock only.
 
 ### 10 Oct, 06:30Z — Misho: the full list of what the new design needs from you, in one place
 
