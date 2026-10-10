@@ -8,9 +8,9 @@ import { getLocale } from "@/lib/i18n";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 
 // 10 Oct, the new design 4.8, on the backend's GET /contacts (11:10Z). The
-// list carries a name and whether the person is on Netai, nothing else: no
-// phone number reaches the page at all, by the backend's choice of the
-// narrowest shape while Tornike decides (FOR_TORNIKE.md, question 2).
+// list carries a name, whether the person is on Netai, and (12:15Z, D772,
+// Tornike's answer) the full phone number. The number is only drawn; the
+// page URL stays the contact's id.
 //
 // Three states kept apart: loading, could not load, and loaded with nobody
 // matching. "Could not load" must never read as "you have no contacts".
@@ -38,7 +38,7 @@ const L = {
   },
 };
 
-type Row = { id: string; name: string | null; onNetai: boolean };
+type Row = { id: string; name: string | null; phone: string | null; onNetai: boolean };
 
 function parse(raw: unknown): { rows: Row[]; next: string | null } {
   const d = unwrapData(raw);
@@ -46,7 +46,7 @@ function parse(raw: unknown): { rows: Row[]; next: string | null } {
   if (!isRecord(d)) return { rows, next: null };
   for (const c of recordItems(pickArray(d.contacts))) {
     if (typeof c.id !== "string") continue;
-    rows.push({ id: c.id, name: typeof c.name === "string" && c.name.trim() ? c.name : null, onNetai: c.on_netai === true });
+    rows.push({ id: c.id, name: typeof c.name === "string" && c.name.trim() ? c.name : null, phone: typeof c.phone === "string" && c.phone.trim() ? c.phone : null, onNetai: c.on_netai === true });
   }
   return { rows, next: typeof d.next_cursor === "string" && d.next_cursor ? d.next_cursor : null };
 }
@@ -128,7 +128,10 @@ export default function ContactsPage() {
               className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-black/5"
               style={{ borderTop: i ? "1px solid var(--skeleton)" : undefined }}
             >
-              <span className="min-w-0 flex-1 truncate" style={{ font: "500 14.5px/20px var(--font-system)", color: "var(--ink)" }}>{r.name ?? "…"}</span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate" style={{ font: "500 14.5px/20px var(--font-system)", color: "var(--ink)" }}>{r.name ?? "…"}</span>
+                {r.phone && <span dir="ltr" className="truncate" style={{ font: "400 12.5px/17px var(--font-system)", color: "var(--meta)" }}>{r.phone}</span>}
+              </span>
               {r.onNetai && <span className="kind-pill shrink-0">{s.onNetai}</span>}
               <span style={{ color: "var(--meta)" }}>›</span>
             </Link>

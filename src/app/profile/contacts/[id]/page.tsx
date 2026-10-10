@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import SheetPage from "@/components/SheetPage";
 import { apiFetch, ApiError } from "@/lib/api";
-import { getLocale } from "@/lib/i18n";
+import { getLocale, fmtDateShort } from "@/lib/i18n";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 
 // 10 Oct, a contact's page (design 4.8), on GET /contacts/:id (backend
@@ -14,12 +14,19 @@ import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 // topic boundary is deliberately absent (D421): the person asking is never
 // told one exists. Read-only for now; the design's edit and forget actions
 // have no routes yet.
+//
+// 12:15Z (D773): also what is public about the person, each fact with its
+// source and date when the server has them. Public, not saved by another
+// member: the server never puts a member's saving there. Kept in its own
+// card so it never reads as the person's own facts.
 
 const L = {
   en: {
     back: "Back to contacts",
     onNetai: "On Netai",
-    note: "Only your labels, facts and relationships appear here. Information saved by others is never shown.",
+    note: "Your labels, facts and relationships appear here, and public information with its source. Information saved by others is never shown.",
+    publicFacts: "Public information",
+    source: "Source",
     labels: "My labels",
     facts: "My facts",
     noFacts: "No saved facts.",
@@ -31,7 +38,9 @@ const L = {
   ka: {
     back: "კონტაქტებში დაბრუნება",
     onNetai: "Netai-ზეა",
-    note: "აქ ჩანს მხოლოდ შენი იარლიყები, ფაქტები და ურთიერთობები. სხვების შენახული ინფორმაცია არასოდეს გამოჩნდება.",
+    note: "აქ ჩანს შენი იარლიყები, ფაქტები და ურთიერთობები, და საჯარო ინფორმაცია წყაროსთან ერთად. სხვების შენახული ინფორმაცია არასოდეს გამოჩნდება.",
+    publicFacts: "საჯარო ინფორმაცია",
+    source: "წყარო",
     labels: "ჩემი იარლიყები",
     facts: "ჩემი ფაქტები",
     noFacts: "შენახული ფაქტები არ არის.",
@@ -49,6 +58,7 @@ type Contact = {
   labels: string[];
   warmth: "warm" | "neutral" | "distant" | null;
   facts: { field: string; value: string }[];
+  publicFacts: { value: string; sourceUrl: string | null; date: string | null }[];
   exclusions: string[];
 };
 
@@ -63,6 +73,9 @@ function parse(raw: unknown): Contact | null {
     labels: pickArray(d.labels).filter((l): l is string => typeof l === "string" && l.trim() !== ""),
     warmth: d.warmth === "warm" || d.warmth === "neutral" || d.warmth === "distant" ? d.warmth : null,
     facts: recordItems(pickArray(d.facts)).flatMap((f) => (typeof f.value === "string" && f.value.trim() ? [{ field: String(f.field ?? ""), value: f.value }] : [])),
+    publicFacts: recordItems(pickArray(d.public_facts)).flatMap((f) => (typeof f.value === "string" && f.value.trim()
+      ? [{ value: f.value, sourceUrl: typeof f.source_url === "string" && /^https?:\/\//.test(f.source_url) ? f.source_url : null, date: str(f.fact_date) }]
+      : [])),
     exclusions: recordItems(pickArray(d.exclusions)).flatMap((e) => (typeof e.excluded_for === "string" && e.excluded_for.trim() ? [e.excluded_for] : [])),
   };
 }
@@ -129,6 +142,25 @@ export default function ContactPage() {
               ))
             )}
           </div>
+
+          {c.publicFacts.length > 0 && (
+            <div className="card flex flex-col gap-2.5">
+              <p style={sub}>{s.publicFacts}</p>
+              {c.publicFacts.map((f, i) => (
+                <div key={i} className="flex flex-col gap-0.5">
+                  <p style={{ font: "400 14px/20px var(--font-system)", color: "var(--ink)" }}>{f.value}</p>
+                  {(f.sourceUrl || f.date) && (
+                    <p className="flex flex-wrap gap-2" style={{ font: "400 12px/17px var(--font-system)", color: "var(--meta)" }}>
+                      {f.sourceUrl && (
+                        <a href={f.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-strong)", fontWeight: 600 }}>{s.source} ›</a>
+                      )}
+                      {f.date && <span>{fmtDateShort(f.date)}</span>}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {c.exclusions.length > 0 && (
             <div className="card flex flex-col gap-1.5">

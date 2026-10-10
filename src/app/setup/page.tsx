@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import SheetPage from "@/components/SheetPage";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
+import { isRecord, unwrapData } from "@/lib/payload";
 import { getLocale } from "@/lib/i18n";
 import { ensurePushSubscription, isStandalone } from "@/lib/push";
 import { STEPS, parseSetup, setupDeviceId, useGadget, useSetupState, type Gadget, type Step, type StepStatus } from "@/lib/setup";
@@ -18,8 +19,12 @@ import { STEPS, parseSetup, setupDeviceId, useGadget, useSetupState, type Gadget
 //  - the pictures of each gadget's real screen with the tap marked. They
 //    come from Lika's recordings (D701) and do not exist yet; the card has
 //    the taps in words until they do.
-//  - the test push. The backend's route answers 403 until Misho approves
-//    its text; the step offers the real permission prompt instead.
+//
+// The test push (backend 12:15Z, on Misho's yes): POST /setup/test-push
+// sends one, and the person says whether it arrived. That answer, not the
+// subscription, is what settles the step, because a subscription the server
+// holds can still fail to reach the phone (#859). So the test stays on the
+// card even after the server has ticked it.
 
 type Copy = { title: string; why: string; taps: Partial<Record<Gadget, string[]>>; fix?: Partial<Record<Gadget, string>> };
 
@@ -39,6 +44,12 @@ const KA = {
   openContacts: ".vcf ფაილის არჩევა",
   openConnector: "კონექტორის ნახვა",
   saveFailed: "ვერ შეინახა. სცადე თავიდან.",
+  testSend: "სატესტო შეტყობინების გაგზავნა",
+  testSent: "გავგზავნე. მოვიდა?",
+  testYes: "კი, მოვიდა",
+  testNo: "არ მოვიდა",
+  testNoSub: "ჯერ შეტყობინებები ჩართე, მერე სცადე.",
+  testFailed: "ვერ გაიგზავნა. სცადე თავიდან.",
   ready: "შენი ასისტენტი მზადაა.",
   steps: {
     install: {
@@ -112,6 +123,12 @@ const EN: typeof KA = {
   openContacts: "Choose a .vcf file",
   openConnector: "View connector",
   saveFailed: "Could not save. Try again.",
+  testSend: "Send a test notification",
+  testSent: "Sent. Did it arrive?",
+  testYes: "Yes, it arrived",
+  testNo: "It didn’t arrive",
+  testNoSub: "Turn notifications on first, then try again.",
+  testFailed: "Could not send. Try again.",
   ready: "Your assistant is ready.",
   steps: {
     install: {
@@ -173,6 +190,7 @@ export default function SetupPage() {
   const [state, setState] = useSetupState();
   const [busy, setBusy] = useState<Step | null>(null);
   const [err, setErr] = useState<Step | null>(null);
+  const [test, setTest] = useState<"idle" | "sending" | "sent" | "nosub" | "failed">("idle");
 
   async function mark(step: Step, status: StepStatus) {
     if (busy || !gadget) return;
@@ -193,6 +211,23 @@ export default function SetupPage() {
     } finally {
       setBusy(null);
     }
+  }
+
+  async function sendTest() {
+    setTest("sending");
+    try {
+      const r = await apiFetch<unknown>("/setup/test-push", { method: "POST" });
+      const d = unwrapData(r);
+      setTest(isRecord(d) && d.sent === true ? "sent" : "failed");
+    } catch (e) {
+      // 404 is the server's "no subscription for you yet", not a fault.
+      setTest(e instanceof ApiError && e.status === 404 ? "nosub" : "failed");
+    }
+  }
+
+  async function answerTest(arrived: boolean) {
+    await mark("notifications", arrived ? "done" : "failed");
+    setTest("idle");
   }
 
   async function enablePush() {
@@ -218,7 +253,9 @@ export default function SetupPage() {
         const mine = state?.mine[step];
         // install: only the gadget can tell, so an installed app says so.
         const installedHere = step === "install" && gadget !== null && isStandalone();
-        const ticked = serverSees || mine === "done" || installedHere;
+        // For notifications the person's "it didn't arrive" outranks the
+        // server's subscription, which is all the server can see.
+        const ticked = (serverSees && !(step === "notifications" && mine === "failed")) || mine === "done" || installedHere;
         const taps = gadget ? copy.taps[gadget] ?? copy.taps.other : undefined;
         const fix = gadget ? copy.fix?.[gadget] : undefined;
         return (
@@ -253,9 +290,28 @@ export default function SetupPage() {
               </div>
             )}
 
+            {step === "notifications" && (
+              <div className="flex flex-col gap-2" style={{ borderTop: "1px solid var(--skeleton)", paddingTop: 10 }}>
+                {test === "sent" ? (
+                  <>
+                    <p style={{ font: "500 13.5px/19px var(--font-system)", color: "var(--ink)" }}>{s.testSent}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="btn-secondary" style={{ padding: "8px 14px" }} disabled={busy === step} onClick={() => answerTest(true)}>{s.testYes}</button>
+                      <button type="button" className="btn-secondary" style={{ padding: "8px 14px" }} disabled={busy === step} onClick={() => answerTest(false)}>{s.testNo}</button>
+                    </div>
+                  </>
+                ) : (
+                  <button type="button" className="btn-secondary self-start" style={{ padding: "8px 14px" }} disabled={test === "sending"} onClick={sendTest}>{s.testSend}</button>
+                )}
+                {test === "nosub" && <p role="status" style={{ font: "400 12.5px/18px var(--font-system)", color: "var(--meta)" }}>{s.testNoSub}</p>}
+                {test === "failed" && <p role="status" style={{ font: "500 12.5px/18px var(--font-system)", color: "var(--danger)" }}>{s.testFailed}</p>}
+              </div>
+            )}
+
             {!ticked && mine === "failed" && (
               <div className="flex flex-col gap-1.5" style={{ background: "var(--terra-tint)", borderRadius: 12, padding: "10px 12px" }}>
-                <p style={{ font: "500 13px/19px var(--font-system)", color: "var(--ink)" }}>{s.failedNote}</p>
+                {/* Only promise "the exact fix" when there is one to show. */}
+                <p style={{ font: "500 13px/19px var(--font-system)", color: "var(--ink)" }}>{fix ? s.failedNote : s.laterNote}</p>
                 {fix && <p style={{ font: "400 13.5px/20px var(--font-system)", color: "var(--ink)" }}>{fix}</p>}
                 <Link href="/chat" style={{ font: "600 13px/18px var(--font-system)", color: "var(--accent-strong)" }}>{s.ask} ›</Link>
               </div>

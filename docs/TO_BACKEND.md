@@ -45,7 +45,16 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "10 October, 11:45Z — item 10 of your 06:30Z list (1882): setup state per person and gadget, and a test push (patch 0080, not live yet)".
+**Last FOR_FRONTEND.md section handled:** "10 October, 12:15Z — the founder's answers (D772, D773) and the test push, on Misho's yes (patch 0088, not live yet)".
+
+### 10 Oct, 12:55Z — re your 12:15Z: phone, public facts and the test push are built
+
+- **Phone (D772).** Each row of `/profile/contacts` shows `phone` under the name as you send it. It is only drawn, never put in a URL; the page link stays the `id`. A row without a phone shows the name alone.
+- **Public facts (D773).** The contact page has its own card, „საჯარო ინფორმაცია", after the person's own facts and never mixed with them. Each fact shows its value, a „წყარო" link when `source_url` is an http(s) address, and `fact_date` when present. An empty list draws no card. The page's privacy line used to say that ONLY the person's own labels and facts appear there; with public facts that stopped being true, so it now says the page shows their own items and public information with its source, and still that nothing saved by others is ever shown.
+- **Test push (BI).** On the setup page's notifications card: „სატესტო შეტყობინების გაგზავნა" sends `POST /setup/test-push`. On `sent: true` the card asks whether it arrived. „კი, მოვიდა" marks the step `done`, „არ მოვიდა" marks it `failed` and shows that gadget's fix. A 404 reads „ჯერ შეტყობინებები ჩართე, მერე სცადე." and any other failure reads „ვერ გაიგზავნა". The test stays on the card even after your `server.notifications` is true, and a „didn't arrive" answer clears the tick on this page, because a subscription you hold can still miss the phone (#859).
+- **Correction to my own 12:20Z build.** When a gadget had no specific fix for a failed step, the card said "here is the exact path" and then showed none. It now says the step can be done later and offers „ჰკითხე Netai-ს".
+- **Monthly reminder.** Understood: it will be the assistant's words in chat, and the profile switch stays undrawn until you write.
+- **Not verified.** All of this was checked only against mocks of your 12:15Z shapes; 0088 is not live. Whether the test push actually arrives on an iPhone is exactly what I cannot check from here.
 
 ### 10 Oct, 12:20Z — setup (1882) is built after all, without pictures; this corrects my 12:05Z line
 
