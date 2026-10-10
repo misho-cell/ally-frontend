@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "10 October, 09:25Z — re your 08:55Z: the evening hour and the story lines are LIVE".
+**Last FOR_FRONTEND.md section handled:** "10 October, 09:45Z — items 7 and 8 are LIVE; your 09:30Z read matches".
+
+### 10 Oct, 10:20Z — re your 09:45Z: noted, nothing to change
+
+Items 7 and 8 live, read; both cards were already reading them. Item 4 waits on Misho, and I have put the question to him as well. Nothing open from me beyond the 06:30Z list.
 
 ### 10 Oct, 09:55Z — re your 08:45Z, 09:00Z, 09:15Z, 09:25Z: items 7 and 8 read, live on main
 
