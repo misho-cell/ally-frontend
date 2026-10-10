@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import SheetPage from "@/components/SheetPage";
 import { apiFetch, ApiError } from "@/lib/api";
+import { isRecord, unwrapData } from "@/lib/payload";
 import { authHeaders } from "@/lib/deviceId";
 import { onCheckoutCompleted } from "@/lib/paddle";
 import { startStripeTopup } from "@/lib/stripe";
@@ -104,6 +105,8 @@ const L = {
     // stops now", and somebody who has paid for this month keeps this month.
     addContacts: "Add new contacts",
     addContactsSub: "People you have saved on your phone since last time",
+    lastImport: (d: string, n: number) => `Last upload ${d}, ${n} contacts`,
+    claudeConnected: "Claude is connected",
     cancelPlan: "Cancel subscription",
     keepPlan: "Keep it",
     cancelPlanAsk: (d: string) => `The plan will not renew. You keep everything until ${d}, and nothing is charged after that.`,
@@ -188,6 +191,8 @@ const L = {
     portalError: "პორტალი ვერ გაიხსნა. სცადე თავიდან.",
     addContacts: "ახალი კონტაქტების დამატება",
     addContactsSub: "ვინც ბოლო დროს შეინახე ტელეფონში",
+    lastImport: (d: string, n: number) => `ბოლო ატვირთვა ${d}, ${n} კონტაქტი`,
+    claudeConnected: "Claude დაკავშირებულია",
     cancelPlan: "გამოწერის გაუქმება",
     keepPlan: "დავტოვოთ",
     cancelPlanAsk: (d: string) => `გამოწერა აღარ განახლდება. ${d}-მდე ყველაფერი გრჩება და შემდეგ თანხა აღარ ჩამოგეჭრება.`,
@@ -566,8 +571,57 @@ function EditProfileCard({ profile, onSaved }: { profile: Profile; onSaved: (p: 
 
 // Static "add Netai to your Claude" guide — no API involved. Collapsible so
 // the profile stays compact.
+// 10 Oct (backend 08:45Z, GET /contacts/import-state): when the last import
+// that actually brought contacts happened, and how many. Nothing is drawn for
+// someone who never imported, or when the server cannot say: an unknown date
+// must not read as "never". The monthly-reminder switch from the design is
+// not drawn: the backend saves it but sends nothing yet, so the switch would
+// promise a reminder that does not come.
+function LastImportLine() {
+  const s = useStrings();
+  const [info, setInfo] = useState<{ at: string; n: number } | null>(null);
+  useEffect(() => {
+    let alive = true;
+    apiFetch<unknown>("/contacts/import-state")
+      .then((raw) => {
+        const d = unwrapData(raw);
+        if (!alive || !isRecord(d)) return;
+        if (typeof d.last_import_at === "string" && typeof d.last_import_count === "number") {
+          setInfo({ at: d.last_import_at, n: d.last_import_count });
+        }
+      })
+      .catch(() => { /* nothing drawn */ });
+    return () => { alive = false; };
+  }, []);
+  if (!info) return null;
+  return (
+    <p className="mt-1" style={{ fontSize: "12px", color: "var(--meta)" }}>
+      {s.lastImport(fmtDateLoc(info.at, { day: "numeric", month: "short" }), info.n)}
+    </p>
+  );
+}
+
+// 10 Oct (backend 09:15Z, GET /connector/state): the design's "connected"
+// line. Only a `connected: true` draws it; false and unknown draw nothing
+// rather than a verdict.
+function useClaudeConnected(): boolean {
+  const [connected, setConnected] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    apiFetch<unknown>("/connector/state")
+      .then((raw) => {
+        const d = unwrapData(raw);
+        if (alive && isRecord(d) && d.connected === true) setConnected(true);
+      })
+      .catch(() => { /* nothing drawn */ });
+    return () => { alive = false; };
+  }, []);
+  return connected;
+}
+
 function AllyInClaudeCard() {
   const s = useStrings();
+  const connected = useClaudeConnected();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -589,6 +643,12 @@ function AllyInClaudeCard() {
         <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.claudeTitle}</h2>
         <span style={{ color: "var(--meta)", fontSize: "12px" }}>{open ? "▾" : "▸"}</span>
       </button>
+      {connected && (
+        <p className="flex items-center gap-2" style={{ fontSize: "12.5px", fontWeight: 500, color: "var(--accent-strong)" }}>
+          <span className="rounded-full" style={{ width: 7, height: 7, background: "var(--accent)" }} />
+          {s.claudeConnected}
+        </p>
+      )}
 
       {open && (
         <div className="flex flex-col gap-4">
@@ -1172,6 +1232,7 @@ export default function ProfilePage() {
                 <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
                   {s.addContactsSub}
                 </p>
+                <LastImportLine />
               </div>
               <span style={{ color: "var(--meta)" }}>→</span>
             </Link>

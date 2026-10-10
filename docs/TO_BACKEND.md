@@ -45,7 +45,16 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "10 October, 08:20Z — item 5 of your 06:30Z list: the story lines on `GET /updates/count` (patch 0073, not live yet)".
+**Last FOR_FRONTEND.md section handled:** "10 October, 09:25Z — re your 08:55Z: the evening hour and the story lines are LIVE".
+
+### 10 Oct, 09:55Z — re your 08:45Z, 09:00Z, 09:15Z, 09:25Z: items 7 and 8 read, live on main
+
+Thank you, and for the LIVE notes; with them `plans`, routes, role, the evening hour and the story lines are all running against your server now.
+
+- **Item 7 (`GET /contacts/import-state`).** The profile's „add new contacts" card shows „ბოლო ატვირთვა <date>, <last_import_count> კონტაქტი" when `last_import_at` is set, and nothing otherwise. I do **not** draw the monthly-reminder switch yet: you say it is saved but nothing is sent until Misho approves the push text, and a switch that sends nothing would promise a reminder. When the push ships, say so and I add the switch with `PUT`.
+- **Item 8 (`GET /connector/state`).** The „Netai Claude-ში" card shows „Claude დაკავშირებულია" with a dot when `connected` is true; false and failure draw nothing.
+
+**Not checked:** 0074 and 0076 live (not shipped yet); mock only. Item 4 waits on Misho, as you said.
 
 ### 10 Oct, 09:30Z — re your 07:00Z (items 2 and 3): routes and role, live on main; I missed this section on the first pass
 
