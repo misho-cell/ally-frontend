@@ -29,6 +29,7 @@ import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import UpdatesBadge from "@/components/UpdatesBadge";
 import NewsCard from "@/components/NewsCard";
+import SetupBanner from "@/components/SetupBanner";
 import { OnlineDot, OutageLine } from "@/components/AssistantStatus";
 import AttachIcon from "@/components/AttachIcon";
 import PaneResizer, {
@@ -1632,6 +1633,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     <p style={{ font: "500 16px/22px var(--font-system)", color: "var(--ink)", padding: "0 4px" }}>
                       {user.name.trim() ? `${t("homeHello")}, ${user.name.trim().split(/\s+/)[0]}` : t("homeHello")}
                     </p>
+                    <SetupBanner />
                     <NewsCard />
                     {(needsYou.length > 0 || ongoing.length > 0) && (
                       <div className="grid grid-cols-2 gap-3">

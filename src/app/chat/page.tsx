@@ -9,6 +9,7 @@ import { FILE_ACCEPT, FILE_MAX_BYTES } from "@/lib/threadFiles";
 import AttachIcon from "@/components/AttachIcon";
 import StagedFile from "@/components/StagedFile";
 import NewsCard from "@/components/NewsCard";
+import SetupBanner from "@/components/SetupBanner";
 import { useUserName } from "@/lib/user";
 
 // Desktop right pane, no goal selected: dogs clip + one line + the goal
@@ -140,6 +141,7 @@ export default function ChatIndexPage() {
             <p style={{ font: "500 17px/24px var(--font-system)", color: "var(--ink)" }}>
               {firstName ? `${t("homeHello")}, ${firstName}` : t("homeHello")}
             </p>
+            <SetupBanner />
             <div className="flex w-full items-center justify-center gap-5">
               <video
                 className="ally-anim shrink-0"
