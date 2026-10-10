@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { APP_BUILD as SHA } from "@/lib/build";
 
 // Task 23: which build does each device run? Vercel exposes the commit SHA at
 // build time; the tag is visible in the corner AND logged to the console so
 // testers can compare devices. Remove once the investigation closes.
-const SHA = (process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7) || "dev";
 
 export default function BuildTag() {
   useEffect(() => {

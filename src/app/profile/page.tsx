@@ -9,7 +9,7 @@ import { isRecord, unwrapData } from "@/lib/payload";
 import { authHeaders } from "@/lib/deviceId";
 import { onCheckoutCompleted } from "@/lib/paddle";
 import { startStripeTopup } from "@/lib/stripe";
-import { getLocale, fmtDateLoc } from "@/lib/i18n";
+import { getLocale, fmtDateLoc, fmtDateShort } from "@/lib/i18n";
 import { clearUserName } from "@/lib/user";
 import { openStripePortal, portalErrorText, cancelSubscription, resumeSubscription } from "@/lib/stripe";
 import PushDiagnostics from "@/components/PushDiagnostics";
@@ -55,6 +55,7 @@ const L = {
     // big number is labelled, and the rest is one sentence in the order a
     // person asks it: what is left, what went, what comes back and when.
     left: "left",
+    lastTopUp: (amount: string, d: string) => `Last top-up: ${amount}, ${d}`,
     spentThisWeek: (spent: string) => `You spent ${spent} this week.`,
     spentThisMonth: (spent: string) => `You spent ${spent} this month.`,
     addedWeekly: (granted: string, d: string) => `${granted} is added every week, next on ${d}.`,
@@ -146,6 +147,7 @@ const L = {
     perWeek: "კვირაში",
     perMonth: "თვეში",
     left: "დაგრჩა",
+    lastTopUp: (amount: string, d: string) => `ბოლო შევსება: ${amount}, ${d}`,
     spentThisWeek: (spent: string) => `ამ კვირაში დახარჯე ${spent}.`,
     spentThisMonth: (spent: string) => `ამ თვეში დახარჯე ${spent}.`,
     addedWeekly: (granted: string, d: string) => `ყოველ კვირას ემატება ${granted}, შემდეგი ${d}.`,
@@ -855,6 +857,13 @@ function TokensWidget() {
 
           {isTrial && (
             <p className="text-xs" style={{ color: "var(--meta)" }}>{s.trialBalance}</p>
+          )}
+
+          {/* 4294: the newest credit, amount and date both the server's. */}
+          {tokens.lastTopUp && (
+            <p className="text-xs" style={{ color: "var(--meta)" }}>
+              {s.lastTopUp(fmtTokens(tokens.lastTopUp.amount), fmtDateShort(tokens.lastTopUp.at))}
+            </p>
           )}
 
           {showTopup && (

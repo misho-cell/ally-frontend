@@ -1,4 +1,5 @@
 import { durableGet, durableSet } from "./durable";
+import { APP_BUILD } from "@/lib/build";
 
 const DEVICE_ID_KEY = "device_id";
 
@@ -67,6 +68,9 @@ export function authHeaders(extra?: Record<string, string>): Record<string, stri
   if (deviceId) headers["X-Device-Id"] = deviceId;
   const locale = chosenLocale();
   if (locale) headers["X-Locale"] = locale;
+  // 4298: the build in the corner, kept per device by the server. Its cors()
+  // reflects the requested headers, so this needs no allow-list change.
+  headers["X-App-Build"] = APP_BUILD;
   return headers;
 }
 

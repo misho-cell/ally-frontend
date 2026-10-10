@@ -6,6 +6,7 @@ import SheetPage from "@/components/SheetPage";
 import { apiFetch, ApiError } from "@/lib/api";
 import { getLocale, fmtDateLoc } from "@/lib/i18n";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
+import { WEEKLY_KIND, cardSource, weeklyGoals, weekStart } from "@/lib/weekly";
 
 // Row 73 (21 Sept). Updates used to reach a person only as a line in chat, and
 // "later" on one of them did nothing — not because the call was missing, but
@@ -62,6 +63,7 @@ const L = {
     weekOpen: (n: number) => `Task by task (${n})`,
     weekClose: "Hide",
     weekDone: "Read it",
+    pastWeeks: "Past weekly summaries",
     asks: (sent: number, answered: number) => `${answered} of ${sent} answered`,
     // D703. The design names the flag for what the person means by it.
     follow: "Return later",
@@ -101,6 +103,7 @@ const L = {
     weekOpen: (n: number) => `დავალებების მიხედვით (${n})`,
     weekClose: "დამალვა",
     weekDone: "წავიკითხე",
+    pastWeeks: "წინა კვირის შეჯამებები",
     asks: (sent: number, answered: number) => `${sent}-დან ${answered}-ს უპასუხეს`,
     follow: "მოგვიანებით დავუბრუნდები",
     unfollow: "მოხსნა",
@@ -154,55 +157,6 @@ type Update = {
   task_id?: number | string | null;
   created_at?: string | null;
 };
-
-// Row 230 (23 Sept, D462). The weekly summary used to be written into every
-// open goal's thread: on 21 September Lika had 36 open goals and the same
-// 9,607-character text went into 32 of them in nine seconds. She still did not
-// find it — she found it by opening chats one at a time. The founder's whole
-// criterion for this card was therefore "cannot be missed", and he chose a
-// card of its own at the top rather than a row in the list.
-type WeeklyGoal = {
-  task_id?: number | string | null;
-  title?: string | null;
-  asks_sent?: number | null;
-  asks_answered?: number | null;
-  pending_question?: string | null;
-};
-
-const WEEKLY_KIND = "weekly_summary";
-
-// 28 Sept. The weekly payload carries the same week in two shapes: `goals`,
-// the structured list, and `text`, a composed paragraph. The card drew BOTH,
-// which is how a tester met twenty-four goals listed twice across eight
-// screens. That was not a rendering mistake — the server sent both and never
-// said which was the screen's.
-//
-// `card_source` says. It names the authoritative representation, and it is
-// read rather than assumed: if it ever says something this build does not
-// know, nothing is drawn from the payload body and the heading and the line
-// still stand on their own. Guessing wrong here is what produced the wall.
-function cardSource(payload: unknown): string | null {
-  if (!isRecord(payload)) return null;
-  const v = payload.card_source;
-  return typeof v === "string" && v ? v : null;
-}
-
-// One name, pinned on the server with a test. This used to read three
-// spellings because the shape was described loosely and "whatever you have
-// will work" felt helpful — which is exactly how two names for one thing
-// become permanent, as they did for the request ref that blocked the
-// tester's seat for a week.
-function weeklyGoals(payload: unknown): WeeklyGoal[] {
-  if (!isRecord(payload)) return [];
-  const v = payload.goals;
-  return Array.isArray(v) ? (recordItems(v) as WeeklyGoal[]) : [];
-}
-
-function weekStart(payload: unknown): string | null {
-  if (!isRecord(payload)) return null;
-  const v = payload.week_start;
-  return typeof v === "string" && v ? v : null;
-}
 
 // The payload's shape is the backend's and varies by kind, so nothing is
 // invented here: the first string-like field that reads as text is shown, and
@@ -504,6 +458,13 @@ export default function UpdatesPage() {
     >
 
         <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--ink-soft)" }}>{s.intro}</p>
+
+        {/* 4296: a summary once read is still reachable. Always offered, not
+            only under a due card, since the week someone wants back is
+            usually one with no card on screen. Reading it spends nothing. */}
+        <Link href="/updates/weekly" prefetch={false} className="self-start" style={{ font: "600 13px/18px var(--font-system)", color: "var(--accent)" }}>
+          {s.pastWeeks} ›
+        </Link>
 
         {notice && (
           <p

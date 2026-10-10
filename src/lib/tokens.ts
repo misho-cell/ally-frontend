@@ -21,6 +21,9 @@ export type TokenBalance = {
   spentThisPeriod: number | null;
   window?: string;
   resetsAt?: string | null;
+  // 10 Oct (4294): the newest credit, or null for someone never credited.
+  // Absent on an older server, which reads the same as null here.
+  lastTopUp?: { amount: number; at: string } | null;
 };
 
 function num(src: Record<string, unknown>, ...names: string[]): number | null {
@@ -70,5 +73,8 @@ export function parseTokenBalance(raw: unknown): TokenBalance | null {
     spentThisPeriod: num(body, "spentThisPeriod"),
     window: str(body, "window") ?? undefined,
     resetsAt: str(body, "resetsAt"),
+    lastTopUp: isRecord(body.lastTopUp) && typeof body.lastTopUp.amount === "number" && typeof body.lastTopUp.at === "string"
+      ? { amount: body.lastTopUp.amount, at: body.lastTopUp.at }
+      : null,
   };
 }

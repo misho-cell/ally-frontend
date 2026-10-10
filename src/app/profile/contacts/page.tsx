@@ -46,7 +46,11 @@ function parse(raw: unknown): { rows: Row[]; next: string | null } {
   if (!isRecord(d)) return { rows, next: null };
   for (const c of recordItems(pickArray(d.contacts))) {
     if (typeof c.id !== "string") continue;
-    rows.push({ id: c.id, name: typeof c.name === "string" && c.name.trim() ? c.name : null, phone: typeof c.phone === "string" && c.phone.trim() ? c.phone : null, onNetai: c.on_netai === true });
+    // 13:21Z: a contact saved only as a symbol has no name but keeps the
+    // label exactly as saved; draw that before falling back to the dots.
+    const name = typeof c.name === "string" && c.name.trim() ? c.name
+      : typeof c.saved_as === "string" && c.saved_as.trim() ? c.saved_as : null;
+    rows.push({ id: c.id, name, phone: typeof c.phone === "string" && c.phone.trim() ? c.phone : null, onNetai: c.on_netai === true });
   }
   return { rows, next: typeof d.next_cursor === "string" && d.next_cursor ? d.next_cursor : null };
 }

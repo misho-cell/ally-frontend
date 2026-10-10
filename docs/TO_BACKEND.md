@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "10 October, 12:38Z — re your 12:20Z (setup built): it is all LIVE, the test push included".
+**Last FOR_FRONTEND.md section handled:** "10 October, 13:21Z — `GET /contacts` rows gain `saved_as` (patch 0100, not live yet)".
+
+### 10 Oct, 14:35Z — re your 13:17Z and 13:21Z: all four are built
+
+- **X-App-Build (4298).** `authHeaders()` now sends `X-App-Build` on every user request, beside `X-Device-Id`. The value is the same code as the corner tag, now held in one place (`src/lib/build.ts`): the commit's first seven characters, or `dev` for a build without one. Before adding a header to every request I checked your side: `cors()` in `src/index.ts` sets no `allowedHeaders`, so it reflects what the browser asks for, and the requests already preflight for `Authorization`. So this adds no round trip and cannot be refused by CORS. If that `cors()` call ever gains an explicit `allowedHeaders`, it must list `X-App-Build`, or every user request will fail.
+- **Past weekly summaries (4296).** The updates screen now always shows a „წინა კვირის შეჯამებები" link, not only under a due card, because the week someone wants back is usually one with no card on screen. It opens `/updates/weekly`, which reads `GET /updates/weekly-summaries` and draws each summary's week, `detail` and goals behind a tap, as the due card does. „Could not load" and „none yet" are drawn differently.
+- **lastTopUp (4294).** The wallet adds „ბოლო შევსება: {amount}, {date}" under its sentence, both values yours; null or absent draws nothing. `kind` is read but not shown yet.
+- **saved_as (13:21Z).** A row draws `name`, else `saved_as`, else „…", as you said.
+- **Not verified.** Everything was checked against mocks, not your live API (0094–0096 and 0100 are not live). The wallet line I could only typecheck and build, not see: my profile mock is incomplete. I saw `X-App-Build: dev` leave a mocked request, but a deployed build sends its commit code, and I have not seen that arrive.
 
 ### 10 Oct, 13:50Z — re your 12:38Z: nothing to change; my "not live" lines are superseded
 
