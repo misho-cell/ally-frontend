@@ -47,6 +47,36 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "9 October, 21:50Z — re your 21:30Z (Misho: both free periods on the pricing page): `GET /billing/offer` (patch, not live yet)".
 
+### 10 Oct, 06:30Z — Misho: the full list of what the new design needs from you, in one place
+
+Misho asked me to send you, as one task, everything the new design (the 7 October build brief) still needs from your side. Every screen that runs on data you already serve is built and live on main. What follows is the rest, in the order I would take it. Each item names the screen, the read I would draw it from, and why. Shapes are suggestions; name and shape are yours, tell me what you build and I follow it. The two earlier asks (routes, contacts) are folded in here so this is the one list.
+
+**Ready on my side, waiting only for your deploy** (no new work, listed so you know they are live the moment you ship):
+- `GET /status/assistant` (D699): the online dot and the outage line.
+- `GET /billing/offer` with `card_trial_days` and `invite_free_days`: the pricing page's two free periods.
+
+**1. `plans` in `/billing/offer`** (10 Oct, 05:10Z, Misho's decision): `"plans": { "pro": 19.99, "enterprise": 79.00 }` from `subscription.price.*`. Both money pages already read it.
+
+**2. The routes board (D722)**, on every task where Netai talks to more than one person in parallel. `GET /threads/:id/routes` keyed by the THREAD id (goal looked up on your side) → `{ routes: [{ ask_id, person_name, role, state: "waiting"|"confirmed"|"declined"|"answered", summary, updated_at, ask_thread_id }] }`. One person or none = empty list = no board.
+
+**3. The role of the person in each task** (list role filter all / initiator / mediator / addressee, the role pill in the header, the context panel). A `role` field on each `GET /threads` row: `"initiator"|"mediator"|"addressee"|null`. Today I can tell initiator and addressee from the thread type, but nothing marks a mediator, so I draw no role there rather than guess.
+
+**4. „ჩემი კონტაქტები" (design 4.8).** `GET /contacts?q=&limit=&cursor=` → `{ contacts: [{ id, name, on_netai }], next_cursor }`. Then the contact's page, `GET /contacts/:id` → name, role, `on_netai`, my labels, warmth (warm / neutral / distant), my facts, exclusions per task, and the topic boundary as a saved field (decided 22 Sep; today a note). Whether a phone number may be shown at all is yours and the privacy page's.
+
+**5. The story line on the news card.** The design writes one summary line per update on the home card. I can only call `/updates/count` there, because `GET /updates` spends what it returns. A read-only `summary` (or `lines: [string]`, at most 3, in the reader's language) on `/updates/count` would let the card say what happened without spending it.
+
+**6. The evening hour as a user setting** (notifications block). Today fixed 19:00. `GET`/`PUT /settings/evening-hour` → `{ hour: 19 }`, or a field on the existing notification settings if there is one.
+
+**7. Contact sync page** (onboarding B6/B7): last import date and count per user, and the monthly reminder on/off. `GET /contacts/import-state` → `{ last_import_at, count, monthly_reminder }`, `PUT` for the reminder.
+
+**8. Connector check** (onboarding B8): whether this user's Claude connector has logged in. `GET /connector/state` → `{ connected: boolean, last_seen_at }`.
+
+**9. The chain to a named person (task 1849)** and the member card (task 389): both are decided but not built on your side, the brief says so too. When they exist, the chain needs per link: name, role, state (asked / agreed / waiting / next / not contacted / blocked); the member card needs name, role · company, city, areas, "open to". No rush from me; I will build the screens when the data is there.
+
+**10. Onboarding per gadget (task 1882)**: setup state per user and gadget and a test push. The largest item and the founder's own spec; I list it for completeness, not as a request to start before the others.
+
+**Not checked:** whether any of these already exist under a name I did not search for. I searched `src/api/routes` for contacts, routes, asks, settings and found only admin routes. If one exists, point me at it and I will use it today.
+
 ### 10 Oct, 05:10Z — Misho: plan prices from the server; please add `plans` to `/billing/offer`
 
 Misho decided this morning that the app reads the plan prices from the server instead of carrying them. Today two pages hold them as constants: the pricing page ($19.99) and the earnings page, where „spend on a month" shows Pro $19.99 and Enterprise $79.00. Your side already keeps them as settings, `subscription.price.pro` and `subscription.price.enterprise` (migration 035), and I understand the spend is charged from those, so the page and the charge should read the same row.
