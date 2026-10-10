@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import SheetPage from "@/components/SheetPage";
+import { useOffer } from "@/lib/offer";
 import { authHeaders } from "@/lib/deviceId";
 import { getLocale, fmtDateLoc } from "@/lib/i18n";
 import ReferralRewardsCard from "@/components/ReferralRewardsCard";
@@ -168,10 +169,11 @@ type TopupPackage = {
 };
 
 type SubTier = { tier: "pro" | "enterprise"; name: string; priceUsd: number };
-const SUB_TIERS: SubTier[] = [
-  { tier: "pro", name: "Pro", priceUsd: 19.99 },
-  { tier: "enterprise", name: "Enterprise", priceUsd: 79 },
-];
+// 10 Oct (Misho): the plan prices come from the server (GET /billing/offer,
+// `plans`), the same settings the spend itself is charged from. These stand
+// in only until the server has sent them, so spending a month keeps working
+// on a deployment that does not carry the field yet.
+const SUB_PRICE_FALLBACK = { pro: 19.99, enterprise: 79 } as const;
 
 function usd(n: number): string {
   return `$${Math.abs(n).toFixed(2)}`;
@@ -194,6 +196,11 @@ type Confirm =
 
 export default function EarningsPage() {
   const s = L[getLocale()];
+  const offer = useOffer();
+  const subTiers: SubTier[] = [
+    { tier: "pro", name: "Pro", priceUsd: offer.prices.pro ?? SUB_PRICE_FALLBACK.pro },
+    { tier: "enterprise", name: "Enterprise", priceUsd: offer.prices.enterprise ?? SUB_PRICE_FALLBACK.enterprise },
+  ];
   const [data, setData] = useState<Referral | null>(null);
   const [packages, setPackages] = useState<TopupPackage[]>([]);
   const [referralCode, setReferralCode] = useState<string | null>(null);
@@ -403,7 +410,7 @@ export default function EarningsPage() {
             <div className="card flex flex-col gap-3">
               <h2 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{s.buySub}</h2>
               <div className="grid grid-cols-2 gap-2.5">
-                {SUB_TIERS.map((tier) => (
+                {subTiers.map((tier) => (
                   <button
                     key={tier.tier}
                     type="button"

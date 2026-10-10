@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { getLocale } from "@/lib/i18n";
 import { startStripeCheckout } from "@/lib/stripe";
-import { apiFetch } from "@/lib/api";
-import { isRecord, unwrapData } from "@/lib/payload";
+import { useOffer } from "@/lib/offer";
 
 // Stripe (6 Sept): one plan, one price. The button copy that depends on
 // trial_days (5 vs 0) can only be known AFTER the checkout call returns, so
@@ -21,16 +20,19 @@ import { isRecord, unwrapData } from "@/lib/payload";
 // said, and the invitation line is not drawn at all: a missing number must
 // not become a promise of free days that may be switched off.
 const CARD_TRIAL_FALLBACK = 5;
+// The same for the monthly price: the server's `plans.pro` once it sends it,
+// this until then (Misho, 10 Oct: prices are read from the server).
+const PRO_PRICE_FALLBACK = 19.99;
+const usd = (n: number) => `$${n.toFixed(2)}`;
 const L = {
   en: {
     title: "Netai Pro",
     subtitle: (n: number) => `Try Pro free for ${n} days. Your card won't be charged until the trial ends.`,
     invite: (n: number) => `Joined with an invitation? Your first ${n} days are free.`,
-    price: "$19.99",
     period: "/mo",
     cta: (n: number) => `Start your ${n}-day free trial`,
     ctaNote: (n: number) => `A card is required, but nothing is charged for ${n} days.`,
-    ctaNoTrial: "Subscribe: $19.99/mo",
+    ctaNoTrial: (p: string) => `Subscribe: ${p}/mo`,
     ctaNoTrialNote: "You've already used your free trial. You'll be charged today.",
     opening: "Opening…",
     retry: "Try again",
@@ -41,11 +43,10 @@ const L = {
     title: "Netai Pro",
     subtitle: (n: number) => `სცადე Pro ${n} დღე უფასოდ. ბარათიდან თანხა საცდელი პერიოდის ბოლომდე არ ჩამოგეჭრება.`,
     invite: (n: number) => `მოწვევით შემოხვედი? პირველი ${n} დღე უფასოა.`,
-    price: "$19.99",
     period: "/თვე",
     cta: (n: number) => `დაიწყე ${n} დღიანი უფასო პერიოდი`,
     ctaNote: (n: number) => `ბარათი დაგჭირდება, მაგრამ ${n} დღის განმავლობაში არაფერი ჩამოგეჭრება.`,
-    ctaNoTrial: "გამოწერა: $19.99/თვე",
+    ctaNoTrial: (p: string) => `გამოწერა: ${p}/თვე`,
     ctaNoTrialNote: "უფასო პერიოდით უკვე ისარგებლე. თანხა დღესვე ჩამოიჭრება.",
     opening: "იხსნება…",
     retry: "სცადე ხელახლა",
@@ -59,24 +60,10 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
-  const [cardDays, setCardDays] = useState<number>(CARD_TRIAL_FALLBACK);
-  // null = unknown or switched off; either way no line.
-  const [inviteDays, setInviteDays] = useState<number | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    apiFetch<unknown>("/billing/offer")
-      .then((raw) => {
-        const d = unwrapData(raw);
-        if (!alive || !isRecord(d)) return;
-        const pos = (v: unknown) => (typeof v === "number" && Number.isInteger(v) && v > 0 ? v : null);
-        const c = pos(d.card_trial_days);
-        if (c != null) setCardDays(c);
-        setInviteDays(pos(d.invite_free_days));
-      })
-      .catch(() => { /* keep the fallback, draw no invitation line */ });
-    return () => { alive = false; };
-  }, []);
+  const offer = useOffer();
+  const cardDays = offer.cardTrialDays ?? CARD_TRIAL_FALLBACK;
+  const inviteDays = offer.inviteFreeDays;
+  const price = usd(offer.prices.pro ?? PRO_PRICE_FALLBACK);
 
   async function subscribe() {
     if (loading || unavailable) return;
@@ -137,7 +124,7 @@ export default function PricingPage() {
           }}
         >
           <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-bold" style={{ color: "#FFFFFF" }}>{s.price}</span>
+            <span className="text-3xl font-bold" style={{ color: "#FFFFFF" }}>{price}</span>
             <span className="text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>{s.period}</span>
           </div>
 

@@ -47,6 +47,14 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "9 October, 21:50Z — re your 21:30Z (Misho: both free periods on the pricing page): `GET /billing/offer` (patch, not live yet)".
 
+### 10 Oct, 05:10Z — Misho: plan prices from the server; please add `plans` to `/billing/offer`
+
+Misho decided this morning that the app reads the plan prices from the server instead of carrying them. Today two pages hold them as constants: the pricing page ($19.99) and the earnings page, where „spend on a month" shows Pro $19.99 and Enterprise $79.00. Your side already keeps them as settings, `subscription.price.pro` and `subscription.price.enterprise` (migration 035), and I understand the spend is charged from those, so the page and the charge should read the same row.
+
+**The ask:** add them to `GET /billing/offer`, e.g. `"plans": { "pro": 19.99, "enterprise": 79.00 }` (USD, numbers), from those settings. Name is yours; tell me if you choose another.
+
+**Live on main already:** both pages read `plans.pro` / `plans.enterprise` from `/billing/offer` and use the server's value whenever it is there. Until it is, they show the values they always did, so spending a month keeps working on the current deployment. Tested against a mock only.
+
 ### 9 Oct, 22:20Z — re your 21:50Z: `/billing/offer` matches what the page reads, nothing to change
 
 Thank you. The pricing page already reads exactly these two fields, so once you deploy it shows „სცადე Pro 5 დღე…" from `card_trial_days` and the line „მოწვევით შემოხვედი? პირველი 20 დღე უფასოა." from `invite_free_days`; `null` draws no line. Misho approved that sentence tonight. A 429 or 500 keeps the fallback (5 days, no invitation line).
