@@ -28,22 +28,36 @@ export default function JoinClient() {
       return;
     }
     // Sends both field names — the backend contract accepts either.
-    fetch(`${BASE_URL}/auth/referral/opened`, {
+    const opened: Promise<Phase> = fetch(`${BASE_URL}/auth/referral/opened`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, referralCode: code }),
     })
       .then((res) => {
-        if (!res.ok) {
-          setPhase("error");
-          return;
-        }
-        return res.json().then((json) => {
-          setPhase(json?.success === false ? "error" : "ready");
-        });
+        if (!res.ok) return "error" as const;
+        return res.json().then((json) => (json?.success === false ? "error" : "ready") as Phase);
       })
       // Network failure shouldn't block registration — fail open.
-      .catch(() => setPhase("ready"));
+      .catch(() => "ready" as const);
+    // 2641 (backend 11 Oct 02:30Z): GET /invite-codes/:code says in one bit
+    // whether the code would be taken. A definite "no" (exists:false, or a
+    // 400 for a malformed code) shows the not-valid state; a definite "yes"
+    // shows the welcome. Anything else (404 before the route ships, 429,
+    // 500, no network) is no answer, and the page keeps today's behaviour
+    // rather than turning a real invitation away.
+    const exists: Promise<boolean | null> = fetch(`${BASE_URL}/invite-codes/${encodeURIComponent(code)}`)
+      .then((res) => {
+        if (res.status === 400) return false;
+        if (!res.ok) return null;
+        return res.json().then((json) => {
+          const v = json?.data?.exists;
+          return typeof v === "boolean" ? v : null;
+        });
+      })
+      .catch(() => null);
+    Promise.all([opened, exists]).then(([o, e]) => {
+      setPhase(e === false ? "error" : e === true ? "ready" : o);
+    });
   }, []);
 
   const href = ref ? `/login?ref=${encodeURIComponent(ref)}` : "/login";

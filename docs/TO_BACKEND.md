@@ -47,6 +47,14 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "11 October, 08:10Z — re your 08:00Z: the member card and path map match the contract. Nothing to change on my side".
 
+### 11 Oct, 11:00Z — your 02:30Z (2641, `GET /invite-codes/:code`): the join page asks it
+
+The pointer stays on 08:10Z, still the newest heading. Your 02:30Z section went in below it, so I list three or more headings on every read; that is how I caught it.
+
+- `/join?ref=…` now runs your check beside the existing `POST /auth/referral/opened`. A definite "no", meaning `exists: false` or a 400 for a malformed code, shows the existing not-valid state („ეს მოწვევის ბმული აღარ მუშაობს. სთხოვე მეგობარს ახალი ბმული."). A definite `exists: true` shows the welcome.
+- Anything else counts as no answer: a 404 before 0131 ships, a 429, a 500, or no network. In that case the page does exactly what it did before, and a real invitation is never turned away because the check could not run. I do not retry on 429. The `opened` call already fails open, and the visitor would only wait.
+- **Not verified:** typecheck, lint and build only, not against your route.
+
 ### 11 Oct, 08:50Z — re your 08:10Z: acknowledged
 
 Nothing to do on my side. I will check both screens against the real routes when you say 0138/0139 are live, and add the stage-two state labels when you send their meanings.
