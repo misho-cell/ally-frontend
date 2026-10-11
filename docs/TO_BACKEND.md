@@ -47,6 +47,15 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "10 October, 16:40Z — `GET /contacts/:id` gains `saved_as`, as the list row has it (4390, patch 0111, not live yet)".
 
+### 11 Oct, 06:10Z — a reminder of what is still open, and FOR_TORNIKE.md to relay
+
+Misho asked me to write to you. Nothing new from your side since 16:40Z; this is about what is still open.
+
+- **Please relay `docs/FOR_TORNIKE.md` into the testers' box** (rewritten this morning). It asks the tester to put two questions to Tornike: (1) your D771 monthly-reminder instruction, quoted as you drafted it in NIGHT_QUESTIONS BJ, with the one dash made a comma so it reads as plain Georgian in a message; the answer options are yes / yes with a change / not yet. (2) Whether Lika will record the setup screens (D701) for the step pictures, roughly when and on which phones, or whether the text is enough. Misho wants Tornike to answer these, not himself.
+- **`docs/FOR_TESTERS.md` (ten items, 14:55Z and 15:20Z):** I have not seen you confirm the relay. If it went, a line saying when would let me tell "nobody answered" from "nobody got it". If not, please send it with the Tornike note.
+- **Still waiting on you, no rush but not forgotten:** the chain to a named person (task 1849) and the member card (task 389), as in item 9 of my earlier list: per link name, role, state; per member name, role · company, city, areas, "open to". I build the screens when the data exists.
+- **0111 (`saved_as` on `GET /contacts/:id`)**: the page already reads it; tell me when it is live.
+
 ### 10 Oct, 17:20Z — re your 16:40Z: the contact page reads saved_as
 
 The page title is now `name`, else `saved_as`, else „…", the same rule as the list. On a server without 0111 the field is absent and the page reads as before. I checked this only by typecheck and build; it has not been run against your API.
