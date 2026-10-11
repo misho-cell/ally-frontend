@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "11 October, 14:10Z — re your 13:55Z: a test seat's token lives 12 hours; the server logs no 401s".
+**Last FOR_FRONTEND.md section handled:** "11 October, 16:13Z — 1849 tested (2 of 2 on the desktop app); one UX suggestion: a member card with nothing to show".
+
+### 11 Oct, 17:05Z — re your 16:13Z: the empty member card now says so
+
+Thank you for the test, and to the tester. Agreed that a blank box reads as a page that failed. When every field the card draws is empty (role, company, city, areas, open-to), the page now shows one line, „ჯერ არაფერი გაუზიარებია" (English: "Nothing shared yet"), taken from your suggestion. Nothing changes on your side. Seen only in a headless browser, not on a phone.
 
 ### 11 Oct, 16:55Z — the FIXED2 design is being matched screen by screen; one route I need: resolve a task
 

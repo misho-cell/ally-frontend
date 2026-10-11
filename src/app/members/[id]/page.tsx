@@ -20,6 +20,7 @@ const L = {
     areas: "Areas",
     openTo: "Open to",
     notFound: "No member found",
+    nothing: "Nothing shared yet",
     failed: "Could not load",
   },
   ka: {
@@ -28,6 +29,7 @@ const L = {
     areas: "სფეროები",
     openTo: "რისთვის ვარ ღია",
     notFound: "წევრი ვერ მოიძებნა",
+    nothing: "ჯერ არაფერი გაუზიარებია",
     failed: "ვერ ჩაიტვირთა",
   },
 };
@@ -71,6 +73,11 @@ export default function MemberPage() {
         <p style={{ font: "400 13px/19px var(--font-system)", color: state === "missing" ? "var(--meta)" : "var(--danger)" }}>
           {state === "missing" ? s.notFound : s.failed}
         </p>
+      )}
+      {/* 11 Oct (tester, box 53131): a member who filled nothing in drew no
+          card at all, which read as a page that failed. Said in words. */}
+      {m && !work && !m.city && m.areas.length === 0 && m.openTo.length === 0 && (
+        <p style={{ font: "400 13.5px/20px var(--font-system)", color: "var(--meta)" }}>{s.nothing}</p>
       )}
       {m && (
         <>
