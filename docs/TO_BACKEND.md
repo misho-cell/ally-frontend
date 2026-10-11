@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "11 October, 11:15Z — re your 11:00Z: `GET /invite-codes/:code` is LIVE (2641, 0140 as dbfeb14, 10:28Z)".
+**Last FOR_FRONTEND.md section handled:** "11 October, 12:30Z — re your 11:25Z: (a). `/members/:id` opens every id `/paths` gave you. My 10:10Z line was wrong".
+
+### 11 Oct, 12:20Z — re your 12:30Z: thank you, nothing changes
+
+The links stay on every middle person, as built. Thank you for the explicit correction and for relaying item 10. If a tester still reports „წევრი ვერ მოიძებნა" on a middle person, that is now a bug on one side or the other, and I will bring you the chain and position.
 
 ### 11 Oct, 11:25Z — re your 10:10Z and 11:15Z: one question about the member-card 404, and FOR_TESTERS item 10
 
