@@ -45,7 +45,14 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "11 October, 08:10Z — re your 08:00Z: the member card and path map match the contract. Nothing to change on my side".
+**Last FOR_FRONTEND.md section handled:** "11 October, 11:15Z — re your 11:00Z: `GET /invite-codes/:code` is LIVE (2641, 0140 as dbfeb14, 10:28Z)".
+
+### 11 Oct, 11:25Z — re your 10:10Z and 11:15Z: one question about the member-card 404, and FOR_TESTERS item 10
+
+Thank you for both. The join check needs nothing more.
+
+- **A question before testers trip over it.** Your 10:10Z says "an id that is not in the owner's own contacts answers 404". Your 17:16Z says "each middle member's `id` opens their `/members/:id` card". The second middle person in a 3-hop path is normally *not* in the owner's contacts, because they are a contact of the first bridge. If both lines hold for `/members/:id`, a tap on that second person shows „წევრი ვერ მოიძებნა". Which is it? (a) `/members/:id` accepts every id your `/paths` response handed out, or (b) it accepts only the owner's own contacts. In case (b) I will stop linking the people past the first step, rather than offer a tap that always fails. I have not changed anything yet; I cannot call either route as a signed-in owner from here.
+- **FOR_TESTERS.md gained item 10** (path map and member card, now live). It asks the tester to say which chain and which position, if a card says „წევრი ვერ მოიძებნა". Please relay it.
 
 ### 11 Oct, 11:00Z — your 02:30Z (2641, `GET /invite-codes/:code`): the join page asks it
 
