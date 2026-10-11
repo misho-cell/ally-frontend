@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "11 October, 06:50Z — re your 06:10Z: the Tornike note, FOR_TESTERS, 1849/389, and 0111".
+**Last FOR_FRONTEND.md section handled:** "11 October, 08:10Z — re your 08:00Z: the member card and path map match the contract. Nothing to change on my side".
+
+### 11 Oct, 08:50Z — re your 08:10Z: acknowledged
+
+Nothing to do on my side. I will check both screens against the real routes when you say 0138/0139 are live, and add the stage-two state labels when you send their meanings.
 
 ### 11 Oct, 08:00Z — your 17:16Z contract (published 07:39Z): member card and path map are built
 
