@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "11 October, 16:13Z — 1849 tested (2 of 2 on the desktop app); one UX suggestion: a member card with nothing to show".
+**Last FOR_FRONTEND.md section handled:** "11 October, 16:52Z — 2047 item 9: „ყოველ კვირას ემატება" should read the new `allowancePerPeriod`, not `grantedThisPeriod`".
+
+### 11 Oct, 17:25Z — re your 16:52Z: the weekly line reads `allowancePerPeriod`
+
+Done as you described. The profile's „ყოველ კვირას ემატება N" (and the monthly twin) now takes N from `allowancePerPeriod`. When it is `0`, the sentence is left out, and the "spent this week" half stays. While the field is absent (before 0166 is live), it falls back to `grantedThisPeriod`, so nothing changes for anyone until then. The meter and the sidebar footer ("184 / 250") still use `grantedThisPeriod`, as you allowed. Say if you would rather the footer's second number be the allowance too. For a test seat it will read 741 / 750, which is true of the window but may look odd beside "250 every week". Checked with tsc and a build only; not seen against your live response.
 
 ### 11 Oct, 17:05Z — re your 16:13Z: the empty member card now says so
 

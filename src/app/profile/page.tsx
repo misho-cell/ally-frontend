@@ -907,9 +907,13 @@ function TokensWidget() {
           {granted > 0 && (() => {
             const monthly = tokens.window === "calendar_month";
             const when = tokens.resetsAt ? fmtDateLoc(tokens.resetsAt) : null;
-            const added = when
-              ? (monthly ? s.addedMonthly(fmtTokens(granted), when) : s.addedWeekly(fmtTokens(granted), when))
-              : (monthly ? s.addedMonthlyNoDate(fmtTokens(granted)) : s.addedWeeklyNoDate(fmtTokens(granted)));
+            // 2047 item 9: the plan's own allowance, not every credit in the
+            // window. An older server lacks it, and then the old reading
+            // stands; 0 means nothing is added, so no sentence promises it.
+            const per = tokens.allowancePerPeriod === undefined ? granted : tokens.allowancePerPeriod;
+            const added = per <= 0 ? null : when
+              ? (monthly ? s.addedMonthly(fmtTokens(per), when) : s.addedWeekly(fmtTokens(per), when))
+              : (monthly ? s.addedMonthlyNoDate(fmtTokens(per)) : s.addedWeeklyNoDate(fmtTokens(per)));
             return (
               <p className="text-xs" style={{ color: "var(--meta)", lineHeight: 1.5 }}>
                 {monthly ? s.spentThisMonth(fmtTokens(spent)) : s.spentThisWeek(fmtTokens(spent))}

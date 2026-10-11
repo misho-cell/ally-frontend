@@ -24,6 +24,11 @@ export type TokenBalance = {
   // 10 Oct (4294): the newest credit, or null for someone never credited.
   // Absent on an older server, which reads the same as null here.
   lastTopUp?: { amount: number; at: string } | null;
+  // 11 Oct (backend 16:52Z, 2047 item 9): what the plan adds each window.
+  // grantedThisPeriod counts every credit in the window (a test seat's
+  // one-off 500 plus the week's 250 read as "750 every week"). 0 means no
+  // active plan adds anything; undefined is an older server.
+  allowancePerPeriod?: number;
 };
 
 function num(src: Record<string, unknown>, ...names: string[]): number | null {
@@ -76,5 +81,6 @@ export function parseTokenBalance(raw: unknown): TokenBalance | null {
     lastTopUp: isRecord(body.lastTopUp) && typeof body.lastTopUp.amount === "number" && typeof body.lastTopUp.at === "string"
       ? { amount: body.lastTopUp.amount, at: body.lastTopUp.at }
       : null,
+    allowancePerPeriod: num(body, "allowancePerPeriod") ?? undefined,
   };
 }
