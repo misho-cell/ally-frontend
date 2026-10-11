@@ -21,7 +21,7 @@ import { isRecord, unwrapData } from "@/lib/payload";
 // already named on the screen itself.
 const MIN_GAP_MS = 60_000;
 
-export default function UpdatesBadge() {
+export default function UpdatesBadge({ className }: { className?: string }) {
   const [due, setDue] = useState<number | null>(null);
   const last = useRef(0);
 
@@ -60,6 +60,8 @@ export default function UpdatesBadge() {
   }, []);
 
   if (due == null || due <= 0) return null;
+  // The design's top-bar button styles its own badge.
+  if (className) return <span className={className}>{due > 99 ? "99+" : due}</span>;
   return (
     <span
       // Not hidden from a screen reader: somebody who cannot see the badge

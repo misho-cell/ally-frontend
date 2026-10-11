@@ -1096,7 +1096,22 @@ export default function ProfilePage() {
     else setError(portalErrorText());
   }
 
-  function signOut() {
+  // 11 Oct: the only sign-out now (the design's sidebar has none), so it
+  // also takes this device's push subscription off the account, as the
+  // sidebar's did. Otherwise the next person on this phone gets the last
+  // one's notifications.
+  async function signOut() {
+    const endpoint = localStorage.getItem("push_endpoint");
+    if (localStorage.getItem("token") && endpoint) {
+      try {
+        await fetch(`${BASE_URL}/notifications/subscribe`, {
+          method: "DELETE",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ endpoint }),
+        });
+      } catch {}
+      localStorage.removeItem("push_endpoint");
+    }
     clearUserName();
     localStorage.removeItem("token");
     document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";

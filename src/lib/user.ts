@@ -56,9 +56,15 @@ export async function skipOnboarding(): Promise<void> {
 }
 
 let cached: string | null = null;
-let inflight: Promise<string | null> | null = null;
+// The plan's name for the sidebar footer ("Profile · Pro"). Only what the
+// server said; null until then, and nothing is drawn for null.
+let cachedTier: string | null = null;
+type Bits = { name: string | null; tier: string | null };
+let inflight: Promise<Bits | null> | null = null;
 
-async function fetchProfileBits(): Promise<string | null> {
+const TIER_NAMES: Record<string, string> = { free: "Free", premium: "Premium", pro: "Pro", enterprise: "Enterprise" };
+
+async function fetchProfileBits(): Promise<Bits | null> {
   try {
     const res = await fetch(`${BASE_URL}/profile`, { headers: authHeaders() });
     if (!res.ok) return null;
@@ -72,7 +78,11 @@ async function fetchProfileBits(): Promise<string | null> {
       if (phone.startsWith("+995")) localStorage.setItem(LOCALE_KEY, "ka");
     } catch {}
     const name = String(data.name ?? "").trim();
-    return name || null;
+    // A plan that has lapsed is not named: "Pro" beside a cancelled account
+    // would tell the person something the server does not.
+    const live = ["trialing", "active", "past_due"].includes(String(data.subscription_status ?? ""));
+    const tier = live && typeof data.subscription_tier === "string" ? TIER_NAMES[data.subscription_tier] ?? null : null;
+    return { name: name || null, tier };
   } catch {
     return null;
   }
@@ -81,6 +91,7 @@ async function fetchProfileBits(): Promise<string | null> {
 // Sign-out must drop the cached name so the next account never sees it.
 export function clearUserName() {
   cached = null;
+  cachedTier = null;
   try { localStorage.removeItem(NAME_KEY); } catch {}
 }
 
@@ -106,7 +117,7 @@ export function clearUserScopedStorage() {
 // profile's `name` field. The cache is only the first paint — the hook ALWAYS
 // revalidates against /profile, so a stale name from a previous session can
 // never stick.
-export function useUserName(): { name: string; initial: string } {
+export function useUserName(): { name: string; initial: string; tier: string | null } {
   const [name, setName] = useState<string>(() => {
     if (cached) return cached;
     if (typeof window !== "undefined") {
@@ -118,21 +129,27 @@ export function useUserName(): { name: string; initial: string } {
     }
     return "";
   });
+  const [tier, setTier] = useState<string | null>(cachedTier);
 
   useEffect(() => {
     if (!inflight) inflight = fetchProfileBits();
     let alive = true;
-    inflight.then((n) => {
+    inflight.then((b) => {
       inflight = null;
+      const n = b?.name;
       if (n) {
         cached = n;
         try { localStorage.setItem(NAME_KEY, n); } catch {}
         if (alive) setName(n);
+      }
+      if (b?.tier) {
+        cachedTier = b.tier;
+        if (alive) setTier(b.tier);
       }
     });
     return () => { alive = false; };
   }, []);
 
   const display = name || t("meFallback");
-  return { name: display, initial: display.charAt(0).toUpperCase() };
+  return { name: display, initial: display.charAt(0).toUpperCase(), tier };
 }

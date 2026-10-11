@@ -5,13 +5,17 @@ import Link from "next/link";
 import { t, tf } from "@/lib/i18n";
 import { apiFetch } from "@/lib/api";
 import { isRecord, unwrapData } from "@/lib/payload";
+import { OnlinePill } from "@/components/AssistantStatus";
+import DzIcon from "@/components/DzIcons";
+import AnimFigure from "@/components/AnimFigure";
 
 // 9 Oct, the new design's news card, on the desktop home and the phone home.
 // It reads only the count: GET /updates releases and marks seen what it
 // returns (#387), so a home screen must never call it, or the person would
 // lose the very updates the card points at. A count we could not read draws
-// no card, rather than a card that says there is nothing new.
-export default function NewsCard({ className = "", style }: { className?: string; style?: CSSProperties }) {
+// no card; a count of zero draws the card with zero, because the two are
+// different facts (11 Oct, the FIXED2 design always shows the story).
+export default function NewsCard({ variant, className = "", style }: { variant: "phone" | "desktop"; className?: string; style?: CSSProperties }) {
   const [count, setCount] = useState<number | null>(null);
   // 10 Oct (backend 08:20Z): up to three lines, the due cards' own title and
   // detail, still read-only. The design writes the story from them. Absent on
@@ -34,44 +38,44 @@ export default function NewsCard({ className = "", style }: { className?: string
     return () => { alive = false; };
   }, []);
 
-  if (count == null || count <= 0) return null;
+  // Zero is drawn too, as zero: the card is the way to the updates screen
+  // on the phone, and "nothing new" is a fact the person may want. Only a
+  // count we could not read draws nothing.
+  if (count == null) return null;
+  const story = lines.length > 0 ? lines.join(" ") : tf("homeNewsCount", { n: count });
+  const extra = due > lines.length && lines.length > 0 ? ` +${due - lines.length}` : "";
+
+  if (variant === "phone") {
+    return (
+      <div className={`dz-meet ${className}`} style={style}>
+        <div className="dz-fig">
+          <AnimFigure clip="ally-walk" />
+          <OnlinePill />
+        </div>
+        <Link href="/updates" prefetch={false} className="dz-report">
+          <span className="dz-report-h">
+            <b>{t("homeNewsTitle")} ›</b>
+            {count > 0 && <span className="dz-rnew"><i />{tf("newsNew", { n: count })}</span>}
+          </span>
+          <p>{story}{extra}</p>
+          <span className="dz-more">{t("homeNewsMore")}</span>
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <Link
-      href="/updates"
-      prefetch={false}
-      className={`flex flex-col gap-1.5 ${className}`}
-      style={{
-        padding: "16px 18px", background: "#FFFFFF",
-        border: "1px solid var(--cta-border)", borderRadius: 15,
-        boxShadow: "var(--shadow-news)", textDecoration: "none",
-        ...style,
-      }}
-    >
-      <span className="flex items-center justify-between">
-        <span style={{ font: "600 13px/18px var(--font-system)", color: "var(--ink)" }}>{t("homeNewsTitle")}</span>
-        <span style={{ font: "600 11px/16px var(--font-system)", color: "var(--accent)", background: "var(--accent-tint)", borderRadius: 8, padding: "1px 8px" }}>
-          {count}
+    <div className={`dz-news-row ${className}`} style={style}>
+      <AnimFigure clip="ally-walk" />
+      <Link href="/updates" prefetch={false} className="dz-news">
+        <span className="dz-news-title">
+          <span>{t("homeNewsTitle")}</span>
+          {count > 0 && <span className="dz-new-badge">{count}</span>}
         </span>
-      </span>
-      {lines.length > 0 ? (
-        <span className="flex flex-col gap-0.5">
-          {lines.map((l, i) => (
-            <span key={i} className="truncate" style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-soft)" }}>
-              {l}
-            </span>
-          ))}
-          {/* More are due than the server sent lines for: say how many,
-              rather than letting three lines read as the whole story. */}
-          {due > lines.length && (
-            <span style={{ font: "500 12px/18px var(--font-system)", color: "var(--meta)" }}>+{due - lines.length}</span>
-          )}
-        </span>
-      ) : (
-        <span style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-soft)" }}>
-          {tf("homeNewsCount", { n: count })}
-        </span>
-      )}
-      <span style={{ font: "600 12px/16px var(--font-system)", color: "var(--accent)" }}>{t("homeNewsMore")} ›</span>
-    </Link>
+        <p>{story}{extra}</p>
+        <span className="dz-news-more">{t("homeNewsMore")} <DzIcon name="right" size={11} /></span>
+      </Link>
+    </div>
   );
 }
+

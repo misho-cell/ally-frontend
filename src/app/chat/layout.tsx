@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useSyncExternalStore, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
@@ -8,7 +8,7 @@ import { authHeaders, getDeviceId, handleAdminTokenMisuse } from "@/lib/deviceId
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { beginDictation, shouldRecord, type DictationHandle } from "@/lib/dictation";
 import { t, tf, fmtDateShort } from "@/lib/i18n";
-import { useUserName, clearUserName } from "@/lib/user";
+import { useUserName } from "@/lib/user";
 import Modal from "@/components/Modal";
 import PushPrompt from "@/components/PushPrompt";
 import {
@@ -27,11 +27,11 @@ import { FILE_ACCEPT, FILE_MAX_BYTES, uploadThreadFile } from "@/lib/threadFiles
 import { appendedKind } from "@/contexts/ThreadsContext";
 import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
-import UpdatesBadge from "@/components/UpdatesBadge";
 import NewsCard from "@/components/NewsCard";
 import SetupBanner from "@/components/SetupBanner";
 import { OnlineDot, OutageLine } from "@/components/AssistantStatus";
-import AttachIcon from "@/components/AttachIcon";
+import DzIcon, { ROLE_ICON } from "@/components/DzIcons";
+import AnimFigure from "@/components/AnimFigure";
 import PaneResizer, {
   subscribeSidebarWidth,
   sidebarWidthSnapshot,
@@ -127,38 +127,6 @@ function fmtClock(iso: string | undefined, today: string | null): string {
     : fmtDateShort(d);
 }
 
-// Row animation box. Memoized (22 Aug #7): list re-renders were recreating the
-// <video> element (readyState back to 0, AbortError on play), freezing the
-// character. With memo the element survives re-renders unless status/size
-// change. The poster <img> underneath is the ANIM-rule fallback pair.
-const AnimBox = memo(function AnimBox({ status, size }: { status: TaskStatus; size: number }) {
-  const clip =
-    status === "needs_you" ? "ally-walk" :
-    status === "failed" ? "ally-error" :
-    status === "done" ? null :
-    "ally-loading";
-  if (!clip) return null;
-  return (
-    <span className="anim-box" style={{ width: size, height: size, position: "relative" }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        className="anim-fallback"
-        src={`/assets/ally/anim/${clip}-poster.jpg`}
-        alt=""
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-        onError={(e) => { e.currentTarget.style.display = "none"; }}
-      />
-      <video
-        autoPlay muted loop playsInline
-        src={`/assets/ally/anim/${clip}.mp4`}
-        poster={`/assets/ally/anim/${clip}-poster.jpg`}
-        style={{ position: "relative", zIndex: 1 }}
-        onError={(e) => { e.currentTarget.style.display = "none"; }}
-      />
-    </span>
-  );
-});
-
 // 9 Oct, the new design: the row carries a status WORD under the title,
 // not a coloured pill beside it. The rules of the old pill still hold (tester
 // C.1): only "needs you" is drawn in the warm colour, a finished row says
@@ -196,14 +164,27 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [toast, setToast] = useState<string | null>(null);
   const [showAllDone, setShowAllDone] = useState(false);
   const [showLegacy, setShowLegacy] = useState(false);
+  // 11 Oct, the FIXED2 design. Phone: which group the counters show below
+  // them (null: the one that waits on the person, if it has anything).
+  // Desktop: which open groups the person folded.
+  const [phonePane, setPhonePane] = useState<"needs" | "ongoing" | null>(null);
+  const [folded, setFolded] = useState<Record<string, boolean>>({});
+  // The sticky switcher appears once the counters have scrolled away.
+  const [tilesOut, setTilesOut] = useState(false);
+  const tilesObs = useRef<IntersectionObserver | null>(null);
+  const tilesRef = useCallback((el: HTMLDivElement | null) => {
+    tilesObs.current?.disconnect();
+    tilesObs.current = null;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => setTilesOut(!e.isIntersecting && e.boundingClientRect.top < 0));
+    io.observe(el);
+    tilesObs.current = io;
+  }, []);
   const [homeInput, setHomeInput] = useState("");
   const [creating, setCreating] = useState(false);
   // Only the file path: the paperclip spins for a file, not for a typed line.
   const [fileCreating, setFileCreating] = useState(false);
   const [recording, setRecording] = useState(false);
-  // 22 Aug #5: the header counter comes from GET /tasks/summary (open_goals) —
-  // the same number the assistant reports. Local count stays as fallback only.
-  const [openGoals, setOpenGoals] = useState<number | null>(null);
   // Ticket 6 #7/#14: design-system rename modal, opened by long-press or
   // right-click on a row.
   const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
@@ -364,15 +345,24 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     toastTimerRef.current = setTimeout(() => setToast(null), 2400);
   }, []);
 
-  const fetchSummary = useCallback(async () => {
+  // #2080 / D703, the design's ◇ on every task: "I will come back to this".
+  // The row moves at once; a refusal puts it back and says so.
+  const toggleFollow = useCallback(async (th: Thread) => {
+    const next = th.followed !== true;
+    const flip = (v: boolean) =>
+      setThreads((prev) => prev.map((x) => (String(x.id) === String(th.id) ? { ...x, followed: v } : x)));
+    flip(next);
     try {
-      const res = await fetch(`${BASE_URL}/tasks/summary`, { headers: authHeaders() });
-      if (!res.ok) return;
-      const json = await res.json().catch(() => ({}));
-      const n = json?.data?.open_goals ?? json?.open_goals;
-      if (typeof n === "number") setOpenGoals(n);
-    } catch {}
-  }, []);
+      const res = await fetch(`${BASE_URL}/threads/${encodeURIComponent(String(th.id))}/follow`, {
+        method: next ? "PUT" : "DELETE",
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+    } catch {
+      flip(!next);
+      showToast(t("genericError"));
+    }
+  }, [showToast]);
 
   const loadThreads = useCallback(async () => {
     try {
@@ -442,7 +432,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     }
   }, [threadsHasMore]);
 
-  function onListScroll(e: React.UIEvent<HTMLDivElement>) {
+  function onListScroll(e: React.UIEvent<HTMLElement>) {
     const el = e.currentTarget;
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 300) {
       loadMoreThreads();
@@ -493,7 +483,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     loadThreads();
     refreshTokens();
-    fetchSummary();
 
     // Push notifications (31 Aug): the server only knows to push once it
     // sees the SSE connection actually close. openWhenHidden used to keep
@@ -565,7 +554,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   setThreads((prev) =>
                     dedup([data.thread, ...prev.filter((th) => String(th.id) !== String(data.thread.id))])
                   );
-                  fetchSummary();
                 }
                 break;
 
@@ -624,7 +612,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     ...prev,
                     [String(patch.id)]: (prev[String(patch.id)] ?? 0) + 1,
                   }));
-                  fetchSummary();
                 }
                 break;
               }
@@ -808,7 +795,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     })
                   );
                   loadThreads();
-                  fetchSummary();
                 }
                 break;
 
@@ -902,7 +888,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         connect();
         loadThreads();
         refreshTokens();
-        fetchSummary();
       }
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
@@ -911,7 +896,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       document.removeEventListener("visibilitychange", onVisibilityChange);
       abortRef.current?.abort();
     };
-  }, [loadThreads, refreshTokens, fetchSummary]);
+  }, [loadThreads, refreshTokens]);
 
   // asGoal (Task 90, 11 Sept): only the FIRST message sent from "+ ახალი მიზანი"
   // carries as_goal:true, so it becomes a goal regardless of wording. Plain
@@ -1151,25 +1136,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     })();
   }, [resolvedRequests, sendIntoThread, showToast]);
 
-  async function handleSignOut() {
-    const token = getToken();
-    const endpoint = localStorage.getItem("push_endpoint");
-    if (token && endpoint) {
-      try {
-        await fetch(`${BASE_URL}/notifications/subscribe`, {
-          method: "DELETE",
-          headers: authHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ endpoint }),
-        });
-      } catch {}
-      localStorage.removeItem("push_endpoint");
-    }
-    clearUserName();
-    localStorage.removeItem("token");
-    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
-    router.replace("/login");
-  }
-
   async function startHomeMicRecorded() {
     if (dictationRef.current) {
       const h = dictationRef.current;
@@ -1339,12 +1305,20 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const waitsOnYou = (g: { status: TaskStatus }) => g.status === "needs_you" || g.status === "failed";
   const needsYou = active.filter(waitsOnYou);
   const ongoing = active.filter((g) => !waitsOnYou(g));
-  // Header counter: /tasks/summary open_goals when available (22 Aug #5),
-  // otherwise the local server-status count (ticket 6 #8).
-  const localPresenceN = threads.filter(
-    (th) => th.is_task === true && (th.status === "working" || th.status === "waiting")
-  ).length;
-  const presenceN = openGoals ?? localPresenceN;
+  const pane: "needs" | "ongoing" = phonePane ?? (needsYou.length > 0 || ongoing.length === 0 ? "needs" : "ongoing");
+  const phoneGroups = [
+    { key: "needs" as const, rows: needsYou, label: t("needsYouGroup"), tile: t("homeTileNeeds"), pane: t("paneWait"), clip: "ally-walk" },
+    { key: "ongoing" as const, rows: ongoing, label: t("groupWorking"), tile: t("homeTileWorking"), pane: t("paneRun"), clip: "ally-loading" },
+  ];
+  const deskGroups = [
+    { key: "wait", tone: "wait", label: t("needsYouGroup"), rows: needsYou },
+    { key: "run", tone: "run", label: t("groupWorking"), rows: ongoing },
+    { key: "done", tone: "done", label: t("groupResolved"), rows: finished },
+  ].filter((g) => g.rows.length > 0 || g.key === "run");
+  function choosePane(key: "needs" | "ongoing") {
+    setPhonePane(key);
+    requestAnimationFrame(() => document.getElementById(`pane-${key}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
   const nothingFound =
     q && visibleRequests.length === 0 && asks.length === 0 && active.length === 0 && finished.length === 0 && legacyThreads.length === 0;
 
@@ -1472,128 +1446,99 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           <div className="toast" role="status" aria-live="polite">{toast}</div>
         )}
         <aside
-          className={`${sidebarClass} sidebar sidebar-resizable flex-col shrink-0 w-full`}
+          className={`${sidebarClass} sidebar sidebar-resizable dz-side flex-col shrink-0 w-full`}
+          onScroll={onListScroll}
           style={{
             background: "var(--sidebar-bg)",
             borderRight: "1px solid var(--sidebar-border)",
-            padding: "14px 12px 12px",
-            gap: "12px",
             ...(sidebarWidth != null
               ? ({ ["--sidebar-w" as string]: `${sidebarWidth}px` } as React.CSSProperties)
               : {}),
           }}
         >
-          <div className="flex items-center gap-2.5 pl-1">
-            <span className="relative shrink-0">
-              <span className="ally-avatar" style={{ width: 30, height: 30 }}>
+          {/* 11 Oct, the FIXED2 design. Phone: the brand bar with the
+              profile button; desktop: the brand with its one line. */}
+          <div className="dz-brandbar" style={{ padding: "22px 20px 0", height: "auto", boxSizing: "content-box", minHeight: 36 }}>
+            <span className="relative">
+              <span className="dz-logo">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
               </span>
               {/* D699: lit only while the server says the assistant answers. */}
+              <OnlineDot size={8} />
+            </span>
+            <strong>Netai</strong>
+            <Link href="/profile" prefetch className="dz-profile-btn" aria-label={t("profileLink")} title={t("profileLink")}>
+              <span><DzIcon name="user" size={16} /></span>
+            </Link>
+          </div>
+          <div className="dz-side-brand">
+            <span className="relative">
+              <span className="dz-logo">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              </span>
               <OnlineDot />
             </span>
-            <div className="flex min-w-0 flex-1 flex-col">
-              <span style={{ font: "500 20px/24px var(--font-bricolage)", color: "var(--ink)" }}>
-                Netai
-              </span>
-              <span style={{ font: "500 11.5px/15px var(--font-system)", color: "var(--accent)" }}>
-                {presenceN > 0 ? tf("presenceWorking", { n: presenceN }) : t("presenceReady")}
-              </span>
-            </div>
-            <button
-              onClick={toggleCollapsed}
-              aria-label="collapse sidebar"
-              className="hidden md:flex items-center justify-center rounded-lg transition-colors hover:bg-black/5"
-              style={{ width: 28, height: 28, color: "var(--ink-soft)" }}
-            >
-              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-                <path d="M12.5 4l-6 6 6 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+            <span className="min-w-0">
+              <strong>Netai</strong>
+              <small>{t("sideSub")}</small>
+            </span>
           </div>
 
-          <OutageLine />
+          <div className="dz-tools">
+            <OutageLine />
 
-          {/* Task 22 (d): new-goal button in the EXPANDED sidebar too, desktop
-              and phone list alike. 9 Oct: the design makes it the full-width
-              teal button under the name, with its words, not a bare "+". */}
-          <button
-            onClick={() => {
-              explicitGoalRef.current = true;
-              router.push("/chat");
-              homeInputRef.current?.focus();
-              window.dispatchEvent(new Event("netai:focus-composer"));
-            }}
-            className="flex w-full items-center justify-center gap-2 transition-colors"
-            style={{
-              height: 42, borderRadius: 12, background: "var(--accent)", color: "#FFFFFF",
-              font: "600 13.5px/18px var(--font-system)",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-strong)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--accent)"; }}
-          >
-            <span aria-hidden="true" style={{ fontSize: 17, lineHeight: 1 }}>+</span>
-            {t("newTask")}
-          </button>
+            {/* Task 22 (d): the new-task button. The phone starts a task from
+                the composer at the bottom, as the design does. */}
+            <button
+              type="button"
+              onClick={() => {
+                explicitGoalRef.current = true;
+                router.push("/chat");
+                window.dispatchEvent(new Event("netai:focus-composer"));
+              }}
+              className="dz-new-task"
+            >
+              <DzIcon name="plus" size={15} />
+              {t("newTask")}
+            </button>
 
-          {/* Search over everything already loaded (E2). */}
-          <div
-            className="flex items-center gap-2"
-            style={{
-              background: "#FFFFFF",
-              border: "1px solid var(--header-border)",
-              borderRadius: 12,
-              padding: "9px 12px",
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 20 20" fill="none">
-              <circle cx="8.5" cy="8.5" r="5.75" stroke="var(--meta)" strokeWidth="1.75" />
-              <path d="M13 13l3.5 3.5" stroke="var(--meta)" strokeWidth="1.75" strokeLinecap="round" />
-            </svg>
-            <input
-              type="text"
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-              placeholder={t("searchGoals")}
-              className="search-field flex-1 min-w-0 bg-transparent outline-none"
-              style={{ color: "var(--ink)" }}
-            />
-            {searchQ && (
-              <button onClick={() => setSearchQ("")} aria-label="clear" style={{ color: "var(--meta)", fontSize: "14px", lineHeight: 1 }}>
-                ×
-              </button>
+            {/* Search over everything already loaded (E2). */}
+            <div className="dz-search">
+              <DzIcon name="search" size={17} />
+              <input
+                type="search"
+                value={searchQ}
+                onChange={(e) => setSearchQ(e.target.value)}
+                placeholder={t("searchGoals")}
+                aria-label={t("searchGoals")}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {searchQ && (
+                <button type="button" onClick={() => setSearchQ("")} aria-label="clear" style={{ color: "var(--meta)", fontSize: "16px", lineHeight: 1 }}>
+                  ×
+                </button>
+              )}
+            </div>
+
+            {hasRoles && (
+              <div className="dz-roles" role="group" aria-label={t("roleAll")}>
+                {(["all", "initiator", "mediator", "addressee"] as const).map((r) => (
+                  <button key={r} type="button" aria-pressed={roleFilter === r} onClick={() => setRoleFilter(r)}>
+                    {r === "all" ? t("roleAll") : r === "initiator" ? t("roleInitiator") : r === "mediator" ? t("roleMediator") : t("roleAddressee")}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
-          {hasRoles && (
-            <div className="flex gap-1.5 overflow-x-auto" role="group">
-              {(["all", "initiator", "mediator", "addressee"] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  aria-pressed={roleFilter === r}
-                  onClick={() => setRoleFilter(r)}
-                  className="shrink-0 transition-colors"
-                  style={{
-                    font: "500 12.5px/16px var(--font-system)", padding: "6px 10px", borderRadius: 10,
-                    border: `1px solid ${roleFilter === r ? "var(--cta-border)" : "var(--header-border)"}`,
-                    background: roleFilter === r ? "var(--accent-tint)" : "#FFFFFF",
-                    color: roleFilter === r ? "var(--accent-strong)" : "var(--ink-soft)",
-                  }}
-                >
-                  {r === "all" ? t("roleAll") : r === "initiator" ? t("roleInitiator") : r === "mediator" ? t("roleMediator") : t("roleAddressee")}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="dz-setup-wrap">
+            <SetupBanner />
+          </div>
 
-          <div
-            className="flex-1 overflow-y-auto flex flex-col gap-[3px]"
-            onScroll={onListScroll}
-          >
-            {/* Row 111: the ask lives where people actually are. It renders
-                nothing once the question has been answered either way. */}
-            <PushPrompt />
+          <div className="dz-list flex flex-col" onScroll={onListScroll}>
             {!threadsLoaded ? (
               <div className="flex flex-col gap-2 pt-1">
                 <span className="sk-bar" style={{ width: "84%" }} />
@@ -1604,7 +1549,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               </div>
             ) : nothingFound ? (
               <p style={{ padding: "8px 6px", fontSize: "12.5px", color: "var(--meta)" }}>
-                {t("noMatches")}
+                {roleFilter !== "all" && !q ? t("filterEmpty") : t("noMatches")}
               </p>
             ) : (
               <>
@@ -1624,40 +1569,53 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   </section>
                 )}
 
-                {/* 9 Oct, the new design's phone home: a greeting, the news
-                    card, and two counters over the list. Phone only; the
-                    desktop home draws its own in the main pane. The counters
-                    are the lengths of the two groups below and jump to them. */}
+                {/* The phone home of the design: greeting, the news story, the
+                    two counters. The counters are the lengths of the two
+                    groups and choose which one is shown below them. */}
                 {!q && (
-                  <div className="mb-3 flex flex-col gap-3 md:hidden" style={{ padding: "0 2px" }}>
-                    <p style={{ font: "500 16px/22px var(--font-system)", color: "var(--ink)", padding: "0 4px" }}>
+                  <div className="md:hidden">
+                    <p className="dz-greet">
                       {user.name.trim() ? `${t("homeHello")}, ${user.name.trim().split(/\s+/)[0]}` : t("homeHello")}
                     </p>
-                    <SetupBanner />
-                    <NewsCard />
-                    {(needsYou.length > 0 || ongoing.length > 0) && (
-                      <div className="grid grid-cols-2 gap-3">
-                        {[
-                          { key: "needs", n: needsYou.length, label: t("homeTileNeeds"), bg: "var(--accent)", ink: "#FFFFFF" },
-                          { key: "ongoing", n: ongoing.length, label: t("homeTileWorking"), bg: "var(--apricot)", ink: "#3B2414" },
-                        ].map((tile) => (
-                          <a
-                            key={tile.key}
-                            href={`#group-${tile.key}`}
-                            className="flex items-start gap-2"
-                            style={{ background: tile.bg, color: tile.ink, borderRadius: 16, padding: "14px 14px 16px", textDecoration: "none" }}
+                    <NewsCard variant="phone" />
+                    {active.length > 0 && (
+                      <div className="dz-feat" ref={tilesRef} style={{ marginTop: 28 }}>
+                        {phoneGroups.map((g) => (
+                          <button
+                            key={g.key}
+                            type="button"
+                            className={`dz-fc ${g.key === "needs" ? "w" : "k"}`}
+                            onClick={() => choosePane(g.key)}
+                            aria-pressed={pane === g.key}
                           >
-                            <span style={{ font: "700 34px/36px var(--font-system)" }}>{tile.n}</span>
-                            <span style={{ font: "500 13px/18px var(--font-system)", paddingTop: 2 }}>{tile.label}</span>
-                          </a>
+                            <span className="dz-fc-anim" aria-hidden="true">
+                              <AnimFigure clip={g.clip} />
+                            </span>
+                            <span className="dz-fsum">
+                              <span className="big">{g.rows.length}</span>
+                              <span className="msg">{g.tile}</span>
+                            </span>
+                            <span className="dz-peek">
+                              {g.rows.slice(0, 3).map(({ thread }) => <span key={thread.id}>{goalTitle(thread)}</span>)}
+                              {g.rows.length > 3 && <span>+{g.rows.length - 3}</span>}
+                            </span>
+                            <span className="dz-fcta">
+                              {t("details")}
+                              <DzIcon name={pane === g.key ? "down" : "right"} size={14} />
+                            </span>
+                          </button>
                         ))}
                       </div>
                     )}
                   </div>
                 )}
 
+                {/* Row 111: the ask lives where people actually are. It renders
+                    nothing once the question has been answered either way. */}
+                <div className="mt-3 md:mt-0 md:mb-2"><PushPrompt /></div>
+
                 {asks.length > 0 && (
-                  <section className="mb-2 flex flex-col gap-[3px]">
+                  <section className="mb-2 mt-3 flex flex-col gap-[3px]">
                     <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("asksLabel")}</p>
                     {asks.map((th) => (
                       <Link
@@ -1684,64 +1642,125 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   </section>
                 )}
 
-                {/* One map for both groups, so the rows are drawn by exactly one
-                    piece of code and cannot drift apart. */}
-                {[
-                  { key: "needs", label: t("needsYouGroup"), rows: needsYou, warm: true, show: needsYou.length > 0 },
-                  { key: "ongoing", label: t("inProgress"), rows: ongoing, warm: false, show: ongoing.length > 0 || active.length === 0 },
-                ].filter((g) => g.show).map((g) => (
-                  <section key={g.key} id={`group-${g.key}`} className={`flex scroll-mt-3 flex-col gap-[3px]${g.key === "needs" ? " mb-2" : ""}`}>
-                    <GroupHead label={g.label} count={g.rows.length} warm={g.warm} />
-                    {g.rows.map(({ thread, status }) => (
-                      <TaskRow
-                        key={thread.id}
-                        title={goalTitle(thread)}
-                        status={status}
-                        statusLine={thread.status_line}
-                        stopped={thread.goal_stopped === true}
-                        href={`/chat/${thread.id}`}
-                        active={pathname === `/chat/${thread.id}`}
-                        unread={isUnread(thread) || answerUnseen(thread)}
-                        onLongPress={() => openRename(thread, goalTitle(thread))}
-                        time={fmtClock(thread.updated_at, clock?.today ?? null)}
-                      />
+                {/* Sticky, so it is a child of the list itself: inside a
+                    smaller box it would scroll away with that box. */}
+                {!q && active.length > 0 && tilesOut && (
+                  <div className="dz-switcher" style={{ marginTop: 12 }}>
+                    {phoneGroups.map((g) => (
+                      <a key={g.key} href={`#pane-${g.key}`} className={g.key === "needs" ? "wait" : "run"} onClick={(e) => { e.preventDefault(); choosePane(g.key); }}>
+                        <span className="sn">{g.rows.length}</span>
+                        <span>{g.label}</span>
+                        <DzIcon name={pane === g.key ? "down" : "right"} size={12} />
+                      </a>
                     ))}
-                    {g.key === "ongoing" && active.length === 0 && !q && (
-                      <p style={{ padding: "2px 6px", fontSize: "12px", color: "var(--meta)" }}>
-                        {t("threadsHint")}
-                      </p>
-                    )}
-                  </section>
-                ))}
-
-                {finished.length > 0 && (
-                  <section className="mt-2 flex flex-col gap-[3px]" style={{ opacity: 0.65 }}>
-                    <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("finishedLabel")}</p>
-                    {(showAllDone || q ? finished : finished.slice(0, 5)).map(({ thread, status }) => (
-                      <TaskRow
-                        key={thread.id}
-                        title={goalTitle(thread)}
-                        status={status}
-                        statusLine={thread.status_line}
-                        stopped={thread.goal_stopped === true}
-                        href={`/chat/${thread.id}`}
-                        active={pathname === `/chat/${thread.id}`}
-                        unread={isUnread(thread)}
-                        onLongPress={() => openRename(thread, goalTitle(thread))}
-                        time={fmtClock(thread.updated_at, clock?.today ?? null)}
-                      />
-                    ))}
-                    {finished.length > 5 && !showAllDone && !q && (
-                      <button
-                        onClick={() => setShowAllDone(true)}
-                        className="self-start"
-                        style={{ padding: "2px 6px", font: "600 12px/16px var(--font-system)", color: "var(--ink-soft)" }}
-                      >
-                        {t("viewAll")}
-                      </button>
-                    )}
-                  </section>
+                  </div>
                 )}
+                {/* Phone: the chosen group as cards (all of them while
+                    searching). One map draws every card. */}
+                <div className="md:hidden">
+                  {phoneGroups.filter((g) => (q ? g.rows.length > 0 : g.key === pane)).map((g) => (
+                    <section key={g.key} id={`pane-${g.key}`} className="scroll-mt-16">
+                      <p className={`dz-paneh ${g.key === "needs" ? "gw" : "gk"}`}>
+                        <DzIcon name={g.key === "needs" ? "hourglass" : "pulse"} size={14} />
+                        {g.pane}
+                      </p>
+                      <div className="dz-cgrid">
+                        {g.rows.map(({ thread, status }) => (
+                          <TaskCard
+                            key={thread.id}
+                            thread={thread}
+                            title={goalTitle(thread)}
+                            status={status}
+                            href={`/chat/${thread.id}`}
+                            active={pathname === `/chat/${thread.id}`}
+                            unread={isUnread(thread) || answerUnseen(thread)}
+                            time={fmtClock(thread.updated_at, clock?.today ?? null)}
+                            onLongPress={() => openRename(thread, goalTitle(thread))}
+                            onPin={() => toggleFollow(thread)}
+                          />
+                        ))}
+                      </div>
+                      {g.rows.length === 0 && (
+                        <p style={{ padding: "2px 6px", fontSize: "12px", color: "var(--meta)" }}>
+                          {roleFilter !== "all" ? t("filterEmpty") : t("threadsHint")}
+                        </p>
+                      )}
+                    </section>
+                  ))}
+                  {active.length === 0 && !q && (
+                    <p style={{ padding: "18px 6px 2px", fontSize: "12px", color: "var(--meta)" }}>
+                      {roleFilter !== "all" ? t("filterEmpty") : t("threadsHint")}
+                    </p>
+                  )}
+                  {finished.length > 0 && (
+                    <section className="dz-done">
+                      <p className="dz-dh">
+                        <DzIcon name="check" size={15} style={{ color: "#216447" }} />
+                        {t("doneHead")}
+                        <span className="n">· {finished.length}</span>
+                        {finished.length > 5 && !q && (
+                          <button type="button" onClick={() => setShowAllDone((v) => !v)}>
+                            {showAllDone ? t("lessArrow") : t("allArrow")}
+                          </button>
+                        )}
+                      </p>
+                      <div className="flex flex-col">
+                        {(showAllDone || q ? finished : finished.slice(0, 5)).map(({ thread }) => (
+                          <DoneRow
+                            key={thread.id}
+                            thread={thread}
+                            title={goalTitle(thread)}
+                            href={`/chat/${thread.id}`}
+                            time={fmtClock(thread.updated_at, clock?.today ?? null)}
+                            onPin={() => toggleFollow(thread)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                </div>
+
+                {/* Desktop: the three groups of the design's sidebar, each
+                    folding under its head; the resolved one starts folded. */}
+                <div className="hidden md:block">
+                  {deskGroups.map((g) => {
+                    const open = g.key === "done" ? showAllDone || !!q : !folded[g.key];
+                    return (
+                      <section key={g.key} id={`group-${g.key}`}>
+                        <button
+                          type="button"
+                          className="dz-group-head"
+                          aria-expanded={open}
+                          onClick={() => (g.key === "done" ? setShowAllDone((v) => !v) : setFolded((f) => ({ ...f, [g.key]: !f[g.key] })))}
+                        >
+                          <span className={`dz-dot ${g.tone}`} />
+                          <span>{g.label}</span>
+                          <span className={`dz-gcount ${g.tone}`}>{g.rows.length}</span>
+                          <DzIcon name="down" size={13} />
+                        </button>
+                        {open && g.rows.map(({ thread, status }) => (
+                          <TaskRow
+                            key={thread.id}
+                            thread={thread}
+                            title={goalTitle(thread)}
+                            status={status}
+                            href={`/chat/${thread.id}`}
+                            active={pathname === `/chat/${thread.id}`}
+                            unread={isUnread(thread) || (g.key !== "done" && answerUnseen(thread))}
+                            onLongPress={() => openRename(thread, goalTitle(thread))}
+                            onPin={() => toggleFollow(thread)}
+                            time={fmtClock(thread.updated_at, clock?.today ?? null)}
+                          />
+                        ))}
+                        {open && g.key === "run" && active.length === 0 && !q && (
+                          <p style={{ padding: "2px 10px 8px", fontSize: "11.5px", color: "var(--meta)" }}>
+                            {roleFilter !== "all" ? t("filterEmpty") : t("threadsHint")}
+                          </p>
+                        )}
+                      </section>
+                    );
+                  })}
+                </div>
 
                 {legacyThreads.length > 0 && (
                   <section className="mt-3 flex flex-col gap-[2px]">
@@ -1783,8 +1802,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             )}
           </div>
 
-          {/* Mobile home composer — D20 (22 Aug): mic AND send together while
-              text exists; mic stays available during typing. */}
+          {/* Phone home composer, the design's card at the bottom. D20 (22
+              Aug): mic AND send together while text exists. */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1792,34 +1811,28 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 const f = homeStaged;
                 setHomeStaged(null);
                 void createWithFile(f, homeInput);
-              } else {
+              } else if (homeInput.trim()) {
                 createTask(homeInput);
+              } else {
+                homeInputRef.current?.focus();
               }
             }}
-            className="flex flex-wrap items-center gap-2 md:hidden"
+            className="dz-compose md:hidden"
+            style={{ borderColor: recording ? "var(--danger)" : undefined }}
           >
             {homeStaged && (
-              <div className="flex w-full">
+              <div className="mb-2 flex w-full">
                 <StagedFile name={homeStaged.name} onRemove={() => setHomeStaged(null)} disabled={creating} />
               </div>
             )}
-            <div
-              className="composer-pill flex flex-1 items-center gap-2 min-w-0"
-              style={{ padding: "6px 14px", borderColor: recording ? "var(--danger)" : undefined }}
-            >
-              <input
-                ref={homeInputRef}
-                type="text"
-                value={homeInput}
-                onChange={(e) => setHomeInput(e.target.value)}
-                placeholder={recording ? t("listening") : t("homePlaceholder")}
-                className="flex-1 min-w-0 bg-transparent outline-none"
-                // No inline size: .composer-pill sets it, and raises it to
-                // 16px on a phone. An inline 14px here beat that rule and
-                // kept the #507 zoom alive on this one box.
-                style={{ color: "var(--ink)", padding: "6px 0" }}
-              />
-            </div>
+            <input
+              ref={homeInputRef}
+              type="text"
+              value={homeInput}
+              onChange={(e) => setHomeInput(e.target.value)}
+              placeholder={recording ? t("listening") : t("homePlaceholder")}
+              aria-label={t("homePlaceholder")}
+            />
             {/* #1222: a list can open a conversation, the same as a line. */}
             <input
               ref={homeFileRef}
@@ -1834,98 +1847,58 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 setHomeStaged(f);
               }}
             />
-            <button
-              type="button"
-              onClick={() => homeFileRef.current?.click()}
-              disabled={creating}
-              aria-label={t("attachFile")}
-              title={t("attachFile")}
-              className="flex shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40"
-              style={{ width: 38, height: 44, background: "transparent", color: "var(--meta)" }}
-            >
-              {fileCreating ? (
-                <span
-                  className="h-4 w-4 rounded-full border-2 animate-spin"
-                  style={{ borderColor: "var(--placeholder)", borderTopColor: "transparent" }}
-                />
-              ) : (
-                <AttachIcon />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={startHomeMic}
-              aria-label={recording ? t("voiceStop") : t("voiceStart")}
-              className="flex shrink-0 items-center justify-center rounded-full transition-colors"
-              style={{
-                width: 44, height: 44,
-                background: recording ? "var(--danger)" : "var(--accent)",
-                color: "#FFFFFF",
-              }}
-            >
-              {recording ? (
-                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                  <rect x="5" y="5" width="10" height="10" rx="1.5" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
-                  <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.6" />
-                  <path d="M4 10a6 6 0 0012 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  <line x1="7" y1="19" x2="13" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-              )}
-            </button>
-            {(homeInput.trim() || homeStaged) && !recording && (
+            <div className="row">
               <button
-                type="submit"
+                type="button"
+                onClick={() => homeFileRef.current?.click()}
                 disabled={creating}
-                aria-label={t("send")}
-                className="flex shrink-0 items-center justify-center rounded-full"
-                style={{ width: 44, height: 44, background: "var(--accent)", color: "#FFFFFF" }}
+                aria-label={t("attachFile")}
+                title={t("attachFile")}
+                className="dz-rb disabled:opacity-40"
               >
-                <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-                  <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                {fileCreating ? (
+                  <span className="h-4 w-4 rounded-full border-2 animate-spin" style={{ borderColor: "var(--placeholder)", borderTopColor: "transparent" }} />
+                ) : (
+                  <DzIcon name="plus" size={20} />
+                )}
               </button>
-            )}
+              <button
+                type="button"
+                onClick={startHomeMic}
+                aria-label={recording ? t("voiceStop") : t("voiceStart")}
+                className={`dz-rb${recording ? " rec" : ""}`}
+              >
+                {recording ? (
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><rect x="5" y="5" width="10" height="10" rx="1.5" /></svg>
+                ) : (
+                  <DzIcon name="mic" size={19} />
+                )}
+              </button>
+              <button type="submit" disabled={creating || recording} aria-label={t("send")} className="dz-send">
+                <DzIcon name="send" size={20} />
+              </button>
+            </div>
           </form>
 
-          {/* Row 73: the updates screen has to be reachable from here, or it
-              is a screen nobody can find — which is what happened to the
-              pilot conversation reader. */}
-          <Link
-            href="/updates"
-            // Opening that screen SPENDS the due updates, so it must only ever
-            // be opened by a person. Next's prefetch does not run a client
-            // component's effects today, which is why this was safe — but that
-            // is the framework's behaviour and not a promise, and the cost of
-            // being wrong is somebody's update marked shown to a phone rather
-            // than to them. One slower first open is the cheaper side.
-            prefetch={false}
-            className="transition-opacity hover:opacity-70"
-            style={{ borderTop: "1px solid var(--sidebar-border)", paddingTop: "10px", color: "var(--ink-soft)", fontSize: "12.5px", fontWeight: 600 }}
-          >
-            {t("updatesLink")}
-            <UpdatesBadge />
-          </Link>
-
-          <div className="flex items-center gap-2.5" style={{ borderTop: "1px solid var(--sidebar-border)", paddingTop: "10px" }}>
-            <Link href="/profile" prefetch className="initial-avatar transition-opacity hover:opacity-80" style={{ width: 28, height: 28, fontSize: "12px" }}>
-              {user.initial}
+          {/* Desktop: the account at the foot of the list, with this week's
+              tokens as the server reports them. */}
+          <div className="dz-account hidden md:block">
+            <Link href="/profile" prefetch className="dz-account-btn">
+              <span className="dz-avatar">{user.initial}</span>
+              <span className="min-w-0 flex-1">
+                <span className="dz-account-name truncate">{user.name}</span>
+                <span className="dz-account-meta">{user.tier ? `${t("profileLink")} · ${user.tier}` : t("profileLink")}</span>
+              </span>
+              <DzIcon name="right" size={14} style={{ color: "var(--ink-muted)" }} />
             </Link>
-            <Link href="/profile" prefetch className="flex-1 truncate transition-opacity hover:opacity-70" style={{ color: "var(--ink)", fontWeight: 600, fontSize: "13px" }}>
-              {user.name}
-            </Link>
-            <button
-              onClick={handleSignOut}
-              className="transition-colors"
-              style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--danger)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--ink-soft)"; }}
-            >
-              {t("signOut")}
-            </button>
+            {tokens?.balance != null && tokens.grantedThisPeriod != null && tokens.grantedThisPeriod > 0 && (
+              <>
+                <div className="dz-meter" role="img" aria-label={tf("tokensOf", { n: Math.max(0, tokens.balance), total: tokens.grantedThisPeriod })}>
+                  <span style={{ width: `${Math.min(100, Math.max(0, (tokens.balance / tokens.grantedThisPeriod) * 100))}%` }} />
+                </div>
+                <p className="dz-account-foot">{tf("tokensOf", { n: Math.max(0, tokens.balance), total: tokens.grantedThisPeriod })}</p>
+              </>
+            )}
           </div>
         </aside>
 
@@ -1963,126 +1936,164 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   );
 }
 
-// The design's group head: the words, then the count in a small pill, warm
-// for the group that waits on the person.
-function GroupHead({ label, count, warm }: { label: string; count: number; warm?: boolean }) {
+// The ◇ of the design (#2080): a span, not a button, because it sits inside
+// the row's link and a button may not. Enter and Space press it too.
+function PinMark({ on, onPin }: { on: boolean; onPin: () => void }) {
+  const press = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onPin();
+  };
   return (
-    <p className="section-label flex items-center gap-2" style={{ padding: "0 6px 2px" }}>
-      {warm && <span aria-hidden="true" className="rounded-full" style={{ width: 7, height: 7, background: "var(--danger)" }} />}
-      <span className="flex-1">{label}</span>
-      {count > 0 && (
-        <span
-          style={{
-            font: "600 11px/16px var(--font-system)", borderRadius: 8, padding: "0 7px",
-            background: warm ? "var(--request-tint)" : "var(--accent-tint)",
-            color: warm ? "var(--request-accent)" : "var(--accent-strong)",
-          }}
-        >
-          {count}
-        </span>
-      )}
-    </p>
+    <span
+      role="button"
+      tabIndex={0}
+      className="dz-pin"
+      aria-pressed={on}
+      aria-label={t("pinLater")}
+      title={t("pinLater")}
+      onClick={press}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") press(e); }}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
+      {on ? "◆" : "◇"}
+    </span>
   );
 }
 
-function TaskRow({
-  title, status, statusLine, stopped, href, active, unread, onLongPress, time,
-}: {
-  title: string;
-  // The design shows when the row last moved, on the title's line.
-  time?: string;
-  status: TaskStatus;
-  stopped?: boolean;
-  // 20 Sept: the server's own sentence about this goal, already written in
-  // the owner's language. It was arriving on every row and being thrown away
-  // while the row drew a generic word from `status` instead — so a goal
-  // halted because WE ran out of tokens on the account was labelled "needs
-  // your answer", telling the person they owed something when the block was
-  // ours. Lika read that on 18 Sept. Where the sentence exists it replaces
-  // the generic label rather than sitting next to it, because the generic
-  // label is the part that was wrong.
-  statusLine?: string | null;
-  href: string;
-  active: boolean;
-  unread: boolean;
-  onLongPress: () => void;
-}) {
-  const edge = status === "needs_you" ? "var(--request-accent)" : "var(--accent)";
+function roleLabel(role: Thread["role"]): string | null {
+  return role === "initiator" ? t("roleInitiator") : role === "mediator" ? t("roleMediator") : role === "addressee" ? t("roleAddressee") : null;
+}
+
+// Ticket 6 #14: long-press (550ms) on a row opens rename; the click that
+// follows the release is swallowed so the thread doesn't open.
+function useLongPress(onLongPress: () => void) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const firedRef = useRef(false);
-
-  // Ticket 6 #14: long-press (550ms) on a row opens rename; the click that
-  // follows the release is swallowed so the thread doesn't open.
-  const startPress = () => {
-    firedRef.current = false;
-    timer.current = setTimeout(() => {
-      firedRef.current = true;
-      onLongPress();
-    }, 550);
-  };
-  const cancelPress = () => {
+  const cancel = () => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
   };
-
-  return (
-    <Link
-      href={href}
-      prefetch
-      className={`task-row thread-row${unread && !active ? " unread" : ""}`}
-      style={{
-        background: active ? "var(--thread-active-bg)" : undefined,
-        boxShadow: active ? `inset 3px 0 0 ${edge}` : undefined,
-      }}
-      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--skeleton)"; }}
-      onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = ""; }}
-      onTouchStart={startPress}
-      onTouchEnd={cancelPress}
-      onTouchMove={cancelPress}
-      onContextMenu={(e) => {
-        // Ticket 7 #4: right-click (and the synthetic contextmenu some phones
-        // fire on long-press) opens rename too.
+  return {
+    onTouchStart: () => {
+      firedRef.current = false;
+      timer.current = setTimeout(() => {
+        firedRef.current = true;
+        onLongPress();
+      }, 550);
+    },
+    onTouchEnd: cancel,
+    onTouchMove: cancel,
+    // Ticket 7 #4: right-click (and the synthetic contextmenu some phones
+    // fire on long-press) opens rename too.
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault();
+      cancel();
+      if (!firedRef.current) onLongPress();
+    },
+    onClick: (e: React.MouseEvent) => {
+      if (firedRef.current) {
         e.preventDefault();
-        cancelPress();
-        if (!firedRef.current) onLongPress();
-      }}
-      onClick={(e) => {
-        if (firedRef.current) {
-          e.preventDefault();
-          firedRef.current = false;
-        }
-      }}
-    >
-      <span className="flex-1 min-w-0 flex flex-col" style={{ gap: 2 }}>
-        <span className="flex items-baseline gap-2">
-          <span className="flex-1 truncate" style={{ font: `${active || unread ? 700 : 600} 13.5px/18px var(--font-system)`, color: "var(--ink)" }}>
-            {title}
-          </span>
-          {time && (
-            <span className="shrink-0" style={{ font: "400 11px/16px var(--font-system)", color: "var(--meta)" }}>
-              {time}
-            </span>
-          )}
+        firedRef.current = false;
+      }
+    },
+  };
+}
+
+// 20 Sept: the server's own sentence about this goal, already written in
+// the owner's language, replaces the generic word where it exists: a goal
+// halted because WE ran out of tokens was labelled "needs your answer",
+// telling the person they owed something when the block was ours (Lika, 18
+// Sept). The design draws every status word in the same quiet colour; the
+// group head above already carries the warm dot.
+function StatusLine({ thread, status }: { thread: Thread; status: TaskStatus }) {
+  const word = thread.status_line || statusWord(status, thread.goal_stopped === true) || (status === "done" ? t("stResolved") : null);
+  if (!word) return null;
+  return <small className="dz-status" title={thread.status_line ?? undefined}>{word}</small>;
+}
+
+type RowProps = {
+  thread: Thread;
+  title: string;
+  status: TaskStatus;
+  href: string;
+  active: boolean;
+  unread: boolean;
+  time?: string;
+  onLongPress: () => void;
+  onPin: () => void;
+};
+
+// Desktop sidebar row of the design: the role's icon, title and time, one
+// line of the last message, the status word, the ◇.
+function TaskRow({ thread, title, status, href, active, unread, time, onLongPress, onPin }: RowProps) {
+  const press = useLongPress(onLongPress);
+  const preview = thread.last_message?.replace(/\s+/g, " ").trim();
+  return (
+    <Link href={href} prefetch className={`dz-row${active ? " active" : ""}`} title={title} {...press}>
+      <span className="dz-row-avatar">
+        <DzIcon name={thread.role ? ROLE_ICON[thread.role] : "pulse"} size={15} />
+      </span>
+      <span className="dz-row-body">
+        <span className="dz-row-top">
+          <span className={`dz-row-title${unread && !active ? " unread" : ""}`}>{title}</span>
+          {time && <span className="dz-row-time">{time}</span>}
         </span>
-        {/* The server's own sentence wins over the generic word (20 Sept):
-            the generic word is the part that was wrong for Lika. */}
-        {(statusLine || statusWord(status, stopped)) && (
-          <span
-            className="truncate"
-            title={statusLine ?? undefined}
-            style={{
-              font: "500 11.5px/16px var(--font-system)",
-              color: !statusLine && (status === "needs_you" || status === "failed") ? "var(--request-accent)" : "var(--meta)",
-            }}
-          >
-            {statusLine || statusWord(status, stopped)}
+        {preview && <span className="dz-row-preview">{preview}</span>}
+        <StatusLine thread={thread} status={status} />
+      </span>
+      <PinMark on={thread.followed === true} onPin={onPin} />
+    </Link>
+  );
+}
+
+// Phone card of the design: role tag and time, the title, the last message,
+// "details", the status word and the ◇. The role's colour runs down the
+// left edge.
+function TaskCard({ thread, title, status, href, active, unread, time, onLongPress, onPin }: RowProps) {
+  const press = useLongPress(onLongPress);
+  const role = roleLabel(thread.role);
+  const preview = thread.last_message?.replace(/\s+/g, " ").trim();
+  return (
+    <Link href={href} prefetch className={`dz-cc${thread.role ? ` role-${thread.role}` : ""}${active ? " active" : ""}`} {...press}>
+      <span className="dz-ch">
+        {role && thread.role && (
+          <span className={`dz-rtag role-${thread.role}`}>
+            <DzIcon name={ROLE_ICON[thread.role]} size={14} />
+            {role}
+          </span>
+        )}
+        {time && <span className="tm">{time}</span>}
+      </span>
+      <h3 className={unread && !active ? "unread" : undefined}>{title}</h3>
+      {preview && <p>{preview}</p>}
+      <span className="dz-cf">
+        <span className="dz-open">{t("details")}<DzIcon name="right" size={14} /></span>
+      </span>
+      <StatusLine thread={thread} status={status} />
+      <PinMark on={thread.followed === true} onPin={onPin} />
+    </Link>
+  );
+}
+
+// Phone, a resolved task: a plain row with the tick.
+function DoneRow({ thread, title, href, time, onPin }: { thread: Thread; title: string; href: string; time?: string; onPin: () => void }) {
+  const role = roleLabel(thread.role);
+  return (
+    <Link href={href} prefetch className="dz-drow">
+      <span className="ok"><DzIcon name="check" size={13} /></span>
+      <span className="t">{title}</span>
+      {time ? <span className="d">{time}</span> : <span />}
+      <span className="sub">
+        <small>{thread.goal_stopped === true ? t("stStopped") : t("stResolved")}</small>
+        {role && thread.role && (
+          <span className={`dz-rr role-${thread.role}`}>
+            <DzIcon name={ROLE_ICON[thread.role]} size={14} />
+            {role}
           </span>
         )}
       </span>
-      {unread && !active && (
-        <span className="shrink-0 rounded-full" style={{ width: 8, height: 8, background: "var(--accent)" }} />
-      )}
-      <AnimBox status={status} size={40} />
+      <PinMark on={thread.followed === true} onPin={onPin} />
     </Link>
   );
 }

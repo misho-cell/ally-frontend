@@ -6,10 +6,11 @@ import { t } from "@/lib/i18n";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { beginDictation, shouldRecord, type DictationHandle } from "@/lib/dictation";
 import { FILE_ACCEPT, FILE_MAX_BYTES } from "@/lib/threadFiles";
-import AttachIcon from "@/components/AttachIcon";
+import Link from "next/link";
+import DzIcon from "@/components/DzIcons";
+import UpdatesBadge from "@/components/UpdatesBadge";
 import StagedFile from "@/components/StagedFile";
 import NewsCard from "@/components/NewsCard";
-import SetupBanner from "@/components/SetupBanner";
 import { useUserName } from "@/lib/user";
 
 // Desktop right pane, no goal selected: dogs clip + one line + the goal
@@ -19,7 +20,7 @@ export default function ChatIndexPage() {
   const { threads, threadsLoaded, threadStates, createTask, createWithFile } = useThreads();
   const [input, setInput] = useState("");
   const [recording, setRecording] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [attaching, setAttaching] = useState(false);
   // #2346: the chosen file waits here for Send.
@@ -128,158 +129,126 @@ export default function ChatIndexPage() {
       void attach(f, v);
       return;
     }
-    if (!v) return;
+    if (!v) { inputRef.current?.focus(); return; }
     setInput("");
     createTask(v);
   }
 
   return (
-    <div className="hidden md:flex flex-1 h-full flex-col justify-center overflow-y-auto py-8" style={{ background: "var(--bg)" }}>
-      <div className="flex flex-col items-center px-6 pb-6">
-        {threadsLoaded && (
-          <div className="flex w-full flex-col items-center gap-5" style={{ maxWidth: 720 }}>
-            <p style={{ font: "500 17px/24px var(--font-system)", color: "var(--ink)" }}>
-              {firstName ? `${t("homeHello")}, ${firstName}` : t("homeHello")}
-            </p>
-            <SetupBanner />
-            <div className="flex w-full items-center justify-center gap-5">
-              <video
-                className="ally-anim shrink-0"
-                style={{ width: "auto", height: 96 }}
-                autoPlay muted loop playsInline
-                src="/assets/ally/anim/ally-dogs.mp4"
-                poster="/assets/ally/anim/ally-dogs-poster.jpg"
-                onError={(e) => { e.currentTarget.style.display = "none"; }}
-              />
-              <NewsCard className="flex-1" style={{ maxWidth: 510 }} />
-            </div>
-            <div className="flex flex-col items-center gap-1 text-center">
-              <h2 style={{ font: "600 30px/38px var(--font-bricolage)", color: "var(--ink)" }}>
-                {t("homeAsk")}
-              </h2>
-              <p style={{ font: "400 13.5px/20px var(--font-system)", color: "var(--ink-soft)" }}>
-                {hasGoals ? t("homeAskSub") : t("emptyHome")}
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* The design puts the composer under the question, not pinned to the
-          bottom edge: on this screen it is the whole point of the page. */}
-      <div className="px-6">
-        {(staged || tooBig) && (
-          <div className="mx-auto mb-2 flex flex-col gap-1" style={{ maxWidth: "720px" }}>
-            {staged && <StagedFile name={staged.name} onRemove={() => setStaged(null)} disabled={attaching} />}
-            {/* This box has no toast of its own, so the refusal is said here. */}
-            {tooBig && (
-              <p role="status" style={{ font: "500 13px/19px var(--font-system)", color: "var(--danger)" }}>
-                {t("attachTooBig")}
-              </p>
-            )}
-          </div>
-        )}
-        <form onSubmit={submit} className="mx-auto flex items-center gap-2" style={{ maxWidth: "720px" }}>
-          <div
-            className="composer-pill flex flex-1 items-center gap-2 min-w-0"
-            style={{ padding: "6px 16px", borderColor: recording ? "var(--danger)" : undefined }}
-          >
-            <input
+    <div className="hidden md:flex flex-1 h-full flex-col" style={{ background: "#FFFFFF" }}>
+      {/* 11 Oct, the FIXED2 design: the workspace bar with the updates
+          button, then the welcome column. */}
+      <header className="dz-topbar">
+        <div>
+          <b>{t("workspace")}</b>
+          <small>{t("workspaceSub")}</small>
+        </div>
+        <Link
+          href="/updates"
+          // Opening that screen SPENDS the due updates, so it must only ever be
+          // opened by a person, never by a prefetch.
+          prefetch={false}
+          className="dz-updates-btn"
+        >
+          <DzIcon name="bell" size={15} />
+          {t("updatesBtn")}
+          <UpdatesBadge className="badge" />
+        </Link>
+      </header>
+      <div className="flex flex-1 overflow-y-auto px-6">
+        <div className="dz-welcome">
+          {threadsLoaded && (
+            <>
+              <p className="greeting">{firstName ? `${t("homeHello")}, ${firstName}` : t("homeHello")}</p>
+              <NewsCard variant="desktop" />
+              <h1>{t("homeAsk")}</h1>
+              <p className="dz-welcome-sub">{hasGoals ? t("homeAskSub") : t("emptyHome")}</p>
+            </>
+          )}
+          <form onSubmit={submit} className={`dz-wcompose${recording ? " rec" : ""}`}>
+            <textarea
               ref={inputRef}
-              type="text"
+              rows={2}
+              maxLength={4000}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={recording ? t("listening") : t("homePlaceholder")}
-              className="flex-1 min-w-0 bg-transparent outline-none"
-              style={{ color: "var(--ink)", padding: "7px 0" }}
-            />
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept={FILE_ACCEPT}
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = "";
-              if (!f) return;
-              setTooBig(f.size > FILE_MAX_BYTES);
-              if (f.size <= FILE_MAX_BYTES) setStaged(f);
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => { setTooBig(false); fileRef.current?.click(); }}
-            disabled={attaching}
-            aria-label={t("attachFile")}
-            title={t("attachFile")}
-            className="flex shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40"
-            style={{ width: 40, height: 46, background: "transparent", color: "var(--meta)" }}
-          >
-            {attaching ? (
-              <span
-                className="h-4 w-4 rounded-full border-2 animate-spin"
-                style={{ borderColor: "var(--placeholder)", borderTopColor: "transparent" }}
-              />
-            ) : (
-              <AttachIcon />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={startMic}
-            aria-label={recording ? t("voiceStop") : t("voiceStart")}
-            className="flex shrink-0 items-center justify-center rounded-full transition-colors"
-            style={{
-              width: 46, height: 46,
-              background: recording ? "var(--danger)" : "var(--accent)",
-              color: "#FFFFFF",
-            }}
-          >
-            {recording ? (
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                <rect x="5" y="5" width="10" height="10" rx="1.5" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
-                <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.6" />
-                <path d="M4 10a6 6 0 0012 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                <line x1="7" y1="19" x2="13" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            )}
-          </button>
-          {(input.trim() || staged) && !recording && (
-            <button
-              type="submit"
-              disabled={attaching}
-              aria-label={t("send")}
-              className="flex shrink-0 items-center justify-center rounded-full"
-              style={{ width: 46, height: 46, background: "var(--accent)", color: "#FFFFFF" }}
-            >
-              <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-                <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          )}
-        </form>
-        <div className="mx-auto mt-3 flex flex-wrap justify-center gap-2" style={{ maxWidth: "720px" }}>
-          {(["homeChipSpecialist", "homeChipRecommend", "homeChipIntro"] as const).map((k) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => suggest(t(k))}
-              className="transition-colors"
-              style={{
-                padding: "7px 14px", borderRadius: 9, border: "1px solid var(--header-border)",
-                background: "#FFFFFF", font: "500 12.5px/17px var(--font-system)", color: "var(--ink-soft)",
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  e.currentTarget.form?.requestSubmit();
+                }
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--cta-border)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--header-border)"; }}
-            >
-              {t(k)}
-            </button>
-          ))}
+              placeholder={recording ? t("listening") : t("homePlaceholder")}
+              aria-label={t("homePlaceholder")}
+            />
+            {(staged || tooBig) && (
+              <div className="mt-1 flex flex-col gap-1">
+                {staged && <StagedFile name={staged.name} onRemove={() => setStaged(null)} disabled={attaching} />}
+                {/* This box has no toast of its own, so the refusal is said here. */}
+                {tooBig && (
+                  <p role="status" style={{ font: "500 13px/19px var(--font-system)", color: "var(--danger)" }}>
+                    {t("attachTooBig")}
+                  </p>
+                )}
+              </div>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept={FILE_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (!f) return;
+                setTooBig(f.size > FILE_MAX_BYTES);
+                if (f.size <= FILE_MAX_BYTES) setStaged(f);
+              }}
+            />
+            <div className="dz-wfoot">
+              <button
+                type="button"
+                onClick={() => { setTooBig(false); fileRef.current?.click(); }}
+                disabled={attaching}
+                title={t("uploadFile")}
+                className="dz-file-upload disabled:opacity-40"
+              >
+                {attaching ? (
+                  <span className="h-4 w-4 rounded-full border-2 animate-spin" style={{ borderColor: "var(--placeholder)", borderTopColor: "transparent" }} />
+                ) : (
+                  <DzIcon name="plus" size={16} />
+                )}
+                <span>{t("uploadFile")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={startMic}
+                aria-label={recording ? t("voiceStop") : t("voiceStart")}
+                className={`dz-voice${recording ? " rec" : ""}`}
+              >
+                {recording ? (
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><rect x="5" y="5" width="10" height="10" rx="1.5" /></svg>
+                ) : (
+                  <DzIcon name="mic" size={17} />
+                )}
+              </button>
+              <button type="submit" disabled={attaching || recording} aria-label={t("send")} className="dz-sendbtn">
+                <DzIcon name="up" size={18} />
+              </button>
+            </div>
+          </form>
+          <div className="dz-suggestions">
+            {([
+              ["homeChipSpecialist", "people"],
+              ["homeChipRecommend", "spark"],
+              ["homeChipIntro", "link"],
+            ] as const).map(([k, icon]) => (
+              <button key={k} type="button" onClick={() => suggest(t(k))} className="dz-suggestion">
+                <DzIcon name={icon} size={14} />
+                {t(k)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

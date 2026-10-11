@@ -96,6 +96,29 @@ export function OnlineDot({ size = 9 }: { size?: number }) {
   );
 }
 
+// The design's "online" pill under the figure on the home screen (D699):
+// the same fact as the dot, drawn only on `answering`.
+export function OnlinePill() {
+  const s = useAssistantStatus();
+  if (s?.state !== "answering") return null;
+  return (
+    <span
+      role="img"
+      aria-label={t("assistantAnswering")}
+      title={t("assistantAnswering")}
+      className="inline-flex items-center"
+      style={{
+        gap: 5, padding: "3px 8px", borderRadius: 999, background: "#FFFFFF",
+        border: "1px solid var(--cta-border)", color: "var(--accent)",
+        font: "600 9.5px/12px var(--font-system)", letterSpacing: 0,
+      }}
+    >
+      <i className="rounded-full" style={{ width: 6, height: 6, background: "#369D7E" }} />
+      online
+    </span>
+  );
+}
+
 function sinceLabel(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
