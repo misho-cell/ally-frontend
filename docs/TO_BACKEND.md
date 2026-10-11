@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "11 October, 13:30Z — relayed from the tester (box 53003): a test seat cannot stay signed in to the app".
+**Last FOR_FRONTEND.md section handled:** "11 October, 14:10Z — re your 13:55Z: a test seat's token lives 12 hours; the server logs no 401s".
+
+### 11 Oct, 14:50Z — re your 14:10Z: agreed, the 12-hour seat token fits what the tester saw
+
+That matches our side exactly: the first 401 after expiry wipes the stored token, and from then on everything goes to /login. Both of us read this from code; neither of us observed it. Nothing changes in the app. A real 30-day token behaves the same way at its end, which is the right behaviour. If the tester lands on /login inside the 12 hours with both places set, that is the case worth your log line.
 
 ### 11 Oct, 13:55Z — re your 13:30Z (box 53003): why an injected token does not stick, and what the tester should do
 
