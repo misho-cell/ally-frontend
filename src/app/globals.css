@@ -783,3 +783,65 @@ body {
 .dz-fc.w .dz-anim img, .dz-fc.w .dz-anim video { filter: invert(1); mix-blend-mode: screen; }
 .dz-feat { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 @media (min-width: 768px) { .dz-switcher { display: none; } }
+
+/* ============ FIXED2: the task screen ============ */
+.dz-thd { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: start; column-gap: 9px; row-gap: 3px; padding: 10px 18px 11px; background: var(--accent); color: #FFFFFF; flex-shrink: 0; }
+.dz-thd-back { width: 34px; height: 34px; margin-top: 21px; border-radius: 12px; background: #FFFFFF; color: var(--accent); border: 1px solid #FFFFFF; display: grid; place-items: center; }
+.dz-thd-main { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.dz-thd-rt { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 3px; padding: 3px 7px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, .5); background: rgba(255, 255, 255, .07); color: rgba(255, 255, 255, .9); font: 600 10.25px/12.3px var(--font-system); }
+.dz-thd h1 { width: 100%; font: 700 15.5px/18.3px var(--font-system); letter-spacing: -0.31px; color: #FFFFFF; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dz-thd-mt { display: flex; align-items: center; gap: 6px; margin-top: 4px; font: 400 11px/14.3px var(--font-system); color: #EFFBF6; }
+.dz-thd-mt i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.dz-thd-acts { display: flex; align-items: center; gap: 6px; align-self: end; }
+.dz-hbtn { width: 32px; height: 32px; border-radius: 10px; border: 1px solid #FFFFFF; background: transparent; color: #FFFFFF; }
+.dz-hbtn:hover { background: rgba(255, 255, 255, .1); }
+.dz-hbtn[aria-pressed="true"] { background: rgba(255, 255, 255, .16); }
+.dz-hbtn.wide { width: auto; padding: 0 10px; font: 600 12px/16px var(--font-system); }
+@media (min-width: 768px) {
+  .dz-thd { grid-template-columns: 32px minmax(0, 1fr) auto; column-gap: 10px; padding: 16px 20px; align-items: center; }
+  .dz-thd-back { width: 32px; height: 32px; margin-top: 25px; border-radius: 10px; border-color: var(--cta-border); align-self: start; }
+  .dz-thd-rt { margin-bottom: 7px; padding: 3px 7px; border-radius: 6px; border-color: #ADDED5; background: transparent; color: #F1F8FF; font: 400 9px/11.7px var(--font-system); }
+  .dz-thd h1 { font: 600 15px/22.5px var(--font-system); letter-spacing: -0.25px; -webkit-line-clamp: 1; }
+  .dz-thd-mt { margin-top: 5px; font-size: 10px; line-height: 15.5px; }
+  .dz-thd-acts { align-self: center; margin-top: 25px; gap: 6px; }
+  .dz-hbtn { border-radius: 9px; border-color: #9ED1C7; }
+}
+
+.dz-ububble { max-width: 79%; padding: 13px 16px; border-radius: 16px 16px 6px 16px; background: var(--user-bubble-bg); color: var(--user-bubble-ink); border: 1px solid #C2D8F5; font: 400 14px/22.4px var(--font-system); }
+.dz-time { display: block; margin-top: 7px; text-align: right; font: 400 10px/16px var(--font-system); color: var(--nx-muted); white-space: nowrap; }
+.ally-avatar.dz-ava { width: 32px; height: 32px; margin-bottom: 2px; border: 0; border-radius: 10px; background: var(--accent-tint); align-self: flex-end; }
+@media (min-width: 768px) {
+  .dz-ububble { max-width: 77%; border-radius: 15px 15px 4px 15px; background: #D8EAF1; color: #244D65; border-color: #ACCBD8; font: 400 13px/23.4px var(--font-system); }
+  .ally-avatar.dz-ava { width: 28px; height: 28px; border-radius: 50%; background: #FFFFFF; border: 1px solid var(--header-border); }
+}
+
+.dz-write { padding: 12px 20px max(16px, env(safe-area-inset-bottom)); background: var(--bg); }
+.dz-wbox { display: flex; align-items: flex-end; gap: 5px; padding: 5px 6px; background: #FFFFFF; border: 1px solid var(--cta-border); border-radius: 16px; }
+.dz-wbox.rec { border-color: var(--danger); }
+.dz-wbox:focus-within { border-color: var(--accent); }
+.dz-wbox textarea { min-height: 40px; padding: 9px 2px; border: 0; outline: 0; background: transparent; font: 400 16px/22px var(--font-system); }
+.dz-wbox textarea::placeholder { color: var(--ink-muted); }
+.dz-attach { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 34px; height: 40px; border-radius: 10px; color: var(--accent); flex-shrink: 0; }
+.dz-mic { width: 42px; height: 42px; border-radius: 12px; background: var(--accent); color: #FFFFFF; display: grid; place-items: center; flex-shrink: 0; order: 3; }
+.dz-mic.rec { background: var(--danger); }
+.dz-tsend { width: 38px; height: 38px; margin-bottom: 2px; border-radius: 12px; background: var(--sidebar-bg); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; order: 2; }
+.dz-tsend:disabled { opacity: .55; }
+.dz-wbox textarea { order: 1; }
+.dz-attach { order: 0; }
+@media (min-width: 768px) {
+  .dz-write { padding: 13px 28px 12px; background: #FFFFFF; }
+  .dz-write > div { max-width: 732px !important; }
+  .dz-wbox { align-items: center; gap: 9px; padding: 8px; border-color: var(--header-border); border-radius: 13px; }
+  .dz-wbox textarea { min-height: 34px; padding: 5px 4px; font-size: 12px; line-height: 19.2px; }
+  .dz-attach { padding: 0 8px; height: 36px; border-radius: 8px; color: var(--text-2); font: 400 11px/17px var(--font-system); }
+  .dz-attach:hover { background: var(--bg); }
+  .dz-mic { order: 2; width: 35px; height: 35px; border-radius: 10px; background: var(--bg); border: 1px solid var(--cta-border); color: var(--accent); }
+  .dz-mic.rec { background: var(--danger); border-color: var(--danger); color: #FFFFFF; }
+  .dz-tsend { order: 3; width: 35px; height: 35px; margin: 0; border-radius: 10px; background: var(--accent); color: #FFFFFF; }
+}
+
+.dz-ctx-head { display: flex; align-items: center; gap: 10px; height: 72px; padding: 0 18px; border-bottom: 1px solid var(--header-border); flex-shrink: 0; }
+.dz-ctx-title { font: 600 12px/18px var(--font-system); color: var(--ink); }
+.dz-ctx-sub { margin-top: 2px; font: 400 10px/15px var(--font-system); color: var(--ink-muted); }
+.dz-ctx-close { width: 30px; height: 30px; border-radius: 9px; background: var(--bg); color: var(--accent); display: grid; place-items: center; }
+.dz-ctx-close:hover { background: var(--accent-tint); }

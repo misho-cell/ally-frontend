@@ -48,8 +48,8 @@ export default function ThreadMenu({ items, label }: { items: ThreadMenuItem[]; 
         title={label}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex items-center justify-center rounded-lg transition-colors hover:bg-black/5"
-        style={{ width: 32, height: 32, color: "var(--ink-soft)", border: "1px solid var(--header-border)", background: "#FFFFFF" }}
+        // 11 Oct, FIXED2: an outlined button on the teal header.
+        className="dz-hbtn flex items-center justify-center"
       >
         <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <circle cx="4.5" cy="10" r="1.6" />

@@ -3,7 +3,7 @@
 
 export type DzIconName =
   | "flag" | "link" | "target" | "search" | "user" | "plus" | "mic" | "send" | "up"
-  | "down" | "right" | "bell" | "check" | "people" | "spark" | "hourglass" | "pulse";
+  | "down" | "right" | "back" | "x" | "panel" | "bell" | "check" | "people" | "spark" | "hourglass" | "pulse";
 
 const PATHS: Record<DzIconName, React.ReactNode> = {
   flag: <><path d="M5 21V4" /><path d="M5 4h11l-2 4 2 4H5" /></>,
@@ -15,6 +15,9 @@ const PATHS: Record<DzIconName, React.ReactNode> = {
   mic: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0" /><path d="M12 17.5V21" /></>,
   send: <><path d="M21 3 10 14" /><path d="m21 3-7 18-4-7-7-4 18-7Z" /></>,
   up: <><path d="M12 19V5" /><path d="m6 11 6-6 6 6" /></>,
+  back: <><path d="M19 12H5" /><path d="m11 6-6 6 6 6" /></>,
+  x: <><path d="M6 6l12 12" /><path d="M18 6 6 18" /></>,
+  panel: <><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" /><path d="M14.5 4.5v15" /></>,
   down: <path d="m6 9 6 6 6-6" />,
   right: <path d="m9 6 6 6-6 6" />,
   bell: <><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,

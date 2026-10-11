@@ -1,5 +1,6 @@
 "use client";
 
+import DzIcon from "@/components/DzIcons";
 import { useSyncExternalStore } from "react";
 import { t, tf, fmtDateShort } from "@/lib/i18n";
 import RoutesList, { type Route } from "@/components/RoutesBoard";
@@ -70,13 +71,9 @@ export function ContextPanelToggle() {
       aria-pressed={open}
       aria-label={t("ctxPanelTitle")}
       title={t("ctxPanelTitle")}
-      className="hidden items-center justify-center rounded-lg transition-colors hover:bg-black/5 xl:flex"
-      style={{ width: 32, height: 32, border: "1px solid var(--header-border)", background: open ? "var(--accent-tint)" : "#FFFFFF", color: "var(--accent-strong)" }}
+      className="dz-hbtn hidden items-center justify-center xl:flex"
     >
-      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-        <rect x="3" y="4" width="14" height="12" rx="2" />
-        <path d="M12 4v12" />
-      </svg>
+      <DzIcon name="panel" size={16} />
     </button>
   );
 }
@@ -118,21 +115,18 @@ export default function ContextPanel({
 
   return (
     <aside
-      className="hidden w-[300px] shrink-0 flex-col xl:flex"
+      className="hidden w-[315px] shrink-0 flex-col xl:flex"
       style={{ background: "#FFFFFF", borderLeft: "1px solid var(--header-border)" }}
     >
-      <div className="flex items-start gap-2 px-5 py-4" style={{ borderBottom: "1px solid var(--header-border)" }}>
-        <p className="flex-1" style={{ font: "600 15px/20px var(--font-system)", color: "var(--ink)" }}>{t("ctxPanelTitle")}</p>
-        <button
-          type="button"
-          onClick={() => setContextPanelOpen(false)}
-          aria-label={t("ctxClose")}
-          className="flex items-center justify-center rounded-lg hover:bg-black/5"
-          style={{ width: 28, height: 28, color: "var(--accent-strong)" }}
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
+      {/* 11 Oct, FIXED2: the panel's head, with its one line and a tinted
+          close button. */}
+      <div className="dz-ctx-head">
+        <div className="min-w-0 flex-1">
+          <p className="dz-ctx-title">{t("ctxPanelTitle")}</p>
+          <p className="dz-ctx-sub">{t("ctxPanelSub")}</p>
+        </div>
+        <button type="button" onClick={() => setContextPanelOpen(false)} aria-label={t("ctxClose")} className="dz-ctx-close">
+          <DzIcon name="x" size={15} />
         </button>
       </div>
       <div className="flex flex-col gap-4 overflow-y-auto px-5 py-4">

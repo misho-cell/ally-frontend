@@ -20,6 +20,7 @@ import { FILE_ACCEPT, FILE_MAX_BYTES, fetchGoalList, uploadThreadFile } from "@/
 import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import ThreadMenu from "@/components/ThreadMenu";
+import DzIcon, { ROLE_ICON } from "@/components/DzIcons";
 import ContextPanel, { ContextPanelToggle } from "@/components/ContextPanel";
 import RoutesList, { useRoutes } from "@/components/RoutesBoard";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
@@ -315,7 +316,7 @@ const markdownComponents = {
 
 function AllyAvatar() {
   return (
-    <span className="ally-avatar" style={{ marginTop: "2px" }}>
+    <span className="ally-avatar dz-ava">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/assets/ally/ally-avatar.jpg" alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
     </span>
@@ -1751,36 +1752,21 @@ export default function ThreadPage() {
           left of it. The title now keeps at least half the row; when the
           buttons do not fit beside it they move to a line of their own
           instead of eating it. */}
-      <header
-        className="thread-header flex flex-wrap items-center px-4 md:flex-nowrap md:px-6"
-        style={{
-          paddingTop: "10px",
-          paddingBottom: "10px",
-          columnGap: "14px",
-          rowGap: "8px",
-          // 9 Oct, the new design: the task's header is the teal band, on the
-          // phone and the desktop alike.
-          background: "var(--accent)",
-          color: "#FFFFFF",
-          flexShrink: 0,
-        }}
-      >
-        <button
-          onClick={() => router.push("/chat")}
-          className="flex shrink-0 items-center justify-center transition-opacity hover:opacity-90"
-          aria-label={t("backLabel")}
-          style={{ width: 36, height: 36, borderRadius: 11, background: "#FFFFFF", color: "var(--accent)" }}
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M12 4l-6 6 6 6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+      <header className="thread-header dz-thd">
+        <button onClick={() => router.push("/chat")} className="dz-thd-back" aria-label={t("backLabel")} title={t("backLabel")}>
+          <DzIcon name="back" size={18} />
         </button>
 
-        <div className="flex-1 min-w-[50%] md:min-w-0 flex flex-col">
-          <span
-            className="title truncate"
-            style={{ font: "600 16px/22px var(--font-bricolage)", color: "#FFFFFF" }}
-          >
+        <div className="dz-thd-main">
+          {/* 11 Oct, the FIXED2 header: the person's role in this task, the
+              title over two lines, the status under it. */}
+          {thread?.role && (
+            <span className="dz-thd-rt">
+              <DzIcon name={ROLE_ICON[thread.role]} size={12} />
+              {thread.role === "initiator" ? t("roleInitiator") : thread.role === "mediator" ? t("roleMediator") : t("roleAddressee")}
+            </span>
+          )}
+          <h1>
             {isRequest && reqNames ? (
               <>
                 {reqNames[0]} <span style={{ color: "var(--apricot)" }}>→</span> {reqNames[1]}
@@ -1788,16 +1774,15 @@ export default function ThreadPage() {
             ) : (
               displayTitle
             )}
-          </span>
+          </h1>
           {statusLabel && (
-            <span className="flex items-center gap-1.5" style={{ font: "500 11.5px/16px var(--font-system)", color: "rgba(255,255,255,0.86)" }}>
+            <span className="dz-thd-mt">
               {/* The warm dot keeps what the warm word used to say: this one
                   waits on you. */}
               <i
                 aria-hidden="true"
                 style={{
-                  width: 6, height: 6, borderRadius: "50%", display: "inline-block",
-                  background: !thread?.status_line && (taskStatus === "needs_you" || taskStatus === "failed") ? "var(--apricot)" : "rgba(255,255,255,0.86)",
+                  background: !thread?.status_line && (taskStatus === "needs_you" || taskStatus === "failed") ? "var(--apricot)" : "#FFFFFF",
                 }}
               />
               {statusLabel}
@@ -1809,18 +1794,7 @@ export default function ThreadPage() {
             truncates. Without shrink-0 here, flexbox squeezes the buttons and
             the badge below their own text, which is what printing one word
             over another looks like. */}
-        <div className="ml-auto flex shrink-0 items-center gap-3">
-          {/* Ticket 7 #2: on phones the composer lives on the list page — give
-              the open thread a one-tap way to start a new goal. */}
-          <button
-            onClick={() => router.push("/chat")}
-            aria-label={t("newTask")}
-            title={t("newTask")}
-            className="md:hidden flex items-center justify-center rounded-full"
-            style={{ width: 32, height: 32, background: "#FFFFFF", color: "var(--accent)", fontSize: "18px", lineHeight: 1 }}
-          >
-            +
-          </button>
+        <div className="dz-thd-acts">
           {/* 2 Oct. This used to hide Stop unless the THREAD read as unfinished.
               A goal can be open while its thread reads "done" — a run ended and
               nobody owes an answer yet — and in that state the only button on
@@ -1834,7 +1808,10 @@ export default function ThreadPage() {
           {/* Row 282: the badge is the balance, so with no balance there is
               no badge. It showed 0 to people who had tokens, and a wrong
               number about someone's money is worse than no number. */}
-          {balance != null && (
+          {/* 11 Oct: the design keeps the balance off this header; it is in
+              the sidebar and the profile. It still appears here when it runs
+              low, because that is when it changes what the person can do. */}
+          {balance != null && balanceLow && (
             <span className={`token-badge on-teal${balanceLow ? " low" : ""}`}>
               <i className="dot" style={{ width: 8, height: 8, borderRadius: "50%", background: balanceLow ? "var(--request-accent)" : "var(--accent)", display: "inline-block" }} />
               <span className="count">
@@ -1852,8 +1829,7 @@ export default function ThreadPage() {
             <button
               type="button"
               onClick={() => setRoutesOpen(true)}
-              className="shrink-0 xl:hidden"
-              style={{ font: "600 12.5px/16px var(--font-system)", color: "var(--accent-strong)", background: "#FFFFFF", borderRadius: 10, padding: "8px 10px" }}
+              className="dz-hbtn wide shrink-0 xl:hidden"
             >
               {tf("routesCount", { n: routes.length })}
             </button>
@@ -1966,19 +1942,11 @@ export default function ThreadPage() {
               if (msg.role === "user") {
                 return (
                   <div key={msg.id} className="flex flex-col items-end gap-1">
-                    <div
-                      className="msg-user whitespace-pre-wrap"
-                      style={{
-                        maxWidth: "74%",
-                        background: "var(--user-bubble-bg)",
-                        color: "var(--user-bubble-ink)",
-                        padding: "12px 16px",
-                        borderRadius: "16px 16px 4px 16px",
-                        font: "400 15px/22px var(--font-system)",
-                        opacity: msg.failed ? 0.7 : 1,
-                      }}
-                    >
+                    {/* 11 Oct, FIXED2: the time sits inside the bubble, at
+                        its foot, as on the assistant's. */}
+                    <div className="msg-user dz-ububble whitespace-pre-wrap" style={{ opacity: msg.failed ? 0.7 : 1 }}>
                       {msg.content}
+                      {!msg.failed && stamp && <time className="dz-time">{stamp}</time>}
                     </div>
                     {msg.failed ? (
                       <div className="flex items-center gap-2">
@@ -1993,8 +1961,6 @@ export default function ThreadPage() {
                           {send.resend}
                         </button>
                       </div>
-                    ) : stamp ? (
-                      <span style={{ font: "400 10.5px/14px var(--font-system)", color: "var(--meta)" }}>{stamp}</span>
                     ) : null}
                   </div>
                 );
@@ -2323,14 +2289,7 @@ export default function ThreadPage() {
         </div>
       )}
 
-      <div
-        className="composer-wrap px-4 py-3"
-        style={{
-          paddingBottom: "max(12px, env(safe-area-inset-bottom))",
-          background: "var(--bg)",
-          borderTop: "1px solid var(--header-border)",
-        }}
-      >
+      <div className="composer-wrap dz-write">
         <style>{`
           @keyframes micPulse {
             0%, 100% { box-shadow: 0 0 0 0 rgba(179,64,46,0.4); }
@@ -2341,13 +2300,22 @@ export default function ThreadPage() {
           {stagedFile && (
             <StagedFile name={stagedFile.name} onRemove={() => setStaged(null)} disabled={uploading} />
           )}
-          <div
-            className="composer-pill flex items-end gap-2"
-            style={{
-              padding: "6px 6px 6px 18px",
-              borderColor: voiceState === "recording" ? "var(--danger)" : undefined,
-            }}
-          >
+          <div className={`dz-wbox${voiceState === "recording" ? " rec" : ""}`}>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || composerBlocked}
+              aria-label={t("uploadFile")}
+              title={t("uploadFile")}
+              className="dz-attach disabled:opacity-40"
+            >
+              {uploading ? (
+                <span className="h-4 w-4 rounded-full border-2 animate-spin" style={{ borderColor: "var(--placeholder)", borderTopColor: "transparent" }} />
+              ) : (
+                <DzIcon name="plus" size={18} />
+              )}
+              <span className="hidden md:inline">{t("uploadFile")}</span>
+            </button>
             <textarea
               ref={inputRef}
               value={input}
@@ -2367,13 +2335,7 @@ export default function ThreadPage() {
               rows={1}
               disabled={composerBlocked}
               className="flex-1 resize-none bg-transparent outline-none disabled:opacity-60"
-              style={{
-                color: voiceState === "recording" ? "var(--placeholder)" : "var(--ink)",
-                lineHeight: "1.5",
-                maxHeight: "120px",
-                paddingTop: "7px",
-                paddingBottom: "7px",
-              }}
+              style={{ color: voiceState === "recording" ? "var(--placeholder)" : "var(--ink)", maxHeight: "120px" }}
             />
 
             {/* #892: attach a list. Left of the mic, because it belongs with
@@ -2391,32 +2353,6 @@ export default function ThreadPage() {
                 if (f) stageFile(f);
               }}
             />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading || composerBlocked}
-              aria-label={t("attachFile")}
-              title={t("attachFile")}
-              className="flex shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40"
-              style={{ width: 38, height: 38, background: "transparent", color: "var(--meta)" }}
-            >
-              {uploading ? (
-                <span
-                  className="h-4 w-4 rounded-full border-2 animate-spin"
-                  style={{ borderColor: "var(--placeholder)", borderTopColor: "transparent" }}
-                />
-              ) : (
-                <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
-                  <path
-                    d="M13.5 6.5l-5.2 5.2a1.9 1.9 0 002.7 2.7l5.2-5.2a3.3 3.3 0 00-4.7-4.7l-5.2 5.2a4.7 4.7 0 006.6 6.6l4.4-4.4"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
-            </button>
 
             {/* D20 (22 Aug): mic AND send are BOTH available while typing —
                 mic on the left, send rightmost. Send hides only while the mic
@@ -2427,12 +2363,8 @@ export default function ThreadPage() {
                 onClick={handleMicClick}
                 disabled={voiceState === "processing" || composerBlocked}
                 aria-label={voiceState === "recording" ? t("voiceStop") : t("voiceStart")}
-                className="flex shrink-0 items-center justify-center rounded-full transition-all"
+                className={`dz-mic${voiceState === "recording" ? " rec" : ""}`}
                 style={{
-                  width: 38,
-                  height: 38,
-                  background: voiceState === "recording" ? "var(--danger)" : "transparent",
-                  color: voiceState === "recording" ? "white" : "var(--meta)",
                   opacity: voiceState === "processing" || composerBlocked ? 0.4 : 1,
                   animation: voiceState === "recording" ? "micPulse 1.2s ease-in-out infinite" : "none",
                 }}
@@ -2447,12 +2379,7 @@ export default function ThreadPage() {
                     <rect x="5" y="5" width="10" height="10" rx="1.5" />
                   </svg>
                 ) : (
-                  <svg viewBox="0 0 20 20" fill="none" style={{ width: 18, height: 18 }}>
-                    <rect x="7" y="2" width="6" height="10" rx="3" stroke="currentColor" strokeWidth="1.6" />
-                    <path d="M4 10a6 6 0 0012 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    <line x1="7" y1="19" x2="13" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
+                  <DzIcon name="mic" size={18} />
                 )}
               </button>
             )}
@@ -2462,24 +2389,11 @@ export default function ThreadPage() {
                 type="button"
                 onClick={() => void submit()}
                 disabled={!canSend}
-                className="flex shrink-0 items-center justify-center rounded-full transition-colors"
-                style={{
-                  width: 38,
-                  height: 38,
-                  background: canSend ? "var(--accent)" : "var(--skeleton)",
-                  color: canSend ? "#FFFFFF" : "var(--meta)",
-                }}
-                onMouseEnter={(e) => {
-                  if (canSend) e.currentTarget.style.background = "var(--accent-strong)";
-                }}
-                onMouseLeave={(e) => {
-                  if (canSend) e.currentTarget.style.background = "var(--accent)";
-                }}
+                className="dz-tsend"
                 aria-label={t("send")}
               >
-                <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
-                  <path d="M10 15V5M10 5L5 10M10 5L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <DzIcon name="send" size={17} className="md:hidden" />
+                <DzIcon name="up" size={17} className="hidden md:block" />
               </button>
             )}
           </div>
