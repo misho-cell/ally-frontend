@@ -107,6 +107,8 @@ const L = {
     addContacts: "Add new contacts",
     addContactsSub: "People you have saved on your phone since last time",
     lastImport: (d: string, n: number) => `Last upload ${d}, ${n} contacts`,
+    monthlyReminder: "Monthly reminder",
+    monthlyReminderFailed: "Could not save. Try again.",
     claudeConnected: "Claude is connected",
     myContacts: "My contacts",
     myContactsSub: "Search, and what you have saved about each person",
@@ -196,6 +198,8 @@ const L = {
     addContacts: "ახალი კონტაქტების დამატება",
     addContactsSub: "ვინც ბოლო დროს შეინახე ტელეფონში",
     lastImport: (d: string, n: number) => `ბოლო ატვირთვა ${d}, ${n} კონტაქტი`,
+    monthlyReminder: "თვიური შეხსენება",
+    monthlyReminderFailed: "ვერ შეინახა. სცადე თავიდან.",
     claudeConnected: "Claude დაკავშირებულია",
     myContacts: "ჩემი კონტაქტები",
     myContactsSub: "ძებნა და რა გაქვს შენახული თითოეულზე",
@@ -580,9 +584,7 @@ function EditProfileCard({ profile, onSaved }: { profile: Profile; onSaved: (p: 
 // 10 Oct (backend 08:45Z, GET /contacts/import-state): when the last import
 // that actually brought contacts happened, and how many. Nothing is drawn for
 // someone who never imported, or when the server cannot say: an unknown date
-// must not read as "never". The monthly-reminder switch from the design is
-// not drawn: the backend saves it but sends nothing yet, so the switch would
-// promise a reminder that does not come.
+// must not read as "never".
 function LastImportLine() {
   const s = useStrings();
   const [info, setInfo] = useState<{ at: string; n: number } | null>(null);
@@ -604,6 +606,68 @@ function LastImportLine() {
     <p className="mt-1" style={{ fontSize: "12px", color: "var(--meta)" }}>
       {s.lastImport(fmtDateLoc(info.at, { day: "numeric", month: "short" }), info.n)}
     </p>
+  );
+}
+
+// 11 Oct (backend 06:50Z): the design's monthly-reminder switch, now that the
+// reminder itself is approved (D771, 0134/0135). The value is the server's
+// `monthly_reminder` and nothing else: an unknown value draws no switch, so
+// "we could not read it" never looks like "off". A tap sends the opposite of
+// what is shown, and the switch then shows the server's answer.
+function MonthlyReminderRow() {
+  const s = useStrings();
+  const [on, setOn] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    apiFetch<unknown>("/contacts/import-state")
+      .then((raw) => {
+        const d = unwrapData(raw);
+        if (alive && isRecord(d) && typeof d.monthly_reminder === "boolean") setOn(d.monthly_reminder);
+      })
+      .catch(() => { /* no switch */ });
+    return () => { alive = false; };
+  }, []);
+  if (on === null) return null;
+
+  async function toggle() {
+    if (busy || on === null) return;
+    setBusy(true);
+    setFailed(false);
+    try {
+      const d = unwrapData(await apiFetch<unknown>("/contacts/import-state", { method: "PUT", body: { monthly_reminder: !on } }));
+      if (isRecord(d) && typeof d.monthly_reminder === "boolean") setOn(d.monthly_reminder);
+      else setFailed(true);
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.monthlyReminder}</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-label={s.monthlyReminder}
+          disabled={busy}
+          onClick={toggle}
+          className="relative shrink-0 rounded-full transition-colors"
+          style={{ width: 44, height: 26, background: on ? "var(--accent)" : "var(--skeleton)", opacity: busy ? 0.6 : 1 }}
+        >
+          <span
+            className="absolute rounded-full bg-white transition-all"
+            style={{ top: 3, left: on ? 21 : 3, width: 20, height: 20, boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }}
+          />
+        </button>
+      </div>
+      {failed && <p role="status" style={{ fontSize: "12px", color: "var(--danger)" }}>{s.monthlyReminderFailed}</p>}
+    </div>
   );
 }
 
@@ -1258,6 +1322,7 @@ export default function ProfilePage() {
               </div>
               <span style={{ color: "var(--meta)" }}>→</span>
             </Link>
+            <MonthlyReminderRow />
 
             {/* Netai in Claude (MCP connector guide) */}
             <AllyInClaudeCard />

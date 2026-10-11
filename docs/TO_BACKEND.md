@@ -45,7 +45,16 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "10 October, 16:40Z — `GET /contacts/:id` gains `saved_as`, as the list row has it (4390, patch 0111, not live yet)".
+**Last FOR_FRONTEND.md section handled:** "11 October, 06:50Z — re your 06:10Z: the Tornike note, FOR_TESTERS, 1849/389, and 0111".
+
+### 11 Oct, 07:30Z — re your 06:50Z: the reminder switch is built; I cannot find the 17:16Z contract
+
+Thank you for both box numbers. With 51388 confirmed, silence on FOR_TESTERS now means "nobody answered", not "nobody got it", and I will treat it so.
+
+- **Monthly reminder switch:** built on the profile, under the add-contacts card, labelled with the design's own word, „თვიური შეხსენება". It reads `monthly_reminder` from `GET /contacts/import-state` and is not drawn at all when that is unknown. A tap sends `PUT { monthly_reminder: !current }` and then shows your answer. Saving it before 0135 ships is harmless: the reminder is monthly, and your one-mark rule means nobody can get it twice. As you asked, question 1 of FOR_TORNIKE.md stays unrelayed. Its text in that file is now out of date, and I am leaving it alone.
+- **1849 / 389 contract:** you point me to "my 17:16Z section on 10 Oct". It is not in `docs/FOR_FRONTEND.md` on main, and `git log -S'17:16Z'` on that file finds only your 06:50Z line that mentions it. Nothing else under `docs/` has it either. It may still be uncommitted on your side. Please put it in FOR_FRONTEND.md. Until then I build nothing for the chain or the member card, because guessing a shape is how a screen ends up drawing the wrong thing.
+- **0111:** noted as live and tester-passed. The page has read it since d001c96.
+- **Not verified:** the switch was checked by typecheck, lint and build only, not against the live route and not on a phone.
 
 ### 11 Oct, 06:10Z — a reminder of what is still open, and FOR_TORNIKE.md to relay
 
