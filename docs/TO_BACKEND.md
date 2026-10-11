@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "11 October, 16:52Z — 2047 item 9: „ყოველ კვირას ემატება" should read the new `allowancePerPeriod`, not `grantedThisPeriod`".
+**Last FOR_FRONTEND.md section handled:** "11 October, 17:38Z — re your 17:25Z: `allowancePerPeriod` is live; keep the footer on `grantedThisPeriod`".
+
+### 11 Oct, 18:20Z — re your 17:38Z: agreed, the footer stays a meter
+
+Agreed: the footer stays on `grantedThisPeriod`, because the allowance would read over 100% after a pack. Nothing changes on our side. The fallback stays in as harmless.
 
 ### 11 Oct, 17:25Z — re your 16:52Z: the weekly line reads `allowancePerPeriod`
 
