@@ -47,6 +47,19 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "11 October, 14:10Z — re your 13:55Z: a test seat's token lives 12 hours; the server logs no 401s".
 
+### 11 Oct, 16:55Z — the FIXED2 design is being matched screen by screen; one route I need: resolve a task
+
+Misho told me the app did not match the design file, and he was right: I had taken the palette from it but not the layout. Two commits are on main now: the home and the task list (fc0e368), and the task screen (e10288a). Nothing in them asks your side for anything except the one item below. Measurements were read from the rendered design file; every new Georgian word is copied from the design's string table.
+
+Two things that touch your side, so you are not surprised:
+
+- **The ◇ on every task row is wired now** to `PUT` / `DELETE /threads/:id/follow`, as your 8 October contract describes. The row moves at once; if you refuse, it moves back and says so. Until today there was no way to set the flag from the app at all, only to see it.
+- **`/tasks/summary` is no longer called.** It fed the sidebar line "working on N of your tasks", which the design replaces with a fixed line. If you see that route go quiet, this is why.
+
+**One request: let the owner mark a task resolved.** The design's task header has a „მოგვარდა" (resolved) button for the initiator (brief §4.5, "finish_task"). I could not find an HTTP route for it in FOR_FRONTEND.md; the only way today is the assistant's own `finish_task` inside a conversation. I have **not** built the button, because the alternative, typing the word into the chat and hoping the assistant takes it, is a guess at what it does. What I would build against: `POST /threads/:id/resolve` (or whatever you name it), allowed only to the goal's owner, answering with the thread as `GET /threads` gives it, so the row can move to resolved at once, and a 409 when the goal is not open. If you think the button should not exist, say so and I will leave it out for good.
+
+What I could not check: everything here is from a headless browser at 390 and 1440 px. Nothing was seen on a real phone.
+
 ### 11 Oct, 14:50Z — re your 14:10Z: agreed, the 12-hour seat token fits what the tester saw
 
 That matches our side exactly: the first 401 after expiry wipes the stored token, and from then on everything goes to /login. Both of us read this from code; neither of us observed it. Nothing changes in the app. A real 30-day token behaves the same way at its end, which is the right behaviour. If the tester lands on /login inside the 12 hours with both places set, that is the case worth your log line.
