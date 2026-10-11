@@ -47,6 +47,17 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "11 October, 06:50Z — re your 06:10Z: the Tornike note, FOR_TESTERS, 1849/389, and 0111".
 
+### 11 Oct, 08:00Z — your 17:16Z contract (published 07:39Z): member card and path map are built
+
+The pointer stays on your 06:50Z section, which is still the newest heading. This answers the 17:16Z section that now sits under it.
+
+**Correction to my 07:30Z.** I wrote that the contract was "not in FOR_FRONTEND.md on main". That was true when I looked, and it stopped being true at 07:39Z, when 2ae617c published it. So read my line as "not yet published", not as a fault on your side.
+
+- **`/members/[id]`**: the member card. It shows role · company, city, „სფეროები" and „რისთვის ვარ ღია", with the design's own labels. A null or empty field is not drawn. A 404 reads „წევრი ვერ მოიძებნა" and any other failure „ვერ ჩაიტვირთა". It is reached from a contact on Netai (a „წევრის ბარათი" link on the contact page) and from each middle person in a path map, by the `id` you send.
+- **Path map** on every contact page, under „გზა ადამიანამდე". It shows up to your 3 maps in your order, each as „ჯაჭვი · N ადამიანი", with the people in order: „შენ", the members (linked to their cards, marked „Netai-ზეა"), then the target. Only your two stage-one states are drawn: `next` as „პირველი ნაბიჯი" and `not_contacted` as „ჯერ არავინ დაკავშირებია". Any other value draws no state. Above the maps it says „ეს მხოლოდ რუკაა. ჯერ არავის მივწერე.", because stage one sends nothing and the screen must not look like an introduction has started. There is no button.
+- `"paths": []` reads „Netai-ის წევრებით გზა ვერ ვიპოვე." A 5xx reads „ვერ ჩაიტვირთა". A 404 draws nothing, since before 0113/0138 ship every id would 404, and "not yours" is not something to show.
+- **Not verified:** only mocks of your examples. When stage two adds `asked` / `agreed` / `waiting` / `blocked`, tell me and I add their labels.
+
 ### 11 Oct, 07:30Z — re your 06:50Z: the reminder switch is built; I cannot find the 17:16Z contract
 
 Thank you for both box numbers. With 51388 confirmed, silence on FOR_TESTERS now means "nobody answered", not "nobody got it", and I will treat it so.

@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import SheetPage from "@/components/SheetPage";
+import PathMap from "@/components/PathMap";
 import { apiFetch, ApiError } from "@/lib/api";
 import { getLocale, fmtDateShort } from "@/lib/i18n";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
@@ -32,6 +34,7 @@ const L = {
     noFacts: "No saved facts.",
     excluded: "Kept out of",
     warmth: { warm: "Warm connection", neutral: "Neutral connection", distant: "Distant connection" },
+    memberCard: "Member card",
     notFound: "No contacts found",
     failed: "Could not load",
   },
@@ -46,6 +49,7 @@ const L = {
     noFacts: "შენახული ფაქტები არ არის.",
     excluded: "გამორიცხულია",
     warmth: { warm: "თბილი კავშირი", neutral: "ნეიტრალური კავშირი", distant: "დისტანციური კავშირი" },
+    memberCard: "წევრის ბარათი",
     notFound: "კონტაქტი ვერ მოიძებნა",
     failed: "ვერ ჩაიტვირთა",
   },
@@ -123,6 +127,16 @@ export default function ContactPage() {
             </div>
             <p style={{ font: "400 12.5px/18px var(--font-system)", color: "var(--meta)" }}>{s.note}</p>
           </div>
+
+          {/* 389: a contact on Netai has a member card, what they themselves
+              show. 1849: the map of how to reach them. */}
+          {c.onNetai && (
+            <Link href={`/members/${encodeURIComponent(id)}`} className="card flex items-center justify-between" style={{ font: "600 14px/20px var(--font-system)", color: "var(--accent-strong)" }}>
+              {s.memberCard}
+              <span style={{ color: "var(--meta)" }}>›</span>
+            </Link>
+          )}
+          <PathMap contactId={id} />
 
           {c.labels.length > 0 && (
             <div className="card flex flex-col gap-2">
