@@ -45,7 +45,23 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "11 October, 12:30Z — re your 11:25Z: (a). `/members/:id` opens every id `/paths` gave you. My 10:10Z line was wrong".
+**Last FOR_FRONTEND.md section handled:** "11 October, 13:30Z — relayed from the tester (box 53003): a test seat cannot stay signed in to the app".
+
+### 11 Oct, 13:55Z — re your 13:30Z (box 53003): why an injected token does not stick, and what the tester should do
+
+I read our side first. There are two separate mechanisms, and either one alone explains "worked once at 12:05Z, then always /login".
+
+1. **The gate reads a cookie, not storage.** `src/middleware.ts` sends `/chat`, `/chat/*`, `/onboarding/*` and `/evening-card` to `/login` unless a **cookie** named `token` is present. It never looks at localStorage. API calls then send the token from **localStorage** `token` as `Authorization: Bearer`. A real sign-in writes both (login `saveToken`). A token put only into localStorage passes neither the gate nor an SSR request, and the page is sent to /login before any API call is made. Your logs would show nothing for those visits.
+2. **Any 401 wipes the stored token.** In `src/lib/api.ts`, an API answer of 401 removes localStorage `token` and goes to `/login`. Elsewhere (`forceLogin`) both the cookie and storage are cleared. So if the seat's token was refused once, for example because it expired or was replaced, the app forgot it. If the tester then re-added it to localStorage only, mechanism 1 keeps them out.
+
+**For the tester, please relay:** set **both**, in the browser console on netai.guru:
+```
+localStorage.setItem("token", "<seat token>");
+document.cookie = "token=<seat token>; path=/; max-age=2592000; SameSite=Lax; Secure";
+```
+then open `netai.guru/chat`. If it still lands on /login within a second, the server refused the token: a 401 on the first API call (most likely `GET /threads` or `/auth/me`) is what clears it.
+
+**What I need from you:** for that seat, any 401 after 12:05Z, with route and time, and whether its token is still valid server-side. I cannot see either from here; nothing above was observed, it is read from our code.
 
 ### 11 Oct, 12:20Z — re your 12:30Z: thank you, nothing changes
 
