@@ -1303,7 +1303,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // top, with its count. The order inside each group is the one above, so a
   // pinned row still leads its group.
   const waitsOnYou = (g: { status: TaskStatus }) => g.status === "needs_you" || g.status === "failed";
-  const needsYou = active.filter(waitsOnYou);
+  // 12 Oct: a question another person's assistant asked this person waits on
+  // them like any task does. The design has no separate list for it; it sat
+  // in one under the counters while the counter said nobody waited (0).
+  const needsYou = [
+    ...asks.map((thread) => ({ thread, status: "needs_you" as TaskStatus })),
+    ...active.filter(waitsOnYou),
+  ];
   const ongoing = active.filter((g) => !waitsOnYou(g));
   const pane: "needs" | "ongoing" = phonePane ?? (needsYou.length > 0 || ongoing.length === 0 ? "needs" : "ongoing");
   const phoneGroups = [
@@ -1578,7 +1584,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       {user.name.trim() ? `${t("homeHello")}, ${user.name.trim().split(/\s+/)[0]}` : t("homeHello")}
                     </p>
                     <NewsCard variant="phone" />
-                    {active.length > 0 && (
+                    {(needsYou.length + ongoing.length) > 0 && (
                       <div className="dz-feat" ref={tilesRef} style={{ marginTop: 28 }}>
                         {phoneGroups.map((g) => (
                           <button
@@ -1614,37 +1620,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     nothing once the question has been answered either way. */}
                 <div className="mt-3 md:mt-0 md:mb-2"><PushPrompt /></div>
 
-                {asks.length > 0 && (
-                  <section className="mb-2 mt-3 flex flex-col gap-[3px]">
-                    <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("asksLabel")}</p>
-                    {asks.map((th) => (
-                      <Link
-                        key={th.id}
-                        href={`/chat/${th.id}`}
-                        prefetch
-                        className={`task-row thread-row${isUnread(th) ? " unread" : ""}`}
-                        style={{
-                          background: pathname === `/chat/${th.id}` ? "var(--thread-active-bg)" : undefined,
-                          boxShadow: pathname === `/chat/${th.id}` ? "inset 3px 0 0 var(--request-accent)" : undefined,
-                        }}
-                        onMouseEnter={(e) => { if (pathname !== `/chat/${th.id}`) e.currentTarget.style.background = "var(--request-tint)"; }}
-                        onMouseLeave={(e) => { if (pathname !== `/chat/${th.id}`) e.currentTarget.style.background = ""; }}
-                      >
-                        <span className="flex-1 truncate" style={{ font: `${isUnread(th) ? 700 : 500} 13.5px/18px var(--font-system)`, color: "var(--ink)" }}>
-                          {th.title || "…"}
-                        </span>
-                        <span className="shrink-0" style={{ font: "400 11px/16px var(--font-system)", color: "var(--meta)" }}>
-                          {fmtClock(th.updated_at, clock?.today ?? null)}
-                        </span>
-                        <span className="task-pill needs_you">{t("askBadge")}</span>
-                      </Link>
-                    ))}
-                  </section>
-                )}
 
                 {/* Sticky, so it is a child of the list itself: inside a
                     smaller box it would scroll away with that box. */}
-                {!q && active.length > 0 && tilesOut && (
+                {!q && (needsYou.length + ongoing.length) > 0 && tilesOut && (
                   <div className="dz-switcher" style={{ marginTop: 12 }}>
                     {phoneGroups.map((g) => (
                       <a key={g.key} href={`#pane-${g.key}`} className={g.key === "needs" ? "wait" : "run"} onClick={(e) => { e.preventDefault(); choosePane(g.key); }}>
@@ -1687,7 +1666,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       )}
                     </section>
                   ))}
-                  {active.length === 0 && !q && (
+                  {(needsYou.length + ongoing.length) === 0 && !q && (
                     <p style={{ padding: "18px 6px 2px", fontSize: "12px", color: "var(--meta)" }}>
                       {roleFilter !== "all" ? t("filterEmpty") : t("threadsHint")}
                     </p>
@@ -1752,7 +1731,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             time={fmtClock(thread.updated_at, clock?.today ?? null)}
                           />
                         ))}
-                        {open && g.key === "run" && active.length === 0 && !q && (
+                        {open && g.key === "run" && (needsYou.length + ongoing.length) === 0 && !q && (
                           <p style={{ padding: "2px 10px 8px", fontSize: "11.5px", color: "var(--meta)" }}>
                             {roleFilter !== "all" ? t("filterEmpty") : t("threadsHint")}
                           </p>
