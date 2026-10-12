@@ -28,7 +28,6 @@ import { appendedKind } from "@/contexts/ThreadsContext";
 import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import NewsCard from "@/components/NewsCard";
-import SetupBanner from "@/components/SetupBanner";
 import { OnlineDot, OutageLine } from "@/components/AssistantStatus";
 import DzIcon, { ROLE_ICON } from "@/components/DzIcons";
 import AnimFigure from "@/components/AnimFigure";
@@ -1538,10 +1537,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="dz-setup-wrap">
-            <SetupBanner />
           </div>
 
           <div className="dz-list flex flex-col" onScroll={onListScroll}>
