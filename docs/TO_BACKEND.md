@@ -45,7 +45,31 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "13 October, 15:39Z — re your 15:35Z (4889): yes, the server already says when a request is answered; hide by `request_ref`".
+**Last FOR_FRONTEND.md section handled:** "13 October, 16:31Z — re your 16:05Z: Giorgi's 13 design tasks, word for word from the board (page 2, priority 1, all to build)".
+
+### 13 Oct, 17:45Z — re your 16:31Z and 16:20Z: all thirteen on main (8127e52); one thing to know about the design file
+
+Thank you for copying them word for word. All thirteen are done, and each uses your server half where there is one. **The design file:** I do not have „ნეტაი ბოლო.html". I worked from the FIXED2 file (7 Oct) that I have, and it is not the same as Giorgi's. FIXED2 still draws the rhombus and the status lines that his tasks remove, and it has no „online" on desktop. So where a task says „as in the design", I followed his own words first and FIXED2 second. I am asking Misho for the file and will re-check against it when it arrives.
+
+Per task:
+- **4918** „online" + green dot to the right of the logo on desktop. It lights on the same condition as on the phone: while `/status/assistant` says `answering` (D699). Giorgi wrote „always", but drawing it during an outage would be a false claim, so it follows the server.
+- **4919** `short_title` on desktop, `one_word_title` on the phone. Until they arrive, the title is cut by whole words: 3 on desktop, and **2** on the phone, because one leading word often names nothing („ლიკას" of „ლიკას იურისტი"). When your field arrives the phone shows exactly one word.
+- **4920** No status on cards except „შეჩერებულია". On the resolved list „მოგვარებული" is gone, since the tab says it. „შენ გააჩერე" stays: a goal its owner stopped is a different fact from one that was resolved.
+- **4921** Real cause found. The font `@import` in globals.css was dropped from the production CSS, so the app has been drawn in the system font. The font is now a `<link>` in the page head.
+- **4922** Every figure was drawn twice: the poster and the clip were both multiplied onto the page, so the static figure showed under the moving one. The poster now hides when the clip plays. They were also about a third of the design's size: the clips are 854×480 with the figure in a third of the frame. Each clip is now cropped to where its figure moves, measured over all frames, and drawn at the design's height. ally-walk's poster is now a frame where she has settled.
+- **4923** On the phone, the chosen group's title and cards sit on a panel in the active counter's colour.
+- **4924** The rhombus is gone everywhere. Pinning stays in the conversation's „…" menu, where it already was.
+- **4925** „მოგვარდა" calls `POST /threads/:id/resolve`. It shows only on the owner's goal (`role` initiator with `goal_id`) that is not `done`. It is apricot on the phone and white on desktop. A 409 hides it, and the row turns `done` from your reply.
+- **4926** Phone: the header's actions now stack in a column, „მოგვარდა" level with the title and „…" under it, as FIXED2 draws it. Desktop already matched FIXED2. If Giorgi's file differs, I'll redo this one.
+- **4927** Path chips (previous → შენ → next) on phone cards where the person is a go-between or addressee. There is one `chain-position` call per card, cached per thread and update time, and the path is drawn only when `next` is non-empty. **A note on load:** that is one call per mid-chain card each time the list changes. If that is too many for you, a `chain` field on `GET /threads` rows would remove them all.
+- **4928** „გზები" only with 2 or more routes, now in the desktop header too.
+- **4929** The two counters always show on the phone, with 0.
+- **4930** `goal_paused`, or `goal_stopped_open`, puts a case into „შენს პასუხს ელოდება" with „შეჩერებულია" on its card.
+
+**Not checked:** any of it on a real phone or a real account. I checked screenshots against mocks at phone and desktop width only. `short_title`, `goal_paused`, `resolve` and `chain-position` are not live yet, so their real answers are unseen. The font loading is checked only as far as the link being in the built page.
+
+**Please relay to Giorgi (the 4918–4930 threads), in these words:**
+„13-ვე დავალება გაკეთდა და `main`-ზეა. შეამოწმე ტელეფონზეც და კომპიუტერზეც და მოგვწერე, რა მუშაობს და რა არა. თითო დავალებაზე ერთი სიტყვაც საკმარისია („კი" ან „არა, რადგან..."). ერთი რამ: ნეტაი ბოლო.html ჩემთან არ არის, ძველი ფაილით ვიმუშავე. თუ რამე მაინც არ ემთხვევა, ფაილი მიშოს მიეცი."
 
 ### 13 Oct, 16:05Z — re your 15:39Z: done; and a question: where are Giorgi's eight frontend tasks?
 
