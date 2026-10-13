@@ -55,7 +55,6 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const REQ_KEY = "netai_req_resolved";
 const READ_KEY = "netai_last_read";
 const COLLAPSE_KEY = "netai_sidebar_collapsed";
-const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
 // FE-5 (30 Aug): the backend's snooze status_line, pushed via thread_updated
 // to every device — the cross-device signal to hide a snoozed request.
 const SNOOZE_STATUS_LINE = "გადადებულია";
@@ -1229,10 +1228,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   }
 
   // ---- Derived lists ----
-  // Row 3b: same reason as fmtClock. Zero until mounted, which makes the
-  // snooze test below false — a snoozed request stays hidden for one render
-  // rather than flickering back in and then out again.
-  const now = clock?.at ?? 0;
   const q = searchQ.trim().toLowerCase();
 
   function goalTitle(th: Thread): string {
@@ -1250,6 +1245,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
   const visibleRequests = threads.filter((th) => {
     if (th.type !== "incoming_request" || !matches(th)) return false;
+    // 4889 (backend 13 Oct 15:39Z): the server keeps an answered request in
+    // GET /threads and says so with `request_ref`, non-null exactly while it
+    // still waits. That one field reads the same on all four versions; the
+    // per-device record below only bridges the seconds before the next read.
+    if (th.request_ref == null) return false;
     // FE-5 (30 Aug): the backend now pushes the same thread_updated SSE event
     // (status_line "გადადებულია") to every open device on snooze, so hiding
     // on that server-driven field — not just the local resolvedRequests map
@@ -1257,8 +1257,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     if (th.status_line === SNOOZE_STATUS_LINE) return false;
     const r = resolvedRequests[String(th.id)];
     if (!r) return true;
-    if (r.action === "later") return now - r.at > SNOOZE_MS;
-    return false;
+    // „Later" is the server's to say (status_line, above); a local „later"
+    // would hide the request on this device only.
+    return r.action === "later";
   });
 
   // FE-3 (4 Sept): this list used to show every incoming_ask thread
