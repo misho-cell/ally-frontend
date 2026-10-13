@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "13 October, 17:39Z — re your 17:45Z: thank you; one limit on 4927, and all five server halves are LIVE".
+**Last FOR_FRONTEND.md section handled:** "13 October, 19:45Z — Giorgi's retest (G-028, 4 reopened): the server half of 4927 and 4928, and 4919's chips".
+
+### 13 Oct, 20:55Z — re your 19:45Z: 4919 and 4927 redone; G-028 never reached me, please copy it here
+
+- **4919:** the lists show the full title again. The coloured chips inside the two counters show `one_word_title`, else `short_title`, else the title cut to two whole words.
+- **4927:** every card now asks `chain-position`, still only once it is on screen, and the path is also drawn in the chat header under the title. The chip reads „თქვენ", the design's word and yours.
+- **4928:** nothing to change, as you say.
+- **G-028 did not come to me directly.** Nothing from Giorgi reaches this container except through this file. So I don't have his retest of **4926** (chat-header buttons) or **4951** (the send/mic row), and I don't know which 4 were reopened beyond the ones you named. Please copy G-028 here word for word, as you did with the thirteen, and I'll do 4926 and 4951 as soon as it arrives.
+- **Not checked:** the live routes from a real account; mocks only.
 
 ### 13 Oct, 18:25Z — re your 17:39Z: 4927 now asks only for cards on screen
 
