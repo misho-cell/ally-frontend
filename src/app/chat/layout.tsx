@@ -26,7 +26,6 @@ import { parseTokenBalance } from "@/lib/tokens";
 import { readSessionToken } from "@/lib/session";
 import { FILE_ACCEPT, FILE_MAX_BYTES, uploadThreadFile } from "@/lib/threadFiles";
 import { appendedKind } from "@/contexts/ThreadsContext";
-import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import NewsCard from "@/components/NewsCard";
 import { OnlineDot, OutageLine } from "@/components/AssistantStatus";
@@ -1306,7 +1305,13 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // 12 Oct: a question another person's assistant asked this person waits on
   // them like any task does. The design has no separate list for it; it sat
   // in one under the counters while the counter said nobody waited (0).
+  //
+  // 4889 (13 Oct, Giorgi): the separate „requests" block above the list is
+  // gone, so the four versions look alike. An introduction request still
+  // waits on the person, so it joins this group the way the questions did;
+  // its accept and decline buttons are in the conversation it opens.
   const needsYou = [
+    ...visibleRequests.map((thread) => ({ thread, status: "needs_you" as TaskStatus })),
     ...asks.map((thread) => ({ thread, status: "needs_you" as TaskStatus })),
     ...active.filter(waitsOnYou),
   ];
@@ -1555,21 +1560,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               </p>
             ) : (
               <>
-                {visibleRequests.length > 0 && (
-                  <section className="mb-2 flex flex-col gap-2">
-                    <p className="section-label" style={{ padding: "0 6px 2px" }}>{t("requestsLabel")}</p>
-                    {visibleRequests.map((th) => (
-                      <RequestActionRow
-                        key={th.id}
-                        thread={th}
-                        resolved={resolvedRequests[String(th.id)]?.action}
-                        onResolve={(a) => resolveRequest(String(th.id), a)}
-                        active={pathname === `/chat/${th.id}`}
-                        today={clock?.today ?? null}
-                      />
-                    ))}
-                  </section>
-                )}
 
                 {/* The phone home of the design: greeting, the news story, the
                     two counters. The counters are the lengths of the two
@@ -2073,63 +2063,3 @@ function DoneRow({ thread, title, href, time, onPin }: { thread: Thread; title: 
   );
 }
 
-function RequestActionRow({
-  thread, resolved, onResolve, active, today,
-}: {
-  thread: Thread;
-  resolved: string | undefined;
-  onResolve: (a: ResolveAction) => void;
-  active: boolean;
-  // Row 3b: the clock arrives as a prop rather than being read here, so this
-  // card renders the same string on the server and on the phone.
-  today: string | null;
-}) {
-  const router = useRouter();
-  const quote = thread.last_message?.replace(/\s+/g, " ").trim();
-  const confirmation =
-    resolved === "accept_direct" ? t("reqAcceptedDirect") :
-    // An answer given before D709 removed this button. It still happened, so
-    // it still says what it was rather than reading as the other yes.
-    resolved === "accept_mediator" ? t("reqAcceptedMediator") :
-    resolved === "deny" ? t("reqDenied") :
-    resolved === "later" ? t("reqSnoozed") : null;
-
-  return (
-    <div
-      onClick={() => router.push(`/chat/${thread.id}`)}
-      className="req-card cursor-pointer"
-      style={{ boxShadow: active ? "inset 3px 0 0 var(--request-accent)" : undefined, opacity: confirmation ? 0.72 : 1 }}
-    >
-      <div className="flex items-baseline justify-between gap-2">
-        <p style={{ font: "600 14.5px/20px var(--font-system)", color: "var(--ink)" }} className="truncate">
-          {thread.title}
-        </p>
-        {/* E20: when the request arrived. */}
-        <span className="shrink-0" style={{ font: "400 11px/16px var(--font-system)", color: "var(--meta)" }}>
-          {fmtClock(thread.updated_at, today)}
-        </span>
-      </div>
-      <p style={{ font: "400 13px/19px var(--font-bricolage)", color: "var(--ink-2)" }}>
-        {t("reqAsksIntro")}
-      </p>
-      {quote && (
-        <p
-          className="line-clamp-2"
-          style={{
-            font: "400 12.5px/18px var(--font-system)", color: "var(--ink-2)",
-            borderLeft: "2px solid var(--request-quote-bar)", paddingLeft: "10px",
-            overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-          }}
-        >
-          {quote}
-        </p>
-      )}
-      {confirmation ? (
-        <p style={{ font: "600 13px/18px var(--font-system)", color: "var(--accent-strong)" }}>{confirmation}</p>
-      ) : (
-        // "Other" opens the conversation, where the composer is.
-        <RequestActions onResolve={onResolve} onOther={() => router.push(`/chat/${thread.id}`)} stopPropagation />
-      )}
-    </div>
-  );
-}

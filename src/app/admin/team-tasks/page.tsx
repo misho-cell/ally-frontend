@@ -118,6 +118,35 @@ function toTask(raw: unknown): Task | null {
   };
 }
 
+// 4885 (13 Oct, Giorgi): the rows grouped by status in the board's order,
+// whatever order they arrived in. The server sorts the same way from 0255 on;
+// sorting here as well keeps a row in its group the moment its status changes,
+// before the reload answers. Array.sort is stable, so the order inside a group
+// stays the server's.
+type Counts = Record<(typeof STATUSES)[number], number>;
+const rank = (s?: string | null) => {
+  const i = STATUSES.indexOf((s ?? "") as (typeof STATUSES)[number]);
+  return i < 0 ? STATUSES.length : i;
+};
+const byStatus = (rows: Task[]) => [...rows].sort((a, b) => rank(a.status) - rank(b.status));
+function countRows(rows: Task[]): Counts {
+  const c: Counts = { to_build: 0, built: 0, being_tested: 0, tested: 0 };
+  for (const r of rows) if (r.status && r.status in c) c[r.status as keyof Counts] += 1;
+  return c;
+}
+// The server's counts are for the whole tab, past the 500-row list. Until
+// 0255 is live they are absent, and the list's own rows are counted instead.
+function readCounts(body: unknown): Counts | null {
+  if (!isRecord(body) || !isRecord(body.counts)) return null;
+  const c = body.counts;
+  const out = {} as Counts;
+  for (const s of STATUSES) {
+    const v = c[s];
+    out[s] = typeof v === "number" && Number.isFinite(v) ? v : 0;
+  }
+  return out;
+}
+
 function fmt(iso?: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -131,6 +160,7 @@ export default function TeamTasksPage() {
   // #463 (2 Oct): page 3 is the prompt work the tester seat takes.
   const [page, setPage] = useState<Board>(1);
   const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [counts, setCounts] = useState<Counts | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
 
@@ -151,7 +181,9 @@ export default function TeamTasksPage() {
       const res = await apiFetch<unknown>(`/admin/team-tasks?page=${p}`, { admin: true });
       const body = unwrapData(res);
       const rows = pickArray(body, ["tasks"]);
-      setTasks(rows.map(toTask).filter((t): t is Task => t != null));
+      const list = rows.map(toTask).filter((t): t is Task => t != null);
+      setTasks(byStatus(list));
+      setCounts(readCounts(body) ?? countRows(list));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         router.replace("/admin/login");
@@ -176,6 +208,24 @@ export default function TeamTasksPage() {
     setError(null);
     try {
       await apiFetch<unknown>(`/admin/team-tasks/${id}`, { method: "PATCH", body, admin: true });
+      // Move the row and the count line at once; the reload after it brings
+      // the server's own order and counts.
+      const before = tasks?.find((t) => t.id === id);
+      if (before) {
+        const leaves = typeof body.page === "number" && body.page !== page;
+        const status = typeof body.status === "string" ? body.status : before.status;
+        setTasks((prev) => prev && byStatus(leaves
+          ? prev.filter((t) => t.id !== id)
+          : prev.map((t) => (t.id === id ? { ...t, ...body, status } : t))));
+        setCounts((prev) => {
+          if (!prev) return prev;
+          const next = { ...prev };
+          const from = before.status as keyof Counts | null | undefined;
+          if (from && from in next && (leaves || status !== from)) next[from] = Math.max(0, next[from] - 1);
+          if (!leaves && status && status in next && status !== from) next[status as keyof Counts] += 1;
+          return next;
+        });
+      }
       await load(page);
     } catch (err) {
       // 404 means somebody else removed it while this screen was open. Saying
@@ -340,7 +390,7 @@ export default function TeamTasksPage() {
             <button
               key={p}
               type="button"
-              onClick={() => { setTasks(null); setPage(p); }}
+              onClick={() => { setTasks(null); setCounts(null); setPage(p); }}
               className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${
                 page === p ? "bg-white text-[#23261F] shadow-sm" : "text-gray-500 hover:text-gray-700"
               }`}
@@ -413,6 +463,12 @@ export default function TeamTasksPage() {
             </button>
           </div>
         </form>
+
+        {tasks !== null && counts && (
+          <p className="mb-3 text-sm text-gray-600">
+            {STATUSES.map((st) => `${STATUS_LABEL[st]} ${counts[st]}`).join(" · ")}
+          </p>
+        )}
 
         {tasks === null ? (
           <div className="flex justify-center py-12">
