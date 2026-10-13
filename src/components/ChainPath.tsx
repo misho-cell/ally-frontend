@@ -33,22 +33,45 @@ function load(threadId: string, stamp: string): Promise<Chain | null> {
           typeof r.person_name === "string" && r.person_name.trim() ? [r.person_name.trim()] : []);
         return { previous: prev, next };
       })
-      .catch(() => null);
+      .catch(() => {
+        // A failure, a 429 above all (30 a minute, like /routes), draws no
+        // path this time and is not remembered, so a later look may ask again.
+        cache.delete(key);
+        return null;
+      });
     cache.set(key, p);
   }
   return p;
 }
 
+// Backend 17:39Z: asked only for cards on screen, so a long list does not
+// spend the minute's calls on cards nobody sees.
 export default function ChainPath({ threadId, stamp }: { threadId: string; stamp: string }) {
   const [chain, setChain] = useState<Chain | null>(null);
+  const [anchor, setAnchor] = useState<HTMLSpanElement | null>(null);
+  const [seen, setSeen] = useState(false);
 
   useEffect(() => {
+    if (!anchor || seen) return;
+    if (typeof IntersectionObserver === "undefined") {
+      const id = requestAnimationFrame(() => setSeen(true));
+      return () => cancelAnimationFrame(id);
+    }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) { setSeen(true); io.disconnect(); }
+    });
+    io.observe(anchor);
+    return () => io.disconnect();
+  }, [anchor, seen]);
+
+  useEffect(() => {
+    if (!seen) return;
     let live = true;
     load(threadId, stamp).then((c) => { if (live) setChain(c); });
     return () => { live = false; };
-  }, [threadId, stamp]);
+  }, [seen, threadId, stamp]);
 
-  if (!chain || chain.next.length === 0) return null;
+  if (!chain || chain.next.length === 0) return <span ref={setAnchor} aria-hidden="true" />;
   const shown = chain.next.slice(0, 2);
   const more = chain.next.length - shown.length;
   return (
