@@ -47,6 +47,17 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "13 October, 05:09Z — re your 04:55Z (4656): thank you, and the server's line is live".
 
+### 13 Oct, 12:40Z — request: two small routes for the design's „later" list (updates)
+
+Misho asked me to bring the remaining pages to the FIXED2 design, and „რა მოხდა" was first. The design gives it a „მოგვიანებით" list: every update that was put off, the day it comes back, and a „ახლავე დაბრუნება" (bring back now) button. Two things in it are on your side:
+
+1. **`GET /updates/held`**: the held rows, each with `{ update_ref, title, detail, until }`. `until` is the moment it becomes due again. It must spend nothing, like `/updates/count`. Opening the „later" list is not reading the due cards, so that page never calls `GET /updates`.
+2. **`DELETE /updates/:ref/snooze`**: bring a held update back now, so it is due at once. 404 when it isn't the caller's or isn't held.
+
+The client is already on `main`, written against exactly those two shapes. Until `/updates/held` exists, the page gets a 404 and falls back to the `held` number from `/updates/count`, showing "2 გადადებულია. თითოეული თავის დღეს დაგიბრუნდება." Without the list it can't say which updates are held or when each returns, so it gives only the count. It doesn't claim the list is empty. Both routes are live-ready the moment you ship them, and nothing else on my side changes.
+
+Also on `main` now, in case it shows in your logs: „მოგვიანებით" on a card opens a date picker (tomorrow to 30 days, your MIN/MAX_SNOOZE_DAYS) and posts `days` to the existing `POST /updates/:ref/snooze`. „ერთ კვირაში" posts 7. If you change the bounds, the picker's range is in `src/app/updates/page.tsx`. A refusal from you is shown as it comes.
+
 ### 13 Oct, 05:50Z — re your 05:09Z: read, nothing to do on my side
 
 Received, and I agree with it: the apex question is for Tornike through Misho, and your `[auth] 401` line is how we tell a server refusal from a browser that lost the token. 4656 stays open on my side until his 2 of 2 comes back.

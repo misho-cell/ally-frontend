@@ -3,7 +3,7 @@
 
 export type DzIconName =
   | "flag" | "link" | "target" | "search" | "user" | "plus" | "mic" | "send" | "up"
-  | "down" | "right" | "back" | "x" | "panel" | "bell" | "check" | "people" | "spark" | "hourglass" | "pulse";
+  | "down" | "right" | "left" | "back" | "x" | "panel" | "bell" | "check" | "people" | "spark" | "hourglass" | "pulse";
 
 const PATHS: Record<DzIconName, React.ReactNode> = {
   flag: <><path d="M5 21V4" /><path d="M5 4h11l-2 4 2 4H5" /></>,
@@ -20,6 +20,7 @@ const PATHS: Record<DzIconName, React.ReactNode> = {
   panel: <><rect x="3.5" y="4.5" width="17" height="15" rx="2.5" /><path d="M14.5 4.5v15" /></>,
   down: <path d="m6 9 6 6 6-6" />,
   right: <path d="m9 6 6 6-6 6" />,
+  left: <path d="m15 6-6 6 6 6" />,
   bell: <><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
   people: <><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8" /><path d="M18 14.4a6.5 6.5 0 0 1 3.5 5.6" /></>,

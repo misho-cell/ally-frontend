@@ -845,3 +845,55 @@ body {
 .dz-ctx-sub { margin-top: 2px; font: 400 10px/15px var(--font-system); color: var(--ink-muted); }
 .dz-ctx-close { width: 30px; height: 30px; border-radius: 9px; background: var(--bg); color: var(--accent); display: grid; place-items: center; }
 .dz-ctx-close:hover { background: var(--accent-tint); }
+
+/* ============ Sheet pages (FIXED2 `.nx-*`, 13 Oct) ============
+   Every account page the design opens as a sheet (what happened, later,
+   the evening card, contacts, money, privacy) is built from these few
+   parts. The values are the design's own (css `.nx-btn`, `.nx-card`, ...),
+   so one page matched means the rest match by construction. */
+.nx-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 44px; padding: 10px 14px; box-sizing: border-box;
+  border: 1px solid var(--nx-line); border-radius: 12px; background: #fff;
+  color: var(--nx-ink); font: 400 13px/1.35 var(--font-system);
+  text-decoration: none; cursor: pointer; touch-action: manipulation;
+}
+.nx-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.nx-btn.danger { color: var(--danger); }
+.nx-btn:disabled { opacity: .45; cursor: default; }
+.nx-btn[aria-pressed="true"] { background: var(--nx-tint); border-color: var(--accent); color: var(--accent); }
+.nx-link {
+  border: 0; background: transparent; color: var(--accent); padding: 4px 0;
+  text-align: left; font: 400 13px/1.35 var(--font-system); text-decoration: none; cursor: pointer;
+}
+.nx-btn:focus-visible, .nx-icon:focus-visible, .nx-link:focus-visible { outline: 3px solid #8acbc4; outline-offset: 2px; }
+.nx-icon {
+  display: inline-grid; place-items: center; width: 34px; height: 34px; flex: none;
+  border: 1px solid var(--nx-line); border-radius: 10px; background: #fff; color: var(--accent);
+}
+.nx-muted { color: var(--nx-muted); }
+.nx-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.nx-row.between { justify-content: space-between; }
+.nx-card { padding: 15px; border: 1px solid var(--nx-line); border-radius: 15px; background: #fff; }
+.nx-card.pinned { border-color: var(--accent); box-shadow: inset 3px 0 var(--accent); }
+.nx-card h3 { margin: 0 0 10px; font: 600 16px/1.35 var(--font-system); color: var(--nx-ink); }
+.nx-card p { margin: 8px 0 0; font: 400 14px/1.65 var(--font-system); color: var(--nx-ink); }
+.nx-card .nx-row { margin-top: 12px; }
+.nx-card .nx-btn { font-size: 12px; }
+.nx-pill {
+  display: inline-flex; padding: 4px 8px; border-radius: 7px; background: var(--nx-tint);
+  color: var(--accent); font: 400 11px/1.4 var(--font-system);
+}
+.nx-field { display: grid; gap: 7px; margin-bottom: 14px; font: 400 12px/1.4 var(--font-system); color: var(--nx-muted); }
+.nx-field input, .nx-field textarea, .nx-field select {
+  width: 100%; box-sizing: border-box; min-height: 44px; padding: 12px;
+  border: 1px solid var(--nx-line); border-radius: 10px; background: #fff;
+  color: var(--nx-ink); font: 400 16px/1.4 var(--font-system);
+}
+.nx-empty { padding: 30px 10px; text-align: center; color: var(--nx-muted); font: 400 14px/1.65 var(--font-system); }
+.nx-intro { font: 400 14px/1.65 var(--font-system); color: var(--nx-muted); margin: 0; }
+@media (min-width: 940px) {
+  .nx-card { padding: 18px; }
+  .nx-btn { min-height: 42px; }
+  .nx-card .nx-btn { min-height: 38px; }
+}

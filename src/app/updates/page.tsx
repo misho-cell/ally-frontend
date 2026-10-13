@@ -35,7 +35,15 @@ const L = {
     back: "Back to chat",
     // 9 Oct, the new design (D696): the page is named for what it answers.
     title: "What happened",
-    intro: "What the assistant has found for you. Opening this page counts as reading them, so they move to the list below rather than waiting again.",
+    // 13 Oct (FIXED2): the design's line. Opening still counts as reading;
+    // the read ones stay reachable below, so nothing is lost by saying less.
+    intro: "Replies, questions and important news",
+    close: "Close",
+    later: "Later",
+    laterWeekShort: "In one week",
+    snoozeTitle: "When should I remind you?",
+    snoozeDay: "Day",
+    snoozeSave: "Save reminder",
     dueEmpty: "Nothing new right now.",
     seenTitle: "Already read",
     seenEmpty: "Nothing here yet.",
@@ -67,7 +75,7 @@ const L = {
     asks: (sent: number, answered: number) => `${answered} of ${sent} answered`,
     // D703. The design names the flag for what the person means by it.
     follow: "Return later",
-    unfollow: "Clear",
+    unfollow: "Marked",
     view: "View",
     kinds: {
       reply: "Reply received",
@@ -83,7 +91,13 @@ const L = {
   ka: {
     back: "ჩატში დაბრუნება",
     title: "რა მოხდა",
-    intro: "რაც ასისტენტმა შენთვის გაიგო. ამ გვერდის გახსნა წაკითხვად ითვლება, ამიტომ ისინი ქვემოთ სიაში გადადის და თავიდან აღარ დაგელოდება.",
+    intro: "პასუხები, კითხვები და მნიშვნელოვანი ამბები",
+    close: "დახურვა",
+    later: "მოგვიანებით",
+    laterWeekShort: "ერთ კვირაში",
+    snoozeTitle: "როდის შეგახსენო?",
+    snoozeDay: "დღე",
+    snoozeSave: "შეხსენების შენახვა",
     dueEmpty: "ახალი ჯერ არაფერია.",
     seenTitle: "უკვე წაკითხული",
     seenEmpty: "ჯერ არაფერია.",
@@ -106,7 +120,7 @@ const L = {
     pastWeeks: "წინა კვირის შეჯამებები",
     asks: (sent: number, answered: number) => `${sent}-დან ${answered}-ს უპასუხეს`,
     follow: "მოგვიანებით დავუბრუნდები",
-    unfollow: "მოხსნა",
+    unfollow: "მონიშნულია",
     view: "ვნახოთ",
     kinds: {
       reply: "პასუხი მოვიდა",
@@ -350,6 +364,35 @@ export default function UpdatesPage() {
     }
   };
 
+  // 13 Oct (FIXED2). „Later" on a card opens a day to choose, as in the
+  // design, and „in one week" is the one-tap version of the same thing. The
+  // server takes whole days from 1 to 30 (MIN/MAX_SNOOZE_DAYS in the
+  // backend's pendingUpdates.service); the picker offers that same range,
+  // and if the two ever disagree the server's refusal is what is shown.
+  const [snoozing, setSnoozing] = useState<Update | null>(null);
+  const [snoozeDate, setSnoozeDate] = useState("");
+  const dayISO = (offset: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const openSnooze = (u: Update) => {
+    setSnoozeDate(dayISO(1));
+    setNotice(null);
+    setSnoozing(u);
+  };
+  const saveSnooze = async () => {
+    const ref = snoozing?.update_ref;
+    if (!ref || !snoozeDate) return;
+    const [y, m, d] = snoozeDate.split("-").map(Number);
+    const today = new Date();
+    const days = Math.round(
+      (Date.UTC(y, m - 1, d) - Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000,
+    );
+    setSnoozing(null);
+    await snooze(ref, days);
+  };
+
   const card = (u: Update, i: number, withActions: boolean) => {
     const ref = u.update_ref ?? "";
     // The server's own words first. payloadText stays as the fallback for a
@@ -359,110 +402,99 @@ export default function UpdatesPage() {
     const detail = typeof u.detail === "string" ? u.detail : null;
     const text = detail ?? payloadText(u.payload);
     const kind = kindKey(u);
-    const headStyle = { font: "600 16px/22px var(--font-system)", color: "var(--ink)" } as const;
+    // A task card offers to look at it (the design's „ვნახოთ"). A question
+    // card is answered in the conversation that one tap opens, so it offers
+    // the same, which is what the design draws on every card.
+    const canView = u.task_id != null;
+    const canSnooze = withActions && !!ref && u.answered !== true;
+    const canFollow = !!ref && typeof u.followed === "boolean";
     return (
-      <div key={ref || i} className="card flex flex-col gap-2" style={{ padding: "18px 18px 16px" }}>
-        <div className="flex flex-wrap items-center gap-2">
-          {kind && <span className="kind-pill">{s.kinds[kind]}</span>}
-          {u.created_at && (
-            <span style={{ font: "400 11.5px/15px var(--font-system)", color: "var(--meta)" }}>
-              {fmtDateLoc(u.created_at, { day: "numeric", month: "short" })}
-            </span>
-          )}
-          {ref && typeof u.followed === "boolean" && (
-            <button
-              type="button"
-              aria-pressed={u.followed}
-              disabled={busy === ref}
-              onClick={() => toggleFollow(u)}
-              className="ml-auto"
-              style={{ font: "500 13px/18px var(--font-system)", color: u.followed ? "var(--ink-soft)" : "var(--accent)" }}
-            >
-              {u.followed ? s.unfollow : s.follow}
-            </button>
-          )}
-        </div>
+      <article key={ref || i} className={`nx-card${u.followed ? " pinned" : ""}`}>
+        {(kind || canFollow) && (
+          <div className="nx-row between" style={{ marginTop: 0, marginBottom: 6 }}>
+            {kind ? <span className="nx-pill">{s.kinds[kind]}</span> : <span />}
+            {canFollow && (
+              <button
+                type="button"
+                className="nx-link"
+                aria-pressed={u.followed === true}
+                disabled={busy === ref}
+                onClick={() => toggleFollow(u)}
+              >
+                {u.followed ? s.unfollow : s.follow}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* The card says what it is about. The number is a fallback only for
             a server that sends no title. */}
-        {heading ? (
-          u.task_id != null ? (
-            <Link href={`/chat/${u.task_id}`} style={headStyle}>{heading}</Link>
-          ) : (
-            <span style={headStyle}>{heading}</span>
-          )
-        ) : (
-          u.task_id != null && (
-            <Link href={`/chat/${u.task_id}`} style={headStyle}>
-              {s.goal} #{u.task_id}
-            </Link>
-          )
-        )}
+        <h3>{heading ?? (u.task_id != null ? `${s.goal} #${u.task_id}` : s.goal)}</h3>
 
-        {text && (
-          <p style={{ font: "400 14.5px/22px var(--font-system)", color: "var(--ink-soft)", whiteSpace: "pre-wrap" }}>
-            {text}
-          </p>
-        )}
+        {text && <p style={{ whiteSpace: "pre-wrap" }}>{text}</p>}
 
-        {(() => {
-          // 2 Oct. A goal_question card's text IS a question, so the card
-          // offers the answer, drawn as what it is. Every other card that
-          // belongs to a task offers to look at it (the design's „ვნახოთ").
-          //
-          // Neither is gated on `withActions`: a question is answerable and a
-          // task is viewable whether or not this card may still be snoozed.
-          const canAnswer = u.kind === "goal_question" && u.task_id != null;
-          const canView = !canAnswer && u.task_id != null;
-          const canSnooze = withActions && ref && u.answered !== true;
-          if (!canAnswer && !canView && !canSnooze) return null;
-          return (
-            <div className="mt-1 flex flex-wrap gap-2">
-              {canAnswer && (
-                <Link href={`/chat/${u.task_id}`} className="btn-primary" style={{ padding: "8px 16px" }}>
-                  {s.answer}
-                </Link>
-              )}
-              {canView && (
-                <Link href={`/chat/${u.task_id}`} className="btn-secondary" style={{ padding: "8px 16px" }}>
-                  {s.view}
-                </Link>
-              )}
-              {canSnooze && (
-                <>
-                  <button type="button" className="btn-secondary" style={{ padding: "8px 16px" }} disabled={busy === ref} onClick={() => snooze(ref, 1)}>
-                    {s.laterDay}
-                  </button>
-                  <button type="button" className="btn-secondary" style={{ padding: "8px 16px" }} disabled={busy === ref} onClick={() => snooze(ref, 7)}>
-                    {s.laterWeek}
-                  </button>
-                </>
-              )}
-            </div>
-          );
-        })()}
-      </div>
+        {(canView || canSnooze) && (
+          <div className="nx-row">
+            {canView && (
+              <Link href={`/chat/${u.task_id}`} className="nx-btn">
+                {s.view}
+              </Link>
+            )}
+            {canSnooze && (
+              <>
+                <button type="button" className="nx-btn" disabled={busy === ref} onClick={() => openSnooze(u)}>
+                  {s.later}
+                </button>
+                <button type="button" className="nx-btn" disabled={busy === ref} onClick={() => snooze(ref, 7)}>
+                  {s.laterWeekShort}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </article>
     );
   };
 
-  return (
-    <SheetPage
-      title={s.title}
-      backHref="/chat"
-      backLabel={s.back}
-      action={
-        held != null && held > 0 ? (
-          <span className="kind-pill shrink-0" style={{ alignSelf: "center" }}>{s.held(held)}</span>
-        ) : undefined
-      }
-    >
+  if (snoozing) {
+    return (
+      <SheetPage title={s.snoozeTitle} backHref="/updates" onBack={() => setSnoozing(null)} backLabel={s.title} closeLabel={s.close}>
+        <label className="nx-field">
+          {s.snoozeDay}
+          <input
+            type="date"
+            value={snoozeDate}
+            min={dayISO(1)}
+            max={dayISO(30)}
+            onChange={(e) => setSnoozeDate(e.target.value)}
+          />
+        </label>
+        <div>
+          <button type="button" className="nx-btn primary" disabled={!snoozeDate} onClick={saveSnooze}>
+            {s.snoozeSave}
+          </button>
+        </div>
+      </SheetPage>
+    );
+  }
 
-        <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--ink-soft)" }}>{s.intro}</p>
+  return (
+    <SheetPage title={s.title} backHref="/chat" backLabel={s.back} closeLabel={s.close}>
+        <div className="nx-row between">
+          <p className="nx-intro">{s.intro}</p>
+          {/* The design's „later" list: what was put off, and when it comes
+              back. The count rides on the button while that list cannot yet
+              be read from the server, so a held card is never invisible. */}
+          <Link href="/updates/later" prefetch={false} className="nx-btn">
+            {s.later}
+            {held != null && held > 0 && <span className="nx-pill">{held}</span>}
+          </Link>
+        </div>
 
         {/* 4296: a summary once read is still reachable. Always offered, not
             only under a due card, since the week someone wants back is
             usually one with no card on screen. Reading it spends nothing. */}
-        <Link href="/updates/weekly" prefetch={false} className="self-start" style={{ font: "600 13px/18px var(--font-system)", color: "var(--accent)" }}>
+        <Link href="/updates/weekly" prefetch={false} className="nx-link self-start">
           {s.pastWeeks} ›
         </Link>
 
@@ -481,17 +513,16 @@ export default function UpdatesPage() {
         {error && (
           <div className="flex flex-col items-start gap-2">
             <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--danger)" }}>{error}</p>
-            <button type="button" className="btn-secondary" onClick={load}>{s.retry}</button>
+            <button type="button" className="nx-btn" onClick={load}>{s.retry}</button>
           </div>
         )}
 
         {/* The card, at the top, before everything else on the screen. */}
         {!loading && weekly && (
           <div
-            className="card flex flex-col gap-3"
-            style={{ borderColor: "var(--accent)", borderWidth: "1.5px" }}
+            className="nx-card pinned flex flex-col gap-3"
           >
-            <span className="kind-pill">{s.kinds.weekly}</span>
+            <span className="nx-pill self-start">{s.kinds.weekly}</span>
             <div className="flex flex-wrap items-baseline gap-2">
               {/* This heading stays ours, not the payload's, and that is a
                   choice rather than an oversight: the server's `title`
@@ -574,7 +605,7 @@ export default function UpdatesPage() {
 
             <button
               type="button"
-              className="btn-secondary self-start"
+              className="nx-btn self-start"
               disabled={busy === weekly.update_ref}
               onClick={() => weekly.update_ref && readWeek(weekly.update_ref)}
             >
@@ -591,16 +622,16 @@ export default function UpdatesPage() {
               <div className="flex flex-col gap-3">{followedRest.map((u, i) => card(u, i, false))}</div>
             )}
             {dueRest.length === 0 ? (
-              <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--meta)" }}>{s.dueEmpty}</p>
+              <p className="nx-empty">{s.dueEmpty}</p>
             ) : (
               <div className="flex flex-col gap-3">{dueRest.map((u, i) => card(u, i, true))}</div>
             )}
 
-            <h2 className="section-label" style={{ marginTop: "8px" }}>
+            <h2 style={{ margin: "12px 0 0", font: "600 16px/1.35 var(--font-system)", color: "var(--nx-ink)" }}>
               {s.seenTitle}
             </h2>
             {seenRest.length === 0 ? (
-              <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--meta)" }}>{s.seenEmpty}</p>
+              <p className="nx-intro">{s.seenEmpty}</p>
             ) : (
               <div className="flex flex-col gap-3">{seenRest.map((u, i) => card(u, i, false))}</div>
             )}
