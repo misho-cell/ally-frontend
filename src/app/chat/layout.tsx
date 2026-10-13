@@ -1923,8 +1923,7 @@ function useLongPress(onLongPress: () => void) {
 // are for the coloured chips inside the two counters, not for the lists,
 // which keep the full title. One word on a chip; until the server has
 // written it (old conversations never get one) the title is cut by whole
-// words, never inside one, two of them, since a first word alone („ლიკას"
-// of „ლიკას იურისტი") often names nothing.
+// words, never inside one (G-028: one word on the phone, as asked).
 function firstWords(title: string, n: number): string {
   const words = title.trim().split(/\s+/);
   const out = words.slice(0, n).join(" ");
@@ -1932,10 +1931,10 @@ function firstWords(title: string, n: number): string {
 }
 
 function chipTitle(thread: Thread, full: string): string {
-  for (const v of [thread.one_word_title, thread.short_title]) {
-    if (typeof v === "string" && v.trim()) return v.trim();
-  }
-  return firstWords(full, 2);
+  const v = thread.one_word_title;
+  if (typeof v === "string" && v.trim()) return v.trim();
+  // G-028: one word on the phone's chips, also while the server has none.
+  return firstWords(full, 1);
 }
 
 function isPaused(thread: Thread): boolean {
@@ -1974,6 +1973,8 @@ function TaskRow({ thread, title, href, active, unread, time, onLongPress }: Row
           {time && <span className="dz-row-time">{time}</span>}
         </span>
         {preview && <span className="dz-row-preview">{preview}</span>}
+        {/* 4927 (a): the path on every case in the list, desktop too. */}
+        <ChainPath threadId={String(thread.id)} stamp={thread.updated_at ?? ""} className="compact" />
         <StatusLine thread={thread} />
       </span>
     </Link>

@@ -1871,7 +1871,7 @@ export default function ThreadPage() {
             <button
               type="button"
               onClick={() => setRoutesOpen(true)}
-              className="dz-hbtn wide shrink-0"
+              className="dz-resolve white shrink-0"
             >
               {tf("routesCount", { n: routes.length })}
             </button>
@@ -2081,6 +2081,8 @@ export default function ThreadPage() {
                           </div>
                         )}
                         {reqQuote && <blockquote className="rc-quote">„{reqQuote}“</blockquote>}
+                        {/* 4927 (c): the path on the request card as well. */}
+                        {thread && <ChainPath threadId={threadId} stamp={thread.updated_at ?? ""} />}
                       </div>
                       {!reqResolved && (
                         /* Item 5: literally the same component as the list
