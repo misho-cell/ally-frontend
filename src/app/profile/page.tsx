@@ -19,6 +19,7 @@ import NotificationsCard from "@/components/NotificationsCard";
 import ReferralRewardsCard from "@/components/ReferralRewardsCard";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { parseTokenBalance, type TokenBalance } from "@/lib/tokens";
+import { clearSessionToken } from "@/lib/session";
 import {
   applyDiagnosticsFromLocation,
   subscribeDiagnostics,
@@ -1117,8 +1118,7 @@ export default function ProfilePage() {
       localStorage.removeItem("push_endpoint");
     }
     clearUserName();
-    localStorage.removeItem("token");
-    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+    clearSessionToken();
     router.replace("/login");
   }
 

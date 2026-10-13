@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getLocale } from "@/lib/i18n";
 import { clearUserScopedStorage } from "@/lib/user";
+import { readSessionToken, persistSessionToken, clearSessionToken } from "@/lib/session";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -131,8 +132,7 @@ type Eligibility = {
 };
 
 function clearToken() {
-  localStorage.removeItem("token");
-  document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+  clearSessionToken();
   // Account switch on the same device: purge everything user-scoped so the
   // next account never inherits the previous one's cached name/read-state
   // (stale-content bug, 18 Aug).
@@ -204,6 +204,17 @@ export default function LoginPage() {
     };
   }, []);
 
+  // Board 4656 (12 Oct): this page never looked for a session that was still
+  // on the device, so whichever store had lost the token (a cookie Safari
+  // dropped after 7 days, an install that opens on /chat) brought the phone
+  // login back although the 30-day token was still valid. A live token now
+  // goes straight to / which decides between onboarding and chat. An invite
+  // link is left alone: that page is for whoever holds the link.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("ref")) return;
+    if (readSessionToken()) window.location.replace("/");
+  }, []);
+
   // /join?ref=CODE lands here — carry the code through to registration
   // without making the visitor retype it.
   //
@@ -256,9 +267,7 @@ export default function LoginPage() {
     // Always wipe any prior token + user-scoped cache first so a stale
     // admin/other-account session can never resurface.
     clearToken();
-    localStorage.setItem("token", token);
-    const secure = typeof window !== "undefined" && window.location.protocol === "https:" ? "; Secure" : "";
-    document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secure}`;
+    persistSessionToken(token);
   }
 
   function redirectTo(path: string) {

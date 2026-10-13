@@ -1,10 +1,11 @@
 import { durableGet, durableSet } from "./durable";
 import { APP_BUILD } from "@/lib/build";
+import { readSessionToken, clearSessionToken } from "./session";
 
 const DEVICE_ID_KEY = "device_id";
 
 function getToken(): string {
-  return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
+  return readSessionToken();
 }
 
 function getAdminToken(): string {
@@ -102,8 +103,7 @@ export function handleAdminTokenMisuse(
 ): boolean {
   if (status !== 403 || body?.reason !== "admin_token_on_user_endpoint") return false;
   if (typeof window !== "undefined") {
-    localStorage.removeItem("token");
-    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+    clearSessionToken();
     window.location.href = "/login";
   }
   return true;

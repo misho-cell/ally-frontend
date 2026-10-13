@@ -3,12 +3,13 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { fetchOnboardingStatus } from "@/lib/user";
+import { readSessionToken } from "@/lib/session";
 
 export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = readSessionToken();
     if (!token) {
       router.replace("/login");
       return;

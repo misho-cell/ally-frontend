@@ -1,4 +1,5 @@
 import { authHeaders, adminAuthHeaders, handleAdminTokenMisuse } from "./deviceId";
+import { readSessionToken, clearSessionToken } from "./session";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -47,8 +48,10 @@ export async function apiFetch<T>(
         localStorage.removeItem("adminToken");
         document.cookie = "adminToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
         window.location.href = "/admin/login";
-      } else if (localStorage.getItem("token")) {
-        localStorage.removeItem("token");
+      } else if (readSessionToken()) {
+        // Board 4656: clear BOTH stores. Clearing only localStorage left the
+        // cookie, so middleware still let /chat through while / sent to /login.
+        clearSessionToken();
         window.location.href = "/login";
       }
     }

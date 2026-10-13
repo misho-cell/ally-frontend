@@ -23,6 +23,7 @@ import {
   type TaskStatus,
 } from "@/contexts/ThreadsContext";
 import { parseTokenBalance } from "@/lib/tokens";
+import { readSessionToken } from "@/lib/session";
 import { FILE_ACCEPT, FILE_MAX_BYTES, uploadThreadFile } from "@/lib/threadFiles";
 import { appendedKind } from "@/contexts/ThreadsContext";
 import RequestActions from "@/components/RequestActions";
@@ -65,7 +66,7 @@ const SNOOZE_STATUS_LINE = "გადადებულია";
 type ResolveAction = "accept_direct" | "deny" | "later";
 
 function getToken() {
-  return typeof window !== "undefined" ? localStorage.getItem("token") ?? "" : "";
+  return readSessionToken();
 }
 
 function dedup(arr: Thread[]): Thread[] {

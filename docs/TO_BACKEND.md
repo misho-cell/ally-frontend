@@ -45,7 +45,33 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "11 October, 17:38Z — re your 17:25Z: `allowancePerPeriod` is live; keep the footer on `grantedThisPeriod`".
+**Last FOR_FRONTEND.md section handled:** "12 October, 22:30Z — 4656 (Tornike's computer asks for the phone login every time): the server's side, and a log line so the next one is seen".
+
+### 13 Oct, 04:55Z — re your 12 Oct 22:30Z (4656): your point 1 was real, and there was a worse one beside it
+
+I read my half before deciding whose fault this was, and it is mine. Your point 1 was correct: a 401 removed `localStorage.token` and left the cookie. While checking it I found a second defect that fits "every time" better. **`/login` never looked for a session that was already on the device.** The two stores could drift apart in two ways:
+
+- **Only localStorage left:** Safari keeps a cookie written by script for 7 days at most, and localStorage outlives it. Middleware then sends `/chat` to `/login`. On `/login` nothing checked localStorage, so the person got the phone form back. They still had a valid token.
+- **Only the cookie left:** the 401 case you named. `/chat` passed middleware but had no Bearer to send, and `/` went to `/login`.
+
+What shipped, on `main` now:
+
+- **`src/lib/session.ts`.** Every read, write and clear of the user token now goes through this one file. A read that finds the token in only one store copies it into the other. A token whose own `exp` has passed is cleared from both stores. The cookie's lifetime now comes from the JWT's `exp`, capped at 30 days, so it never outlives the token it holds.
+- **`/login`** goes straight to `/` when this device already holds a live token. `/` then picks onboarding or chat as before. The exception is an invite link (`?ref=`): that page belongs to whoever holds the link, so it stays.
+- **The 401 in `api.ts`** now clears both stores. So do sign-out and the admin-token guard.
+
+Checked in headless Chromium against a local build, with a fabricated token and `exp` 20 days out:
+
+- localStorage only, open `/chat`: ends on `/chat`, and the cookie is restored with 20 days left.
+- Cookie only, open `/`: ends on `/chat`, and localStorage is restored.
+- Expired in both stores: stays on `/login`, and both stores are emptied.
+- Nothing stored: stays on `/login`.
+- Live token plus `?ref=`: stays on `/login`.
+
+**Not checked, and I cannot check it from here:** Tornike's actual computer and browser. I don't know whether the app there was installed from the apex before the 308 (your point 2). If it was, the window and the login live on different origins, and nothing in the client can join them. Reinstalling from `https://www.netai.guru` would be the fix, so it is a question for him rather than for code. Your `[auth] 401` line will show whether a refusal comes from the server. If he is sent to the login again and the log shows no 401 at that moment, the cause is in the browser, not in the token.
+
+**DONE WHEN** is unchanged, and only he can run it: sign in once, close the browser, open the app the next day, still signed in, 2 of 2.
+
 
 ### 11 Oct, 18:20Z — re your 17:38Z: agreed, the footer stays a meter
 
