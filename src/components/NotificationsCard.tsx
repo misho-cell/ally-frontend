@@ -25,27 +25,29 @@ import { isRecord, unwrapData } from "@/lib/payload";
 const L = {
   en: {
     title: "Notifications",
-    sub: "So you hear when someone answers, or when I need your answer.",
+    // 13 Oct, FIXED2: the design's line. A tap on a push opens the
+    // conversation it is about (#826), which is what this promises.
+    sub: "When an important reply arrives, you go straight back to that conversation.",
     on: "On for this device",
     enable: "Turn on notifications",
     blocked: "Blocked in the browser. Allow them in the browser's settings.",
     needsPwa: "Add the app to your home screen first, then turn them on here.",
     unsupported: "This browser cannot show notifications.",
     failed: "Could not turn them on",
-    eveningHour: "Evening summary time",
+    eveningHour: "Evening summary",
     hourSaved: "Saved. It applies from the next card.",
     hourFailed: "Could not save it.",
   },
   ka: {
     title: "შეტყობინებები",
-    sub: "ასე გაიგებ, როცა ვინმე გიპასუხებს ან შენი პასუხი დამჭირდება.",
+    sub: "მნიშვნელოვანი პასუხის მიღებისას პირდაპირ შესაბამის საუბარში დაბრუნდები.",
     on: "ამ მოწყობილობაზე ჩართულია",
     enable: "შეტყობინებების ჩართვა",
     blocked: "ბრაუზერში დაბლოკილია. ჩართე ბრაუზერის პარამეტრებში.",
     needsPwa: "ჯერ დაამატე აპი მთავარ ეკრანზე, მერე აქ ჩართე.",
     unsupported: "ეს ბრაუზერი შეტყობინებებს ვერ აჩვენებს.",
     failed: "ჩართვა ვერ მოხერხდა",
-    eveningHour: "საღამოს ბარათის საათი",
+    eveningHour: "საღამოს შეჯამება",
     hourSaved: "შენახულია. შემდეგი ბარათიდან შეიცვლება.",
     hourFailed: "ვერ შეინახა.",
   },
@@ -129,48 +131,41 @@ export default function NotificationsCard() {
     status === "failed" ? `${s.failed}${reason ? ` (${reason})` : ""}` :
     null;
 
+  // 13 Oct (FIXED2 `.nx-notification-section`): a heading, the line, one
+  // full-width button, then the evening hour as a field.
   return (
-    <div className="card flex flex-col gap-3">
-      <div>
-        <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.title}</h2>
-        <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>{s.sub}</p>
-      </div>
+    <div>
+      <h3 className="pd-h3">{s.title}</h3>
+      <p className="pd-p">{s.sub}</p>
       {note && (
         <p
-          className="flex items-center gap-2"
-          style={{ fontSize: "13px", fontWeight: 500, color: status === "failed" ? "var(--danger)" : status === "granted" ? "var(--accent-strong)" : "var(--ink-soft)" }}
+          className="pd-p flex items-center gap-2"
+          style={{ fontWeight: 500, color: status === "failed" ? "var(--danger)" : status === "granted" ? "var(--accent-strong)" : "var(--ink-soft)" }}
         >
           {status === "granted" && <span className="rounded-full" style={{ width: 8, height: 8, background: "var(--accent)" }} />}
           {note}
         </p>
       )}
       {(status === "idle" || status === "loading" || status === "failed") && (
-        <button type="button" className="btn-primary self-start" onClick={enable} disabled={status === "loading"}>
+        <button type="button" className="nx-btn" style={{ width: "100%" }} onClick={enable} disabled={status === "loading"}>
           {s.enable}
         </button>
       )}
       {hour != null && (
-        <div className="flex flex-col gap-1.5 pt-1" style={{ borderTop: "1px solid var(--skeleton)" }}>
-          <label className="flex items-center justify-between gap-3 pt-2">
-            <span style={{ fontSize: "13.5px", fontWeight: 500, color: "var(--ink)" }}>{s.eveningHour}</span>
-            {/* 16px: a smaller focused field makes iOS Safari zoom the page. */}
-            <select
-              value={hour}
-              disabled={hourBusy}
-              onChange={(e) => void saveHour(Number(e.target.value))}
-              style={{ fontSize: 16, padding: "6px 10px", borderRadius: 10, border: "1px solid var(--cta-border)", background: "#FFFFFF", color: "var(--ink)" }}
-            >
-              {HOURS.map((h) => (
-                <option key={h} value={h}>{`${String(h).padStart(2, "0")}:00`}</option>
-              ))}
-            </select>
-          </label>
-          {hourNote && (
-            <p role="status" style={{ fontSize: "12.5px", color: hourNote.ok ? "var(--ink-soft)" : "var(--danger)" }}>
-              {hourNote.ok ? s.hourSaved : s.hourFailed}
-            </p>
-          )}
-        </div>
+        <label className="pd-field" style={{ marginTop: 12 }}>
+          <span>{s.eveningHour}</span>
+          {/* 16px: a smaller focused field makes iOS Safari zoom the page. */}
+          <select value={hour} disabled={hourBusy} onChange={(e) => void saveHour(Number(e.target.value))}>
+            {HOURS.map((h) => (
+              <option key={h} value={h}>{`${String(h).padStart(2, "0")}:00`}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      {hourNote && (
+        <p role="status" className="pd-msg" style={{ color: hourNote.ok ? "var(--ink-soft)" : "var(--danger)" }}>
+          {hourNote.ok ? s.hourSaved : s.hourFailed}
+        </p>
       )}
     </div>
   );

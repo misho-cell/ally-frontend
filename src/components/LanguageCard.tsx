@@ -42,33 +42,15 @@ export default function LanguageCard() {
     window.location.reload();
   };
 
+  // 13 Oct (FIXED2): the drawer's segmented control. Its section heading
+  // is drawn by the profile, so this is the control alone.
   return (
-    <div className="card flex flex-col gap-3">
-      <div>
-        <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.title}</h2>
-        <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>{s.sub}</p>
-      </div>
-      <div className="flex gap-2">
-        {(["ka", "en"] as const).map((loc) => (
-          <button
-            key={loc}
-            type="button"
-            onClick={() => pick(loc)}
-            aria-pressed={current === loc}
-            className="rounded-xl px-4 py-2"
-            style={{
-              fontSize: "13px",
-              fontWeight: 600,
-              // The design's active chip: teal on its pale tint.
-              border: `1px solid ${current === loc ? "var(--cta-border)" : "var(--sidebar-border)"}`,
-              background: current === loc ? "var(--accent-tint)" : "transparent",
-              color: current === loc ? "var(--accent)" : "var(--ink)",
-            }}
-          >
-            {s[loc]}
-          </button>
-        ))}
-      </div>
+    <div className="pd-seg" role="group" aria-label={s.title}>
+      {(["ka", "en"] as const).map((loc) => (
+        <button key={loc} type="button" onClick={() => pick(loc)} aria-pressed={current === loc}>
+          {s[loc]}
+        </button>
+      ))}
     </div>
   );
 }

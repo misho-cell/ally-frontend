@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import SheetPage from "@/components/SheetPage";
+import DzIcon from "@/components/DzIcons";
 import { apiFetch, ApiError } from "@/lib/api";
 import { isRecord, unwrapData } from "@/lib/payload";
 import { authHeaders } from "@/lib/deviceId";
@@ -16,7 +16,8 @@ import PushDiagnostics from "@/components/PushDiagnostics";
 import MicDiagnostics from "@/components/MicDiagnostics";
 import LanguageCard from "@/components/LanguageCard";
 import NotificationsCard from "@/components/NotificationsCard";
-import ReferralRewardsCard from "@/components/ReferralRewardsCard";
+import { copyText, fetchInvite, shareInvite, type Invite } from "@/lib/invite";
+import { inviteShareText } from "@/components/ReferralRewardsCard";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { parseTokenBalance, type TokenBalance } from "@/lib/tokens";
 import { clearSessionToken } from "@/lib/session";
@@ -28,7 +29,6 @@ import {
 } from "@/lib/diagnostics";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-const MCP_URL = "https://api.netai.guru/mcp";
 const PHOTO_URL = `${BASE_URL}/profile/photo`;
 const PHOTO_MAX_BYTES = 300 * 1024;
 
@@ -141,6 +141,32 @@ const L = {
     changePhoto: "Change photo",
     removePhoto: "Remove",
     photoError: "Couldn't upload the photo. Try another image.",
+    // 13 Oct, FIXED2 account drawer.
+    close: "Close",
+    personal: "Personal account",
+    profileSmall: "Personal information",
+    phoneLabel: "Phone number",
+    saveProfile: "Save profile",
+    inviteTitle: "Invite a friend",
+    inviteSmall: "Invite friends and earn rewards",
+    codeLabel: "Code to share",
+    inviteFriend: "Invite a friend",
+    copyLink: "Copy link",
+    tokensWeek: (day: string | null, n: string) => (day ? `This week · ${n} is added ${day}` : `This week · ${n} is added`),
+    tokensMonth: (date: string | null, n: string) => (date ? `This month · ${n} is added on ${date}` : `This month · ${n} is added`),
+    weekdays: ["on Sunday", "on Monday", "on Tuesday", "on Wednesday", "on Thursday", "on Friday", "on Saturday"],
+    of: (n: string) => `of ${n}`,
+    used: (n: string) => `${n} used`,
+    tokenUnit: "tokens",
+    planTitle: "Current plan",
+    manage: "Manage",
+    cancelShort: "Cancel",
+    langSmall: "Interface and replies",
+    earningsNav: "My earnings",
+    claudeNav: "Netai in Claude",
+    syncNav: "Contact sync",
+    setupNav: "Set up a device",
+    langTitle: "Language",
   },
   ka: {
     backChat: "← ჩეთი",
@@ -228,6 +254,31 @@ const L = {
     changePhoto: "ფოტოს შეცვლა",
     removePhoto: "წაშლა",
     photoError: "ფოტო ვერ აიტვირთა. სცადე სხვა სურათი.",
+    close: "დახურვა",
+    personal: "პირადი ანგარიში",
+    profileSmall: "პირადი ინფორმაცია",
+    phoneLabel: "ტელეფონის ნომერი",
+    saveProfile: "პროფილის შენახვა",
+    inviteTitle: "მეგობრის მოწვევა",
+    inviteSmall: "მოიწვიე მეგობრები და მიიღე ჯილდო",
+    codeLabel: "კოდი გასაზიარებლად",
+    inviteFriend: "მეგობრის მოწვევა",
+    copyLink: "ბმულის დაკოპირება",
+    tokensWeek: (day: string | null, n: string) => (day ? `ეს კვირა · ${day} ${n} ემატება` : `ეს კვირა · ${n} ემატება`),
+    tokensMonth: (date: string | null, n: string) => (date ? `ეს თვე · ${date} ${n} ემატება` : `ეს თვე · ${n} ემატება`),
+    weekdays: ["კვირას", "ორშაბათს", "სამშაბათს", "ოთხშაბათს", "ხუთშაბათს", "პარასკევს", "შაბათს"],
+    of: (n: string) => `${n}-დან`,
+    used: (n: string) => `${n} გამოყენებული`,
+    tokenUnit: "ტოკენი",
+    planTitle: "მიმდინარე გეგმა",
+    manage: "მართვა",
+    cancelShort: "გაუქმება",
+    langSmall: "ინტერფეისი და პასუხები",
+    earningsNav: "ჩემი შემოსავალი",
+    claudeNav: "Netai Claude-ში",
+    syncNav: "კონტაქტების სინქრონი",
+    setupNav: "მოწყობილობის დაყენება",
+    langTitle: "ენა",
   },
 };
 
@@ -285,11 +336,6 @@ const TIER_LABELS: Record<string, string> = {
 
 function daysUntil(dateStr: string): number {
   return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000));
-}
-
-function nextRenewalDate(): string {
-  const now = new Date();
-  return fmtDateLoc(new Date(now.getFullYear(), now.getMonth() + 1, 1));
 }
 
 function fmtTokens(n: number): string {
@@ -351,37 +397,42 @@ async function downscalePhoto(file: File): Promise<{ mime: string; base64: strin
   }
 }
 
-// Profile photo avatar: shows GET /profile/photo when present (auth header
-// needed, so it's fetched into a blob URL, never an <img src> straight to the
-// API), otherwise the initial. Upload downsizes client-side, PUTs base64.
-function PhotoAvatar({ name }: { name: string }) {
+// Profile photo: GET /profile/photo when present (auth header needed, so it
+// is fetched into a blob URL, never an <img src> straight to the API),
+// otherwise the initial. Upload downsizes client-side and PUTs base64.
+// 13 Oct: a hook, because the design draws the photo in the drawer's head
+// while its remove link sits with the fields below.
+function usePhoto() {
   const s = useStrings();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement | null>(null);
-  const objectUrlRef = useRef<string | null>(null);
+  // A callback ref held in state: the head's avatar opens the picker, and a
+  // ref object read during render is what the lint rules forbid.
+  const [input, setInput] = useState<HTMLInputElement | null>(null);
 
   function setBlobUrl(url: string | null) {
-    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-    objectUrlRef.current = url;
     setPhotoUrl(url);
   }
+
+  // Each blob URL is revoked once it is replaced or the page goes away.
+  useEffect(() => {
+    if (!photoUrl) return;
+    return () => URL.revokeObjectURL(photoUrl);
+  }, [photoUrl]);
 
   useEffect(() => {
     let cancelled = false;
     fetch(PHOTO_URL, { headers: authHeaders() })
       .then(async (r) => {
-        if (!r.ok || cancelled) return;
+        // Only an image is a photo: anything else (an error page, JSON from
+        // a proxy) would draw as a broken picture with a „remove" beside it.
+        if (!r.ok || cancelled || !(r.headers.get("content-type") ?? "").startsWith("image/")) return;
         const blob = await r.blob();
-        if (!cancelled) setBlobUrl(URL.createObjectURL(blob));
+        if (!cancelled) setPhotoUrl(URL.createObjectURL(blob));
       })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { cancelled = true; };
   }, []);
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -425,167 +476,13 @@ function PhotoAvatar({ name }: { name: string }) {
     }
   }
 
-  return (
-    <div className="flex flex-col items-center gap-1.5" style={{ flex: "0 0 auto" }}>
-      {photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={photoUrl}
-          alt={name}
-          style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover" }}
-        />
-      ) : (
-        <div className="initial-avatar" style={{ width: 48, height: 48, fontSize: "18px" }}>
-          {name.charAt(0).toUpperCase()}
-        </div>
-      )}
-      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPick} />
-      <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => fileRef.current?.click()}
-          style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-strong)" }}
-        >
-          {busy ? "…" : s.changePhoto}
-        </button>
-        {photoUrl && !busy && (
-          <button
-            type="button"
-            onClick={remove}
-            style={{ fontSize: "11px", fontWeight: 600, color: "var(--danger)" }}
-          >
-            {s.removePhoto}
-          </button>
-        )}
-      </div>
-      {err && <p style={{ fontSize: "11px", color: "var(--danger)", textAlign: "center" }}>{err}</p>}
-    </div>
-  );
+  const pick = () => input?.click();
+  return { photoUrl, busy, err, setInput, pick, onPick, remove };
 }
 
-// #504: a stored value only becomes a link when it parses as http(s). Not a
-// pattern test — the URL parser is the thing that actually decides what a
-// browser will follow, and "looks like a url" and "is one" are the pair this
-// field cannot afford to confuse.
-function safeLink(raw: string | null | undefined): string | null {
-  if (!raw || !raw.trim()) return null;
-  try {
-    const u = new URL(raw.trim());
-    return u.protocol === "http:" || u.protocol === "https:" ? u.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
-// Edit profile (E9): name / employer / position / city via PATCH /profile.
-// Empty optional fields are sent as null (the contract's "clear" value); name
-// can never be emptied — asks are sent under it.
-function EditProfileCard({ profile, onSaved }: { profile: Profile; onSaved: (p: Partial<Profile>) => void }) {
-  const s = useStrings();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState(profile.name);
-  const [employer, setEmployer] = useState(profile.employer ?? "");
-  const [job, setJob] = useState(profile.job_position ?? "");
-  const [city, setCity] = useState(profile.city ?? "");
-  const [link, setLink] = useState(profile.link ?? "");
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) {
-      setErr(s.nameRequired);
-      return;
-    }
-    setSaving(true);
-    setErr(null);
-    setMsg(null);
-    const body = {
-      name: name.trim(),
-      employer: employer.trim() || null,
-      job_position: job.trim() || null,
-      city: city.trim() || null,
-      // #504: an empty box means "clear it", which is the contract's null —
-      // sending "" would store an address that is not one.
-      link: link.trim() || null,
-    };
-    try {
-      await apiFetch("/profile", { method: "PATCH", body });
-      onSaved(body);
-      // Keep the cached sidebar name in sync with the new profile name.
-      try { localStorage.setItem("netai_profile_name", body.name); } catch {}
-      setMsg(s.saved);
-      setTimeout(() => setMsg(null), 2400);
-    } catch (e2) {
-      setErr(e2 instanceof ApiError ? e2.message : s.genericError);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const field = (label: string, value: string, set: (v: string) => void, required?: boolean) => (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs" style={{ color: "var(--ink-soft)" }}>{label}</label>
-      <input
-        type="text"
-        value={value}
-        required={required}
-        onChange={(e) => set(e.target.value)}
-        className="input-pill"
-      />
-    </div>
-  );
-
-  return (
-    <div className="card flex flex-col gap-3">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between text-left"
-      >
-        <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.editProfile}</h2>
-        <span style={{ color: "var(--meta)", fontSize: "12px" }}>{open ? "▾" : "▸"}</span>
-      </button>
-
-      {open && (
-        <form onSubmit={save} className="flex flex-col gap-3">
-          {field(s.nameLabel, name, setName, true)}
-          {field(s.employerLabel, employer, setEmployer)}
-          {field(s.jobLabel, job, setJob)}
-          {field(s.cityLabel, city, setCity)}
-          {/* type="url" so a phone offers the right keyboard; the server is
-              still the one that decides what a valid address is, and its 400
-              is shown verbatim rather than guessed at here. */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs" style={{ color: "var(--ink-soft)" }}>{s.linkLabel}</label>
-            <input
-              type="url"
-              inputMode="url"
-              maxLength={300}
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              className="input-pill"
-            />
-          </div>
-          {err && <p className="text-sm" style={{ color: "var(--danger)" }}>{err}</p>}
-          {msg && <p className="text-sm" style={{ color: "var(--accent-strong)" }}>{msg}</p>}
-          <button type="submit" disabled={saving || !name.trim()} className="btn-primary self-start disabled:opacity-60">
-            {saving ? "…" : s.save}
-          </button>
-        </form>
-      )}
-    </div>
-  );
-}
-
-// Static "add Netai to your Claude" guide — no API involved. Collapsible so
-// the profile stays compact.
-// 10 Oct (backend 08:45Z, GET /contacts/import-state): when the last import
-// that actually brought contacts happened, and how many. Nothing is drawn for
-// someone who never imported, or when the server cannot say: an unknown date
-// must not read as "never".
+// 10 Oct (GET /contacts/import-state): when the last import that brought
+// contacts happened, and how many. Nothing is drawn for someone who never
+// imported, or when the server cannot say: an unknown date is not "never".
 function LastImportLine() {
   const s = useStrings();
   const [info, setInfo] = useState<{ at: string; n: number } | null>(null);
@@ -603,18 +500,12 @@ function LastImportLine() {
     return () => { alive = false; };
   }, []);
   if (!info) return null;
-  return (
-    <p className="mt-1" style={{ fontSize: "12px", color: "var(--meta)" }}>
-      {s.lastImport(fmtDateLoc(info.at, { day: "numeric", month: "short" }), info.n)}
-    </p>
-  );
+  return <small>{s.lastImport(fmtDateLoc(info.at, { day: "numeric", month: "short" }), info.n)}</small>;
 }
 
-// 11 Oct (backend 06:50Z): the design's monthly-reminder switch, now that the
-// reminder itself is approved (D771, 0134/0135). The value is the server's
-// `monthly_reminder` and nothing else: an unknown value draws no switch, so
-// "we could not read it" never looks like "off". A tap sends the opposite of
-// what is shown, and the switch then shows the server's answer.
+// 11 Oct: the monthly-reminder switch. Only the server's `monthly_reminder`
+// draws it: an unknown value draws no switch, so "could not read it" never
+// looks like "off". A tap sends the opposite, then shows the server's answer.
 function MonthlyReminderRow() {
   const s = useStrings();
   const [on, setOn] = useState<boolean | null>(null);
@@ -648,136 +539,219 @@ function MonthlyReminderRow() {
   }
 
   return (
-    <div className="card flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-3">
-        <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.monthlyReminder}</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={on}
-          aria-label={s.monthlyReminder}
-          disabled={busy}
-          onClick={toggle}
-          className="relative shrink-0 rounded-full transition-colors"
-          style={{ width: 44, height: 26, background: on ? "var(--accent)" : "var(--skeleton)", opacity: busy ? 0.6 : 1 }}
-        >
-          <span
-            className="absolute rounded-full bg-white transition-all"
-            style={{ top: 3, left: on ? 21 : 3, width: 20, height: 20, boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }}
-          />
-        </button>
-      </div>
-      {failed && <p role="status" style={{ fontSize: "12px", color: "var(--danger)" }}>{s.monthlyReminderFailed}</p>}
+    <div className="pd-switch-row">
+      <span>
+        {s.monthlyReminder}
+        {failed && <small role="status" style={{ display: "block", fontSize: 12, color: "var(--danger)" }}>{s.monthlyReminderFailed}</small>}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={s.monthlyReminder}
+        disabled={busy}
+        onClick={toggle}
+        className="relative shrink-0 rounded-full transition-colors"
+        style={{ width: 44, height: 26, background: on ? "var(--accent)" : "var(--skeleton)", opacity: busy ? 0.6 : 1 }}
+      >
+        <span
+          className="absolute rounded-full bg-white transition-all"
+          style={{ top: 3, left: on ? 21 : 3, width: 20, height: 20, boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }}
+        />
+      </button>
     </div>
   );
 }
 
-// 10 Oct (backend 09:15Z, GET /connector/state): the design's "connected"
-// line. Only a `connected: true` draws it; false and unknown draw nothing
-// rather than a verdict.
-function useClaudeConnected(): boolean {
-  const [connected, setConnected] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    apiFetch<unknown>("/connector/state")
-      .then((raw) => {
-        const d = unwrapData(raw);
-        if (alive && isRecord(d) && d.connected === true) setConnected(true);
-      })
-      .catch(() => { /* nothing drawn */ });
-    return () => { alive = false; };
-  }, []);
-  return connected;
+// ---------------------------------------------------------------------------
+// 13 Oct, FIXED2 account drawer. One column of sections in the design's
+// order: the person, inviting, tokens, the plan, notifications, language,
+// then the pages that sit one level deeper, and sign-out.
+
+function Section({ title, small, children }: { title: string; small?: string | null; children: React.ReactNode }) {
+  return (
+    <section className="pd-section">
+      <div className="pd-title">
+        <span>{title}</span>
+        {small && <small>{small}</small>}
+      </div>
+      {children}
+    </section>
+  );
 }
 
-function AllyInClaudeCard() {
+// E9 / #504: name, employer, position, city and link via PATCH /profile. The
+// design draws them always open; saving is offered once something changed.
+// Empty optional fields are sent as null (the contract's "clear"); the name
+// can never be emptied, because asks are sent under it.
+function ProfileFields({
+  profile,
+  onSaved,
+  photo,
+}: {
+  profile: Profile;
+  onSaved: (p: Partial<Profile>) => void;
+  photo: Omit<ReturnType<typeof usePhoto>, "setInput">;
+}) {
   const s = useStrings();
-  const connected = useClaudeConnected();
-  const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [name, setName] = useState(profile.name);
+  const [employer, setEmployer] = useState(profile.employer ?? "");
+  const [job, setJob] = useState(profile.job_position ?? "");
+  const [city, setCity] = useState(profile.city ?? "");
+  const [link, setLink] = useState(profile.link ?? "");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  async function copyUrl() {
+  const dirty =
+    name !== profile.name ||
+    employer !== (profile.employer ?? "") ||
+    job !== (profile.job_position ?? "") ||
+    city !== (profile.city ?? "") ||
+    link !== (profile.link ?? "");
+
+  async function save() {
+    if (!name.trim()) {
+      setMsg({ ok: false, text: s.nameRequired });
+      return;
+    }
+    setSaving(true);
+    setMsg(null);
+    const body = {
+      name: name.trim(),
+      employer: employer.trim() || null,
+      job_position: job.trim() || null,
+      city: city.trim() || null,
+      // #504: an empty box means "clear it", which is the contract's null.
+      link: link.trim() || null,
+    };
     try {
-      await navigator.clipboard.writeText(MCP_URL);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {}
+      await apiFetch("/profile", { method: "PATCH", body });
+      onSaved(body);
+      try { localStorage.setItem("netai_profile_name", body.name); } catch {}
+      setMsg({ ok: true, text: s.saved });
+      setTimeout(() => setMsg(null), 2400);
+    } catch (e2) {
+      // The server decides what a valid address is; its words are shown.
+      setMsg({ ok: false, text: e2 instanceof ApiError ? e2.message : s.genericError });
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <div className="card flex flex-col gap-3">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between text-left"
-      >
-        <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.claudeTitle}</h2>
-        <span style={{ color: "var(--meta)", fontSize: "12px" }}>{open ? "▾" : "▸"}</span>
-      </button>
-      {connected && (
-        <p className="flex items-center gap-2" style={{ fontSize: "12.5px", fontWeight: 500, color: "var(--accent-strong)" }}>
-          <span className="rounded-full" style={{ width: 7, height: 7, background: "var(--accent)" }} />
-          {s.claudeConnected}
-        </p>
+    <Section title={s.title} small={s.profileSmall}>
+      <div className="pd-fields">
+        <div className="pd-row2">
+          <label className="pd-field">
+            <span>{s.nameLabel}</span>
+            <input value={name} required onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label className="pd-field">
+            <span>{s.employerLabel}</span>
+            <input value={employer} onChange={(e) => setEmployer(e.target.value)} />
+          </label>
+        </div>
+        <label className="pd-field">
+          <span>{s.phoneLabel}</span>
+          <input value={groupPhone(profile.phone)} readOnly />
+        </label>
+        <label className="pd-field">
+          <span>{s.jobLabel}</span>
+          <input value={job} onChange={(e) => setJob(e.target.value)} />
+        </label>
+        <label className="pd-field">
+          <span>{s.cityLabel}</span>
+          <input value={city} onChange={(e) => setCity(e.target.value)} />
+        </label>
+        <label className="pd-field">
+          <span>{s.linkLabel}</span>
+          <input type="url" inputMode="url" maxLength={300} value={link} onChange={(e) => setLink(e.target.value)} />
+        </label>
+      </div>
+      {dirty && (
+        <button type="button" className="pd-cta" disabled={saving || !name.trim()} onClick={save}>
+          {saving ? "…" : s.saveProfile}
+        </button>
       )}
-
-      {open && (
-        <div className="flex flex-col gap-4">
-          <p style={{ font: "400 13.5px/21px var(--font-system)", color: "var(--ink-2)" }}>
-            {s.claudeBody}
-          </p>
-
-          <span
-            className="self-start rounded-full px-3 py-1"
-            style={{ background: "var(--accent-tint)", color: "var(--accent-strong)", fontSize: "12px", fontWeight: 600 }}
-          >
-            {s.claudeBadge}
-          </span>
-
-          {/* Copy URL */}
-          <div className="flex items-center gap-2">
-            <code
-              className="flex-1 truncate px-3 py-2.5 text-xs"
-              style={{
-                color: "var(--ink)",
-                background: "var(--sidebar-bg)",
-                border: "1px solid var(--sidebar-border)",
-                borderRadius: "var(--radius-tile)",
-              }}
-            >
-              {MCP_URL}
-            </code>
-            <button type="button" onClick={copyUrl} className="btn-primary shrink-0" style={{ padding: "8px 16px", fontSize: "12px" }}>
-              {copied ? s.copied : s.copy}
+      {msg && (
+        <p role="status" className="pd-msg" style={{ color: msg.ok ? "var(--accent-strong)" : "var(--danger)" }}>{msg.text}</p>
+      )}
+      {(photo.photoUrl || photo.err) && (
+        <div className="nx-row" style={{ marginTop: 8 }}>
+          {photo.photoUrl && (
+            <button type="button" className="nx-link" style={{ color: "var(--danger)" }} disabled={photo.busy} onClick={photo.remove}>
+              {s.removePhoto}
             </button>
-          </div>
-
-          {/* Steps */}
-          <ol className="flex flex-col gap-2 pl-5" style={{ color: "var(--ink)", listStyleType: "decimal", fontSize: "13.5px", lineHeight: "21px" }}>
-            {s.claudeSteps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-            <li>
-              <span style={{ color: "var(--meta)" }}>{s.claudeTip}</span>
-            </li>
-          </ol>
-
-          <p
-            className="px-3 py-2.5 text-xs"
-            style={{ color: "var(--meta)", background: "var(--sidebar-bg)", borderRadius: "var(--radius-tile)" }}
-          >
-            {s.claudeNote}
-          </p>
+          )}
+          {photo.err && <span className="pd-msg" style={{ color: "var(--danger)", marginTop: 0 }}>{photo.err}</span>}
         </div>
       )}
-    </div>
+    </Section>
   );
 }
 
-// Token wallet card. Ticket 6 #9: the headline number is `balance` alone
-// (top-ups and manual credits live there, so it can exceed the grant); the
-// bar shows spentThisPeriod / grantedThisPeriod, capped at 100%.
-function TokensWidget() {
+// The referral code, the share sheet and the link. Same mechanics as the
+// earnings page's card (lib/invite): the invite is fetched on mount so that
+// the tap that opens the share sheet keeps its user activation on iOS.
+function InviteSection({ code }: { code: string | null }) {
+  const s = useStrings();
+  const [invite, setInvite] = useState<Invite | null>(null);
+  const [copied, setCopied] = useState<"code" | "text" | "link" | null>(null);
+  const shownCode = code ?? invite?.code ?? null;
+
+  useEffect(() => {
+    let alive = true;
+    void fetchInvite().then((got) => { if (alive) setInvite(got); });
+    return () => { alive = false; };
+  }, []);
+
+  function flash(kind: "code" | "text" | "link") {
+    setCopied(kind);
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  async function share() {
+    const text = invite?.share_text ?? inviteShareText(shownCode);
+    const outcome = await shareInvite(text, invite?.link ?? null);
+    if (outcome === "copied") flash("text");
+  }
+
+  return (
+    <Section title={s.inviteTitle} small={s.inviteSmall}>
+      <div className="pd-card">
+        {shownCode && (
+          <div className="pd-code-row">
+            <span>
+              <small>{s.codeLabel}</small>
+              <b>{shownCode}</b>
+            </span>
+            <button type="button" className="pd-mini" onClick={() => { flash("code"); void copyText(shownCode); }}>
+              {copied === "code" ? s.copied.replace("!", "") : s.copy}
+            </button>
+          </div>
+        )}
+        <button type="button" className="pd-cta" onClick={share}>
+          <DzIcon name="people" size={16} />
+          {copied === "text" ? s.copied.replace("!", "") : s.inviteFriend}
+        </button>
+        {/* Only when the server gave a link: a button that copied nothing
+            would be worse than no button (#379). */}
+        {invite?.link && (
+          <button type="button" className="pd-cta" onClick={() => { flash("link"); void copyText(invite.link); }}>
+            {copied === "link" ? s.copied.replace("!", "") : s.copyLink}
+          </button>
+        )}
+      </div>
+    </Section>
+  );
+}
+
+// Token wallet. Row 282: a number the server did not state stays null and is
+// drawn as a dash, never a zero. The bar is what is left of this period's
+// grant, which is the design's picture; when top-ups take the balance above
+// the grant there is no "of N" to draw, so neither the fraction nor a bar
+// past its end is shown.
+function TokensSection() {
   const s = useStrings();
   const [tokens, setTokens] = useState<TokenBalance | null>(null);
   const [failed, setFailed] = useState(false);
@@ -800,9 +774,8 @@ function TokensWidget() {
     return null;
   }
 
-  // Named so that a 404 from the top-up route can re-read it: that 404 means
-  // the list on screen is out of date, and the honest response is to refresh
-  // it rather than report a payment failure that did not happen.
+  // A 404 from the top-up route means this list is out of date, and the
+  // honest answer is to re-read it rather than report a failed payment.
   async function loadPackages() {
     try {
       const res = await fetch(`${BASE_URL}/billing/topup-packages`, { headers: authHeaders() });
@@ -812,16 +785,20 @@ function TokensWidget() {
   }
 
   useEffect(() => {
-    fetchTokens().then((t) => { if (!t) setFailed(true); });
-    void loadPackages();
+    let alive = true;
+    void (async () => {
+      const t = await fetchTokens();
+      if (alive && !t) setFailed(true);
+      if (alive) await loadPackages();
+    })();
     return () => {
+      alive = false;
       if (pollRef.current) clearInterval(pollRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // After checkout completes the webhook credits tokens within seconds — poll
-  // the balance every 2s (max 30s) until it grows.
+  // After checkout the webhook credits tokens within seconds: poll every 2s,
+  // up to 30s, until the balance grows.
   useEffect(() => {
     const off = onCheckoutCompleted(() => {
       const startBalance = balanceRef.current ?? 0;
@@ -830,8 +807,6 @@ function TokensWidget() {
       pollRef.current = setInterval(async () => {
         ticks++;
         const t = await fetchTokens();
-        // Row 282: a balance the server did not state cannot be "grew", so a
-        // missing number keeps polling rather than announcing a top-up.
         const grew = t?.balance != null && t.balance > startBalance;
         if (grew || ticks >= 15) {
           if (grew) {
@@ -847,21 +822,28 @@ function TokensWidget() {
   }, []);
 
   if (tokens && !tokens.enabled) return null;
-  if (!tokens && !failed) return null; // loading — no empty box
+  if (!tokens && !failed) return null; // loading: no empty box
 
-  // Row 282: null all the way through. "We were not told" is not "you have
-  // none", and this card is about the person's own money.
   const balance = tokens?.balance != null ? Math.max(0, tokens.balance) : null;
   const granted = tokens?.grantedThisPeriod ?? 0;
   const spent = tokens?.spentThisPeriod != null ? Math.max(0, tokens.spentThisPeriod) : 0;
   const isTrial = granted === 120;
-  // Top-up is for subscribers only — trial wallets get the subscribe CTA elsewhere.
   const showTopup = !!tokens && !isTrial && packages.length > 0;
 
-  // Row 292 (2 Oct): packs go through Stripe. The old path swallowed every
-  // failure, so a person who pressed buy and went nowhere was told nothing at
-  // all. Each outcome now says something, and the one that means "this pack
-  // is gone" reloads the list rather than blaming the payment page.
+  // The header line: what is added, and when, both the server's (2047 item
+  // 9: the plan's own allowance; 0 means nothing is added, so no promise).
+  let small: string | null = null;
+  if (tokens && granted > 0) {
+    const per = tokens.allowancePerPeriod === undefined ? granted : tokens.allowancePerPeriod;
+    if (per > 0) {
+      const at = tokens.resetsAt ? new Date(tokens.resetsAt) : null;
+      const valid = at && !isNaN(at.getTime()) ? at : null;
+      small = tokens.window === "calendar_month"
+        ? s.tokensMonth(valid ? fmtDateLoc(valid.toISOString(), { day: "numeric", month: "long" }) : null, fmtTokens(per))
+        : s.tokensWeek(valid ? s.weekdays[valid.getDay()] : null, fmtTokens(per));
+    }
+  }
+
   async function buy(pkg: TopupPackage) {
     const out = await startStripeTopup(pkg.id);
     if (out.kind === "redirected" || out.kind === "cancelled") return;
@@ -873,157 +855,86 @@ function TokensWidget() {
     setTimeout(() => setToast(null), 3000);
   }
 
+  const within = balance != null && granted > 0 && balance <= granted;
+
   return (
-    <div className="card flex flex-col gap-3">
+    <Section title={s.tokens} small={small}>
       {toast && (
         <div className="toast" role="status" aria-live="polite"><span style={{ marginRight: 4 }}>✓</span>{toast}</div>
       )}
-      {/* The renewal date used to sit here, opposite the title, and on a
-          narrow phone the two ran together as one word. It belongs in the
-          sentence below anyway, where it is next to the number it is about. */}
-      <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.tokens}</h2>
-
-      {/* Row 282: the same dash for a balance the server did not state as for
-          a request that failed, because they are the same fact — we do not
-          know. The one thing this card may not do is print a zero for it. */}
-      {failed || !tokens || balance == null ? (
-        <p className="text-sm" style={{ color: "var(--meta)" }}>-</p>
-      ) : (
-        <>
-          <div className="flex items-baseline gap-1.5">
-            <span style={{ font: "600 28px/34px var(--font-system)", letterSpacing: "-0.3px", color: "var(--ink-strong)" }}>
-              {fmtTokens(balance)}
-            </span>
-            {/* Naming the big number. Unlabelled it was read as a spend, a
-                limit and an allowance by the same person in one sitting. */}
-            <span style={{ fontSize: "12.5px", color: "var(--meta)" }}>{s.left}</span>
-          </div>
-
-          {/* The bar that used to sit here filled towards the grant and
-              stopped at 100%, which is a picture of a limit. There is no
-              limit to draw: the balance above is what runs out.
-              The date is only promised when the server sent one: "next on"
-              with a date invented here would be the same fault in a new
-              place. */}
-          {granted > 0 && (() => {
-            const monthly = tokens.window === "calendar_month";
-            const when = tokens.resetsAt ? fmtDateLoc(tokens.resetsAt) : null;
-            // 2047 item 9: the plan's own allowance, not every credit in the
-            // window. An older server lacks it, and then the old reading
-            // stands; 0 means nothing is added, so no sentence promises it.
-            const per = tokens.allowancePerPeriod === undefined ? granted : tokens.allowancePerPeriod;
-            const added = per <= 0 ? null : when
-              ? (monthly ? s.addedMonthly(fmtTokens(per), when) : s.addedWeekly(fmtTokens(per), when))
-              : (monthly ? s.addedMonthlyNoDate(fmtTokens(per)) : s.addedWeeklyNoDate(fmtTokens(per)));
-            return (
-              <p className="text-xs" style={{ color: "var(--meta)", lineHeight: 1.5 }}>
-                {monthly ? s.spentThisMonth(fmtTokens(spent)) : s.spentThisWeek(fmtTokens(spent))}
-                {" "}
-                {added}
-              </p>
-            );
-          })()}
-
-          {isTrial && (
-            <p className="text-xs" style={{ color: "var(--meta)" }}>{s.trialBalance}</p>
-          )}
-
-          {/* 4294: the newest credit, amount and date both the server's. */}
-          {tokens.lastTopUp && (
-            <p className="text-xs" style={{ color: "var(--meta)" }}>
-              {s.lastTopUp(fmtTokens(tokens.lastTopUp.amount), fmtDateShort(tokens.lastTopUp.at))}
-            </p>
-          )}
-
-          {showTopup && (
-            <div className="mt-2 flex flex-col gap-2 pt-3" style={{ borderTop: "1px solid var(--skeleton)" }}>
-              <p style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--ink-soft)" }}>{s.addTokens}</p>
-              <div className="grid grid-cols-3 gap-2.5">
-                {packages.map((pkg) => {
-                  const price = priceFromLabel(pkg.label);
-                  return (
-                    <button key={pkg.id} type="button" onClick={() => buy(pkg)} className="tile">
-                      <span className="amt">
-                        {fmtTokens(pkg.tokens)}
-                        <small>{pkg.label.replace(/\s*[—\-·|].*$/, "").replace(/^[\d,.\s]+/, "").trim() || pkg.label}</small>
-                      </span>
-                      {price && <b>{price}</b>}
-                    </button>
-                  );
-                })}
-              </div>
+      <div className="pd-token">
+        {failed || !tokens || balance == null ? (
+          <p className="pd-meta">-</p>
+        ) : (
+          <>
+            <div className="pd-bal">
+              <span>
+                <b>{fmtTokens(balance)}</b>
+                <small>{s.left}</small>
+              </span>
+              {within && <strong>{s.of(fmtTokens(granted))}</strong>}
             </div>
-          )}
-        </>
+            {within && (
+              <div className="pd-track"><i style={{ width: `${Math.round((balance / granted) * 100)}%` }} /></div>
+            )}
+            {granted > 0 && (
+              <div className="pd-meta">
+                <span>{s.used(fmtTokens(spent))}</span>
+                <span>{Math.round((spent / granted) * 100)}%</span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      {showTopup && (
+        <div className="pd-packs" aria-label={s.addTokens}>
+          {packages.map((pkg) => {
+            const price = priceFromLabel(pkg.label);
+            return (
+              <button key={pkg.id} type="button" className="pd-pack" onClick={() => buy(pkg)}>
+                <span>
+                  <b>{fmtTokens(pkg.tokens)}</b>
+                  <small>{s.tokenUnit}</small>
+                </span>
+                {price && <strong>{price}</strong>}
+              </button>
+            );
+          })}
+        </div>
       )}
-    </div>
+      {isTrial && <span className="pd-note">{s.trialBalance}</span>}
+      {/* 4294: the newest credit, amount and date both the server's. */}
+      {tokens?.lastTopUp && (
+        <span className="pd-note">{s.lastTopUp(fmtTokens(tokens.lastTopUp.amount), fmtDateShort(tokens.lastTopUp.at))}</span>
+      )}
+    </Section>
   );
 }
 
-function SubscriptionBadge({ profile }: { profile: Profile }) {
-  const s = useStrings();
+// What the plan card says under the plan's name: the same states the
+// subscription panel always told apart, now as one line.
+function planLine(s: ReturnType<typeof useStrings>, profile: Profile): { title: string; line: string | null; warn: boolean } {
   const { subscription_status, subscription_tier, trial_ends_at, current_period_ends_at, cancels_at } = profile;
-
-  const panel = (dotColor: string, title: string, titleColor: string, body?: string | null, bg?: string) => (
-    <div style={{ background: bg ?? "var(--accent-tint)", borderRadius: "var(--radius-tile)", padding: "12px 14px" }}>
-      <div className="flex items-center gap-2">
-        <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, display: "inline-block" }} />
-        <span style={{ font: "600 13.5px/20px var(--font-system)", color: titleColor }}>{title}</span>
-      </div>
-      {body && <p style={{ font: "400 12.5px/18px var(--font-system)", color: "var(--ink-2)", marginTop: "4px" }}>{body}</p>}
-    </div>
-  );
-
+  const tier = TIER_LABELS[subscription_tier] ?? subscription_tier;
   if (subscription_status === "trialing" && trial_ends_at) {
-    const days = daysUntil(trial_ends_at);
-    return panel(
-      "var(--accent)",
-      s.trialLabel(TIER_LABELS[subscription_tier]),
-      "var(--accent-strong)",
-      `${s.daysLeft(days)} · ${s.autoCharge(fmtDateLoc(trial_ends_at))}`
-    );
+    return { title: s.trialLabel(tier), line: `${s.daysLeft(daysUntil(trial_ends_at))} · ${s.autoCharge(fmtDateLoc(trial_ends_at))}`, warn: false };
   }
-
   if (subscription_status === "active") {
-    // Row 248: a scheduled stop is still an active subscription, and it was
-    // being told "next payment" right up to the day it ended.
-    if (cancels_at) {
-      return panel(
-        "var(--request-accent)",
-        s.activeLabel(TIER_LABELS[subscription_tier]),
-        "var(--request-accent)",
-        s.endsOn(fmtDateLoc(cancels_at)),
-        "var(--request-tint)"
-      );
-    }
-    return panel(
-      "var(--accent)",
-      s.activeLabel(TIER_LABELS[subscription_tier]),
-      "var(--accent-strong)",
-      current_period_ends_at ? s.nextPayment(fmtDateLoc(current_period_ends_at)) : null
-    );
+    // Row 248: a scheduled stop is still active, and must not read "next payment".
+    if (cancels_at) return { title: tier, line: s.endsOn(fmtDateLoc(cancels_at)), warn: true };
+    return { title: tier, line: current_period_ends_at ? s.nextPayment(fmtDateLoc(current_period_ends_at)) : null, warn: false };
   }
-
-  if (subscription_status === "past_due") {
-    return panel("var(--danger)", s.paymentIssue, "var(--danger)", s.paymentFailedBody, "var(--terra-tint)");
-  }
-
+  if (subscription_status === "past_due") return { title: s.paymentIssue, line: s.paymentFailedBody, warn: true };
   if (subscription_status === "canceled" && current_period_ends_at) {
-    return panel(
-      "var(--request-accent)",
-      s.canceled,
-      "var(--request-accent)",
-      s.continuesUntil(TIER_LABELS[subscription_tier], fmtDateLoc(current_period_ends_at)),
-      "var(--request-tint)"
-    );
+    return { title: s.canceled, line: s.continuesUntil(tier, fmtDateLoc(current_period_ends_at)), warn: true };
   }
-
-  return panel("var(--meta)", s.freePlan, "var(--ink)", s.tapChoose, "var(--sidebar-bg)");
+  return { title: s.freePlan, line: s.tapChoose, warn: false };
 }
 
 export default function ProfilePage() {
   const s = useStrings();
   const router = useRouter();
+  const { setInput: setPhotoInput, ...photo } = usePhoto();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -1031,15 +942,10 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   // #497: cancelling and resuming the paid plan without the Stripe page.
   const [askCancel, setAskCancel] = useState(false);
-  const [moneyTab, setMoneyTab] = useState<"plan" | "tokens" | "earnings" | "invite">("plan");
   const [planBusy, setPlanBusy] = useState(false);
-  // Set only after the server has told us this plan was granted by the team.
-  // Not guessed from the profile: nothing there distinguishes a granted plan
-  // from a paid one, and a wrong guess would either hide a real cancel button
-  // or offer one that cannot work.
+  // Set only after the server has said this plan was granted by the team.
   const [granted, setGranted] = useState(false);
-  // #508. The flag lives in this browser, not in the account, so it is read
-  // as an external store: false on the server, the stored answer here.
+  // #508. The flag lives in this browser, read as an external store.
   const showDiagnostics = useSyncExternalStore(
     subscribeDiagnostics,
     diagnosticsSnapshot,
@@ -1065,9 +971,6 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The plan always runs to the end of the period already paid for, so both
-  // the question and the result name that date. "Cancelled" on its own reads
-  // as "it stops now", which is the one thing that does not happen.
   async function doCancel() {
     setPlanBusy(true);
     setError(null);
@@ -1089,8 +992,8 @@ export default function ProfilePage() {
     await reloadProfile();
   }
 
-  // Stripe (6 Sept): same-tab redirect to the Stripe portal (card change,
-  // cancel, invoices). 404 = no Stripe customer yet, so no button at all.
+  // Stripe (6 Sept): same-tab redirect to the portal. 404 = no Stripe
+  // customer yet, so no button at all.
   async function openPortal() {
     setPortalLoading(true);
     setError(null);
@@ -1101,10 +1004,8 @@ export default function ProfilePage() {
     else setError(portalErrorText());
   }
 
-  // 11 Oct: the only sign-out now (the design's sidebar has none), so it
-  // also takes this device's push subscription off the account, as the
-  // sidebar's did. Otherwise the next person on this phone gets the last
-  // one's notifications.
+  // 11 Oct: the only sign-out, so it also takes this device's push
+  // subscription off the account.
   async function signOut() {
     const endpoint = localStorage.getItem("push_endpoint");
     if (localStorage.getItem("token") && endpoint) {
@@ -1122,311 +1023,170 @@ export default function ProfilePage() {
     router.replace("/login");
   }
 
-  // Which button (6 Sept): trialing/active → manage; past_due → change card
-  // (same portal); canceled/unpaid/inactive/empty → subscribe.
   const status = profile?.subscription_status ?? "";
   const isPastDue = status === "past_due";
   const isFreeOrInactive = !(status === "trialing" || status === "active" || isPastDue);
-  // Only a plan that renews can be stopped from renewing. past_due is left
-  // out: that account's next step is a working card, and offering to cancel
-  // beside "your payment failed" reads as the app suggesting it.
+  // Only a plan that renews can be stopped from renewing; past_due's next
+  // step is a working card, not a cancel button beside "payment failed".
   const isPaidPlan = status === "trialing" || status === "active";
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col gap-3 px-6 py-10 mx-auto" style={{ background: "var(--bg)", maxWidth: "620px" }}>
-        <span className="sk-bar" style={{ width: "40%", height: 22 }} />
-        <span className="sk-bar" style={{ width: "100%", height: 90, borderRadius: "var(--radius-card)" }} />
-        <span className="sk-bar" style={{ width: "100%", height: 140, borderRadius: "var(--radius-card)" }} />
-        <span className="sk-bar" style={{ width: "100%", height: 90, borderRadius: "var(--radius-card)" }} />
-      </div>
-    );
-  }
+  const name = profile?.name ?? "";
+  const plan = profile ? planLine(s, profile) : null;
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg)" }}>
-      <SheetPage title={s.title} backHref="/chat" backLabel={s.backChat.replace(/^←\s*/, "")}>
+    <div className="pd">
+      <div className="pd-head">
+        <div className="pd-head-row">
+          <div className="pd-identity">
+            {profile ? (
+              <>
+                <button
+                  type="button"
+                  className="pd-avatar"
+                  disabled={photo.busy}
+                  onClick={photo.pick}
+                  aria-label={s.changePhoto}
+                  title={s.changePhoto}
+                >
+                  {photo.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={photo.photoUrl} alt={name} />
+                  ) : (
+                    name.charAt(0).toUpperCase()
+                  )}
+                </button>
+                <input ref={setPhotoInput} type="file" accept="image/*" className="hidden" onChange={photo.onPick} />
+              </>
+            ) : (
+              <span className="pd-avatar" />
+            )}
+            <span>
+              <b>{name || " "}</b>
+              <small>{s.personal}</small>
+            </span>
+          </div>
+          <Link href="/chat" className="nx-icon" aria-label={s.close} title={s.close}>
+            <DzIcon name="x" size={16} />
+          </Link>
+        </div>
+      </div>
 
+      <div className="pd-body">
         {error && (
-          <div
-            className="px-4 py-3 text-sm"
-            style={{ background: "var(--terra-tint)", color: "var(--danger)", borderRadius: "var(--radius-tile)" }}
-          >
-            {error}
+          <p role="alert" className="pd-msg" style={{ color: "var(--danger)", marginTop: 12 }}>{error}</p>
+        )}
+
+        {loading && (
+          <div className="flex flex-col gap-3 py-4">
+            <span className="sk-bar" style={{ width: "40%", height: 18 }} />
+            <span className="sk-bar" style={{ width: "100%", height: 120, borderRadius: 14 }} />
+            <span className="sk-bar" style={{ width: "100%", height: 90, borderRadius: 14 }} />
           </div>
         )}
 
         {profile && (
-          <div className="flex flex-col gap-3.5">
-            {/* User card */}
-            <div className="card">
-              <div className="flex items-center gap-4">
-                <PhotoAvatar name={profile.name} />
-                <div>
-                  <p style={{ fontSize: "16px", fontWeight: 600, color: "var(--ink)" }}>
-                    {profile.name}
-                  </p>
-                  <p style={{ fontSize: "13px", color: "var(--ink-soft)" }}>
-                    {groupPhone(profile.phone)}
-                  </p>
-                  {/* #504 (2 Oct). Rendered only when it really is an http(s)
-                      address. The server validates on write, but this is the
-                      one field whose value becomes something a person taps,
-                      and a row written before that validation — or by any
-                      other path — must not be able to turn into a javascript:
-                      link because this screen trusted it. Anything else shows
-                      as plain text: still visible, just not clickable. */}
-                  {safeLink(profile.link) ? (
-                    <a
-                      href={safeLink(profile.link)!}
-                      target="_blank"
-                      rel="noopener noreferrer nofollow"
-                      className="block truncate"
-                      style={{ fontSize: "13px", color: "var(--accent-strong)", maxWidth: "15rem" }}
-                    >
-                      {profile.link}
-                    </a>
-                  ) : profile.link ? (
-                    <p className="truncate" style={{ fontSize: "13px", color: "var(--meta)", maxWidth: "15rem" }}>
-                      {profile.link}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-
-            {/* Edit profile (E9) */}
-            <EditProfileCard
+          <>
+            <ProfileFields
               profile={profile}
+              photo={photo}
               onSaved={(p) => setProfile((prev) => (prev ? { ...prev, ...p } : prev))}
             />
 
-            {/* 9 Oct, the new design (4.9): the money cards under one block
-                with four tabs, plan / tokens / earnings / invite. The cards
-                are the same ones that stood here one under another; only
-                their arrangement changed, so every number in them is still
-                the server's. */}
-            <div className="flex flex-col gap-3">
-              <h2 className="section-label" style={{ padding: "0 2px" }}>{s.moneyTitle}</h2>
-              <div role="tablist" className="grid grid-cols-4 gap-1 rounded-xl p-1" style={{ background: "var(--accent-tint)" }}>
-                {(["plan", "tokens", "earnings", "invite"] as const).map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    role="tab"
-                    aria-selected={moneyTab === k}
-                    onClick={() => setMoneyTab(k)}
-                    className="rounded-lg px-1 py-2 transition-colors"
-                    style={{
-                      font: "600 12px/16px var(--font-system)",
-                      overflowWrap: "anywhere",
-                      background: moneyTab === k ? "#FFFFFF" : "transparent",
-                      color: moneyTab === k ? "var(--accent-strong)" : "var(--ink-soft)",
-                      boxShadow: moneyTab === k ? "var(--shadow-card)" : undefined,
-                    }}
-                  >
-                    {s.moneyTabs[k]}
-                  </button>
-                ))}
-              </div>
-              {moneyTab === "plan" && (
-            <div className="card flex flex-col gap-4">
-              <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>
-                {s.subscription}
-              </h2>
+            <InviteSection code={profile.referral_code ?? null} />
 
-              <SubscriptionBadge profile={profile} />
+            <TokensSection />
 
-              {isFreeOrInactive ? (
-                <Link href="/pricing" className="btn-primary w-full">
-                  {s.choosePlan}
-                </Link>
-              ) : showPortal ? (
-                <button
-                  onClick={openPortal}
-                  disabled={portalLoading}
-                  className={`${isPastDue ? "btn-destructive" : "btn-secondary"} w-full disabled:opacity-60`}
-                >
-                  {portalLoading ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2" style={{ borderColor: "var(--cta-border)", borderTopColor: "var(--accent-strong)" }} />
-                  ) : isPastDue ? (
-                    s.changeCard
-                  ) : (
-                    s.manageSub
-                  )}
-                </button>
-              ) : null}
-
-              {/* #497. Ninia could not cancel: Stripe's page offered her no
-                  way to and called the product "Ally". The portal above stays
-                  for cards and invoices; stopping the plan happens here.
-
-                  A plan the team granted has no subscription behind it, so
-                  the server answers 404 and this says so rather than showing
-                  a failure for something that is working as intended. */}
-              {granted ? (
-                <p style={{ font: "400 12.5px/18px var(--font-system)", color: "var(--ink-2)" }}>
-                  {s.grantedPlan}
-                </p>
-              ) : isPaidPlan ? (
-                profile.cancels_at ? (
-                  <button onClick={doResume} disabled={planBusy} className="btn-secondary w-full disabled:opacity-60">
-                    {s.resumePlan}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setAskCancel(true)}
-                    disabled={planBusy}
-                    className="w-full transition-colors disabled:opacity-60"
-                    style={{ font: "500 13px/18px var(--font-system)", color: "var(--meta)", padding: "4px 0" }}
-                  >
-                    {s.cancelPlan}
-                  </button>
-                )
-              ) : null}
-            </div>
-
-              )}
-              {moneyTab === "tokens" && (
-            <TokensWidget />
-
-              )}
-              {moneyTab === "earnings" && (
-            <Link
-              href="/profile/earnings"
-              className="card flex items-center justify-between transition-colors"
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--cta-border)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--sidebar-border)"; }}
-            >
-              <div>
-                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.earnings}</h2>
-                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
-                  {s.earningsSub}
-                </p>
-              </div>
-              <span style={{ color: "var(--meta)" }}>→</span>
-            </Link>
-
-              )}
-              {moneyTab === "invite" && (
-            <ReferralRewardsCard code={profile.referral_code ?? null} />
-
-              )}
-            </div>
-
-            {/* 10 Oct, design 4.8: the person's own contacts, on GET /contacts. */}
-            <Link href="/profile/contacts" className="card flex items-center justify-between transition-colors">
-              <div>
-                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.myContacts}</h2>
-                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>{s.myContactsSub}</p>
-              </div>
-              <span style={{ color: "var(--meta)" }}>→</span>
-            </Link>
-
-            {/* #374 (2 Oct). A web page cannot see the phonebook change after
-                the first import, so anybody saved to the phone later never
-                reached the server and could not be found. This is the same
-                picker onboarding uses, which is the point: one import path,
-                not a second one that drifts from it. */}
-            <Link
-              href="/onboarding/contacts?from=profile"
-              className="card flex items-center justify-between transition-colors"
-            >
-              <div>
-                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.addContacts}</h2>
-                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
-                  {s.addContactsSub}
-                </p>
-                <LastImportLine />
-              </div>
-              <span style={{ color: "var(--meta)" }}>→</span>
-            </Link>
-            <MonthlyReminderRow />
-
-            {/* Netai in Claude (MCP connector guide) */}
-            <AllyInClaudeCard />
-
-            {/* Data rights (C2) */}
-            <Link
-              href="/profile/data"
-              className="card flex items-center justify-between transition-colors"
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--cta-border)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--sidebar-border)"; }}
-            >
-              <div>
-                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.dataRights}</h2>
-                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
-                  {s.dataRightsSub}
-                </p>
-              </div>
-              <span style={{ color: "var(--meta)" }}>→</span>
-            </Link>
-
-            {/* Row 6 (12 Sept): on-screen push diagnostics — an iPhone has no
-                console, so this is the only way a tester can report the three
-                values that separate a permission problem from a delivery one.
-                #508 (3 Oct): hidden unless this browser was switched on with
-                /profile?diag=1. Ninia read the profile cold and these two
-                boxes meant nothing to her; they were never written for her. */}
-            {showDiagnostics && (
-              <>
-                <PushDiagnostics />
-                <MicDiagnostics />
-                {/* Whoever switched these on has to be able to switch them
-                    off without being told the trick a second time. The way
-                    out belongs next to the thing it undoes. */}
-                <p style={{ fontSize: "12px", color: "var(--meta)" }}>{s.diagOff}</p>
-              </>
+            {plan && (
+              <Section title={s.planTitle}>
+                <div className="pd-card pd-plan">
+                  <div className="pd-plan-id">
+                    <span className="pd-badge">{(TIER_LABELS[profile.subscription_tier] ?? profile.subscription_tier).toUpperCase()}</span>
+                    <b style={plan.warn ? { color: isPastDue ? "var(--danger)" : "var(--request-accent)" } : undefined}>{plan.title}</b>
+                    {plan.line && <small>{plan.line}</small>}
+                  </div>
+                  <div className="pd-plan-actions">
+                    {isFreeOrInactive ? (
+                      <Link href="/pricing" className="pd-mini" style={{ display: "inline-flex", alignItems: "center" }}>{s.choosePlan}</Link>
+                    ) : showPortal ? (
+                      <button type="button" className="pd-mini" disabled={portalLoading} onClick={openPortal}>
+                        {portalLoading ? "…" : isPastDue ? s.changeCard : s.manage}
+                      </button>
+                    ) : null}
+                    {/* #497: stopping the plan happens here, not on Stripe's
+                        page. A team-granted plan has nothing to cancel, and
+                        says so rather than showing a failure. */}
+                    {!granted && isPaidPlan && (
+                      profile.cancels_at ? (
+                        <button type="button" className="pd-mini" disabled={planBusy} onClick={doResume}>{s.resumePlan}</button>
+                      ) : (
+                        <button type="button" className="pd-mini" disabled={planBusy} onClick={() => setAskCancel(true)}>{s.cancelShort}</button>
+                      )
+                    )}
+                  </div>
+                </div>
+                {granted && <p className="pd-msg" style={{ color: "var(--ink-2)" }}>{s.grantedPlan}</p>}
+              </Section>
             )}
 
-            {/* Row 218 (21 Sept): somewhere to say which language, for the
-                people whose phone does not match how they speak. */}
-            <LanguageCard />
+            <section className="pd-section">
+              <NotificationsCard />
+            </section>
 
-            <NotificationsCard />
+            <Section title={s.langTitle} small={s.langSmall}>
+              <LanguageCard />
+            </Section>
 
-            {/* #505 (3 Oct): blocking has worked from chat for weeks, with
-                nowhere to see whom you had blocked and no way to undo it
-                without remembering the name. */}
-            <Link
-              href="/profile/blocked"
-              className="card flex items-center justify-between transition-colors"
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--cta-border)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--sidebar-border)"; }}
-            >
-              <div>
-                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.blocked}</h2>
-                <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
-                  {s.blockedSub}
-                </p>
+            {/* The pages one level deeper. Each link goes to a page that
+                exists; the design's „my assistant" and „people settings"
+                join this list when their pages are built. */}
+            <nav className="pd-nav" aria-label={s.personal}>
+              <Link href="/profile/earnings">{s.earningsNav}<DzIcon name="right" size={16} /></Link>
+              <Link href="/profile/contacts">{s.myContacts}<DzIcon name="right" size={16} /></Link>
+              <Link href="/profile/data">{s.dataRights}<DzIcon name="right" size={16} /></Link>
+              <Link href="/profile/blocked">{s.blocked}<DzIcon name="right" size={16} /></Link>
+              <Link href="/profile/connector">{s.claudeNav}<DzIcon name="right" size={16} /></Link>
+              <Link href="/onboarding/contacts?from=profile">
+                <span>
+                  {s.syncNav}
+                  <LastImportLine />
+                </span>
+                <DzIcon name="right" size={16} />
+              </Link>
+              <MonthlyReminderRow />
+              <Link href="/setup">{s.setupNav}<DzIcon name="right" size={16} /></Link>
+            </nav>
+
+            {/* Row 6 / #508: diagnostics only for a browser switched on with
+                /profile?diag=1, with the way out next to them. */}
+            {showDiagnostics && (
+              <div className="flex flex-col gap-3" style={{ marginTop: 20 }}>
+                <PushDiagnostics />
+                <MicDiagnostics />
+                <p style={{ fontSize: "12px", color: "var(--meta)" }}>{s.diagOff}</p>
               </div>
-              <span style={{ color: "var(--meta)" }}>→</span>
-            </Link>
+            )}
 
-            {/* Sign out */}
-            <button onClick={signOut} className="btn-destructive py-2 text-center self-center">
-              {s.signOut}
-            </button>
-          </div>
+            <div className="pd-foot">
+              <button type="button" className="pd-signout" onClick={signOut}>{s.signOut}</button>
+            </div>
+          </>
         )}
-      </SheetPage>
-    {/* #497: the question names the date the plan actually runs until —
-        trial end or paid period end, whichever this account has. Without a
-        date "cancel" reads as "it stops now", and what happens is the
-        opposite: everything already paid for is kept. */}
-    {askCancel && (
-      <ConfirmDialog
-        message={(() => {
-          const until = profile?.current_period_ends_at ?? profile?.trial_ends_at ?? null;
-          return until ? s.cancelPlanAsk(fmtDateLoc(until)) : s.cancelPlanAskNoDate;
-        })()}
-        confirmLabel={s.cancelPlan}
-        cancelLabel={s.keepPlan}
-        busy={planBusy}
-        onConfirm={doCancel}
-        onCancel={() => setAskCancel(false)}
-      />
-    )}
+      </div>
+
+      {/* #497: the question names the date the plan actually runs until. */}
+      {askCancel && (
+        <ConfirmDialog
+          message={(() => {
+            const until = profile?.current_period_ends_at ?? profile?.trial_ends_at ?? null;
+            return until ? s.cancelPlanAsk(fmtDateLoc(until)) : s.cancelPlanAskNoDate;
+          })()}
+          confirmLabel={s.cancelPlan}
+          cancelLabel={s.keepPlan}
+          busy={planBusy}
+          onConfirm={doCancel}
+          onCancel={() => setAskCancel(false)}
+        />
+      )}
     </div>
   );
 }
