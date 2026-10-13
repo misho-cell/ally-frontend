@@ -5,9 +5,9 @@ import { apiFetch } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 
-// 4927 (13 Oct, Giorgi; backend 0260). On a case where the person stands in
-// the middle of a chain, the card shows the path: who came before, the person,
-// who comes after. GET /threads/:id/chain-position answers it per thread; the
+// 4927 (13 Oct, Giorgi; backend 0260). A case shows its path: who came
+// before (if anyone), the person, who comes after. Since backend 19:45Z this
+// covers the owner's own goals too, with no one before. GET /threads/:id/chain-position answers it per thread; the
 // path is drawn only when someone comes after (`next` non-empty), which is
 // what the task asks for. Names are as the server gives them: never guessed,
 // and a row without a name is left out rather than drawn as a blank chip.
@@ -46,7 +46,7 @@ function load(threadId: string, stamp: string): Promise<Chain | null> {
 
 // Backend 17:39Z: asked only for cards on screen, so a long list does not
 // spend the minute's calls on cards nobody sees.
-export default function ChainPath({ threadId, stamp }: { threadId: string; stamp: string }) {
+export default function ChainPath({ threadId, stamp, className = "" }: { threadId: string; stamp: string; className?: string }) {
   const [chain, setChain] = useState<Chain | null>(null);
   const [anchor, setAnchor] = useState<HTMLSpanElement | null>(null);
   const [seen, setSeen] = useState(false);
@@ -75,7 +75,7 @@ export default function ChainPath({ threadId, stamp }: { threadId: string; stamp
   const shown = chain.next.slice(0, 2);
   const more = chain.next.length - shown.length;
   return (
-    <span className="dz-chain" aria-label={[chain.previous, t("chainYou"), ...chain.next].filter(Boolean).join(" → ")}>
+    <span className={`dz-chain ${className}`} aria-label={[chain.previous, t("chainYou"), ...chain.next].filter(Boolean).join(" → ")}>
       {chain.previous && (<><span className="nm">{chain.previous}</span><span className="arr" aria-hidden="true">→</span></>)}
       <span className="nm me">{t("chainYou")}</span>
       <span className="arr" aria-hidden="true">→</span>

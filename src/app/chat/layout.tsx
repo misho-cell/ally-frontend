@@ -1565,7 +1565,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             <span className="msg">{g.tile}</span>
                           </span>
                           <span className="dz-peek">
-                            {g.rows.slice(0, 3).map(({ thread }) => <span key={thread.id}>{goalTitle(thread)}</span>)}
+                            {g.rows.slice(0, 3).map(({ thread }) => <span key={thread.id}>{chipTitle(thread, goalTitle(thread))}</span>)}
                             {g.rows.length > 3 && <span>+{g.rows.length - 3}</span>}
                           </span>
                           <span className="dz-fcta">
@@ -1919,22 +1919,23 @@ function useLongPress(onLongPress: () => void) {
 // 4920 (13 Oct, Giorgi): a card carries no status word, except „paused".
 // 4930: paused is the server's goal_paused, or a stopped goal its owner has
 // not closed yet (#1919), which the design counts as paused too.
-// 4919 (13 Oct, Giorgi; backend 0261): a case title in the list names the
-// case in a few words, 2 to 3 on the desktop and 1 on the phone, and nothing
-// is cut. The server writes them; until a row has them the title is shortened
-// here by whole words, never inside one. The phone takes two words in that
-// fallback: a first word alone („ლიკას" of „ლიკას იურისტი") often names
-// nothing. Search and the hover title still use the full title.
+// 4919 (13 Oct, Giorgi; backend 0261, read again 19:45Z): the short titles
+// are for the coloured chips inside the two counters, not for the lists,
+// which keep the full title. One word on a chip; until the server has
+// written it (old conversations never get one) the title is cut by whole
+// words, never inside one, two of them, since a first word alone („ლიკას"
+// of „ლიკას იურისტი") often names nothing.
 function firstWords(title: string, n: number): string {
   const words = title.trim().split(/\s+/);
   const out = words.slice(0, n).join(" ");
   return out.replace(/[\s,.;:!?…-]+$/u, "") || title;
 }
 
-function listTitle(thread: Thread, full: string, where: "desk" | "phone"): string {
-  const server = where === "desk" ? thread.short_title : thread.one_word_title;
-  if (typeof server === "string" && server.trim()) return server.trim();
-  return firstWords(full, where === "desk" ? 3 : 2);
+function chipTitle(thread: Thread, full: string): string {
+  for (const v of [thread.one_word_title, thread.short_title]) {
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return firstWords(full, 2);
 }
 
 function isPaused(thread: Thread): boolean {
@@ -1969,7 +1970,7 @@ function TaskRow({ thread, title, href, active, unread, time, onLongPress }: Row
       </span>
       <span className="dz-row-body">
         <span className="dz-row-top">
-          <span className={`dz-row-title${unread && !active ? " unread" : ""}`}>{listTitle(thread, title, "desk")}</span>
+          <span className={`dz-row-title${unread && !active ? " unread" : ""}`}>{title}</span>
           {time && <span className="dz-row-time">{time}</span>}
         </span>
         {preview && <span className="dz-row-preview">{preview}</span>}
@@ -1997,13 +1998,12 @@ function TaskCard({ thread, title, href, active, unread, time, onLongPress }: Ro
         )}
         {time && <span className="tm">{time}</span>}
       </span>
-      <h3 className={unread && !active ? "unread" : undefined}>{listTitle(thread, title, "phone")}</h3>
+      <h3 className={unread && !active ? "unread" : undefined}>{title}</h3>
       {preview && <p>{preview}</p>}
-      {/* 4927: the chain through this person, on a case where they stand in
-          the middle of one. */}
-      {(thread.role === "mediator" || thread.role === "addressee" || thread.type === "incoming_ask" || thread.type === "incoming_request") && (
-        <ChainPath threadId={String(thread.id)} stamp={thread.updated_at ?? ""} />
-      )}
+      {/* 4927: the path of this case. Since 19:45Z the server answers for the
+          owner's own goals too (no one before, the people it talks to after),
+          so every card asks, and only once it is on screen. */}
+      <ChainPath threadId={String(thread.id)} stamp={thread.updated_at ?? ""} />
       <span className="dz-cf">
         <span className="dz-open">{t("details")}<DzIcon name="right" size={14} /></span>
       </span>
@@ -2018,7 +2018,7 @@ function DoneRow({ thread, title, href, time }: { thread: Thread; title: string;
   return (
     <Link href={href} prefetch className="dz-drow">
       <span className="ok"><DzIcon name="check" size={13} /></span>
-      <span className="t">{listTitle(thread, title, "phone")}</span>
+      <span className="t">{title}</span>
       {time ? <span className="d">{time}</span> : <span />}
       <span className="sub">
         {/* 4920: the tab already says resolved. A goal its owner stopped is

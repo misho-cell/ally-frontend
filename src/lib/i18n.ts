@@ -533,7 +533,7 @@ const ka: typeof en = {
   stDone: "დასრულდა",
   stStopped: "შენ გააჩერე",
   stPaused: "შეჩერებულია",
-  chainYou: "შენ",
+  chainYou: "თქვენ",
   stFailed: "ვერ მოხერხდა",
   stopGoal: "გაჩერება",
   nothingToStop: "ამ დავალებაზე არაფერი მუშაობს.",

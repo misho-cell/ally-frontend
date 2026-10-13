@@ -636,6 +636,10 @@ body {
 .dz-chain .nm { padding: 4px 9px; border-radius: 8px; background: #EAF0EC; color: #4D6A64; font: 400 12px/16px var(--font-system); white-space: nowrap; }
 .dz-chain .nm.me { background: var(--accent); color: #FFFFFF; font-weight: 600; }
 .dz-chain .arr { color: var(--nx-muted); font-size: 12px; }
+.dz-chain.on-teal { margin-top: 6px; gap: 5px; }
+.dz-chain.on-teal .nm { padding: 2px 7px; background: rgba(255, 255, 255, .14); color: #FFFFFF; font-size: 11px; }
+.dz-chain.on-teal .nm.me { background: #FFFFFF; color: var(--accent); }
+.dz-chain.on-teal .arr { color: rgba(255, 255, 255, .8); font-size: 11px; }
 
 /* 4923 (Giorgi), phone: under the two counters, the chosen group's title and
    cards sit on a panel in that counter's colour, as in the design. */

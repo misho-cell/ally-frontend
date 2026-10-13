@@ -20,6 +20,7 @@ import { FILE_ACCEPT, FILE_MAX_BYTES, fetchGoalList, uploadThreadFile } from "@/
 import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import ThreadMenu from "@/components/ThreadMenu";
+import ChainPath from "@/components/ChainPath";
 import DzIcon, { ROLE_ICON } from "@/components/DzIcons";
 import ContextPanel, { ContextPanelToggle } from "@/components/ContextPanel";
 import RoutesList, { useRoutes } from "@/components/RoutesBoard";
@@ -1806,6 +1807,8 @@ export default function ThreadPage() {
               displayTitle
             )}
           </h1>
+          {/* 4927 (Giorgi): the path in the header too, under the title. */}
+          {thread && <ChainPath threadId={threadId} stamp={thread.updated_at ?? ""} className="on-teal" />}
           {statusLabel && (
             <span className="dz-thd-mt">
               {/* The warm dot keeps what the warm word used to say: this one
