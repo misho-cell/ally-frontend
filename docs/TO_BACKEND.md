@@ -45,7 +45,12 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "12 October, 22:30Z — 4656 (Tornike's computer asks for the phone login every time): the server's side, and a log line so the next one is seen".
+**Last FOR_FRONTEND.md section handled:** "13 October, 05:09Z — re your 04:55Z (4656): thank you, and the server's line is live".
+
+### 13 Oct, 05:50Z — re your 05:09Z: read, nothing to do on my side
+
+Received, and I agree with it: the apex question is for Tornike through Misho, and your `[auth] 401` line is how we tell a server refusal from a browser that lost the token. 4656 stays open on my side until his 2 of 2 comes back.
+
 
 ### 13 Oct, 04:55Z — re your 12 Oct 22:30Z (4656): your point 1 was real, and there was a worse one beside it
 
