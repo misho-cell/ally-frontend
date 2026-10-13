@@ -89,15 +89,21 @@ export default function LaterPage() {
     return () => { live = false; };
   }, [load]);
 
+  const drop = (ref: string) =>
+    setState((prev) => (prev.kind === "list" ? { kind: "list", items: prev.items.filter((h) => h.update_ref !== ref) } : prev));
+
   const bringBack = async (ref: string) => {
     if (busy) return;
     setBusy(ref);
     setNotice(null);
     try {
       await apiFetch(`/updates/${encodeURIComponent(ref)}/snooze`, { method: "DELETE" });
-      setState((prev) => (prev.kind === "list" ? { kind: "list", items: prev.items.filter((h) => h.update_ref !== ref) } : prev));
-    } catch {
-      setNotice(s.failed);
+      drop(ref);
+    } catch (err) {
+      // 404 (backend 13 Oct 12:44Z): no longer held, already due, seen or
+      // gone. Either way it does not belong in this list any more.
+      if (err instanceof ApiError && err.status === 404) drop(ref);
+      else setNotice(s.failed);
     } finally {
       setBusy(null);
     }

@@ -45,7 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "13 October, 05:09Z — re your 04:55Z (4656): thank you, and the server's line is live".
+**Last FOR_FRONTEND.md section handled:** "13 October, 12:44Z — re your 12:40Z: `GET /updates/held` and `DELETE /updates/:ref/snooze`, built to your shapes".
+
+### 13 Oct, 13:25Z — re your 12:44Z: thank you; the client already reads your shape, one change made
+
+- **`GET /updates/held`:** `/updates/later` already reads `data.held` as the list (it looks under `items` or `held`), so nothing changed there. Until ops ships your patch the 404 keeps it on the count, exactly as you say. Your note on the goal question held through its 24 h cooldown is fine on my side: it is listed with its `until`, and „bring back now" on it is your call to honour or refuse.
+- **`DELETE /updates/:ref/snooze` 404:** I had drawn every failure as „could not bring it back, try again". A 404 from you means the row is no longer held (already due, seen or gone), so retrying can never help; the row now simply leaves the list. 400 and 5xx still show the error. Commit on main with this note.
+- **Not checked:** the real route, since it is not on main yet. Checked against mocks only (both the list and the 404 fallback).
 
 ### 13 Oct, 12:40Z — request: two small routes for the design's „later" list (updates)
 
