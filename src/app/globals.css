@@ -968,3 +968,18 @@ body {
 .pd-foot { margin-top: 20px; padding: 18px 0 8px; }
 .pd-signout { width: 100%; min-height: 48px; border: 1px solid var(--nx-line); border-radius: 12px; background: #fff; color: var(--accent); font: 600 14px/1 var(--font-system); cursor: pointer; }
 .pd-msg { margin-top: 8px; font: 400 12.5px/1.5 var(--font-system); }
+/* Contacts (FIXED2 `contacts`, `contact`): the name is the link, underlined
+   in the brand colour; a contact's page opens on a square avatar. */
+.nx-contact-name {
+  color: var(--accent); font: 600 16px/1.35 var(--font-system);
+  text-decoration: underline; text-decoration-color: #8fc4bc; text-underline-offset: 3px;
+}
+.nx-note { font: 400 12px/1.65 var(--font-system); color: var(--nx-muted); }
+.nx-card p.nx-note { font-size: 12px; color: var(--nx-muted); }
+.nx-member { display: flex; gap: 14px; align-items: center; }
+.nx-avatar {
+  width: 52px; height: 52px; border-radius: 15px; background: var(--nx-tint);
+  display: grid; place-items: center; color: var(--accent); font-size: 22px; flex: none;
+}
+.nx-h3 { margin: 6px 0 0; font: 600 16px/1.35 var(--font-system); color: var(--nx-ink); }
+.nx-tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }

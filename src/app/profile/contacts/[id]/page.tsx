@@ -25,6 +25,7 @@ import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 const L = {
   en: {
     back: "Back to contacts",
+    close: "Close",
     onNetai: "On Netai",
     note: "Your labels, facts and relationships appear here, and public information with its source. Information saved by others is never shown.",
     publicFacts: "Public information",
@@ -40,6 +41,7 @@ const L = {
   },
   ka: {
     back: "კონტაქტებში დაბრუნება",
+    close: "დახურვა",
     onNetai: "Netai-ზეა",
     note: "აქ ჩანს შენი იარლიყები, ფაქტები და ურთიერთობები, და საჯარო ინფორმაცია წყაროსთან ერთად. სხვების შენახული ინფორმაცია არასოდეს გამოჩნდება.",
     publicFacts: "საჯარო ინფორმაცია",
@@ -85,8 +87,6 @@ function parse(raw: unknown): Contact | null {
   };
 }
 
-const WARM_DOT = { warm: "#2E9E5B", neutral: "#C9A227", distant: "#AE4141" } as const;
-
 export default function ContactPage() {
   const s = L[getLocale()];
   const params = useParams();
@@ -102,75 +102,62 @@ export default function ContactPage() {
     return () => { alive = false; };
   }, [id]);
 
-  const sub = { font: "600 13px/18px var(--font-system)", color: "var(--ink)" } as const;
+  const initial = c?.name ? Array.from(c.name.trim())[0] ?? "" : "";
 
   return (
-    <SheetPage title={c?.name ?? "…"} backHref="/profile/contacts" backLabel={s.back}>
+    <SheetPage title={c?.name ?? "…"} backHref="/profile/contacts" backLabel={s.back} closeLabel={s.close}>
       {c === undefined && <span className="sk-bar" style={{ width: "60%" }} />}
       {c === null && (
-        <p style={{ font: "400 13px/19px var(--font-system)", color: state === "missing" ? "var(--meta)" : "var(--danger)" }}>
+        <p className={state === "missing" ? "nx-empty" : "nx-intro"} style={state === "missing" ? undefined : { color: "var(--danger)" }}>
           {state === "missing" ? s.notFound : s.failed}
         </p>
       )}
       {c && (
         <>
-          <div className="card flex flex-col gap-2">
-            {c.role && <p style={{ font: "400 14px/20px var(--font-system)", color: "var(--ink-soft)" }}>{c.role}</p>}
-            <div className="flex flex-wrap items-center gap-2">
-              {c.onNetai && <span className="kind-pill">{s.onNetai}</span>}
-              {c.warmth && (
-                <span className="flex items-center gap-1.5" style={{ font: "500 12.5px/17px var(--font-system)", color: "var(--ink)" }}>
-                  <span className="rounded-full" style={{ width: 8, height: 8, background: WARM_DOT[c.warmth] }} />
-                  {s.warmth[c.warmth]}
-                </span>
-              )}
-            </div>
-            <p style={{ font: "400 12.5px/18px var(--font-system)", color: "var(--meta)" }}>{s.note}</p>
-          </div>
-
-          {/* 389: a contact on Netai has a member card, what they themselves
-              show. 1849: the map of how to reach them. */}
-          {c.onNetai && (
-            <Link href={`/members/${encodeURIComponent(id)}`} className="card flex items-center justify-between" style={{ font: "600 14px/20px var(--font-system)", color: "var(--accent-strong)" }}>
-              {s.memberCard}
-              <span style={{ color: "var(--meta)" }}>›</span>
-            </Link>
-          )}
-          <PathMap contactId={id} />
-
-          {c.labels.length > 0 && (
-            <div className="card flex flex-col gap-2">
-              <p style={sub}>{s.labels}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {c.labels.map((l) => <span key={l} className="kind-pill">{l}</span>)}
+          {/* The design's avatar holds a number from its mock chain; here it
+              is the first letter of the name, the one thing the page knows. Not
+              upper-cased: that turns a Georgian letter into Mtavruli. */}
+          {(c.role || c.onNetai) && (
+            <div className="nx-member">
+              <span className="nx-avatar" aria-hidden="true">{initial}</span>
+              <div className="min-w-0">
+                {c.role && <b style={{ font: "600 16px/1.35 var(--font-system)", color: "var(--nx-ink)", overflowWrap: "anywhere" }}>{c.role}</b>}
+                {c.onNetai && <p className="nx-muted" style={{ font: "400 14px/1.65 var(--font-system)" }}>{s.onNetai}</p>}
               </div>
             </div>
           )}
+          <p className="nx-note">{s.note}</p>
 
-          <div className="card flex flex-col gap-2">
-            <p style={sub}>{s.facts}</p>
+          {(c.labels.length > 0 || c.warmth) && (
+            <>
+              <h3 className="nx-h3">{s.labels}</h3>
+              <div className="nx-tags">
+                {c.labels.map((l) => <span key={l} className="nx-pill">{l}</span>)}
+                {c.warmth && <span className="nx-pill">{s.warmth[c.warmth]}</span>}
+              </div>
+            </>
+          )}
+
+          <div className="nx-card">
+            <h3>{s.facts}</h3>
             {c.facts.length === 0 ? (
-              <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--meta)" }}>{s.noFacts}</p>
+              <p className="nx-note">{s.noFacts}</p>
             ) : (
-              c.facts.map((f, i) => (
-                <p key={i} style={{ font: "400 14px/20px var(--font-system)", color: "var(--ink)" }}>{f.value}</p>
-              ))
+              c.facts.map((f, i) => <p key={i}>{f.value}</p>)
             )}
           </div>
 
           {c.publicFacts.length > 0 && (
-            <div className="card flex flex-col gap-2.5">
-              <p style={sub}>{s.publicFacts}</p>
+            <div className="nx-card">
+              <h3>{s.publicFacts}</h3>
               {c.publicFacts.map((f, i) => (
-                <div key={i} className="flex flex-col gap-0.5">
-                  <p style={{ font: "400 14px/20px var(--font-system)", color: "var(--ink)" }}>{f.value}</p>
+                <div key={i}>
+                  <p>{f.value}</p>
                   {(f.sourceUrl || f.date) && (
-                    <p className="flex flex-wrap gap-2" style={{ font: "400 12px/17px var(--font-system)", color: "var(--meta)" }}>
-                      {f.sourceUrl && (
-                        <a href={f.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-strong)", fontWeight: 600 }}>{s.source} ›</a>
-                      )}
-                      {f.date && <span>{fmtDateShort(f.date)}</span>}
-                    </p>
+                    <div className="nx-row" style={{ marginTop: 2 }}>
+                      {f.sourceUrl && <a href={f.sourceUrl} target="_blank" rel="noopener noreferrer" className="nx-link">{s.source}</a>}
+                      {f.date && <span className="nx-note">{fmtDateShort(f.date)}</span>}
+                    </div>
                   )}
                 </div>
               ))}
@@ -178,13 +165,20 @@ export default function ContactPage() {
           )}
 
           {c.exclusions.length > 0 && (
-            <div className="card flex flex-col gap-1.5">
-              <p style={sub}>{s.excluded}</p>
-              {c.exclusions.map((e, i) => (
-                <p key={i} style={{ font: "400 13.5px/19px var(--font-system)", color: "var(--ink-soft)" }}>{e}</p>
-              ))}
+            <div className="nx-card">
+              <h3>{s.excluded}</h3>
+              {c.exclusions.map((e, i) => <p key={i}>{e}</p>)}
             </div>
           )}
+
+          {/* 389: a contact on Netai has a member card, what they themselves
+              show. 1849: the map of how to reach them. */}
+          {c.onNetai && (
+            <div className="nx-row">
+              <Link href={`/members/${encodeURIComponent(id)}`} className="nx-btn">{s.memberCard}</Link>
+            </div>
+          )}
+          <PathMap contactId={id} />
         </>
       )}
     </SheetPage>

@@ -19,7 +19,9 @@ const L = {
   en: {
     title: "My contacts",
     back: "Back to profile",
-    search: "Search by name",
+    close: "Close",
+    search: "Contact name",
+    update: "Update contacts",
     onNetai: "On Netai",
     more: "More",
     empty: "No contacts found",
@@ -29,7 +31,9 @@ const L = {
   ka: {
     title: "ჩემი კონტაქტები",
     back: "პროფილში დაბრუნება",
-    search: "მოძებნე სახელით",
+    close: "დახურვა",
+    search: "კონტაქტის სახელი",
+    update: "კონტაქტების განახლება",
     onNetai: "Netai-ზეა",
     more: "მეტი",
     empty: "კონტაქტი ვერ მოიძებნა",
@@ -99,53 +103,44 @@ export default function ContactsPage() {
   }
 
   return (
-    <SheetPage title={s.title} backHref="/profile" backLabel={s.back}>
-      {/* 16px: a smaller focused field makes iOS Safari zoom the page. */}
-      <input
-        type="search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder={s.search}
-        className="w-full"
-        style={{ fontSize: 16, padding: "10px 14px", borderRadius: 12, border: "1px solid var(--header-border)", background: "#FFFFFF", color: "var(--ink)" }}
-      />
+    <SheetPage title={s.title} backHref="/profile" backLabel={s.back} closeLabel={s.close}>
+      {/* 16px (in .nx-field): a smaller focused field makes iOS Safari zoom the page. */}
+      <label className="nx-field" style={{ marginBottom: 0 }}>
+        {s.search}
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} />
+      </label>
 
       {failed && (
-        <div className="flex items-center gap-3">
-          <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--danger)" }}>{s.failed}</p>
-          <button type="button" className="btn-secondary" style={{ padding: "6px 14px" }} onClick={() => { setFailed(false); setNonce((n) => n + 1); }}>{s.retry}</button>
+        <div className="nx-row">
+          <p className="nx-intro" style={{ color: "var(--danger)" }}>{s.failed}</p>
+          <button type="button" className="nx-btn" onClick={() => { setFailed(false); setNonce((n) => n + 1); }}>{s.retry}</button>
         </div>
       )}
 
       {!failed && rows === null && <span className="sk-bar" style={{ width: "70%" }} />}
 
-      {rows !== null && rows.length === 0 && !failed && (
-        <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--meta)" }}>{s.empty}</p>
-      )}
+      {rows !== null && rows.length === 0 && !failed && <p className="nx-empty">{s.empty}</p>}
 
-      {rows !== null && rows.length > 0 && (
-        <div className="card flex flex-col" style={{ padding: 0 }}>
-          {rows.map((r, i) => (
-            <Link
-              key={r.id}
-              href={`/profile/contacts/${encodeURIComponent(r.id)}`}
-              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-black/5"
-              style={{ borderTop: i ? "1px solid var(--skeleton)" : undefined }}
-            >
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate" style={{ font: "500 14.5px/20px var(--font-system)", color: "var(--ink)" }}>{r.name ?? "…"}</span>
-                {r.phone && <span dir="ltr" className="truncate" style={{ font: "400 12.5px/17px var(--font-system)", color: "var(--meta)" }}>{r.phone}</span>}
-              </span>
-              {r.onNetai && <span className="kind-pill shrink-0">{s.onNetai}</span>}
-              <span style={{ color: "var(--meta)" }}>›</span>
+      {rows !== null && rows.length > 0 && rows.map((r) => (
+        <div key={r.id} className="nx-card">
+          <div className="nx-row between" style={{ marginTop: 0, flexWrap: "nowrap" }}>
+            <Link href={`/profile/contacts/${encodeURIComponent(r.id)}`} className="nx-contact-name min-w-0" style={{ overflowWrap: "anywhere" }}>
+              {r.name ?? "…"}
             </Link>
-          ))}
+            {r.onNetai && <span className="nx-pill shrink-0">{s.onNetai}</span>}
+          </div>
+          {r.phone && <p dir="ltr" className="nx-note" style={{ textAlign: "start" }}>{r.phone}</p>}
         </div>
-      )}
+      ))}
 
       {next && !failed && (
-        <button type="button" className="btn-secondary self-center" disabled={busy} onClick={loadMore}>{s.more}</button>
+        <button type="button" className="nx-btn self-center" disabled={busy} onClick={loadMore}>{s.more}</button>
       )}
+
+      {/* The design's second button, people settings, has no page yet. */}
+      <div className="nx-row">
+        <Link href="/onboarding/contacts?from=profile" className="nx-btn">{s.update}</Link>
+      </div>
     </SheetPage>
   );
 }
