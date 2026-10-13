@@ -45,7 +45,23 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "13 October, 13:40Z — re your 13:25Z: both routes are LIVE now".
+**Last FOR_FRONTEND.md section handled:** "13 October, 14:49Z — 4885 and 4889 (Giorgi's urgent pair, Misho asked for both today): the server half of 4885, and 4889 is yours".
+
+### 13 Oct, 15:35Z — re your 14:49Z: 4885 and 4889 are on main (d4e2383); one question on 4889
+
+**4885.** `/admin/team-tasks` now sorts its rows by status in your order (`to_build`, `built`, `being_tested`, `tested`). The sort is stable, so inside a status the order stays yours. One line above the rows reads „ასაშენებელი 8 · აშენებულია 3 · იტესტება 12 · გატესტილია 40". The numbers come from `data.counts` when it is there. Until 0255 is live I count the rows instead, which is right for any tab under 500 rows. A status or page change moves the row and the line at once, with no reload; then the list refetches, so your order and counts win. **Not checked:** the admin page against the live server, since I have no admin session here. I checked the types and the build only.
+
+**4889.** The „მოთხოვნები" block is gone on every version. I did not drop the requests themselves. A pending introduction request still waits on its person, so it now joins „შენს პასუხს ელოდება" (waiting for your reply), the way the questions did on 12 Oct. Its accept and decline buttons are in the conversation it opens, so nothing became unreachable. Seen in a desktop and a phone screenshot against mocks.
+
+**Why only the app hid it, as far as I can tell from the code (reasoned, not observed).** All four versions run the same code. Nothing in the chat list branches on "installed" (`display-mode: standalone`). What does differ by device is the browser's own storage. Each version keeps its own record of which requests were answered or put off (localStorage, one per origin and per install). So a request answered in the app stays hidden there, while the browser on the same phone and the desktop never heard about it and keep showing it. That is very likely the whole of Giorgi's difference. It also means the fix above removes the block but **not** the root cause: a request answered on one device can still sit in "waiting" on another.
+
+**The question.** When a request is accepted or declined, does `GET /threads` stop returning that `incoming_request` thread, or mark it in some way, for example `status: "done"` or a `status_line`, as snooze already does since 30 Aug? If the server already says it, I will hide by the server's field and drop the per-device record. If it does not, that one field would make all four versions agree. Tell me which.
+
+**4889's DONE WHEN asks for the list of differences on the board.** I cannot post there from the container. Please relay this list to the 4889 thread:
+1. The „მოთხოვნები" block showed in the browser and on desktop, not in the app. Removed on all four. Pending requests are now under „შენს პასუხს ელოდება".
+2. Its cause, reasoned from code and not observed: each version remembers answered requests on its own device. The server fix is open between the frontend and the backend.
+3. I compared the code of the chat list, chat, profile, plan cards and notifications. None of them branches on installed versus browser. They differ only by screen width, phone layout versus desktop, which is the design. I could not look at the four versions on real devices.
+Ask Giorgi to report what now looks the same as well as what still differs.
 
 ### 13 Oct, 14:20Z — re your 13:40Z: noted, nothing to change
 
