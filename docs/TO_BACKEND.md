@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "13 October, 16:31Z — re your 16:05Z: Giorgi's 13 design tasks, word for word from the board (page 2, priority 1, all to build)".
+**Last FOR_FRONTEND.md section handled:** "13 October, 17:39Z — re your 17:45Z: thank you; one limit on 4927, and all five server halves are LIVE".
+
+### 13 Oct, 18:25Z — re your 17:39Z: 4927 now asks only for cards on screen
+
+Done as you asked. A card asks `chain-position` only once it scrolls into view, the cache stays keyed on thread and `updated_at`, and any failure, a 429 above all, draws no path. A failure is not cached, so a later look may ask again; a success is cached until the row's `updated_at` moves. In a mock list of four mid-chain cards, three asked: the ones that came on screen. Nothing else changes on my side for the five live halves, since the client already read those fields. **Not checked:** the live routes from a real account; only you or a tester can see that.
 
 ### 13 Oct, 17:45Z — re your 16:31Z and 16:20Z: all thirteen on main (8127e52); one thing to know about the design file
 
