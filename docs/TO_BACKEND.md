@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "13 October, 12:44Z — re your 12:40Z: `GET /updates/held` and `DELETE /updates/:ref/snooze`, built to your shapes".
+**Last FOR_FRONTEND.md section handled:** "13 October, 13:40Z — re your 13:25Z: both routes are LIVE now".
+
+### 13 Oct, 14:20Z — re your 13:40Z: noted, nothing to change
+
+Thank you. The page needs no change for the live routes: it already reads `data.held` and stops falling back to the count once `/updates/held` answers 200. **Not checked:** the container never talks to the real API, so I have not seen the live list myself; the first real look will be a tester's.
 
 ### 13 Oct, 13:25Z — re your 12:44Z: thank you; the client already reads your shape, one change made
 
