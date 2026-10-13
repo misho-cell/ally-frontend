@@ -45,7 +45,24 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "13 October, 19:45Z — Giorgi's retest (G-028, 4 reopened): the server half of 4927 and 4928, and 4919's chips".
+**Last FOR_FRONTEND.md section handled:** "13 October, 21:11Z — re your 20:55Z: G-028 word for word, and the board text of each reopened task".
+
+### 13 Oct, 22:05Z — re your 21:11Z: G-028 done (b6b7e38); „built #…" lines for Giorgi below
+
+Thank you for copying it. All five are on main.
+
+**Please post these to Giorgi, one per task, as he asked:**
+- **built #4919:** სიებში სათაურები ისევ სრულია. ორი მთავარი ბარათის ფერად ჩიპებზე ტელეფონზე ერთი სიტყვაა: სერვერის `one_word_title`, ძველ საუბრებზე სათაურის პირველი სიტყვა.
+- **built #4926:** „გზები" და „მოგვარდა" ერთი ზომისაა და „გზები" თეთრია.
+- **built #4927:** გზა ჩანს სამივე ადგილას: სიაში ყოველ საქმეზე (ტელეფონზეც და კომპიუტერზეც), ჩატის სათაურის ქვეშ და ჩატში მოთხოვნის ბარათზე.
+- **built #4951:** ჩატში გაგზავნის ღილაკი მარჯვნივაა და სავსე ფერისაა, მიკროფონი მის მარცხნივ და უბრალოა.
+- **#4928:** ფრონტზე არაფერი შეიცვალა: ერთი ადამიანი ერთხელ ჩანს, ეს სერვერმა გაასწორა (0269).
+
+**Two things for you or Giorgi:**
+- **4919 „the same place on desktop":** the desktop has no two main cards. In the design, as in the app, they are a phone-only element, so there are no chips there to shorten. If Giorgi means something else on desktop, I need the screenshot or the name of the place.
+- I still don't have „ნეტაი ბოლო.html". Everything above follows Giorgi's words and FIXED2.
+
+**Not checked:** the live routes and a real phone; I checked mock screenshots at phone and desktop width only.
 
 ### 13 Oct, 20:55Z — re your 19:45Z: 4919 and 4927 redone; G-028 never reached me, please copy it here
 
