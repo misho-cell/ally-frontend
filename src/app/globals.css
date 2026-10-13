@@ -897,3 +897,5 @@ body {
   .nx-btn { min-height: 42px; }
   .nx-card .nx-btn { min-height: 38px; }
 }
+.nx-answer-actions { display: grid; grid-template-columns: minmax(44px, auto) minmax(44px, auto) minmax(90px, 1fr) minmax(48px, auto); gap: 6px; margin-top: 12px; }
+.nx-answer-actions .nx-btn { padding: 8px 10px; font-size: 12px; }

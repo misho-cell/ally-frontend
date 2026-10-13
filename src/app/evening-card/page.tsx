@@ -187,109 +187,82 @@ export default function EveningCardPage() {
   const canSnooze = !!card && card.items.some((it) => !it.answered) && !snoozed;
   const sameDay = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 
+  // 13 Oct (FIXED2 „evening"): the hour and the postpone button share one
+  // row above the intro, and each question is a card with its buttons in a
+  // row under it. The design's intro has a dash in the middle; the sentence
+  // is kept as two, as everywhere else in the Georgian UI.
   return (
-    <SheetPage
-      title={s.title}
-      backHref="/chat"
-      backLabel={s.back}
-      wideAction
-      action={
-        !error && card && canSnooze ? (
-          <button
-            type="button"
-            className="btn-secondary shrink-0"
-            style={{ padding: "8px 14px", fontWeight: 500 }}
-            disabled={snoozing}
-            onClick={snooze}
-          >
-            {s.snooze}
-          </button>
-        ) : undefined
-      }
-    >
+    <SheetPage title={s.title} backHref="/chat" backLabel={s.back}>
       {!error && card && (
-        <div className="flex flex-col gap-2">
-          {/* The hour is the card's own, from the server. The design's
-              „19:00" is a demo value; the person's hour may differ, and a
-              snoozed card comes back at another one. */}
-          {card.dueAt && fmtTime(card.dueAt) && (
-            <span className="kind-pill">
-              {fmtTime(card.dueAt)}
-              {sameDay(card.dueAt) ? ` · ${s.today}` : ""}
-            </span>
+        <>
+          {((card.dueAt && fmtTime(card.dueAt)) || canSnooze) && (
+            <div className="nx-row between">
+              {/* The hour is the card's own, from the server. The design's
+                  „19:00" is a demo value; the person's hour may differ, and a
+                  snoozed card comes back at another one. */}
+              {card.dueAt && fmtTime(card.dueAt) ? (
+                <span className="nx-pill">
+                  {fmtTime(card.dueAt)}
+                  {sameDay(card.dueAt) ? ` · ${s.today}` : ""}
+                </span>
+              ) : <span />}
+              {canSnooze && (
+                <button type="button" className="nx-btn" disabled={snoozing} onClick={snooze}>
+                  {s.snooze}
+                </button>
+              )}
+            </div>
           )}
-          <p style={{ font: "400 14.5px/22px var(--font-system)", color: "var(--ink-soft)" }}>{s.intro}</p>
-        </div>
+          <p className="nx-intro" style={{ color: "var(--nx-ink)" }}>{s.intro}</p>
+        </>
       )}
 
       {notice && (
-        <p
-          role="status"
-          style={{
-            font: "500 13px/19px var(--font-system)",
-            color: notice.ok ? "var(--ink-soft)" : "var(--danger)",
-          }}
-        >
+        <p role="status" className="nx-intro" style={{ color: notice.ok ? "var(--nx-muted)" : "var(--danger)" }}>
           {notice.text}
         </p>
       )}
 
       {error && (
         <div className="flex flex-col items-start gap-2">
-          <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--danger)" }}>{error}</p>
-          <button type="button" className="btn-secondary" onClick={load}>{s.retry}</button>
+          <p className="nx-intro" style={{ color: "var(--danger)" }}>{error}</p>
+          <button type="button" className="nx-btn" onClick={load}>{s.retry}</button>
         </div>
       )}
 
       {!error && card === undefined && <span className="sk-bar" style={{ width: "80%" }} />}
 
-      {!error && card === null && (
-        <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--meta)" }}>{s.empty}</p>
-      )}
+      {!error && card === null && <p className="nx-empty">{s.empty}</p>}
 
-      {!error && card && (
-        <div className="flex flex-col gap-3">
-          {card.items.map((it) => (
-            <div key={it.askId} className="card flex flex-col gap-2" style={it.answered ? { opacity: 0.7 } : undefined}>
-              {it.fromName && (
-                <span style={{ font: "600 16px/22px var(--font-system)", color: "var(--ink)" }}>{it.fromName}</span>
-              )}
-              <p style={{ font: "400 14.5px/22px var(--font-system)", color: "var(--ink-soft)", whiteSpace: "pre-wrap" }}>
-                {it.question}
-              </p>
-              {it.answered ? (
-                <div className="flex flex-wrap items-center gap-3">
-                  <span style={{ font: "500 13px/19px var(--font-system)", color: "var(--ink-soft)" }}>{s.answered}</span>
-                  <Link href={`/chat/${it.threadId}`} style={{ font: "500 13px/19px var(--font-system)", color: "var(--accent)" }}>
-                    {s.open}
-                  </Link>
-                </div>
-              ) : (
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {/* The buttons are the server's, per question (#1948), not
-                      the design's fixed four: a question that only takes
-                      "later" must not be offered a yes. */}
-                  {(it.choices ?? card.choices).map((ch, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      className="btn-secondary"
-                      style={{ padding: "8px 16px", fontWeight: 500 }}
-                      disabled={busy != null}
-                      onClick={() => answer(it, ch)}
-                    >
-                      {ch}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {failedAsk === it.askId && (
-                <p role="status" style={{ font: "500 13px/19px var(--font-system)", color: "var(--danger)" }}>{s.sendFailed}</p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {!error && card && card.items.map((it) => {
+        const choices = it.choices ?? card.choices;
+        return (
+          <article key={it.askId} className="nx-card" style={it.answered ? { opacity: 0.7 } : undefined}>
+            {it.fromName && <h3>{it.fromName}</h3>}
+            <p style={{ whiteSpace: "pre-wrap" }}>{it.question}</p>
+            {it.answered ? (
+              <div className="nx-row">
+                <span className="nx-pill">{s.answered}</span>
+                <Link href={`/chat/${it.threadId}`} className="nx-link">{s.open}</Link>
+              </div>
+            ) : (
+              /* The buttons are the server's, per question (#1948), not the
+                 design's fixed four: a question that only takes "later" must
+                 not be offered a yes. Four of them take the design's grid. */
+              <div className={choices.length === 4 ? "nx-answer-actions" : "nx-row"}>
+                {choices.map((ch, i) => (
+                  <button key={i} type="button" className="nx-btn" disabled={busy != null} onClick={() => answer(it, ch)}>
+                    {ch}
+                  </button>
+                ))}
+              </div>
+            )}
+            {failedAsk === it.askId && (
+              <p role="status" style={{ color: "var(--danger)" }}>{s.sendFailed}</p>
+            )}
+          </article>
+        );
+      })}
     </SheetPage>
   );
 }
