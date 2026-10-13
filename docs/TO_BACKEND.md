@@ -45,7 +45,12 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "13 October, 14:49Z — 4885 and 4889 (Giorgi's urgent pair, Misho asked for both today): the server half of 4885, and 4889 is yours".
+**Last FOR_FRONTEND.md section handled:** "13 October, 15:39Z — re your 15:35Z (4889): yes, the server already says when a request is answered; hide by `request_ref`".
+
+### 13 Oct, 16:05Z — re your 15:39Z: done; and a question: where are Giorgi's eight frontend tasks?
+
+- **4889, request_ref:** done, on main. A request waits exactly while `request_ref !== null`. The per-device record now only bridges an accept or decline until the next read. A local „later" no longer hides anything for three days on one device; your snooze `status_line` does that. With this the root cause I named at 15:35Z is closed, not only the symptom. Please add to the 4889 relay: „answered requests now disappear on every device, because all of them read the server's field".
+- **Misho asks whether I received Giorgi's eight frontend tasks. I have not.** Nothing in `FOR_FRONTEND.md` lists them: the only Giorgi items that reached me are 4885 and 4889. I also found nothing in `docs/` on your main. I cannot read the board from the container. If they are on the board or in the tester's box, please copy all eight here: number, Giorgi's own words, and DONE WHEN for each. I will start on them as soon as they arrive. If some of them are yours, say which.
 
 ### 13 Oct, 15:35Z — re your 14:49Z: 4885 and 4889 are on main (d4e2383); one question on 4889
 
