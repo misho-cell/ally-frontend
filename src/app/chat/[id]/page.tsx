@@ -916,6 +916,37 @@ export default function ThreadPage() {
     }
   }
 
+  // 4925 (13 Oct, Giorgi; backend 0258). „Resolved": the owner closes the
+  // goal as finished. The server clears the plan's buttons and sets the thread
+  // to done, and both arrive as events too; the row is updated from the reply
+  // so the button does not linger. 409 means there is nothing open or paused
+  // here, so the button goes away rather than failing again on every press.
+  const [resolving, setResolving] = useState(false);
+  const [resolveGone, setResolveGone] = useState<string | null>(null);
+  async function resolveCase() {
+    if (resolving) return;
+    setResolving(true);
+    try {
+      const res = await fetch(`${BASE_URL}/threads/${threadId}/resolve`, {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+      });
+      if (res.status === 401) { forceLogin(); return; }
+      if (res.status === 409) { setResolveGone(threadId); return; }
+      if (!res.ok) { showToast(t("resolveFailed"), false); return; }
+      setThreads((prev) =>
+        prev.map((th) => (String(th.id) !== threadId ? th : { ...th, status: "done", status_line: null }))
+      );
+    } catch {
+      showToast(t("resolveFailed"), false);
+    } finally {
+      setResolving(false);
+    }
+  }
+  // Only on the owner's own goal, and only while it is not already done.
+  const canResolve =
+    thread?.role === "initiator" && thread.goal_id != null && thread.status !== "done" && resolveGone !== threadId;
+
   // #2080 (D703). Pin a conversation so it stays at the top of the list until
   // its owner clears it. One tap sets, a second clears; the row moves from the
   // reply, and other devices hear thread_updated.
@@ -1825,11 +1856,19 @@ export default function ThreadPage() {
               (#2080), the list (#894) and the export (#71) further up. */}
           {/* On a phone the board opens from here; on a wide desktop it sits in
               the context panel instead. */}
-          {routes.length > 0 && (
+          {canResolve && (
+            <button type="button" className="dz-resolve shrink-0" onClick={resolveCase} disabled={resolving}>
+              <DzIcon name="check" size={14} />
+              {t("resolveCase")}
+            </button>
+          )}
+          {/* 4928 (Giorgi): „Paths" only when one request involves two or
+              more people, and in the header on the desktop as well. */}
+          {routes.length >= 2 && (
             <button
               type="button"
               onClick={() => setRoutesOpen(true)}
-              className="dz-hbtn wide shrink-0 xl:hidden"
+              className="dz-hbtn wide shrink-0"
             >
               {tf("routesCount", { n: routes.length })}
             </button>

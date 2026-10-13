@@ -1,15 +1,55 @@
+import type { CSSProperties } from "react";
+
 // The assistant's figure (D702): the app's own clip, with its poster
 // underneath for a phone that will not autoplay or lacks the codec. A clip
 // that fails to load hides itself and leaves the poster.
+//
+// 4922 (13 Oct, Giorgi): every figure showed twice and too small.
+// - Twice: poster and clip are both multiplied onto the page, so the poster's
+//   figure stayed visible under the moving one. The poster now hides the
+//   moment the clip plays.
+// - Too small: the clips are 854x480 with the figure in a third of the frame,
+//   so a box sized for the figure drew her at a third of the design's size.
+//   Each clip is cropped to where its figure moves, measured over every frame
+//   (ally-walk walks in from the left and settles; the crop is where she
+//   settles, and the poster is a frame from there). The height of the figure
+//   is then set where it is used, in globals.css.
+const FRAME = { w: 854, h: 480 };
+const CROP: Record<string, { x0: number; y0: number; x1: number; y1: number }> = {
+  "ally-walk": { x0: 290, y0: 92, x1: 545, y1: 420 },
+  "ally-loading": { x0: 328, y0: 26, x1: 530, y1: 454 },
+};
+
 export default function AnimFigure({ clip, className = "" }: { clip: string; className?: string }) {
+  const c = CROP[clip];
+  const box: CSSProperties | undefined = c ? { aspectRatio: `${c.x1 - c.x0} / ${c.y1 - c.y0}` } : undefined;
+  const inner: CSSProperties | undefined = c
+    ? {
+        position: "absolute",
+        width: `${(FRAME.w / (c.x1 - c.x0)) * 100}%`,
+        height: `${(FRAME.h / (c.y1 - c.y0)) * 100}%`,
+        left: `${(-c.x0 / (c.x1 - c.x0)) * 100}%`,
+        top: `${(-c.y0 / (c.y1 - c.y0)) * 100}%`,
+        maxWidth: "none",
+      }
+    : undefined;
   return (
-    <span className={`dz-anim ${className}`} aria-hidden="true">
+    <span className={`dz-anim${c ? " cropped" : ""} ${className}`} style={box} aria-hidden="true">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`/assets/ally/anim/${clip}-poster.jpg`} alt="" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />
+      <img src={`/assets/ally/anim/${clip}-poster.jpg`} alt="" style={inner} onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} />
       <video
         autoPlay muted loop playsInline
         src={`/assets/ally/anim/${clip}.mp4`}
-        onError={(e) => { e.currentTarget.style.display = "none"; }}
+        style={inner}
+        onPlaying={(e) => {
+          const poster = e.currentTarget.previousElementSibling as HTMLElement | null;
+          if (poster) poster.style.visibility = "hidden";
+        }}
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+          const poster = e.currentTarget.previousElementSibling as HTMLElement | null;
+          if (poster) poster.style.visibility = "";
+        }}
       />
     </span>
   );

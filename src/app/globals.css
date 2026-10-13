@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400..700&display=swap');
+/* The font is loaded by a <link> in app/layout.tsx (4921): an @import here
+   was dropped from the production CSS. */
 
 :root {
   /* ---- brand ----
@@ -630,6 +631,18 @@ body {
 
 /* A task as a card (phone list) */
 .dz-cgrid { display: grid; gap: 18px; }
+/* 4927: the path chips on a card (design `.chain .nm`). */
+.dz-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.dz-chain .nm { padding: 4px 9px; border-radius: 8px; background: #EAF0EC; color: #4D6A64; font: 400 12px/16px var(--font-system); white-space: nowrap; }
+.dz-chain .nm.me { background: var(--accent); color: #FFFFFF; font-weight: 600; }
+.dz-chain .arr { color: var(--nx-muted); font-size: 12px; }
+
+/* 4923 (Giorgi), phone: under the two counters, the chosen group's title and
+   cards sit on a panel in that counter's colour, as in the design. */
+.dz-pane { margin-top: 22px; padding: 4px 10px 14px; border-radius: 22px; }
+.dz-pane.gw { background: var(--accent-tint); }
+.dz-pane.gk { background: #FCE6D6; }
+.dz-pane .dz-paneh { margin-top: 12px; }
 .dz-cc { position: relative; display: block; padding: 15px 16px 14px; background: #FFFFFF; border-radius: 16px; text-decoration: none; color: var(--ink); box-shadow: inset 4px 0 0 var(--edge, transparent); }
 .dz-cc.role-initiator { --edge: var(--role-1); }
 .dz-cc.role-mediator { --edge: var(--role-2); }
@@ -647,9 +660,6 @@ body {
 .dz-cf { display: flex; justify-content: flex-end; padding-top: 12px; }
 .dz-open { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid var(--accent); border-radius: 12px; background: #FFFFFF; color: var(--accent); font: 600 12.5px/20px var(--font-system); }
 .dz-status { display: block; margin-top: 4px; padding-right: 24px; font: 400 10px/16px var(--font-system); color: var(--nx-muted); }
-.dz-pin { position: absolute; right: 11px; bottom: 10px; width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; font: 400 18px/1 var(--font-system); color: var(--nx-muted); background: transparent; }
-.dz-pin[aria-pressed="true"] { color: var(--accent); }
-.dz-pin:hover { background: var(--skeleton); }
 
 /* Resolved, plain rows (phone) */
 .dz-done { margin-top: 32px; }
@@ -704,7 +714,6 @@ body {
 .dz-row-time { font: 400 9px/14px var(--font-system); color: var(--ink-muted); white-space: nowrap; }
 .dz-row-preview { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 10px/15.5px var(--font-system); color: var(--ink-muted); }
 .dz-row .dz-status { margin-top: 4px; font-size: 10px; line-height: 15.5px; }
-.dz-row .dz-pin { right: 10px; bottom: 8px; }
 
 /* Desktop sidebar account footer */
 .dz-account { padding: 14px 18px; background: var(--sidebar-bg); border-top: 1px solid var(--sidebar-border); }
@@ -777,6 +786,13 @@ body {
 .dz-fig .dz-anim { width: 64px; height: 86px; }
 .dz-news-row .dz-anim { width: 132px; height: 132px; }
 .dz-fc-anim .dz-anim { width: 40px; height: 52px; }
+/* 4922: a cropped clip is sized by the figure's height alone (the width
+   follows its crop), at the design's sizes: 56px beside the phone's news,
+   74px beside the desktop's, 50px on the two counters. */
+.dz-anim.cropped { overflow: hidden; width: auto; }
+.dz-fig .dz-anim.cropped { width: auto; height: 56px; }
+.dz-news-row .dz-anim.cropped { width: auto; height: 74px; }
+.dz-fc-anim .dz-anim.cropped { width: auto; height: 50px; }
 /* The clips are drawn on white. On the page the white is multiplied away;
    on the teal counter the figure is drawn white, as in the design. */
 .dz-anim img, .dz-anim video { mix-blend-mode: multiply; }
@@ -793,10 +809,24 @@ body {
 .dz-thd-mt { display: flex; align-items: center; gap: 6px; margin-top: 4px; font: 400 11px/14.3px var(--font-system); color: #EFFBF6; }
 .dz-thd-mt i { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .dz-thd-acts { display: flex; align-items: center; gap: 6px; align-self: end; }
+/* 4926 (Giorgi), phone: FIXED2 stacks the header's actions in a column at the
+   right, „Resolved" level with the title and „…" under it. */
+@media (max-width: 767px) {
+  .dz-thd-acts { flex-direction: column; align-items: flex-end; justify-content: space-between; align-self: stretch; gap: 8px; }
+  .dz-thd-acts .dz-resolve { order: -1; }
+}
 .dz-hbtn { width: 32px; height: 32px; border-radius: 10px; border: 1px solid #FFFFFF; background: transparent; color: #FFFFFF; }
 .dz-hbtn:hover { background: rgba(255, 255, 255, .1); }
 .dz-hbtn[aria-pressed="true"] { background: rgba(255, 255, 255, .16); }
 .dz-hbtn.wide { width: auto; padding: 0 10px; font: 600 12px/16px var(--font-system); }
+/* 4925: „Resolved". FIXED2 draws it apricot on the phone and white on the
+   desktop, before the panel button and the „…". */
+.dz-resolve {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+  border-radius: 999px; border: 0; background: var(--apricot); color: #3F2D20;
+  font: 600 12.5px/16px var(--font-system); white-space: nowrap;
+}
+.dz-resolve:disabled { opacity: .6; }
 @media (min-width: 768px) {
   .dz-thd { grid-template-columns: 32px minmax(0, 1fr) auto; column-gap: 10px; padding: 16px 20px; align-items: center; }
   .dz-thd-back { width: 32px; height: 32px; margin-top: 25px; border-radius: 10px; border-color: var(--cta-border); align-self: start; }
@@ -805,6 +835,7 @@ body {
   .dz-thd-mt { margin-top: 5px; font-size: 10px; line-height: 15.5px; }
   .dz-thd-acts { align-self: center; margin-top: 25px; gap: 6px; }
   .dz-hbtn { border-radius: 9px; border-color: #9ED1C7; }
+  .dz-resolve { border-radius: 9px; background: #FFFFFF; color: var(--accent); border: 1px solid #FFFFFF; font: 500 11px/14px var(--font-system); }
 }
 
 .dz-ububble { max-width: 79%; padding: 13px 16px; border-radius: 16px 16px 6px 16px; background: var(--user-bubble-bg); color: var(--user-bubble-ink); border: 1px solid #C2D8F5; font: 400 14px/22.4px var(--font-system); }

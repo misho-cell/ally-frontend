@@ -41,6 +41,21 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ka" className="h-full">
+      {/* 4921 (13 Oct, Giorgi): the design's face, Noto Sans Georgian 400 to
+          700. It used to be an @import at the top of globals.css, which the
+          production CSS build dropped, so every screen fell back to the
+          system font. A stylesheet link in the head cannot be dropped. */}
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        {/* The rule is about pages/_document; this is the App Router's root
+            layout, which every page shares. */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&display=swap"
+        />
+      </head>
       <body className="h-full antialiased">
         <LocaleHtml />
         <PastDueBanner />

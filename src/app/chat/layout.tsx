@@ -28,9 +28,10 @@ import { FILE_ACCEPT, FILE_MAX_BYTES, uploadThreadFile } from "@/lib/threadFiles
 import { appendedKind } from "@/contexts/ThreadsContext";
 import StagedFile from "@/components/StagedFile";
 import NewsCard from "@/components/NewsCard";
-import { OnlineDot, OutageLine } from "@/components/AssistantStatus";
+import { OnlineDot, OnlinePill, OutageLine } from "@/components/AssistantStatus";
 import DzIcon, { ROLE_ICON } from "@/components/DzIcons";
 import AnimFigure from "@/components/AnimFigure";
+import ChainPath from "@/components/ChainPath";
 import PaneResizer, {
   subscribeSidebarWidth,
   sidebarWidthSnapshot,
@@ -123,19 +124,6 @@ function fmtClock(iso: string | undefined, today: string | null): string {
   return sameDay
     ? d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
     : fmtDateShort(d);
-}
-
-// 9 Oct, the new design: the row carries a status WORD under the title,
-// not a coloured pill beside it. The rules of the old pill still hold (tester
-// C.1): only "needs you" is drawn in the warm colour, a finished row says
-// nothing because its section already does, and a goal the owner halted says
-// so, because "I stopped this" must not read as "this finished".
-function statusWord(status: TaskStatus, stopped?: boolean): string | null {
-  if (status === "done") return stopped ? t("stStopped") : null;
-  return status === "working" ? t("stWorking") :
-    status === "waiting" ? t("stWaiting") :
-    status === "needs_you" ? t("stNeedsYou") :
-    t("stFailed");
 }
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
@@ -342,25 +330,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setToast(null), 2400);
   }, []);
-
-  // #2080 / D703, the design's ◇ on every task: "I will come back to this".
-  // The row moves at once; a refusal puts it back and says so.
-  const toggleFollow = useCallback(async (th: Thread) => {
-    const next = th.followed !== true;
-    const flip = (v: boolean) =>
-      setThreads((prev) => prev.map((x) => (String(x.id) === String(th.id) ? { ...x, followed: v } : x)));
-    flip(next);
-    try {
-      const res = await fetch(`${BASE_URL}/threads/${encodeURIComponent(String(th.id))}/follow`, {
-        method: next ? "PUT" : "DELETE",
-        headers: authHeaders(),
-      });
-      if (!res.ok) throw new Error(String(res.status));
-    } catch {
-      flip(!next);
-      showToast(t("genericError"));
-    }
-  }, [showToast]);
 
   const loadThreads = useCallback(async () => {
     try {
@@ -1302,7 +1271,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // 9 Oct, the new design: what waits on the person is its own group at the
   // top, with its count. The order inside each group is the one above, so a
   // pinned row still leads its group.
-  const waitsOnYou = (g: { status: TaskStatus }) => g.status === "needs_you" || g.status === "failed";
+  // 4930: a paused case waits on its owner too, whatever its status reads.
+  const waitsOnYou = (g: { thread: Thread; status: TaskStatus }) =>
+    g.status === "needs_you" || g.status === "failed" || isPaused(g.thread);
   // 12 Oct: a question another person's assistant asked this person waits on
   // them like any task does. The design has no separate list for it; it sat
   // in one under the counters while the counter said nobody waited (0).
@@ -1496,6 +1467,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               <strong>Netai</strong>
               <small>{t("sideSub")}</small>
             </span>
+            {/* 4918 (Giorgi): the „online" pill to the right of the logo, as
+                on the phone. Same fact, same condition (D699): lit while
+                the server says the assistant answers, never during an outage. */}
+            <span className="ml-auto shrink-0 self-center"><OnlinePill /></span>
           </div>
 
           <div className="dz-tools">
@@ -1571,35 +1546,35 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       {user.name.trim() ? `${t("homeHello")}, ${user.name.trim().split(/\s+/)[0]}` : t("homeHello")}
                     </p>
                     <NewsCard variant="phone" />
-                    {(needsYou.length + ongoing.length) > 0 && (
-                      <div className="dz-feat" ref={tilesRef} style={{ marginTop: 28 }}>
-                        {phoneGroups.map((g) => (
-                          <button
-                            key={g.key}
-                            type="button"
-                            className={`dz-fc ${g.key === "needs" ? "w" : "k"}`}
-                            onClick={() => choosePane(g.key)}
-                            aria-pressed={pane === g.key}
-                          >
-                            <span className="dz-fc-anim" aria-hidden="true">
-                              <AnimFigure clip={g.clip} />
-                            </span>
-                            <span className="dz-fsum">
-                              <span className="big">{g.rows.length}</span>
-                              <span className="msg">{g.tile}</span>
-                            </span>
-                            <span className="dz-peek">
-                              {g.rows.slice(0, 3).map(({ thread }) => <span key={thread.id}>{goalTitle(thread)}</span>)}
-                              {g.rows.length > 3 && <span>+{g.rows.length - 3}</span>}
-                            </span>
-                            <span className="dz-fcta">
-                              {t("details")}
-                              <DzIcon name={pane === g.key ? "down" : "right"} size={14} />
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {/* 4929 (Giorgi): both cards always, with 0 when there
+                        is nothing; the counters are the home, not a list. */}
+                    <div className="dz-feat" ref={tilesRef} style={{ marginTop: 28 }}>
+                      {phoneGroups.map((g) => (
+                        <button
+                          key={g.key}
+                          type="button"
+                          className={`dz-fc ${g.key === "needs" ? "w" : "k"}`}
+                          onClick={() => choosePane(g.key)}
+                          aria-pressed={pane === g.key}
+                        >
+                          <span className="dz-fc-anim" aria-hidden="true">
+                            <AnimFigure clip={g.clip} />
+                          </span>
+                          <span className="dz-fsum">
+                            <span className="big">{g.rows.length}</span>
+                            <span className="msg">{g.tile}</span>
+                          </span>
+                          <span className="dz-peek">
+                            {g.rows.slice(0, 3).map(({ thread }) => <span key={thread.id}>{goalTitle(thread)}</span>)}
+                            {g.rows.length > 3 && <span>+{g.rows.length - 3}</span>}
+                          </span>
+                          <span className="dz-fcta">
+                            {t("details")}
+                            <DzIcon name={pane === g.key ? "down" : "right"} size={14} />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -1625,7 +1600,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     searching). One map draws every card. */}
                 <div className="md:hidden">
                   {phoneGroups.filter((g) => (q ? g.rows.length > 0 : g.key === pane)).map((g) => (
-                    <section key={g.key} id={`pane-${g.key}`} className="scroll-mt-16">
+                    <section key={g.key} id={`pane-${g.key}`} className={`scroll-mt-16${q ? "" : ` dz-pane ${g.key === "needs" ? "gw" : "gk"}`}`}>
                       <p className={`dz-paneh ${g.key === "needs" ? "gw" : "gk"}`}>
                         <DzIcon name={g.key === "needs" ? "hourglass" : "pulse"} size={14} />
                         {g.pane}
@@ -1642,7 +1617,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             unread={isUnread(thread) || answerUnseen(thread)}
                             time={fmtClock(thread.updated_at, clock?.today ?? null)}
                             onLongPress={() => openRename(thread, goalTitle(thread))}
-                            onPin={() => toggleFollow(thread)}
                           />
                         ))}
                       </div>
@@ -1653,11 +1627,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       )}
                     </section>
                   ))}
-                  {(needsYou.length + ongoing.length) === 0 && !q && (
-                    <p style={{ padding: "18px 6px 2px", fontSize: "12px", color: "var(--meta)" }}>
-                      {roleFilter !== "all" ? t("filterEmpty") : t("threadsHint")}
-                    </p>
-                  )}
                   {finished.length > 0 && (
                     <section className="dz-done">
                       <p className="dz-dh">
@@ -1678,7 +1647,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             title={goalTitle(thread)}
                             href={`/chat/${thread.id}`}
                             time={fmtClock(thread.updated_at, clock?.today ?? null)}
-                            onPin={() => toggleFollow(thread)}
                           />
                         ))}
                       </div>
@@ -1714,7 +1682,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             active={pathname === `/chat/${thread.id}`}
                             unread={isUnread(thread) || (g.key !== "done" && answerUnseen(thread))}
                             onLongPress={() => openRename(thread, goalTitle(thread))}
-                            onPin={() => toggleFollow(thread)}
                             time={fmtClock(thread.updated_at, clock?.today ?? null)}
                           />
                         ))}
@@ -1904,29 +1871,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
 // The ◇ of the design (#2080): a span, not a button, because it sits inside
 // the row's link and a button may not. Enter and Space press it too.
-function PinMark({ on, onPin }: { on: boolean; onPin: () => void }) {
-  const press = (e: React.SyntheticEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onPin();
-  };
-  return (
-    <span
-      role="button"
-      tabIndex={0}
-      className="dz-pin"
-      aria-pressed={on}
-      aria-label={t("pinLater")}
-      title={t("pinLater")}
-      onClick={press}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") press(e); }}
-      onTouchStart={(e) => e.stopPropagation()}
-    >
-      {on ? "◆" : "◇"}
-    </span>
-  );
-}
-
 function roleLabel(role: Thread["role"]): string | null {
   return role === "initiator" ? t("roleInitiator") : role === "mediator" ? t("roleMediator") : role === "addressee" ? t("roleAddressee") : null;
 }
@@ -1972,10 +1916,34 @@ function useLongPress(onLongPress: () => void) {
 // telling the person they owed something when the block was ours (Lika, 18
 // Sept). The design draws every status word in the same quiet colour; the
 // group head above already carries the warm dot.
-function StatusLine({ thread, status }: { thread: Thread; status: TaskStatus }) {
-  const word = thread.status_line || statusWord(status, thread.goal_stopped === true) || (status === "done" ? t("stResolved") : null);
-  if (!word) return null;
-  return <small className="dz-status" title={thread.status_line ?? undefined}>{word}</small>;
+// 4920 (13 Oct, Giorgi): a card carries no status word, except „paused".
+// 4930: paused is the server's goal_paused, or a stopped goal its owner has
+// not closed yet (#1919), which the design counts as paused too.
+// 4919 (13 Oct, Giorgi; backend 0261): a case title in the list names the
+// case in a few words, 2 to 3 on the desktop and 1 on the phone, and nothing
+// is cut. The server writes them; until a row has them the title is shortened
+// here by whole words, never inside one. The phone takes two words in that
+// fallback: a first word alone („ლიკას" of „ლიკას იურისტი") often names
+// nothing. Search and the hover title still use the full title.
+function firstWords(title: string, n: number): string {
+  const words = title.trim().split(/\s+/);
+  const out = words.slice(0, n).join(" ");
+  return out.replace(/[\s,.;:!?…-]+$/u, "") || title;
+}
+
+function listTitle(thread: Thread, full: string, where: "desk" | "phone"): string {
+  const server = where === "desk" ? thread.short_title : thread.one_word_title;
+  if (typeof server === "string" && server.trim()) return server.trim();
+  return firstWords(full, where === "desk" ? 3 : 2);
+}
+
+function isPaused(thread: Thread): boolean {
+  return thread.goal_paused === true || thread.goal_stopped_open === true;
+}
+
+function StatusLine({ thread }: { thread: Thread }) {
+  if (!isPaused(thread)) return null;
+  return <small className="dz-status">{t("stPaused")}</small>;
 }
 
 type RowProps = {
@@ -1987,12 +1955,11 @@ type RowProps = {
   unread: boolean;
   time?: string;
   onLongPress: () => void;
-  onPin: () => void;
 };
 
 // Desktop sidebar row of the design: the role's icon, title and time, one
 // line of the last message, the status word, the ◇.
-function TaskRow({ thread, title, status, href, active, unread, time, onLongPress, onPin }: RowProps) {
+function TaskRow({ thread, title, href, active, unread, time, onLongPress }: RowProps) {
   const press = useLongPress(onLongPress);
   const preview = thread.last_message?.replace(/\s+/g, " ").trim();
   return (
@@ -2002,13 +1969,12 @@ function TaskRow({ thread, title, status, href, active, unread, time, onLongPres
       </span>
       <span className="dz-row-body">
         <span className="dz-row-top">
-          <span className={`dz-row-title${unread && !active ? " unread" : ""}`}>{title}</span>
+          <span className={`dz-row-title${unread && !active ? " unread" : ""}`}>{listTitle(thread, title, "desk")}</span>
           {time && <span className="dz-row-time">{time}</span>}
         </span>
         {preview && <span className="dz-row-preview">{preview}</span>}
-        <StatusLine thread={thread} status={status} />
+        <StatusLine thread={thread} />
       </span>
-      <PinMark on={thread.followed === true} onPin={onPin} />
     </Link>
   );
 }
@@ -2016,7 +1982,7 @@ function TaskRow({ thread, title, status, href, active, unread, time, onLongPres
 // Phone card of the design: role tag and time, the title, the last message,
 // "details", the status word and the ◇. The role's colour runs down the
 // left edge.
-function TaskCard({ thread, title, status, href, active, unread, time, onLongPress, onPin }: RowProps) {
+function TaskCard({ thread, title, href, active, unread, time, onLongPress }: RowProps) {
   const press = useLongPress(onLongPress);
   const role = roleLabel(thread.role);
   const preview = thread.last_message?.replace(/\s+/g, " ").trim();
@@ -2031,27 +1997,33 @@ function TaskCard({ thread, title, status, href, active, unread, time, onLongPre
         )}
         {time && <span className="tm">{time}</span>}
       </span>
-      <h3 className={unread && !active ? "unread" : undefined}>{title}</h3>
+      <h3 className={unread && !active ? "unread" : undefined}>{listTitle(thread, title, "phone")}</h3>
       {preview && <p>{preview}</p>}
+      {/* 4927: the chain through this person, on a case where they stand in
+          the middle of one. */}
+      {(thread.role === "mediator" || thread.role === "addressee" || thread.type === "incoming_ask" || thread.type === "incoming_request") && (
+        <ChainPath threadId={String(thread.id)} stamp={thread.updated_at ?? ""} />
+      )}
       <span className="dz-cf">
         <span className="dz-open">{t("details")}<DzIcon name="right" size={14} /></span>
       </span>
-      <StatusLine thread={thread} status={status} />
-      <PinMark on={thread.followed === true} onPin={onPin} />
+      <StatusLine thread={thread} />
     </Link>
   );
 }
 
 // Phone, a resolved task: a plain row with the tick.
-function DoneRow({ thread, title, href, time, onPin }: { thread: Thread; title: string; href: string; time?: string; onPin: () => void }) {
+function DoneRow({ thread, title, href, time }: { thread: Thread; title: string; href: string; time?: string }) {
   const role = roleLabel(thread.role);
   return (
     <Link href={href} prefetch className="dz-drow">
       <span className="ok"><DzIcon name="check" size={13} /></span>
-      <span className="t">{title}</span>
+      <span className="t">{listTitle(thread, title, "phone")}</span>
       {time ? <span className="d">{time}</span> : <span />}
       <span className="sub">
-        <small>{thread.goal_stopped === true ? t("stStopped") : t("stResolved")}</small>
+        {/* 4920: the tab already says resolved. A goal its owner stopped is
+            a different fact and keeps its word. */}
+        {thread.goal_stopped === true && <small>{t("stStopped")}</small>}
         {role && thread.role && (
           <span className={`dz-rr role-${thread.role}`}>
             <DzIcon name={ROLE_ICON[thread.role]} size={14} />
@@ -2059,7 +2031,6 @@ function DoneRow({ thread, title, href, time, onPin }: { thread: Thread; title: 
           </span>
         )}
       </span>
-      <PinMark on={thread.followed === true} onPin={onPin} />
     </Link>
   );
 }

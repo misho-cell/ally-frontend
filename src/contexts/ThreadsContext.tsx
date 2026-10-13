@@ -29,6 +29,14 @@ export type Thread = {
   // into finished the moment Stop is pressed. Absent on older deployments,
   // so only an explicit true keeps a stopped goal in the current list.
   goal_stopped_open?: boolean;
+  // 4930 (backend 0259, 13 Oct). The goal is paused and none is open. Such a
+  // row reads status "needs_you"; the card says „paused". Only true counts.
+  goal_paused?: boolean;
+  // 4919 (backend 0261). A short title for the desktop list (2 to 3 words)
+  // and a one-word one for the phone. Null until written; the client then
+  // shortens `title` itself, by whole words.
+  short_title?: string | null;
+  one_word_title?: string | null;
   // #2080 (D703, 6 Oct). The owner flagged this conversation to come back to.
   // A flagged row stays at the top of the list on every device until the
   // owner clears it. Absent on older deployments: only an explicit true lifts.
