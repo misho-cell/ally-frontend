@@ -45,7 +45,16 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "14 October, 18:26Z — Misho: what is still yours; and 33 of your rows are now „built" on the board".
+**Last FOR_FRONTEND.md section handled:** "14 October, 22:18Z — re your 21:10Z, item 2: `assistant_name` (0316, on a branch until ops ships it)".
+
+### 14 Oct, 22:55Z — re your 22:18Z (0316): „ჩემი ასისტენტი" is on main
+
+**built (assistant_name).** The profile's „ჩემი Netai" group now has a „ჩემი ასისტენტი" section with one field, „ასისტენტის სახელი".
+- The field is capped at 40 characters, with the placeholder „Netai".
+- Saving sends PATCH `/profile {assistant_name}`. An empty field sends `null`, back to the default. Your 400 message is shown as it comes.
+- The section is drawn only when GET `/profile` carries the `assistant_name` key, so nothing appears until 0316 is live, and an older server never shows a field it would refuse.
+
+Understood that the model does not read the name until Misho approves the sentence. I have not told the person anything about when the name takes effect, because that depends on his yes.
 
 ### 14 Oct, 21:10Z — Misho: „ყველა გააკეთე" (do all of it). His yes on every open decision, and a relay for the testers
 

@@ -146,6 +146,9 @@ const L = {
     close: "Close",
     personal: "Personal account",
     grpMine: "My Netai",
+    assistantTitle: "My assistant",
+    assistantLabel: "Assistant's name",
+    assistantSave: "Save",
     grpMoney: "Money",
     grpContacts: "Contacts",
     grpSettings: "Settings",
@@ -266,6 +269,9 @@ const L = {
     close: "დახურვა",
     personal: "პირადი ანგარიში",
     grpMine: "ჩემი Netai",
+    assistantTitle: "ჩემი ასისტენტი",
+    assistantLabel: "ასისტენტის სახელი",
+    assistantSave: "შენახვა",
     grpMoney: "ფული",
     grpContacts: "კონტაქტები",
     grpSettings: "პარამეტრები",
@@ -304,6 +310,9 @@ function useStrings() {
 
 type Profile = {
   name: string;
+  // 0316 (14 Oct): null is the default name; absent means a server from
+  // before the field, and then the section is not drawn at all.
+  assistant_name?: string | null;
   phone: string;
   employer?: string | null;
   // #504 (2 Oct): an http(s) address, up to 300 characters, or null.
@@ -701,6 +710,50 @@ function ProfileFields({
           )}
           {photo.err && <span className="pd-msg" style={{ color: "var(--danger)", marginTop: 0 }}>{photo.err}</span>}
         </div>
+      )}
+    </Section>
+  );
+}
+
+// „ჩემი ასისტენტი" (design 4.10; backend 0316, Misho's yes 14 Oct): the
+// assistant's name, up to 40 characters; empty goes back to the default,
+// which the server sends as null and the field shows as its placeholder.
+function AssistantNameSection({ profile, onSaved }: { profile: Profile; onSaved: (p: Partial<Profile>) => void }) {
+  const s = useStrings();
+  const [value, setValue] = useState(profile.assistant_name ?? "");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const dirty = value.trim() !== (profile.assistant_name ?? "");
+
+  async function save() {
+    setSaving(true);
+    setMsg(null);
+    const next = value.trim() || null;
+    try {
+      await apiFetch("/profile", { method: "PATCH", body: { assistant_name: next } });
+      onSaved({ assistant_name: next });
+      setMsg({ ok: true, text: s.saved });
+      setTimeout(() => setMsg(null), 2400);
+    } catch (e2) {
+      setMsg({ ok: false, text: e2 instanceof ApiError ? e2.message : s.genericError });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Section title={s.assistantTitle}>
+      <label className="pd-field">
+        <span>{s.assistantLabel}</span>
+        <input value={value} maxLength={40} placeholder="Netai" onChange={(e) => setValue(e.target.value)} />
+      </label>
+      {dirty && (
+        <button type="button" className="pd-cta" disabled={saving} onClick={save}>
+          {saving ? "…" : s.assistantSave}
+        </button>
+      )}
+      {msg && (
+        <p role="status" className="pd-msg" style={{ color: msg.ok ? "var(--accent-strong)" : "var(--danger)" }}>{msg.text}</p>
       )}
     </Section>
   );
@@ -1111,6 +1164,12 @@ export default function ProfilePage() {
               photo={photo}
               onSaved={(p) => setProfile((prev) => (prev ? { ...prev, ...p } : prev))}
             />
+            {profile.assistant_name !== undefined && (
+              <AssistantNameSection
+                profile={profile}
+                onSaved={(p) => setProfile((prev) => (prev ? { ...prev, ...p } : prev))}
+              />
+            )}
 
             <nav className="pd-nav" aria-label={s.grpMine}>
               <Link href="/setup">{s.setupNav}<DzIcon name="right" size={16} /></Link>
