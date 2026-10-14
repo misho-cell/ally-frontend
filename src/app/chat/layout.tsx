@@ -1514,7 +1514,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               <div className="dz-roles" role="group" aria-label={t("roleAll")}>
                 {(["all", "initiator", "mediator", "addressee"] as const).map((r) => (
                   <button key={r} type="button" aria-pressed={roleFilter === r} onClick={() => setRoleFilter(r)}>
-                    {r === "all" ? t("roleAll") : r === "initiator" ? t("roleInitiator") : r === "mediator" ? t("roleMediator") : t("roleAddressee")}
+                    {r === "all" ? t("roleAll") : r === "initiator" ? t("filterMine") : r === "mediator" ? t("filterHelping") : t("filterAsked")}
                   </button>
                 ))}
               </div>
@@ -1553,7 +1553,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         <button
                           key={g.key}
                           type="button"
-                          className={`dz-fc ${g.key === "needs" ? "w" : "k"}`}
+                          // #4598: with nothing in it the card drops its
+                          // empty chip row and stays short.
+                          className={`dz-fc ${g.key === "needs" ? "w" : "k"}${g.rows.length === 0 ? " none" : ""}`}
                           onClick={() => choosePane(g.key)}
                           aria-pressed={pane === g.key}
                         >
@@ -1564,10 +1566,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             <span className="big">{g.rows.length}</span>
                             <span className="msg">{g.tile}</span>
                           </span>
-                          <span className="dz-peek">
+                          {g.rows.length > 0 && <span className="dz-peek">
                             {g.rows.slice(0, 3).map(({ thread }) => <span key={thread.id}>{chipTitle(thread, goalTitle(thread))}</span>)}
                             {g.rows.length > 3 && <span>+{g.rows.length - 3}</span>}
-                          </span>
+                          </span>}
                           <span className="dz-fcta">
                             {t("details")}
                             <DzIcon name={pane === g.key ? "down" : "right"} size={14} />
@@ -1869,8 +1871,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   );
 }
 
-// The ◇ of the design (#2080): a span, not a button, because it sits inside
-// the row's link and a button may not. Enter and Space press it too.
 function roleLabel(role: Thread["role"]): string | null {
   return role === "initiator" ? t("roleInitiator") : role === "mediator" ? t("roleMediator") : role === "addressee" ? t("roleAddressee") : null;
 }
@@ -1958,7 +1958,7 @@ type RowProps = {
 };
 
 // Desktop sidebar row of the design: the role's icon, title and time, one
-// line of the last message, the status word, the ◇.
+// line of the last message, the path; a status only when paused (4920).
 function TaskRow({ thread, title, href, active, unread, time, onLongPress }: RowProps) {
   const press = useLongPress(onLongPress);
   const preview = thread.last_message?.replace(/\s+/g, " ").trim();
@@ -1982,7 +1982,7 @@ function TaskRow({ thread, title, href, active, unread, time, onLongPress }: Row
 }
 
 // Phone card of the design: role tag and time, the title, the last message,
-// "details", the status word and the ◇. The role's colour runs down the
+// "details", a status only when paused (4920). The role's colour runs down the
 // left edge.
 function TaskCard({ thread, title, href, active, unread, time, onLongPress }: RowProps) {
   const press = useLongPress(onLongPress);

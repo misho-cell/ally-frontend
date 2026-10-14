@@ -132,6 +132,7 @@ const L = {
     saved: "Saved",
     nameRequired: "Name can't be empty",
     dataRights: "Data & privacy",
+    exportNav: "Download my data",
     // #1920 (7 Oct): the download lives one screen in, and nothing on this
     // card said so, so nobody found it.
     dataRightsSub: "See what we store, download it, or delete your account",
@@ -144,6 +145,10 @@ const L = {
     // 13 Oct, FIXED2 account drawer.
     close: "Close",
     personal: "Personal account",
+    grpMine: "My Netai",
+    grpMoney: "Money",
+    grpContacts: "Contacts",
+    grpSettings: "Settings",
     profileSmall: "Personal information",
     phoneLabel: "Phone number",
     saveProfile: "Save profile",
@@ -247,6 +252,7 @@ const L = {
     saved: "შენახულია",
     nameRequired: "სახელი აუცილებელია",
     dataRights: "მონაცემები და კონფიდენციალურობა",
+    exportNav: "მონაცემების გადმოწერა",
     dataRightsSub: "ნახე რას ვინახავთ, გადმოწერე ან წაშალე ანგარიში",
     diagOff: "დიაგნოსტიკა ჩართულია ამ ბრაუზერში. დასამალად გახსენი /profile?diag=0",
     blocked: "დაბლოკილები",
@@ -256,6 +262,10 @@ const L = {
     photoError: "ფოტო ვერ აიტვირთა. სცადე სხვა სურათი.",
     close: "დახურვა",
     personal: "პირადი ანგარიში",
+    grpMine: "ჩემი Netai",
+    grpMoney: "ფული",
+    grpContacts: "კონტაქტები",
+    grpSettings: "პარამეტრები",
     profileSmall: "პირადი ინფორმაცია",
     phoneLabel: "ტელეფონის ნომერი",
     saveProfile: "პროფილის შენახვა",
@@ -1086,16 +1096,22 @@ export default function ProfilePage() {
 
         {profile && (
           <>
+            {/* #4597 (Tornike, Misho's yes): the one long scroll, grouped
+                under four headings, so a person who came for one thing finds
+                it without reading the rest. */}
+            <h2 className="pd-group">{s.grpMine}</h2>
             <ProfileFields
               profile={profile}
               photo={photo}
               onSaved={(p) => setProfile((prev) => (prev ? { ...prev, ...p } : prev))}
             />
 
-            <InviteSection code={profile.referral_code ?? null} />
+            <nav className="pd-nav" aria-label={s.grpMine}>
+              <Link href="/setup">{s.setupNav}<DzIcon name="right" size={16} /></Link>
+              <Link href="/profile/connector">{s.claudeNav}<DzIcon name="right" size={16} /></Link>
+            </nav>
 
-            <TokensSection />
-
+            <h2 className="pd-group">{s.grpMoney}</h2>
             {plan && (
               <Section title={s.planTitle}>
                 <div className="pd-card pd-plan">
@@ -1128,23 +1144,17 @@ export default function ProfilePage() {
               </Section>
             )}
 
-            <section className="pd-section">
-              <NotificationsCard />
-            </section>
+            <TokensSection />
 
-            <Section title={s.langTitle} small={s.langSmall}>
-              <LanguageCard />
-            </Section>
+            <InviteSection code={profile.referral_code ?? null} />
 
-            {/* The pages one level deeper. Each link goes to a page that
-                exists; the design's „my assistant" and „people settings"
-                join this list when their pages are built. */}
-            <nav className="pd-nav" aria-label={s.personal}>
+            <nav className="pd-nav" aria-label={s.grpMoney}>
               <Link href="/profile/earnings">{s.earningsNav}<DzIcon name="right" size={16} /></Link>
+            </nav>
+
+            <h2 className="pd-group">{s.grpContacts}</h2>
+            <nav className="pd-nav" aria-label={s.grpContacts}>
               <Link href="/profile/contacts">{s.myContacts}<DzIcon name="right" size={16} /></Link>
-              <Link href="/profile/data">{s.dataRights}<DzIcon name="right" size={16} /></Link>
-              <Link href="/profile/blocked">{s.blocked}<DzIcon name="right" size={16} /></Link>
-              <Link href="/profile/connector">{s.claudeNav}<DzIcon name="right" size={16} /></Link>
               <Link href="/onboarding/contacts?from=profile">
                 <span>
                   {s.syncNav}
@@ -1153,7 +1163,24 @@ export default function ProfilePage() {
                 <DzIcon name="right" size={16} />
               </Link>
               <MonthlyReminderRow />
-              <Link href="/setup">{s.setupNav}<DzIcon name="right" size={16} /></Link>
+              <Link href="/profile/blocked">{s.blocked}<DzIcon name="right" size={16} /></Link>
+            </nav>
+
+            <h2 className="pd-group">{s.grpSettings}</h2>
+            <section className="pd-section">
+              <NotificationsCard />
+            </section>
+
+            <Section title={s.langTitle} small={s.langSmall}>
+              <LanguageCard />
+            </Section>
+
+            <nav className="pd-nav" aria-label={s.grpSettings}>
+              <Link href="/profile/data">{s.dataRights}<DzIcon name="right" size={16} /></Link>
+              {/* #1920 (Ninia): the download had no name of its own on the
+                  profile, so nobody found it under „data and privacy". It
+                  opens the same page, whose first card holds the button. */}
+              <Link href="/profile/data">{s.exportNav}<DzIcon name="right" size={16} /></Link>
             </nav>
 
             {/* Row 6 / #508: diagnostics only for a browser switched on with

@@ -5,12 +5,31 @@ import { apiFetch } from "@/lib/api";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 
 // Task 1882 (the onboarding vision), on the backend's GET /setup/state and
-// PUT /setup/devices/:id/steps/:step (10 Oct, 11:45Z). Five steps; a step
-// counts once, if the server saw it or any of the person's gadgets said
-// done. `done_count` is the server's, so "N of 5" is never computed here.
+// PUT /setup/devices/:id/steps/:step (10 Oct, 11:45Z). A step counts once,
+// if the server saw it or any of the person's gadgets said done.
 
 export const STEPS = ["install", "notifications", "contacts", "freshness", "connector"] as const;
 export type Step = (typeof STEPS)[number];
+
+// #4590 (Tornike, Misho's yes): „keep contacts fresh" looked like the
+// contacts step twice; it is a monthly refresh, which the monthly reminder
+// and the profile already offer. The server still knows the step; the page
+// no longer shows it.
+export const SHOWN_STEPS: readonly Step[] = ["install", "notifications", "contacts", "connector"];
+
+// #4592: the counter is the ticks the person can see, nothing else. A step is
+// ticked when the server saw it (for notifications, unless this person said
+// the test did not arrive), when one of their gadgets said done, or, for
+// install, when this very gadget runs the installed app.
+export function stepTicked(state: SetupState, step: Step, installedHere: boolean): boolean {
+  const serverSees = state.server[step] === true;
+  const mine = state.mine[step];
+  return (serverSees && !(step === "notifications" && mine === "failed")) || mine === "done" || (step === "install" && installedHere);
+}
+
+export function tickCount(state: SetupState, installedHere: boolean): { done: number; total: number } {
+  return { done: SHOWN_STEPS.filter((st) => stepTicked(state, st, installedHere)).length, total: SHOWN_STEPS.length };
+}
 export type Gadget = "iphone" | "android" | "windows" | "mac" | "other";
 export type StepStatus = "done" | "failed" | "later";
 

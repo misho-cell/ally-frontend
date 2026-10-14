@@ -599,7 +599,7 @@ body {
 
 /* The two counters */
 .dz-feat { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-.dz-fc { position: relative; display: grid; gap: 10px; align-content: start; padding: 15px 14px 13px; border-radius: 16px; text-decoration: none; text-align: left; }
+.dz-fc { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 15px 14px 13px; border-radius: 16px; text-decoration: none; text-align: left; }
 .dz-fc.w { background: var(--accent); color: #FFFFFF; }
 .dz-fc.k { background: var(--apricot); color: #3F2D20; }
 .dz-fc-anim { position: absolute; top: 7px; right: 8px; width: 58px; height: 58px; display: flex; align-items: flex-start; justify-content: center; pointer-events: none; }
@@ -607,11 +607,12 @@ body {
 .dz-fsum { display: flex; align-items: flex-start; gap: 7px; padding-right: 52px; min-height: 52px; }
 .dz-fsum .big { font: 700 34px/32.3px var(--font-system); letter-spacing: -1.36px; }
 .dz-fsum .msg { font: 500 12.35px/17px var(--font-system); letter-spacing: -0.3px; }
-.dz-peek { display: flex; flex-wrap: wrap; gap: 6px; align-self: end; min-height: 19px; }
+.dz-peek { display: flex; flex-wrap: wrap; gap: 6px; min-height: 19px; }
 .dz-peek span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 4px 8px; border-radius: 8px; font: 400 9.7px/11.2px var(--font-system); }
 .dz-fc.w .dz-peek span { background: #006C65; }
 .dz-fc.k .dz-peek span { background: #E39963; }
-.dz-fcta { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 32px; margin-top: 1px; padding: 0 10px; border-radius: 12px; font: 600 11.75px/11.75px var(--font-system); }
+/* 5017: the CTA is pinned to the bottom, so both cards keep it level. */
+.dz-fcta { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 32px; margin-top: auto; padding: 0 10px; border-radius: 12px; font: 600 11.75px/11.75px var(--font-system); }
 .dz-fc.w .dz-fcta { border: 1px solid #A6D7C7; }
 .dz-fc.k .dz-fcta { border: 1px solid #835737; }
 
@@ -1031,3 +1032,13 @@ body {
 }
 .nx-h3 { margin: 6px 0 0; font: 600 16px/1.35 var(--font-system); color: var(--nx-ink); }
 .nx-tags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* #4589: the setup step's secondary answers, as small text links. */
+.nx-links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.nx-links button { padding: 2px 0; background: none; border: 0; font: 500 13px/18px var(--font-system); color: var(--meta); text-decoration: underline; text-underline-offset: 3px; }
+.nx-links button:disabled { opacity: .5; }
+
+/* #4597: the profile's four group headings. */
+.pd-group { margin: 28px 0 0; font: 700 12px/1.4 var(--font-system); color: var(--meta); }
+.pd-group + .pd-nav, .pd-group + .pd-section { margin-top: 4px; padding-top: 0; }
+.dz-fc.none .dz-fsum { min-height: 0; }

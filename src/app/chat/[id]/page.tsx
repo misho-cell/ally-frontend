@@ -49,11 +49,11 @@ const SEND = {
 // 23 Aug #5: the two client-side strings inside the conversation follow the
 // THREAD's language (last message), like the backend's step lines do.
 type ThreadLang = "ka" | "en" | "ru" | "es";
-const CHROME: Record<ThreadLang, { steps: string; spent: string; share: string }> = {
-  ka: { steps: "ნაბიჯები ({n})", spent: "თვის პაკეტი ამოიწურა, ახლა ბალანსიდან იხარჯება", share: "გაზიარება" },
-  en: { steps: "Steps ({n})", spent: "Monthly allowance used up. Now spending from your balance.", share: "Share" },
-  ru: { steps: "Шаги ({n})", spent: "Месячный пакет израсходован. Теперь списывается с баланса.", share: "Поделиться" },
-  es: { steps: "Pasos ({n})", spent: "El paquete mensual se ha agotado. Ahora se descuenta de tu saldo.", share: "Compartir" },
+const CHROME: Record<ThreadLang, { steps: string; howFound: string; spent: string; share: string }> = {
+  ka: { steps: "ნაბიჯები ({n})", howFound: "როგორ ვიპოვე ({n})", spent: "თვის პაკეტი ამოიწურა, ახლა ბალანსიდან იხარჯება", share: "გაზიარება" },
+  en: { steps: "Steps ({n})", howFound: "How I found it ({n})", spent: "Monthly allowance used up. Now spending from your balance.", share: "Share" },
+  ru: { steps: "Шаги ({n})", howFound: "Как я нашёл ({n})", spent: "Месячный пакет израсходован. Теперь списывается с баланса.", share: "Поделиться" },
+  es: { steps: "Pasos ({n})", howFound: "Cómo lo encontré ({n})", spent: "El paquete mensual se ha agotado. Ahora se descuenta de tu saldo.", share: "Compartir" },
 };
 
 // T3 (26 Aug): get_invite_link drops a plain /join?ref=CODE URL into the
@@ -1879,10 +1879,9 @@ export default function ThreadPage() {
           <ContextPanelToggle />
           <ThreadMenu
             label={t("moreActions")}
+            // #4596 (Tornike, Misho's yes): stopping or resuming a running
+            // task comes first; delete stays last and set apart.
             items={[
-              ...(thread && typeof thread.followed === "boolean"
-                ? [{ key: "follow", label: t(thread.followed ? "unfollow" : "follow"), onSelect: toggleFollow, disabled: following }]
-                : []),
               ...(thread?.is_task === true && thread.goal_stopped_open === true
                 ? [
                     { key: "resume", label: t("resumeGoal"), onSelect: () => stoppedGoalAction("resume"), disabled: goalActing },
@@ -1891,6 +1890,9 @@ export default function ThreadPage() {
                 : []),
               ...(thread?.is_task === true && thread.goal_stopped_open !== true
                 ? [{ key: "stop", label: t("stopGoal"), onSelect: stopTask, disabled: stopping }]
+                : []),
+              ...(thread && typeof thread.followed === "boolean"
+                ? [{ key: "follow", label: t(thread.followed ? "unfollow" : "follow"), onSelect: toggleFollow, disabled: following }]
                 : []),
               ...(!isRequest && thread
                 ? [{ key: "rename", label: t("renameGoal"), onSelect: () => { setRenameValue(thread?.title ?? ""); setRenameOpen(true); } }]
@@ -2010,19 +2012,6 @@ export default function ThreadPage() {
               const isFirstAssistant = firstAssistant && msg.id === firstAssistant.id;
               return (
                 <div key={msg.id} className="flex flex-col gap-3">
-                  {/* Row 312: this reply's own steps, and no others. */}
-                  {block.steps.length > 0 && (() => {
-                    const gid = stepsGroupId(block.steps);
-                    return (
-                      <StepGroup
-                        key={gid}
-                        steps={block.steps}
-                        label={chrome.steps.replace("{n}", String(block.steps.length))}
-                        open={openSteps.has(gid)}
-                        onToggle={() => toggleSteps(gid)}
-                      />
-                    );
-                  })()}
                   <div className="flex items-end" style={{ gap: "10px" }}>
                     <AllyAvatar />
                     {/* 9 Oct, the new design: the assistant speaks from a white
@@ -2038,6 +2027,23 @@ export default function ThreadPage() {
                       )}
                     </div>
                   </div>
+                  {/* Row 312: this reply's own steps, and no others. #4593
+                      (Tornike, Misho's yes): after the answer, as „how I
+                      found it", because the answer is what the person came
+                      for. While a run is still working its steps stay above,
+                      as „steps", in the trailing block. */}
+                  {block.steps.length > 0 && (() => {
+                    const gid = stepsGroupId(block.steps);
+                    return (
+                      <StepGroup
+                        key={gid}
+                        steps={block.steps}
+                        label={chrome.howFound.replace("{n}", String(block.steps.length))}
+                        open={openSteps.has(gid)}
+                        onToggle={() => toggleSteps(gid)}
+                      />
+                    );
+                  })()}
                   {/* Task 98: this bubble's own buttons — shown until the user
                       answers THIS question.
                       Row 3a (24 Sept): "answered" used to mean any later user
@@ -2374,7 +2380,7 @@ export default function ThreadPage() {
                   ? t("rateLimitedPlaceholder")
                   : result
                   ? t("resultFollowup")
-                  : t("composerPlaceholder")
+                  : t("homePlaceholder") /* #4594: one phrase in every composer */
               }
               rows={1}
               disabled={composerBlocked}

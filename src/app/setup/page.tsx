@@ -7,11 +7,12 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { isRecord, unwrapData } from "@/lib/payload";
 import { getLocale } from "@/lib/i18n";
 import { ensurePushSubscription, isStandalone } from "@/lib/push";
-import { STEPS, parseSetup, setupDeviceId, useGadget, useSetupState, type Gadget, type Step, type StepStatus } from "@/lib/setup";
+import { SHOWN_STEPS, parseSetup, setupDeviceId, stepTicked, tickCount, useGadget, useSetupState, type Gadget, type Step, type StepStatus } from "@/lib/setup";
 
-// Task 1882, the setup list (onboarding vision §4). Five steps, each card
-// with: what it is for, the taps for THIS gadget, and Done / It didn't
-// work / Later. A step the server sees done shows its own tick whatever
+// Task 1882, the setup list (onboarding vision §4). Four steps since #4590,
+// each card with: what it is for, the taps for THIS gadget, one main button
+// (#4589: the step's own action, or Done) and „it didn't work" / „later" as
+// small links under it. A step the server sees done shows its own tick whatever
 // anyone tapped ("a step is ticked by evidence"). Wording is the design's
 // (strings CSV), with its em dashes made commas.
 //
@@ -31,7 +32,7 @@ type Copy = { title: string; why: string; taps: Partial<Record<Gadget, string[]>
 const KA = {
   title: "დაყენება",
   back: "ჩატში დაბრუნება",
-  intro: "ხუთი მოკლე ნაბიჯი. თითოზე ერთი შეხება. შეგიძლია შეჩერდე და მერე დაუბრუნდე.",
+  intro: (n: number) => `${n} მოკლე ნაბიჯი. თითოზე ერთი შეხება. შეგიძლია შეჩერდე და მერე დაუბრუნდე.`,
   progress: (n: number, t: number) => `${n} / ${t} გაკეთდა`,
   done: "გავაკეთე",
   failed: "არ გამოვიდა",
@@ -41,7 +42,7 @@ const KA = {
   failedNote: "არაუშავს, აი, ზუსტი გზა ამ მოწყობილობისთვის.",
   ask: "ჰკითხე Netai-ს",
   enablePush: "შეტყობინებების ჩართვა",
-  openContacts: ".vcf ფაილის არჩევა",
+  openContacts: "კონტაქტების ფაილის არჩევა",
   openConnector: "კონექტორის ნახვა",
   saveFailed: "ვერ შეინახა. სცადე თავიდან.",
   testSend: "სატესტო შეტყობინების გაგზავნა",
@@ -83,10 +84,10 @@ const KA = {
       title: "შენი კონტაქტები",
       why: "Netai შენს კონტაქტებში ეძებს, ვინ დაგეხმარება.",
       taps: {
-        iphone: ["კონტაქტები → სიები → ხანგრძლივად დააჭირე „ყველა კონტაქტი“", "ექსპორტი → ფაილებში შენახვა (ჩემს iPhone-ზე)", "აქ: .vcf ფაილის არჩევა → ფაილები → ის ფაილი"],
-        android: ["კონტაქტები → გასწორება და მართვა → ფაილში ექსპორტი → შენახვა (ფაილი Downloads-ში ხვდება)", "აქ: .vcf ფაილის არჩევა → Downloads → ის ფაილი"],
-        windows: ["თუ კონტაქტები Google-ში ან iCloud-ში გაქვს: contacts.google.com → ექსპორტი → vCard / icloud.com → კონტაქტები → ექსპორტი vCard"],
-        mac: ["თუ კონტაქტები Google-ში ან iCloud-ში გაქვს: contacts.google.com → ექსპორტი → vCard / icloud.com → კონტაქტები → ექსპორტი vCard"],
+        iphone: ["კონტაქტები → სიები → ხანგრძლივად დააჭირე „ყველა კონტაქტი“", "ექსპორტი → ფაილებში შენახვა (ჩემს iPhone-ზე)", "აქ: კონტაქტების ფაილის არჩევა → ფაილები → ის ფაილი"],
+        android: ["კონტაქტები → გასწორება და მართვა → ფაილში ექსპორტი → შენახვა (ფაილი Downloads-ში ხვდება)", "აქ: კონტაქტების ფაილის არჩევა → Downloads → ის ფაილი"],
+        windows: ["თუ კონტაქტები Google-ში გაქვს: contacts.google.com → ექსპორტი → vCard (ანუ კონტაქტების ფაილი)", "თუ iCloud-ში გაქვს: icloud.com → კონტაქტები → ექსპორტი", "აქ: კონტაქტების ფაილის არჩევა → ის ფაილი"],
+        mac: ["თუ კონტაქტები Google-ში გაქვს: contacts.google.com → ექსპორტი → vCard (ანუ კონტაქტების ფაილი)", "თუ iCloud-ში გაქვს: icloud.com → კონტაქტები → ექსპორტი", "აქ: კონტაქტების ფაილის არჩევა → ის ფაილი"],
       },
       fix: {
         android: "Samsung: ☰ → კონტაქტების მართვა → იმპორტი ან ექსპორტი → ექსპორტი → ტელეფონი",
@@ -110,7 +111,7 @@ const KA = {
 const EN: typeof KA = {
   title: "Setup",
   back: "Back to chat",
-  intro: "Five short steps, one tap each. You can stop and come back later.",
+  intro: (n) => `${n} short steps, one tap each. You can stop and come back later.`,
   progress: (n, t) => `${n} of ${t} done`,
   done: "Done",
   failed: "It didn’t work",
@@ -120,7 +121,7 @@ const EN: typeof KA = {
   failedNote: "That’s okay, here is the exact fix for this gadget.",
   ask: "Ask Netai",
   enablePush: "Turn on notifications",
-  openContacts: "Choose a .vcf file",
+  openContacts: "Choose your contacts file",
   openConnector: "View connector",
   saveFailed: "Could not save. Try again.",
   testSend: "Send a test notification",
@@ -162,10 +163,10 @@ const EN: typeof KA = {
       title: "Your contacts",
       why: "Netai looks through your contacts for who can help.",
       taps: {
-        iphone: ["Contacts → Lists → press and hold “All Contacts”", "Export → Save to Files (On My iPhone)", "Here: Choose .vcf → Files → the file"],
-        android: ["Contacts → Fix & manage → Export to file → Save (the file lands in Downloads)", "Here: Choose .vcf → Downloads → the file"],
-        windows: ["If your contacts sync to Google or iCloud: contacts.google.com → Export → vCard / icloud.com → Contacts → Export vCard"],
-        mac: ["If your contacts sync to Google or iCloud: contacts.google.com → Export → vCard / icloud.com → Contacts → Export vCard"],
+        iphone: ["Contacts → Lists → press and hold “All Contacts”", "Export → Save to Files (On My iPhone)", "Here: Choose your contacts file → Files → the file"],
+        android: ["Contacts → Fix & manage → Export to file → Save (the file lands in Downloads)", "Here: Choose your contacts file → Downloads → the file"],
+        windows: ["If your contacts are in Google: contacts.google.com → Export → vCard (that is, a contacts file)", "If they are in iCloud: icloud.com → Contacts → Export", "Here: Choose your contacts file → the file"],
+        mac: ["If your contacts are in Google: contacts.google.com → Export → vCard (that is, a contacts file)", "If they are in iCloud: icloud.com → Contacts → Export", "Here: Choose your contacts file → the file"],
       },
       fix: { android: "Samsung: ☰ → Manage contacts → Import or export → Export → Phone" },
     },
@@ -235,36 +236,37 @@ export default function SetupPage() {
     if (r.state === "subscribed") await mark("notifications", "done");
   }
 
+  const installedHere = gadget !== null && isStandalone();
+  const count = state ? tickCount(state, installedHere) : null;
+
   return (
     <SheetPage
       title={s.title}
       backHref="/chat"
       backLabel={s.back}
-      action={state ? <span className="nx-pill shrink-0" style={{ alignSelf: "center" }}>{s.progress(state.doneCount, state.total)}</span> : undefined}
+      action={count ? <span className="nx-pill shrink-0" style={{ alignSelf: "center" }}>{s.progress(count.done, count.total)}</span> : undefined}
     >
       {/* FIXED2 `setup`: the steps as a bar, one segment each, filled for
-          the ones done. The count is the server's, as in the header pill. */}
-      {state && (
+          the ones ticked. Same count as the pill and the home banner. */}
+      {count && (
         <div className="nx-onboard-steps" aria-hidden="true">
-          {Array.from({ length: state.total }, (_, k) => <i key={k} className={k < state.doneCount ? "active" : undefined} />)}
+          {Array.from({ length: count.total }, (_, k) => <i key={k} className={k < count.done ? "active" : undefined} />)}
         </div>
       )}
-      <p className="nx-intro">{s.intro}</p>
-      {state && state.doneCount >= state.total && (
+      <p className="nx-intro">{s.intro(SHOWN_STEPS.length)}</p>
+      {count && count.done >= count.total && (
         <p style={{ font: "600 15px/21px var(--font-system)", color: "var(--accent-strong)" }}>{s.ready}</p>
       )}
 
-      {STEPS.map((step, i) => {
+      {SHOWN_STEPS.map((step, i) => {
         const copy = s.steps[step];
-        const serverSees = state?.server[step] === true;
         const mine = state?.mine[step];
-        // install: only the gadget can tell, so an installed app says so.
-        const installedHere = step === "install" && gadget !== null && isStandalone();
-        // For notifications the person's "it didn't arrive" outranks the
-        // server's subscription, which is all the server can see.
-        const ticked = (serverSees && !(step === "notifications" && mine === "failed")) || mine === "done" || installedHere;
+        const ticked = state ? stepTicked(state, step, installedHere) : false;
         const taps = gadget ? copy.taps[gadget] ?? copy.taps.other : undefined;
         const fix = gadget ? copy.fix?.[gadget] : undefined;
+        // #4589: one main button per step. A step with an action of its own
+        // leads with it, and „done" joins the small links.
+        const ownAction = step === "notifications" || step === "contacts" || step === "connector";
         return (
           <div key={step} className="nx-card flex flex-col gap-2.5">
             <div className="flex items-center gap-2">
@@ -281,19 +283,23 @@ export default function SetupPage() {
             )}
 
             {!ticked && (
-              <div className="nx-row" style={{ marginTop: 0 }}>
-                {step === "notifications" && (
+              <div className="flex flex-col items-start gap-2">
+                {step === "notifications" ? (
                   <button type="button" className="nx-btn primary" onClick={enablePush}>{s.enablePush}</button>
-                )}
-                {(step === "contacts" || step === "freshness") && (
+                ) : step === "contacts" ? (
                   <Link href="/onboarding/contacts?from=profile" className="nx-btn primary">{s.openContacts}</Link>
+                ) : step === "connector" ? (
+                  <Link href="/profile/connector" className="nx-btn primary">{s.openConnector}</Link>
+                ) : (
+                  <button type="button" className="nx-btn primary" disabled={busy === step} onClick={() => mark(step, "done")}>{s.done}</button>
                 )}
-                {step === "connector" && (
-                  <Link href="/profile/connector" className="nx-btn">{s.openConnector}</Link>
-                )}
-                <button type="button" className="nx-btn" disabled={busy === step} onClick={() => mark(step, "done")}>{s.done}</button>
-                <button type="button" className="nx-btn" disabled={busy === step} onClick={() => mark(step, "failed")}>{s.failed}</button>
-                <button type="button" className="nx-btn" disabled={busy === step} onClick={() => mark(step, "later")}>{s.later}</button>
+                <div className="nx-links">
+                  {ownAction && (
+                    <button type="button" disabled={busy === step} onClick={() => mark(step, "done")}>{s.done}</button>
+                  )}
+                  <button type="button" disabled={busy === step} onClick={() => mark(step, "failed")}>{s.failed}</button>
+                  <button type="button" disabled={busy === step} onClick={() => mark(step, "later")}>{s.later}</button>
+                </div>
               </div>
             )}
 

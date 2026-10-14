@@ -19,8 +19,10 @@ const SITE_URL = "https://netai.guru";
 const L = {
   en: {
     title: "Invite friends and earn rewards",
-    body:
-      "Share your referral code with friends. When somebody joins with your code and buys their first subscription, you earn a reward. You earn again when the person you invited invites somebody of their own and they pay too, and so on up to 6 steps.",
+    body: (n: number | null) =>
+      "Share your referral code with friends. When somebody joins with your code and buys their first subscription, you earn a reward. You earn again when the person you invited invites somebody of their own and they pay too" +
+      (n != null ? `, and so on up to ${n} steps.` : "."),
+    rule: (p: number, n: number) => `The rule: each inviter gets ${p}% of a first payment, up to ${n} steps.`,
     copy: "Copy",
     copied: "Copied",
     invite: "Invite friend",
@@ -28,8 +30,10 @@ const L = {
   },
   ka: {
     title: "მოიწვიე მეგობრები და მიიღე ჯილდო",
-    body:
-      "გაუზიარე შენი მოსაწვევი კოდი მეგობრებს. როცა ვინმე შენი კოდით შემოუერთდება და პირველ გამოწერას შეიძენს, ჯილდოს მიიღებ. ჯილდოს მიიღებ მაშინაც, როცა შენმა მოწვეულმა თავისი მეგობარი მოიწვია და ისიც იხდის, ასე 6 ნაბიჯამდე.",
+    body: (n: number | null) =>
+      "გაუზიარე შენი მოსაწვევი კოდი მეგობრებს. როცა ვინმე შენი კოდით შემოუერთდება და პირველ გამოწერას შეიძენს, ჯილდოს მიიღებ. ჯილდოს მიიღებ მაშინაც, როცა შენმა მოწვეულმა თავისი მეგობარი მოიწვია და ისიც იხდის" +
+      (n != null ? `, ასე ${n} ნაბიჯამდე.` : "."),
+    rule: (p: number, n: number) => `წესი: თითოეული მომწვევი იღებს პირველი გადახდის ${p}%-ს, ${n} ნაბიჯამდე.`,
     copy: "დაკოპირება",
     copied: "დაკოპირებულია",
     invite: "მოიწვიე მეგობარი",
@@ -48,7 +52,19 @@ export function inviteShareText(code: string | null): string {
   );
 }
 
-export default function ReferralRewardsCard({ code }: { code: string | null }) {
+// #2345 (Lika, Ninia): the rule in plain words. The percent and the number
+// of steps are the server's settings (`percent`, `levels` on
+// /billing/referral), never written here; until they arrive the body omits
+// the step count and the rule line is not drawn.
+export default function ReferralRewardsCard({
+  code,
+  percent = null,
+  levels = null,
+}: {
+  code: string | null;
+  percent?: number | null;
+  levels?: number | null;
+}) {
   const s = L[getLocale()];
   const [copied, setCopied] = useState<"code" | "text" | "link" | null>(null);
   // Row 320. Fetched when the card mounts, not when the button is pressed:
@@ -107,7 +123,10 @@ export default function ReferralRewardsCard({ code }: { code: string | null }) {
   return (
     <div className="card flex flex-col gap-3">
       <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.title}</h2>
-      <p style={{ font: "400 13.5px/21px var(--font-system)", color: "var(--ink-2)" }}>{s.body}</p>
+      <p style={{ font: "400 13.5px/21px var(--font-system)", color: "var(--ink-2)" }}>{s.body(levels)}</p>
+      {percent != null && levels != null && (
+        <p style={{ font: "600 13.5px/21px var(--font-system)", color: "var(--ink)" }}>{s.rule(percent, levels)}</p>
+      )}
       {shownCode && (
         <div className="flex items-center gap-2">
           <code

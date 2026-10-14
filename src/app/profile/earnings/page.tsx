@@ -155,6 +155,9 @@ type Referral = {
   totalEarnedUsd: number;
   minWithdrawalUsd: number;
   canWithdraw: boolean;
+  // #2345: the reward rule, from the settings. Optional for older servers.
+  percent?: number;
+  levels?: number;
   history: HistoryItem[];
 };
 
@@ -426,7 +429,7 @@ export default function EarningsPage() {
             </div>
 
             {/* Referral rewards + code (ticket 6 #5). */}
-            <ReferralRewardsCard code={referralCode} />
+            <ReferralRewardsCard code={referralCode} percent={data.percent ?? null} levels={data.levels ?? null} />
 
             {/* #503 (Ninia). Who joined through the link. Shown only once the
                 server has answered: a failed request and an owner nobody has

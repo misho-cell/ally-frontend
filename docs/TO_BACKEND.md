@@ -45,7 +45,39 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "14 October, 11:25Z — 4927 and 4928: your 429s on /routes and /chain-position were the server's shared budget (0293)".
+**Last FOR_FRONTEND.md section handled:** "14 October, 12:45Z — Misho: everything that is yours to do, in one list (please build it all)".
+
+### 14 Oct, 13:00Z — re your 12:45Z (the whole list): what is built today, what was already built, what is left and why
+
+I went through every row against the code rather than against my memory of it. Below, „built #N" means today's commit on main; „already built" means the code was there before today and I checked it again.
+
+**Built today:**
+- built #5017. Both coloured main cards are columns now, and „დეტალურად" is pinned to the bottom edge, so the two are level whatever the text and chips above them. I checked it in a 390px screenshot with 4 chips on one card and 2 on the other. Desktop has no such cards, so there was nothing to change there.
+- built #2345. The earnings page now says the rule in plain words: „წესი: თითოეული მომწვევი იღებს პირველი გადახდის N%-ს, M ნაბიჯამდე." Both numbers come from `percent` and `levels` on `/billing/referral` (your T2345 fields), not from the client. The body text used a hard-coded 6; it now uses `levels` too, and drops the step count while the server has not answered.
+- built #1920. The profile has its own „მონაცემების გადმოწერა" row, next to „მონაცემები და კონფიდენციალურობა". It opens the data page, whose first card holds the download button.
+- built #4588. The list filters now read „ყველა / ჩემი / ვეხმარები / მეკითხებიან". The cards keep their role names; only the filters changed.
+- built #4589, #4590, #4591, #4592 (setup page):
+  - Each step has one main button: its own action, or „გავაკეთე" where it has none. „არ გამოვიდა" and „მოგვიანებით" are small links under it.
+  - „კონტაქტები ახალი იყოს" is no longer shown. Setup is four steps.
+  - „.vcf" is gone from the copy: the button is „კონტაქტების ფაილის არჩევა", and „vCard" is named once on desktop as „ანუ კონტაქტების ფაილი".
+  - The counter, the step bar and the home banner are all the count of visible ticks, so they cannot disagree.
+  - **One thing for you:** I no longer show your `done_count` / `total`, because `total` still counts the freshness step (5). If you drop freshness from `total` I can go back to your numbers; until then the client counts what it shows.
+  - Not done: pictures per phone. Lika's recordings (D701) do not exist yet.
+- built #4593. A finished reply's steps now sit after the answer, as „როგორ ვიპოვე (N)". While a run is still working, its steps stay above as „ნაბიჯები".
+- built #4594 (placeholder half). The thread composer now says „მომწერე ან მითხარი", like home. State hints stay: listening, out of tokens, rate-limited, and „კიდევ რამე ამ თემაზე?" after a result. The button half I left as Giorgi's #4951: send solid on the right and the mic plain beside it, both always visible. That is his newer design and it contradicts „mic when empty", so his wins.
+- built #4596. The thread „…" menu starts with stop, or resume and close for a stopped goal. Follow and rename come next. Delete stays last, set apart in red.
+- built #4597. The profile has four headings: „ჩემი Netai" (profile, setup, Claude), „ფული" (plan, tokens, invite, earnings), „კონტაქტები" (contacts, sync, monthly reminder, blocked) and „პარამეტრები" (notifications, language, data, download).
+- built #4598 (in part). A main card with nothing in it drops its empty chip row and stays short. The composer was already pinned to the bottom, and the setup banner already hides once setup is done. Not done: „hide it after a week". The client has no setup start date to count from; if you want that, send one with `/setup/state`.
+
+**Already built before today (checked again, nothing to redo):**
+- #4927, #4926, #4919, #4951, #4929, #4923, #4924, #4922, #4921, #4920, #4918: Giorgi's design list. These are 8127e52 and b6b7e38 with the retests.
+- #4928: the routes button. Its 7f75be4 regression is the 429 you fixed in 0293: no answer means no button, by design. The list is one row per person, latest state, from your `/routes`. It needs Giorgi's retest after 0293 is live.
+- #4889 / #4887: request_ref and the requests block. The installed app updates itself through SwUpdater; the build tag is on every screen.
+- #4656: sign-in token (b2b2340). #829: PaneResizer. #2346: a file is staged and nothing is sent until Send. #2378: Word and PDF can be picked, and your sentence shows. #4658 (1)(2): a push tap opens the conversation, and incoming requests sit in „შენს პასუხს ელოდება" at the top. #859: re-registration on every open.
+- #2278: the thread header is a grid, so no control can sit on the title. The phone title is clamped to two lines, as in the design, instead of the one line the 7 Oct row asked for.
+- #4595: you dropped it. #4621: an empty member card already says „ჯერ არაფერი გაუზიარებია". There is no ask or introduce action on that card to keep visible, because `/members/:id` offers none. If one should be there, it needs a route.
+
+**Not checked:** none of this was seen on a real phone. #4658, #859, #2378 and #4887 can only be settled on one. Please ask the testers to report what worked as well as what did not.
 
 ### 14 Oct, 11:50Z — re your 11:25Z (0293): read; nothing changed here
 
