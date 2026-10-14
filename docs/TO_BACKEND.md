@@ -47,6 +47,34 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "14 October, 13:20Z — re your 13:00Z: setup counts four steps, and `started_at` for the banner's week (0300)".
 
+### 14 Oct, 14:10Z — Misho asks: the routes the remaining design pages need
+
+Misho asked me to send you this directly. These are the FIXED2 screens I have not built, because the app has no HTTP route to read or write what they show. I checked `src/api/routes` on your main before writing, so nothing below should already exist. If something does exist under another name, tell me and I will use it. Most of these are engine or connector tools today (the brief's §4.8–4.11 names them); what is missing is the app's door to them. Every write is by id, never by matching text.
+
+**1. A contact's page (brief §4.8; phone 33–36, desktop 21).** Today `/contacts/:id` is read-only. The page needs:
+- the owner's own facts about this contact: read, add, correct, forget. For example: GET `/contacts/:id/facts`, POST `/contacts/:id/facts {text}`, PATCH `/contacts/:id/facts/:factId {text}`, DELETE `/contacts/:id/facts/:factId`. Only what this owner saved, never what others saved, as the page says.
+- the owner's labels and warmth: PATCH `/contacts/:id {labels: string[], warmth: "warm"|"neutral"|"distant"}`.
+- exclude from one goal and undo it: POST `/contacts/:id/exclusions {goal_id}`, DELETE `/contacts/:id/exclusions/:goalId`. This is the goal id, not the thread id.
+- the topic boundary as a saved field (decided 22 Sep): PUT / DELETE `/contacts/:id/boundary {text}`.
+- remove from my network, and mark deceased: POST `/contacts/:id/remove`, POST `/contacts/:id/deceased`.
+Block and unblock already work through `/profile/blocked`.
+
+**2. „ადამიანების პარამეტრები" (phone 37).** One read of the owner's exclusions (person and the goal they are excluded from) and topic boundaries, each with its id so the page can undo it with the routes in 1. Blocked people I already read.
+
+**3. „ჩემი ასისტენტი" (phone 46).** Read and change the assistant's name (`assistant_name`), for example on `GET/PATCH /profile`. Language, tone and the evening hour already have routes.
+
+**4. The seven questions (task 1917; phone 54).** `GET /profile/next-question` gives one question at a time. The page shows all seven with which are answered, and answers one, so it needs a list (id, text, answered) and POST `/profile/questions/:id/answer {answer}`. If the answer route already exists, please name it.
+
+**5. „ჩემი თხოვნების მდგომარეობა" on the path page (phone 31).** The owner's own introduction requests with state sent / accepted / declined / expired: person, goal (or thread id), date and state. `/intro-requests` looks admin-only from here; an owner-scoped GET is what I need.
+
+**6. The member card's „გაცნობის თხოვნა" (4621).** You are taking it to Giorgi, so I will only add the shape I would call: POST `/members/:id/intro-request {goal_id?}` answering the new request's thread id.
+
+**7. „წაუკითხავად მონიშვნა" in the thread menu (brief §4.5).** POST `/threads/:id/unread`, so the row shows unread again on every device.
+
+Not needed from you: the help page's „ჰკითხე Netai-ს" opens the chat with the step and gadget typed in, and that is client-only. The connection-status catalogue is not a page in the product; each state already shows in its place.
+
+Order, if you want one: 1 and 2 first (the contact page is where people correct what Netai thinks), then 4, 5, 3, 7. When one is live, write its shape in FOR_FRONTEND and I will build the screen against it.
+
 ### 14 Oct, 13:55Z — re your 13:20Z (0300): `started_at` is read; the counts stay the client's
 
 **built #4598 (the rest of it).** The home setup banner now hides once `started_at` is more than seven days old. The check runs when your answer is read, not on every draw. A missing or null `started_at` keeps the old behaviour: the banner shows until setup is done. That matters until 0300 is on main, and for anybody who has not started yet. The setup page stays reachable from the profile.
