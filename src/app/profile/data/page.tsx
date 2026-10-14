@@ -154,9 +154,9 @@ function NetworkTiersCard({ title }: { title: string }) {
   if (!tiers || tiers.length === 0) return null;
 
   return (
-    <div className="card flex flex-col gap-2">
-      <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{title}</h2>
-      <div className="flex flex-wrap gap-2">
+    <div className="nx-card">
+      <h3>{title}</h3>
+      <div className="nx-tags">
         {tiers.map((t) => (
           <span
             key={t.label}
@@ -361,7 +361,7 @@ export default function DataRightsPage() {
       )}
       <SheetPage title={s.title} backHref="/profile" backLabel={s.back.replace(/^←\s*/, "")}>
 
-        <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.intro}</p>
+        <p className="nx-intro">{s.intro}</p>
 
         {error && (
           <div className="px-4 py-3 text-sm" style={{ background: "var(--terra-tint)", color: "var(--danger)", borderRadius: "var(--radius-tile)" }}>
@@ -378,15 +378,14 @@ export default function DataRightsPage() {
         ) : (
           <>
             {/* Stored data summary */}
-            <div className="card flex flex-col gap-2">
+            <div className="nx-card">
               <div className="flex items-center justify-between gap-3">
-                <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.summaryTitle}</h2>
+                <h3 style={{ margin: 0 }}>{s.summaryTitle}</h3>
                 <button
                   type="button"
                   onClick={exportData}
                   disabled={exporting}
-                  className="btn-secondary shrink-0 disabled:opacity-60"
-                  style={{ padding: "8px 16px", fontSize: "12px" }}
+                  className="nx-btn shrink-0"
                 >
                   {exporting ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2" style={{ borderColor: "var(--cta-border)", borderTopColor: "var(--accent-strong)" }} />
@@ -398,7 +397,7 @@ export default function DataRightsPage() {
               {summary && Object.keys(summary).length > 0 ? (
                 <Rows obj={summary} labelMap={summaryLabels} />
               ) : (
-                <p className="text-sm" style={{ color: "var(--meta)" }}>{s.empty}</p>
+                <p className="nx-note">{s.empty}</p>
               )}
               {uncounted.length > 0 && (
                 <div style={{ background: "var(--sidebar-bg)", borderRadius: "var(--radius-tile)", padding: "10px 12px", marginTop: "2px" }}>
@@ -421,35 +420,37 @@ export default function DataRightsPage() {
 
             {/* Contacts re-import (23 Aug #3, task 53) — the same flow as
                 onboarding; the OS asks for permission again. */}
-            <div className="card flex flex-col gap-3">
-              <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.contactsTitle}</h2>
-              <p style={{ font: "400 13.5px/21px var(--font-system)", color: "var(--ink-2)" }}>{s.contactsBody}</p>
-              <Link href="/onboarding/contacts" className="btn-primary self-start">
-                {s.contactsBtn}
-              </Link>
+            <div className="nx-card">
+              <h3>{s.contactsTitle}</h3>
+              <p>{s.contactsBody}</p>
+              <div className="nx-row">
+                <Link href="/onboarding/contacts" className="nx-btn primary">{s.contactsBtn}</Link>
+              </div>
             </div>
 
             {/* Account deletion */}
-            <div className="card flex flex-col gap-3">
-              <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--danger)" }}>{s.deleteTitle}</h2>
-              <p style={{ font: "400 13.5px/21px var(--font-system)", color: "var(--ink-2)" }}>{s.deleteBody}</p>
+            <div className="nx-card">
+              <h3 style={{ color: "var(--danger)" }}>{s.deleteTitle}</h3>
+              <p>{s.deleteBody}</p>
 
               {!preview ? (
-                <button type="button" onClick={previewDelete} disabled={busy} className="btn-destructive self-start disabled:opacity-60">
-                  {s.deleteBtn}
-                </button>
+                <div className="nx-row">
+                  <button type="button" onClick={previewDelete} disabled={busy} className="nx-btn danger">
+                    {s.deleteBtn}
+                  </button>
+                </div>
               ) : (
-                <div className="flex flex-col gap-3">
+                <div className="mt-3 flex flex-col gap-3">
                   <div style={{ background: "var(--terra-tint)", borderRadius: "var(--radius-tile)", padding: "12px 14px" }}>
                     <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger)" }}>{s.previewTitle}</p>
                     <p className="mt-0.5 text-xs" style={{ color: "var(--ink-2)" }}>{s.previewNote}</p>
                   </div>
                   <Rows obj={preview} />
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setAskFinal(true)} disabled={busy} className="btn-destructive disabled:opacity-60">
+                  <div className="nx-row">
+                    <button type="button" onClick={() => setAskFinal(true)} disabled={busy} className="nx-btn danger">
                       {s.finalBtn}
                     </button>
-                    <button type="button" onClick={() => setPreview(null)} disabled={busy} className="btn-secondary">
+                    <button type="button" onClick={() => setPreview(null)} disabled={busy} className="nx-btn">
                       {s.cancel}
                     </button>
                   </div>
