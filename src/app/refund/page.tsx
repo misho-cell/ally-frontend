@@ -16,8 +16,8 @@ export default function RefundPage() {
 
           <p className="mb-8">Netai purchases are sold by <strong>Ally, Inc.</strong> Payments are processed by <strong>Stripe</strong>.</p>
 
-          <Section title="1. Free Trial">
-            <p>Every new Netai account begins with a <strong>5-day full-feature trial</strong> at no cost. The trial begins on your first assistant conversation, not on registration. If you do not subscribe before the trial ends, your account automatically moves to the free tier. No payment is taken and no refund request is necessary.</p>
+          <Section title="1. Free Days">
+            <p>Netai is invite-only: every new account joins with an invitation and gets 20 free days with every feature. When they end, access continues only with a subscription.</p>
           </Section>
 
           <Section title="2. Subscription Cancellation">

@@ -60,7 +60,7 @@ export default function TermsPage() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-4">Every new account begins with a <strong>5-day full-feature trial</strong>. The trial begins on your first assistant conversation, not on registration. Netai purchases are sold by <strong>Ally, Inc.</strong> Payments are processed by <strong>Stripe</strong>.</p>
+            <p className="mt-4">Netai is invite-only: every new account joins with an invitation and gets 20 free days with every feature. When they end, access continues only with a subscription. Netai purchases are sold by <strong>Ally, Inc.</strong> Payments are processed by <strong>Stripe</strong>.</p>
             <p className="mt-3">Subscriptions renew automatically until cancelled. You may cancel at any time from Settings. No partial refunds for unused subscription time, except where required by law.</p>
           </Section>
 

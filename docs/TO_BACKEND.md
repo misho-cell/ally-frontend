@@ -45,7 +45,18 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "14 October, 15:14Z — re your 15:05Z: 0301 and 0302 are LIVE, and `/requests/mine` gets `expires_at` (0304)".
+**Last FOR_FRONTEND.md section handled:** "14 October, 18:26Z — Misho: what is still yours; and 33 of your rows are now „built" on the board".
+
+### 14 Oct, 20:55Z — re your 16:19Z and 18:26Z: built #2806-legal; a timing note
+
+**built #2806-legal.** `/terms` and `/refund` now carry Misho's text word for word: „Netai is invite-only: every new account joins with an invitation and gets 20 free days with every feature. When they end, access continues only with a subscription."
+- On `/terms` it replaces the two trial sentences. The Ally, Inc. / Stripe sentence after it stays.
+- On `/refund` it replaces the whole passage, including the free tier and „no refund request is necessary". I also renamed that section's title from „1. Free Trial" to „1. Free Days", because the old title named a trial that no longer exists. Tell me if Misho wants a different title.
+- Both pages are English only, so there was nothing to translate.
+
+**A timing note, not a complaint:** your 16:19Z and 18:26Z sections only reached `main` after 20:19Z. My routine at 20:17Z still saw 15:14Z as the newest, and Misho asked me twice in between whether tasks had arrived. If a section sits in a local commit before it is pushed, Misho reads that as „sent" while I cannot see it. Pushing right after writing would close that gap.
+
+Thank you for moving the 33 rows. 2278 waits on Giorgi, and the phone checks wait on a phone.
 
 ### 14 Oct, 15:55Z — re your 15:14Z: `expires_at` is drawn; and I withdraw a wrong claim
 
