@@ -56,9 +56,9 @@ const L = {
     smsSent: "Code sent via SMS",
     back: "← Back",
     inviteOnly: "Netai is invite-only",
-    inviteOnlyBody: "Enter your friend's invite code or phone number — they must be a Netai subscriber",
-    referralPlaceholder: "Code or number (e.g. KC8FC24P)",
-    referralNotFound: "This code or number wasn't found or has no active subscription. Try another one",
+    inviteOnlyBody: "Enter your friend's invite code. They must be a Netai subscriber",
+    referralPlaceholder: "Invite code (e.g. KC8FC24P)",
+    referralNotFound: "This code wasn't found or has no active subscription. Try another one",
     continueBtn: "Continue",
     firstTime: "First time here — enter your name",
     namePlaceholder: "Name Surname",
@@ -68,7 +68,7 @@ const L = {
     // the next screen will accept, and a mode we have never seen is not a
     // promise we are in a position to make.
     invitedByUnknown: "Invited by",
-    invitedByPlaceholder: "Friend's code or number",
+    invitedByPlaceholder: "Friend's invite code",
     signUp: "Sign up",
     genericError: "Something went wrong",
     invalidCode: "Invalid code",
@@ -91,15 +91,15 @@ const L = {
     smsSent: "კოდი გაიგზავნა SMS-ით",
     back: "← უკან",
     inviteOnly: "Netai მხოლოდ მოწვევით შემოდიხარ",
-    inviteOnlyBody: "შეიყვანე მეგობრის მოსაწვევი კოდი ან ნომერი. მას უნდა ჰქონდეს Netai-ს აქტიური გამოწერა",
-    referralPlaceholder: "კოდი ან ნომერი (მაგ. KC8FC24P)",
-    referralNotFound: "ეს კოდი ან ნომერი ვერ მოიძებნა ან აქტიური გამოწერა არ აქვს. სცადე სხვა",
+    inviteOnlyBody: "შეიყვანე მეგობრის მოსაწვევი კოდი. მას უნდა ჰქონდეს Netai-ს აქტიური გამოწერა",
+    referralPlaceholder: "მოსაწვევი კოდი (მაგ. KC8FC24P)",
+    referralNotFound: "ეს კოდი ვერ მოიძებნა ან აქტიური გამოწერა არ აქვს. სცადე სხვა",
     continueBtn: "გაგრძელება",
     firstTime: "პირველად ხარ აქ? შეიყვანე სახელი",
     namePlaceholder: "სახელი გვარი",
     invitedBy: "ვინ მოგიწვია? (არასავალდებულო)",
     invitedByUnknown: "ვინ მოგიწვია?",
-    invitedByPlaceholder: "მეგობრის კოდი ან ნომერი",
+    invitedByPlaceholder: "მეგობრის მოსაწვევი კოდი",
     signUp: "რეგისტრაცია",
     genericError: "რაღაც შეცდომა მოხდა",
     invalidCode: "არასწორი კოდი",
@@ -432,11 +432,13 @@ export default function LoginPage() {
   // gate already confirmed, then what is typed, then the code the invite link
   // carried. Same order and same both-params convention as registration, so
   // the two paths cannot disagree about what an invite is.
-  function loginBody(): { phone: string; referralPhone?: string; referralCode?: string } {
+  // 14 Oct (server 0281): only a member's own code invites; a typed number no
+  // longer does, so only referralCode is sent.
+  function loginBody(): { phone: string; referralCode?: string } {
     const referral =
       confirmedReferralRef.current ?? (referralInput.trim() || urlRefRef.current || null);
     if (!referral) return { phone };
-    return { phone, referralPhone: referral, referralCode: referral };
+    return { phone, referralCode: referral };
   }
 
   // Row 319. Retrying the refused login with the code now in hand. This is
@@ -476,12 +478,10 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      // One input, both params (backend decision 17 Aug): the server tries the
-      // value as a code first, then as a phone — garbage in either is harmless.
+      // 14 Oct (server 0281): the value is a member's invitation code only.
       const val = referralInput.trim();
       const elig = await post<Eligibility>("/auth/eligibility", {
         phone,
-        referralPhone: val,
         referralCode: val,
       });
       if (elig.eligible) {
@@ -509,10 +509,10 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const body: { phone: string; name: string; referralPhone?: string; referralCode?: string } = { phone, name };
+      const body: { phone: string; name: string; referralCode?: string } = { phone, name };
       // Gate flow value wins; otherwise the optional "Invited by" field. Always
-      // sent when present — this is what builds the referral chain. The same
-      // value goes in BOTH params (code or number, server sorts it out).
+      // sent when present — this is what builds the referral chain. Since
+      // 14 Oct it is a member's code only, sent as referralCode.
       // Three sources, in order of how deliberate they are: a referral the
       // gate confirmed, then whatever is in the field, then the code the
       // invite link carried. The last one exists so that a link can never be
@@ -520,7 +520,6 @@ export default function LoginPage() {
       const referral =
         confirmedReferralRef.current ?? (inviteInput.trim() || urlRefRef.current || null);
       if (referral) {
-        body.referralPhone = referral;
         body.referralCode = referral;
       }
       const res = await post<{ token: string }>("/auth/register", body);

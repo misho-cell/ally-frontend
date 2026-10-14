@@ -42,21 +42,19 @@ const S = {
   en: {
     unavailable: "Payments are temporarily unavailable",
     failed: "Couldn't open the payment page",
-    chargeToday: "You've already used your free trial. $19.99 will be charged today. Continue?",
     portalFailed: "Couldn't open subscription management. Please try again.",
   },
   ka: {
     unavailable: "გადახდა დროებით მიუწვდომელია",
     failed: "გადახდის გვერდი ვერ გაიხსნა",
-    chargeToday: "უფასო პერიოდით უკვე ისარგებლე. თანხა დღესვე ჩამოიჭრება. გავაგრძელოთ?",
     portalFailed: "გამოწერის მართვა ვერ გაიხსნა. სცადე თავიდან.",
   },
 };
 
-// POST /billing/stripe/checkout → { url, trial_days }. The trial is granted
-// once per person, forever; a returning user gets trial_days: 0 and is
-// charged on day one — so confirm before sending them to Stripe in that
-// case. Resolves "redirected" right before navigation.
+// POST /billing/stripe/checkout → { url, trial_days }. Resolves "redirected"
+// right before navigation. 14 Oct: the pricing page no longer promises a card
+// trial and its button names the price, so a trial_days of 0 is no longer a
+// surprise to confirm (the old dialog also carried a price of its own).
 export async function startStripeCheckout(): Promise<CheckoutOutcome> {
   const s = S[getLocale()];
   let data: { url: string; trial_days: number };
@@ -71,7 +69,6 @@ export async function startStripeCheckout(): Promise<CheckoutOutcome> {
     return { kind: "failed", message: s.failed };
   }
   if (!data?.url) return { kind: "failed", message: s.failed };
-  if (data.trial_days === 0 && !window.confirm(s.chargeToday)) return { kind: "cancelled" };
   window.location.href = data.url;
   return { kind: "redirected" };
 }

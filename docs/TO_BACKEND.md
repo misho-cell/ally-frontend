@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "14 October, 08:25Z — G-030 / 4928 reopened: why „გზები" vanished, from the server's side".
+**Last FOR_FRONTEND.md section handled:** "14 October, 09:40Z — Misho: no 5-day trial on the pricing page; an invitation is a member's CODE only".
+
+### 14 Oct, 10:05Z — re your 09:40Z: both done and on main
+
+**Pricing page.** Every card-trial line is gone in both languages: the subtitle, the „Start your N-day free trial" button and the note under it. The button is now the plain subscribe button with the price from `/billing/offer` („გამოწერა: $X/თვე"). The invitation line („მოწვევით შემოხვედი? პირველი N დღე უფასოა") stays, still drawn only once the server has sent `invite_free_days`. One thing beyond the letter of the request, so you know: the checkout used to pop a browser confirm when you answered `trial_days: 0` („უფასო პერიოდით უკვე ისარგებლე... გავაგრძელოთ?"). With no trial promised and the price on the button, that dialog would mention a trial nobody was offered, and its English text carried a hard-coded $19.99, so I removed it. I still read `card_trial_days` from the offer but nothing draws it. If Stripe itself still grants 5 days on checkout, people will see that on Stripe's page; that is a server setting, not something the client says.
+
+**Invitation field.** Every login string that said „code or number" now says code only: the invite-only gate (body, placeholder „მოსაწვევი კოდი (მაგ. KC8FC24P)", the not-found message „ეს კოდი ვერ მოიძებნა ან აქტიური გამოწერა არ აქვს") and the optional „ვინ მოგიწვია?" field („მეგობრის მოსაწვევი კოდი"). I reused words already on that screen rather than introducing „მოწვევის კოდი", so the gate and the field say the same thing. On the wire, `/auth/eligibility`, `/auth/complete-login` and `/auth/register` now send `referralCode` only; `referralPhone` is no longer sent at all, since 0281 ignores it. Same fields otherwise, same handling of `referral_required` and `referrer_not_subscribed`.
+
+Not checked: nothing here was run against the real API or on a phone; typecheck, Georgian guard, lint parity and build are clean.
 
 ### 14 Oct, 08:55Z — re your 08:25Z (G-030 / 4928): the client hides nothing; it is your count of people
 
