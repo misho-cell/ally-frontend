@@ -18,6 +18,7 @@ const L = {
     title: "Member card",
     back: "Back",
     areas: "Areas",
+    city: "City",
     openTo: "Open to",
     notFound: "No member found",
     nothing: "Nothing shared yet",
@@ -27,6 +28,7 @@ const L = {
     title: "წევრის ბარათი",
     back: "უკან",
     areas: "სფეროები",
+    city: "ქალაქი",
     openTo: "რისთვის ვარ ღია",
     notFound: "წევრი ვერ მოიძებნა",
     nothing: "ჯერ არაფერი გაუზიარებია",
@@ -59,12 +61,11 @@ export default function MemberPage() {
     return () => { alive = false; };
   }, [id]);
 
-  const sub = { font: "600 13px/18px var(--font-system)", color: "var(--ink)" } as const;
   const work = m ? [m.role, m.company].filter(Boolean).join(" · ") : "";
 
   return (
     <SheetPage
-      title={m?.name ?? s.title}
+      title={s.title}
       backHref="/profile/contacts"
       backLabel={s.back}
     >
@@ -77,31 +78,41 @@ export default function MemberPage() {
       {/* 11 Oct (tester, box 53131): a member who filled nothing in drew no
           card at all, which read as a page that failed. Said in words. */}
       {m && !work && !m.city && m.areas.length === 0 && m.openTo.length === 0 && (
-        <p style={{ font: "400 13.5px/20px var(--font-system)", color: "var(--meta)" }}>{s.nothing}</p>
+        <p className="nx-empty">{s.nothing}</p>
       )}
       {m && (
         <>
-          {(work || m.city) && (
-            <div className="card flex flex-col gap-1">
-              {work && <p style={{ font: "500 14.5px/21px var(--font-system)", color: "var(--ink)" }}>{work}</p>}
-              {m.city && <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--ink-soft)" }}>{m.city}</p>}
+          {/* FIXED2 `member`: the square avatar with the name and the work
+              beside it. The avatar holds the name's first letter, not
+              upper-cased (that turns a Georgian letter into Mtavruli). */}
+          <div className="nx-member">
+            <span className="nx-avatar" aria-hidden="true">{m.name ? Array.from(m.name.trim())[0] ?? "" : ""}</span>
+            <div className="min-w-0">
+              {m.name && <b style={{ font: "600 16px/1.35 var(--font-system)", color: "var(--nx-ink)", overflowWrap: "anywhere" }}>{m.name}</b>}
+              {work && <p style={{ font: "400 14px/1.65 var(--font-system)", color: "var(--nx-ink)", margin: 0 }}>{work}</p>}
+            </div>
+          </div>
+          {m.city && (
+            <div className="nx-row between" style={{ padding: "12px 0", borderBottom: "1px solid var(--nx-line)" }}>
+              <span style={{ font: "400 13px/1.4 var(--font-system)", color: "var(--nx-ink)" }}>{s.city}</span>
+              <b style={{ font: "600 13px/1.4 var(--font-system)", color: "var(--nx-ink)" }}>{m.city}</b>
             </div>
           )}
           {m.areas.length > 0 && (
-            <div className="card flex flex-col gap-2">
-              <p style={sub}>{s.areas}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {m.areas.map((a) => <span key={a} className="kind-pill">{a}</span>)}
+            <>
+              <h3 className="nx-h3">{s.areas}</h3>
+              <div className="nx-tags">
+                {m.areas.map((a) => <span key={a} className="nx-pill">{a}</span>)}
               </div>
-            </div>
+            </>
           )}
           {m.openTo.length > 0 && (
-            <div className="card flex flex-col gap-1.5">
-              <p style={sub}>{s.openTo}</p>
+            <>
+              <h3 className="nx-h3">{s.openTo}</h3>
               {m.openTo.map((o, i) => (
-                <p key={i} style={{ font: "400 14px/20px var(--font-system)", color: "var(--ink)" }}>{o}</p>
+                <p key={i} style={{ font: "400 14px/1.65 var(--font-system)", color: "var(--nx-ink)", margin: 0 }}>{o}</p>
               ))}
-            </div>
+            </>
           )}
         </>
       )}
