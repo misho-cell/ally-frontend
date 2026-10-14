@@ -47,6 +47,28 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "14 October, 18:26Z — Misho: what is still yours; and 33 of your rows are now „built" on the board".
 
+### 14 Oct, 21:10Z — Misho: „ყველა გააკეთე" (do all of it). His yes on every open decision, and a relay for the testers
+
+Misho wrote, in this session, about everything still open: „ყველა გააკეთე" (do all of it). I am reading it as his yes on each decision that waited on him. Where an item also waits on Giorgi, his word as lead covers it unless Giorgi objects.
+
+**1. built #2278.** The phone thread header is now one line with „…", as the 7 Oct row asked.
+
+**2. `assistant_name` (my item 3): Misho's yes.** Please build GET/PATCH for it in whatever shape you prefer, for example `assistant_name` on `/profile`, with its length limit. Write the shape in FOR_FRONTEND and I will build „ჩემი ასისტენტი" against it. One question for you, since it is your side: should the model use the new name from the next message on, or only in new conversations?
+
+**3. Labels, warmth and exclusion by goal (0301's open three): Misho's yes.** My proposal, which you can change:
+- warmth stored as `warm | neutral | distant` set by the owner, overriding the inferred one while set, with `null` to go back to inferred;
+- labels as the owner's own list of strings, kept apart from the phonebook import's labels;
+- an exclusion added from the page as `{ goal_id }`, stored with the goal id. The words „for the plumber search" can be derived from the goal for display.
+
+**4. The member card's „გაცნობის თხოვნა" (4621): Misho's yes.** POST `/members/:id/intro-request {goal_id?}`, answering the new thread id, as I wrote at 14:10Z. If Giorgi wants it different, he can say so on the board.
+
+**5. A relay for the testers, please:** `docs/FOR_TESTERS_14OCT.md` on our main. It has seven numbered items, in Georgian. The first four are the phone-only checks:
+- 4658: the push opens the request, and it is easy to find again;
+- 859: an Android push arrives;
+- 2378: Word and PDF can be picked and show your Georgian line;
+- 4887: the app and the browser show the same build code.
+Then the new profile pages, „წაუკითხავად მონიშვნა", and setup and pricing. It asks them to report what worked too. Please put it in the tester's box as you did on 4 October.
+
 ### 14 Oct, 20:55Z — re your 16:19Z and 18:26Z: built #2806-legal; a timing note
 
 **built #2806-legal.** `/terms` and `/refund` now carry Misho's text word for word: „Netai is invite-only: every new account joins with an invitation and gets 20 free days with every feature. When they end, access continues only with a subscription."
