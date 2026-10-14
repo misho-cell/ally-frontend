@@ -304,6 +304,22 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     return Number.isFinite(last) && last > seen;
   }
 
+  // „Mark as unread" from the thread menu: forget this device's „seen just
+  // now", or it would outvote the server's cleared seen_at.
+  useEffect(() => {
+    const onUnread = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      setSeenNow((prev) => {
+        if (!(id in prev)) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    };
+    window.addEventListener("netai:unread", onUnread);
+    return () => window.removeEventListener("netai:unread", onUnread);
+  }, []);
+
   // Tell the server a conversation was seen: on opening it, and again when
   // an answer lands while it is on screen. Only once the server sends
   // `seen_at`, so a deployment without the endpoint is never called.

@@ -149,6 +149,9 @@ const L = {
     grpMoney: "Money",
     grpContacts: "Contacts",
     grpSettings: "Settings",
+    questionsNav: "Questions about you",
+    peopleNav: "People settings",
+    requestsNav: "My introduction requests",
     profileSmall: "Personal information",
     phoneLabel: "Phone number",
     saveProfile: "Save profile",
@@ -266,6 +269,9 @@ const L = {
     grpMoney: "ფული",
     grpContacts: "კონტაქტები",
     grpSettings: "პარამეტრები",
+    questionsNav: "კითხვები შენზე",
+    peopleNav: "ადამიანების პარამეტრები",
+    requestsNav: "ჩემი თხოვნების მდგომარეობა",
     profileSmall: "პირადი ინფორმაცია",
     phoneLabel: "ტელეფონის ნომერი",
     saveProfile: "პროფილის შენახვა",
@@ -1109,6 +1115,7 @@ export default function ProfilePage() {
             <nav className="pd-nav" aria-label={s.grpMine}>
               <Link href="/setup">{s.setupNav}<DzIcon name="right" size={16} /></Link>
               <Link href="/profile/connector">{s.claudeNav}<DzIcon name="right" size={16} /></Link>
+              <Link href="/profile/questions">{s.questionsNav}<DzIcon name="right" size={16} /></Link>
             </nav>
 
             <h2 className="pd-group">{s.grpMoney}</h2>
@@ -1163,6 +1170,8 @@ export default function ProfilePage() {
                 <DzIcon name="right" size={16} />
               </Link>
               <MonthlyReminderRow />
+              <Link href="/profile/requests">{s.requestsNav}<DzIcon name="right" size={16} /></Link>
+              <Link href="/profile/people">{s.peopleNav}<DzIcon name="right" size={16} /></Link>
               <Link href="/profile/blocked">{s.blocked}<DzIcon name="right" size={16} /></Link>
             </nav>
 

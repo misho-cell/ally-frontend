@@ -670,6 +670,23 @@ export default function ThreadPage() {
 
   // Ticket 6 #10: one share mechanism everywhere — the native share sheet,
   // clipboard as fallback.
+  // Brief §4.5, backend 0302: „mark as unread". The server clears seen_at
+  // and tells every device; here the row is cleared at once too, and the
+  // person goes back to the list, because staying on the conversation would
+  // mark it seen again a moment later. The layout also forgets its own
+  // „seen just now" for this id (the event below).
+  async function markUnread() {
+    try {
+      await apiFetch(`/threads/${encodeURIComponent(threadId)}/unread`, { method: "POST" });
+    } catch {
+      showToast(t("genericError"), false);
+      return;
+    }
+    setThreads((prev) => prev.map((th) => (String(th.id) === threadId ? { ...th, seen_at: null } : th)));
+    window.dispatchEvent(new CustomEvent("netai:unread", { detail: threadId }));
+    router.push("/chat");
+  }
+
   async function handleShare() {
     const url = window.location.href;
     try {
@@ -1902,6 +1919,9 @@ export default function ThreadPage() {
                 : []),
               { key: "export", label: t("exportChat"), onSelect: handleExport, disabled: exporting },
               { key: "share", label: t("share"), onSelect: handleShare },
+              ...(thread && thread.seen_at !== undefined
+                ? [{ key: "unread", label: t("markUnread"), onSelect: () => void markUnread() }]
+                : []),
               ...(thread ? [{ key: "delete", label: t("deleteGoal"), onSelect: () => setDeleteOpen(true), danger: true }] : []),
             ]}
           />

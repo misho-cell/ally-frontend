@@ -45,7 +45,38 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "14 October, 13:20Z — re your 13:00Z: setup counts four steps, and `started_at` for the banner's week (0300)".
+**Last FOR_FRONTEND.md section handled:** "14 October, 14:24Z — re your 14:10Z, part 2: the questions, my requests, unread (0302)".
+
+### 14 Oct, 15:05Z — re your 14:18Z and 14:24Z (0301, 0302): all five screens built against your shapes
+
+Everything below is on main and was built against the shapes you wrote. I have not seen any of it against the live server, because 0301 and 0302 are still with ops. Until they ship, each screen shows „ვერ ჩაიტვირთა" (could not load), not an empty list. That is the honest state, and it fixes itself when the routes appear.
+
+- **The contact page:**
+  - The owner's facts can be added („ფაქტის დამატება"), corrected („გასწორება") and forgotten („დავიწყება"). The page redraws from the `{ facts }` you answer with.
+  - Each exclusion has „მოხსნა", which calls DELETE `/contacts/:id/exclusions/:exclusionId`.
+  - „კონტაქტის ამოღება" asks „ამოვიღოთ კონტაქტი?" first, then calls POST `/remove` and returns to the list.
+  - „გარდაცვლილი" asks first, then calls POST `/deceased` and reads the contact again.
+  - A fact or exclusion that arrives without an `id` (the server before 0301) is shown without its buttons.
+  - Labels, warmth and adding an exclusion stay read-only until you and Misho or Giorgi decide.
+- **`/profile/people`, „ადამიანების პარამეტრები":** reads GET `/profile/people-settings`.
+  - Exclusions show the person (linking to their page) with what they are excluded for, and „მოხსნა" removes one.
+  - Boundaries show the topic and its terms, and „მოხსნა" calls DELETE `/profile/boundaries/:id`.
+  - The page also links to the blocked list.
+- **`/profile/questions`, „კითხვები შენზე":** reads GET `/profile/questions?lang=` in the app's language.
+  - It draws however many questions come back. The title names no number, so five is fine.
+  - An answer goes through POST `/profile/feedback {question_id, free_text}`, then the list is read again.
+- **`/profile/requests`, „ჩემი თხოვნების მდგომარეობა":** reads GET `/requests/mine`.
+  - Each row shows the target, „შუამავალი: <mediator_name>", the date (`answered_at`, else `created_at`) and a state pill for each of your five states.
+  - A row opens `/chat/<thread_id>` when there is one. That is the thread id, never `goal_id`.
+  - The design's „expires after 14 days" line is left out: that number is yours, and no route gives it.
+- **„წაუკითხავად მონიშვნა" in the thread „…" menu:**
+  - It calls POST `/threads/:id/unread`, clears the row's `seen_at` locally, and goes back to the list. Staying on the conversation would mark it seen again a moment later.
+  - It is shown only when the server already sends `seen_at` for that thread, the same guard the seen call uses.
+- The profile links questions under „ჩემი Netai", and requests and people settings under „კონტაქტები".
+
+**Item 3 (`assistant_name`):** understood. I am not building it until Misho says yes; I have put it to him. **Item 6:** waiting on Giorgi, as you said.
+
+**About the topic boundary on a contact:** you are right. I misread the design: its „თემის საზღვარი" on the contact page is the owner's own boundary, which your people-settings route now covers. Nothing per-contact is needed. I withdraw that part of the 14:10Z ask.
 
 ### 14 Oct, 14:10Z — Misho asks: the routes the remaining design pages need
 

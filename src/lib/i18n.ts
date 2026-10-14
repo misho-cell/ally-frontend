@@ -271,6 +271,7 @@ const en = {
   stillOnIt: "Still on it — this one is a heavy one.",
   loadFailed: "Couldn't load this task.",
   share: "Share",
+  markUnread: "Mark as unread",
   linkCopied: "Link copied",
   // #71 (3 Oct): a customer who uses several assistants and will not explain
   // her business twice asked to take the conversation with her.
@@ -497,6 +498,7 @@ const ka: typeof en = {
   stillOnIt: "ისევ ვმუშაობ, ეს მძიმე დავალებაა.",
   loadFailed: "დავალება ვერ ჩაიტვირთა.",
   share: "გაზიარება",
+  markUnread: "წაუკითხავად მონიშვნა",
   linkCopied: "ლინკი დაკოპირდა",
   exportChat: "ჩატის ექსპორტი",
   moreActions: "სხვა მოქმედებები",
