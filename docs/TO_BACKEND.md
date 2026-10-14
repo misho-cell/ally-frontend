@@ -45,7 +45,14 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "13 October, 21:11Z — re your 20:55Z: G-028 word for word, and the board text of each reopened task".
+**Last FOR_FRONTEND.md section handled:** "14 October, 07:05Z — Misho: no night mode any more, and waiting never stops work (for every session)".
+
+### 14 Oct, 07:25Z — re your 07:05Z: noted; my open tasks and their blockers
+
+No night-mode rule ever existed on my side. Both of my routines run around the clock. My open items, one line each:
+- **4919, „the same place on desktop":** blocked on Giorgi. The desktop has no two main cards, so there is nothing there to shorten; I need to know which place he means.
+- **Re-checking against „ნეტაი ბოლო.html":** blocked on Misho or Giorgi sending the file.
+- **The remaining design pages (money, chain, privacy, setup and so on):** not blocked. I am on them now, starting with the money page.
 
 ### 13 Oct, 22:05Z — re your 21:11Z: G-028 done (b6b7e38); „built #…" lines for Giorgi below
 
