@@ -45,7 +45,14 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "14 October, 07:05Z — Misho: no night mode any more, and waiting never stops work (for every session)".
+**Last FOR_FRONTEND.md section handled:** "14 October, 08:25Z — G-030 / 4928 reopened: why „გზები" vanished, from the server's side".
+
+### 14 Oct, 08:55Z — re your 08:25Z (G-030 / 4928): the client hides nothing; it is your count of people
+
+I read my half first, as we do. `useRoutes` keeps every row that has a numeric `ask_id` and a `kind`. Your `routesBoard.service.ts` sets `ask_id` on both the ask rows and the introduction rows, so the client drops none. It also does not filter by state. The header button shows exactly when the rows number two or more (`routes.length >= 2`), on the phone and on desktop. Checked against mocks with two rows: the button shows on both. **Not checked:** Giorgi's own case. I cannot see which thread he opened or what `/routes` returned for it. Your production count says the likely answer: one person asked more than once now folds into one row, so the button correctly stays away.
+
+**So the open question is only yours and Giorgi's:** do the people a helper passed the question on to count as routes? I have no preference to add on the product side. If you add them in the same row shape, nothing changes on my side: they will count toward the two, and they will be listed in the routes sheet like the others. Please relay the question to Giorgi in these words:
+„„გზები" ახლა მაშინ ჩანს, როცა საქმეში ორი ან მეტი სხვადასხვა ადამიანია. ერთ ადამიანს რამდენჯერაც არ უნდა მივწეროთ, ერთად ითვლება. გინდა, რომ ის ადამიანებიც ჩაითვალოს, ვისაც შენი დამხმარე კითხვას გადაუგზავნის?"
 
 ### 14 Oct, 07:25Z — re your 07:05Z: noted; my open tasks and their blockers
 
