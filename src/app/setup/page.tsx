@@ -240,9 +240,16 @@ export default function SetupPage() {
       title={s.title}
       backHref="/chat"
       backLabel={s.back}
-      action={state ? <span className="kind-pill shrink-0" style={{ alignSelf: "center" }}>{s.progress(state.doneCount, state.total)}</span> : undefined}
+      action={state ? <span className="nx-pill shrink-0" style={{ alignSelf: "center" }}>{s.progress(state.doneCount, state.total)}</span> : undefined}
     >
-      <p style={{ font: "400 14px/21px var(--font-system)", color: "var(--ink-soft)" }}>{s.intro}</p>
+      {/* FIXED2 `setup`: the steps as a bar, one segment each, filled for
+          the ones done. The count is the server's, as in the header pill. */}
+      {state && (
+        <div className="nx-onboard-steps" aria-hidden="true">
+          {Array.from({ length: state.total }, (_, k) => <i key={k} className={k < state.doneCount ? "active" : undefined} />)}
+        </div>
+      )}
+      <p className="nx-intro">{s.intro}</p>
       {state && state.doneCount >= state.total && (
         <p style={{ font: "600 15px/21px var(--font-system)", color: "var(--accent-strong)" }}>{s.ready}</p>
       )}
@@ -259,11 +266,11 @@ export default function SetupPage() {
         const taps = gadget ? copy.taps[gadget] ?? copy.taps.other : undefined;
         const fix = gadget ? copy.fix?.[gadget] : undefined;
         return (
-          <div key={step} className="card flex flex-col gap-2.5">
+          <div key={step} className="nx-card flex flex-col gap-2.5">
             <div className="flex items-center gap-2">
               <span style={{ font: "600 12px/16px var(--font-system)", color: "var(--meta)" }}>{i + 1}</span>
               <span className="flex-1" style={{ font: "600 15.5px/21px var(--font-system)", color: "var(--ink)" }}>{copy.title}</span>
-              {ticked && <span className="kind-pill">{s.ticked}</span>}
+              {ticked && <span className="nx-pill">{s.ticked}</span>}
             </div>
             <p style={{ font: "400 13.5px/20px var(--font-system)", color: "var(--ink-soft)" }}>{copy.why}</p>
 
@@ -274,19 +281,19 @@ export default function SetupPage() {
             )}
 
             {!ticked && (
-              <div className="flex flex-wrap gap-2">
+              <div className="nx-row" style={{ marginTop: 0 }}>
                 {step === "notifications" && (
-                  <button type="button" className="btn-primary" style={{ padding: "8px 16px" }} onClick={enablePush}>{s.enablePush}</button>
+                  <button type="button" className="nx-btn primary" onClick={enablePush}>{s.enablePush}</button>
                 )}
                 {(step === "contacts" || step === "freshness") && (
-                  <Link href="/onboarding/contacts?from=profile" className="btn-primary" style={{ padding: "8px 16px" }}>{s.openContacts}</Link>
+                  <Link href="/onboarding/contacts?from=profile" className="nx-btn primary">{s.openContacts}</Link>
                 )}
                 {step === "connector" && (
-                  <Link href="/profile" className="btn-secondary" style={{ padding: "8px 16px" }}>{s.openConnector}</Link>
+                  <Link href="/profile/connector" className="nx-btn">{s.openConnector}</Link>
                 )}
-                <button type="button" className="btn-secondary" style={{ padding: "8px 14px" }} disabled={busy === step} onClick={() => mark(step, "done")}>{s.done}</button>
-                <button type="button" className="btn-secondary" style={{ padding: "8px 14px" }} disabled={busy === step} onClick={() => mark(step, "failed")}>{s.failed}</button>
-                <button type="button" className="btn-secondary" style={{ padding: "8px 14px" }} disabled={busy === step} onClick={() => mark(step, "later")}>{s.later}</button>
+                <button type="button" className="nx-btn" disabled={busy === step} onClick={() => mark(step, "done")}>{s.done}</button>
+                <button type="button" className="nx-btn" disabled={busy === step} onClick={() => mark(step, "failed")}>{s.failed}</button>
+                <button type="button" className="nx-btn" disabled={busy === step} onClick={() => mark(step, "later")}>{s.later}</button>
               </div>
             )}
 
@@ -295,13 +302,13 @@ export default function SetupPage() {
                 {test === "sent" ? (
                   <>
                     <p style={{ font: "500 13.5px/19px var(--font-system)", color: "var(--ink)" }}>{s.testSent}</p>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" className="btn-secondary" style={{ padding: "8px 14px" }} disabled={busy === step} onClick={() => answerTest(true)}>{s.testYes}</button>
-                      <button type="button" className="btn-secondary" style={{ padding: "8px 14px" }} disabled={busy === step} onClick={() => answerTest(false)}>{s.testNo}</button>
+                    <div className="nx-row" style={{ marginTop: 0 }}>
+                      <button type="button" className="nx-btn" disabled={busy === step} onClick={() => answerTest(true)}>{s.testYes}</button>
+                      <button type="button" className="nx-btn" disabled={busy === step} onClick={() => answerTest(false)}>{s.testNo}</button>
                     </div>
                   </>
                 ) : (
-                  <button type="button" className="btn-secondary self-start" style={{ padding: "8px 14px" }} disabled={test === "sending"} onClick={sendTest}>{s.testSend}</button>
+                  <button type="button" className="nx-btn self-start" disabled={test === "sending"} onClick={sendTest}>{s.testSend}</button>
                 )}
                 {test === "nosub" && <p role="status" style={{ font: "400 12.5px/18px var(--font-system)", color: "var(--meta)" }}>{s.testNoSub}</p>}
                 {test === "failed" && <p role="status" style={{ font: "500 12.5px/18px var(--font-system)", color: "var(--danger)" }}>{s.testFailed}</p>}
