@@ -15,6 +15,7 @@ const L = {
   en: {
     backProfile: "← Profile",
     title: "My earnings",
+    availableTitle: "Available balance",
     totalEarned: (v: string) => `Total earned: ${v} — share your referral code to start.`,
     onHold: (v: string, days: number) => `${v} more will become available within ${days} days.`,
     availableFrom: (d: string, days: number | null) =>
@@ -80,6 +81,7 @@ const L = {
   ka: {
     backProfile: "← პროფილი",
     title: "ჩემი შემოსავალი",
+    availableTitle: "ხელმისაწვდომი ბალანსი",
     totalEarned: (v: string) => `ჯამური შემოსავალი: ${v}. გააზიარე შენი მოსაწვევი კოდი დასაწყებად.`,
     // D674 / D677, wording approved by Misho on 6 Oct. Both numbers are the
     // server's (`onHoldUsd`, `holdDays`); neither is ever written here.
@@ -348,182 +350,139 @@ export default function EarningsPage() {
             <span className="sk-bar" style={{ width: "100%", height: 96, borderRadius: "var(--radius-card)" }} />
           </div>
         ) : error || !data ? (
-          <div className="card p-8 text-center text-sm" style={{ color: "var(--meta)" }}>
-            {s.loadError}
-          </div>
+          <p className="nx-intro" style={{ color: "var(--danger)" }}>{s.loadError}</p>
         ) : (
           <>
-            {/* Balance */}
-            <div className="card flex items-center justify-between gap-3">
-              <div>
-                <p style={{ font: "600 30px/36px var(--font-system)", color: "var(--ink-strong)" }}>{usd(balance)}</p>
-                <p className="mt-1" style={{ fontSize: "13px", color: "var(--ink-soft)" }}>
-                  {s.totalEarned(usd(data.totalEarnedUsd))}
-                </p>
-                {/* Only when the server says something is held and for how
-                    long. No hold and an absent field are both "say nothing",
-                    because there is nothing true to say about either. */}
-                {(data.onHoldUsd ?? 0) > 0 && data.holdDays != null && (
-                  <p className="mt-1" style={{ fontSize: "13px", color: "var(--ink-soft)" }}>
-                    {s.onHold(usd(data.onHoldUsd ?? 0), data.holdDays)}
-                  </p>
-                )}
-              </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/assets/ally/think.jpg"
-                alt=""
-                style={{ width: 84, mixBlendMode: "multiply", flexShrink: 0 }}
-                onError={(e) => { e.currentTarget.style.display = "none"; }}
-              />
+            {/* FIXED2 `money` (earnings tab): the spendable balance as a
+                heading and a big number, then what it can be used for. The
+                numbers are all the server's (D674); none is written here. */}
+            <div>
+              <h3 className="nx-h3">{s.availableTitle}</h3>
+              <p style={{ font: "750 32px/1.2 var(--font-system)", color: "var(--nx-ink)", marginTop: 6 }}>{usd(balance)}</p>
+              <p className="nx-note">{s.totalEarned(usd(data.totalEarnedUsd))}</p>
+              {/* Only when the server says something is held and for how
+                  long. No hold and an absent field are both "say nothing",
+                  because there is nothing true to say about either. */}
+              {(data.onHoldUsd ?? 0) > 0 && data.holdDays != null && (
+                <p className="nx-note">{s.onHold(usd(data.onHoldUsd ?? 0), data.holdDays)}</p>
+              )}
             </div>
 
-            {/* Spend: tokens — always tappable (ticket 6 #6); the server answers
-                402/insufficient_balance and the toast explains. */}
+            {/* Withdraw: the ONLY action gated on balance (ticket 6 #6). */}
+            <div className="flex flex-col gap-1.5">
+              <div className="nx-row">
+                <button type="button" className="nx-btn primary" disabled={!data.canWithdraw} onClick={() => showToast(s.withdrawSoon, false)}>
+                  {s.withdraw}
+                </button>
+              </div>
+              {!data.canWithdraw && <p className="nx-note">{s.withdrawFrom(usd(data.minWithdrawalUsd))}</p>}
+            </div>
+
+            {/* Spend: tokens. Always tappable (ticket 6 #6); the server
+                answers 402/insufficient_balance and the toast explains. */}
             {packages.length > 0 && (
-              <div className="card flex flex-col gap-3">
-                <h2 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{s.buyTokens}</h2>
+              <div className="nx-card">
+                <h3>{s.buyTokens}</h3>
                 {/* Row 318: above the prices, not below. A person reads the
                     price first and decides there, so an explanation underneath
                     arrives after the decision it was written for. */}
-                <p style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-2)" }}>{s.tokensWhat}</p>
-                <p style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-soft)" }}>{s.tokensWeekly}</p>
-                <p style={{ font: "400 13px/20px var(--font-system)", color: "var(--ink-soft)" }}>{s.tokensZero}</p>
-                <div className="flex flex-col gap-2">
+                <p>{s.tokensWhat}</p>
+                <p className="nx-note">{s.tokensWeekly}</p>
+                <p className="nx-note">{s.tokensZero}</p>
+                <div className="nx-row">
                   {packages.map((pkg) => (
                     <button
                       key={pkg.id}
                       type="button"
                       disabled={busy}
                       onClick={() => setConfirm({ kind: "tokens", pkg })}
-                      className="price-row disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="nx-btn"
                     >
-                      <span>{amountFromLabel(pkg.label)}</span>
-                      {pkg.priceUsd != null && <b>{usd(pkg.priceUsd)}</b>}
+                      {amountFromLabel(pkg.label)}
+                      {pkg.priceUsd != null && <b style={{ fontWeight: 600 }}>{usd(pkg.priceUsd)}</b>}
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Spend: subscription */}
-            <div className="card flex flex-col gap-3">
-              <h2 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{s.buySub}</h2>
-              <div className="grid grid-cols-2 gap-2.5">
+            {/* Spend: a month of a plan. */}
+            <div className="nx-card">
+              <h3>{s.buySub}</h3>
+              <div className="nx-row">
                 {subTiers.map((tier) => (
                   <button
                     key={tier.tier}
                     type="button"
                     disabled={busy}
                     onClick={() => setConfirm({ kind: "sub", sub: tier })}
-                    className="tile disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="nx-btn"
                   >
-                    <p style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{tier.name}</p>
-                    <p style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>{usd(tier.priceUsd)} · {s.perMonth}</p>
+                    <b style={{ fontWeight: 600 }}>{tier.name}</b>
+                    {usd(tier.priceUsd)} · {s.perMonth}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Referral rewards + code (ticket 6 #5) — above Withdraw */}
+            {/* Referral rewards + code (ticket 6 #5). */}
             <ReferralRewardsCard code={referralCode} />
 
-            {/* #503 (Ninia). The balance said what the invitations were worth
-                and never who they were. Shown only once the server has
-                answered: a deployment without the route, and an owner nobody
-                has joined through, are different facts, and an empty card
-                under "who I invited" would claim the second when it is the
-                first. */}
-            {invited === null && invitedFailed && (
-              <div className="card flex flex-col gap-2">
-                <h2 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{s.invited}</h2>
-                <p style={{ fontSize: "12.5px", color: "var(--meta)" }}>{s.invitedError}</p>
-              </div>
-            )}
-            {invited !== null && (
-              <div className="card flex flex-col gap-2">
-                <h2 style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{s.invited}</h2>
-                {invited.length === 0 ? (
-                  <p style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>{s.invitedEmpty}</p>
+            {/* #503 (Ninia). Who joined through the link. Shown only once the
+                server has answered: a failed request and an owner nobody has
+                joined through are different facts, and an empty list would
+                claim the second when it is the first. */}
+            {(invited !== null || invitedFailed) && (
+              <div>
+                <h3 className="nx-h3">{s.invited}</h3>
+                {invited === null ? (
+                  <p className="nx-intro" style={{ color: "var(--danger)", marginTop: 8 }}>{s.invitedError}</p>
+                ) : invited.length === 0 ? (
+                  <p className="nx-intro" style={{ marginTop: 8 }}>{s.invitedEmpty}</p>
                 ) : (
-                  invited.map((p, i) => (
-                    <div key={`${p.name ?? ""}-${p.joined_at ?? ""}-${i}`} className="flex items-center gap-2">
-                      <span style={{ fontSize: "13.5px", color: p.name ? "var(--ink)" : "var(--meta)" }}>
-                        {p.name?.trim() ? p.name : s.noName}
-                      </span>
-                      {/* The state is the whole point of the list: an invite
-                          that registered and one that pays are worth
-                          different things to the person reading it. */}
-                      <span
-                        className="rounded-full px-2 py-0.5"
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: 600,
-                          background: p.state === "paid" ? "var(--accent-tint)" : "var(--sidebar-bg)",
-                          color: p.state === "paid" ? "var(--accent-strong)" : "var(--ink-2)",
-                        }}
-                      >
-                        {p.state === "paid" ? s.stPaid : p.state === "trial" ? s.stTrial : s.stRegistered}
-                      </span>
-                      {p.joined_at && (
-                        <span className="ml-auto" style={{ fontSize: "11.5px", color: "var(--meta)" }}>
-                          {fmtDateLoc(p.joined_at)}
+                  <div className="mt-2 flex flex-col gap-2">
+                    {invited.map((p, i) => (
+                      <div key={`${p.name ?? ""}-${p.joined_at ?? ""}-${i}`} className="nx-row" style={{ flexWrap: "nowrap" }}>
+                        <span style={{ font: "400 14px/1.4 var(--font-system)", color: p.name ? "var(--nx-ink)" : "var(--nx-muted)" }}>
+                          {p.name?.trim() ? p.name : s.noName}
                         </span>
-                      )}
-                    </div>
-                  ))
+                        {/* The state is the whole point of the list: an invite
+                            that registered and one that pays are worth
+                            different things to the person reading it. */}
+                        <span className="nx-pill">{p.state === "paid" ? s.stPaid : p.state === "trial" ? s.stTrial : s.stRegistered}</span>
+                        {p.joined_at && <span className="nx-note ml-auto shrink-0">{fmtDateLoc(p.joined_at)}</span>}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
 
-            {/* Withdraw — the ONLY button gated on balance (ticket 6 #6) */}
-            <div className="card flex flex-col gap-2">
-              <button
-                type="button"
-                disabled={!data.canWithdraw}
-                onClick={() => showToast(s.withdrawSoon, false)}
-                className="btn-primary w-full"
-              >
-                {s.withdraw}
-              </button>
-              {!data.canWithdraw && (
-                <p className="text-center" style={{ fontSize: "12px", color: "var(--meta)" }}>
-                  {s.withdrawFrom(usd(data.minWithdrawalUsd))}
-                </p>
-              )}
-            </div>
-
             {/* History */}
-            <div className="card flex flex-col gap-1">
-              <h2 className="mb-2" style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--ink)" }}>{s.history}</h2>
+            <div className="nx-card">
+              <h3>{s.history}</h3>
               {data.history.length === 0 ? (
-                <div className="py-4 text-center">
-                  <p style={{ fontSize: "13px", color: "var(--meta)" }}>{s.noActivity}</p>
-                  <p style={{ fontSize: "12px", color: "var(--meta)" }}>{s.noActivitySub}</p>
-                </div>
+                <>
+                  <p>{s.noActivity}</p>
+                  <p className="nx-note">{s.noActivitySub}</p>
+                </>
               ) : (
                 data.history.map((item, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between py-2.5"
-                    style={{ borderBottom: i === data.history.length - 1 ? "none" : "1px solid var(--skeleton)" }}
+                    className="flex items-center justify-between gap-3 py-2.5"
+                    style={{ borderBottom: i === data.history.length - 1 ? "none" : "1px solid var(--nx-line)" }}
                   >
-                    <div>
-                      <p style={{ fontSize: "14px", color: "var(--ink)" }}>{historyLabel(item)}</p>
-                      <p style={{ fontSize: "12px", color: "var(--meta)" }}>{fmtDateLoc(item.createdAt, { month: "short", day: "numeric", year: "numeric" })}</p>
+                    <div className="min-w-0">
+                      <p style={{ margin: 0 }}>{historyLabel(item)}</p>
+                      <p className="nx-note" style={{ margin: 0 }}>{fmtDateLoc(item.createdAt, { month: "short", day: "numeric", year: "numeric" })}</p>
                       {item.availableFrom && fmtDateLoc(item.availableFrom) && (
-                        <p style={{ fontSize: "12px", color: "var(--meta)" }}>
+                        <p className="nx-note" style={{ margin: 0 }}>
                           {s.availableFrom(fmtDateLoc(item.availableFrom, { month: "short", day: "numeric", year: "numeric" }), data.holdDays ?? null)}
                         </p>
                       )}
                     </div>
-                    <span
-                      style={{
-                        fontSize: "14px",
-                        fontWeight: 600,
-                        color: item.amountUsd >= 0 ? "var(--accent-strong)" : "var(--danger)",
-                      }}
-                    >
+                    <span className="shrink-0" style={{ font: "600 14px/1.4 var(--font-system)", color: item.amountUsd >= 0 ? "var(--accent)" : "var(--danger)" }}>
                       {item.amountUsd >= 0 ? "+" : "−"}{usd(item.amountUsd)}
                     </span>
                   </div>
