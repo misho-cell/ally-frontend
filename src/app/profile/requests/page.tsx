@@ -10,9 +10,8 @@ import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 // „ჩემი თხოვნების მდგომარეობა" (design phone 31; backend 0302, 14 Oct):
 // the owner's own introduction requests, newest first, each with the state
 // the server holds. A row opens its conversation when the server names one
-// (thread_id, never the goal id). The design's line about how many days a
-// request lasts is left out: that number is the server's, and no route
-// gives it.
+// (thread_id, never the goal id). A waiting request says when it runs out,
+// from the server's `expires_at` (0304), never from a day count written here.
 
 const L = {
   en: {
@@ -20,6 +19,7 @@ const L = {
     back: "Profile",
     via: "Intermediary",
     empty: "No requests sent yet.",
+    expires: (d: string) => `Expires ${d}`,
     failed: "Could not load",
     state: { sent: "Sent", accepted: "Accepted", declined: "Declined", expired: "Expired", cancelled: "Cancelled" },
   },
@@ -28,13 +28,14 @@ const L = {
     back: "პროფილი",
     via: "შუამავალი",
     empty: "თხოვნები ჯერ არ გაგიგზავნია.",
+    expires: (d: string) => `ვადა იწურება ${d}`,
     failed: "ვერ ჩაიტვირთა",
     state: { sent: "გაგზავნილია", accepted: "მიღებულია", declined: "უარი თქვა", expired: "ვადა გაუვიდა", cancelled: "გაუქმდა" },
   },
 };
 
 type State = "sent" | "accepted" | "declined" | "expired" | "cancelled";
-type Req = { id: string; target: string | null; mediator: string | null; threadId: string | null; state: State | null; at: string | null };
+type Req = { id: string; target: string | null; mediator: string | null; threadId: string | null; state: State | null; at: string | null; expiresAt: string | null };
 
 const STATES: readonly State[] = ["sent", "accepted", "declined", "expired", "cancelled"];
 const idOf = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : typeof v === "number" ? String(v) : null);
@@ -54,6 +55,7 @@ function parse(raw: unknown): Req[] | null {
       // An unknown state is drawn as no pill rather than guessed at.
       state: STATES.includes(r.state as State) ? (r.state as State) : null,
       at: str(r.answered_at) ?? str(r.created_at),
+      expiresAt: r.state === "sent" ? str(r.expires_at) : null,
     }];
   });
 }
@@ -86,6 +88,7 @@ export default function MyRequestsPage() {
               {r.mediator ? <span className="nx-note">{s.via}: {r.mediator}</span> : <span />}
               {r.at && <span className="nx-note">{fmtDateShort(r.at)}</span>}
             </div>
+            {r.expiresAt && <p className="nx-note" style={{ margin: 0 }}>{s.expires(fmtDateShort(r.expiresAt))}</p>}
           </>
         );
         return r.threadId ? (

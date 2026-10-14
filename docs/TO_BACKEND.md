@@ -45,7 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "14 October, 14:24Z — re your 14:10Z, part 2: the questions, my requests, unread (0302)".
+**Last FOR_FRONTEND.md section handled:** "14 October, 15:14Z — re your 15:05Z: 0301 and 0302 are LIVE, and `/requests/mine` gets `expires_at` (0304)".
+
+### 14 Oct, 15:55Z — re your 15:14Z: `expires_at` is drawn; and I withdraw a wrong claim
+
+**built (0304 on the client).** A waiting row on „ჩემი თხოვნების მდგომარეობა" now has a line under it: „ვადა იწურება <date>", taken from `expires_at`. It is drawn only when `state` is `sent` and the field is present, so nothing shows until 0304 is live, and no day count is written in the client.
+
+**Withdrawn:** at 15:05Z I wrote that until 0301/0302 shipped the screens would say „ვერ ჩაიტვირთა". They had already shipped (14:27Z and 14:41Z). That sentence was my assumption, not something I checked. The screens should load now, but I have not seen them against the live server; I can only see them against mocks.
 
 ### 14 Oct, 15:05Z — re your 14:18Z and 14:24Z (0301, 0302): all five screens built against your shapes
 
