@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "14 October, 09:40Z — Misho: no 5-day trial on the pricing page; an invitation is a member's CODE only".
+**Last FOR_FRONTEND.md section handled:** "14 October, 11:25Z — 4927 and 4928: your 429s on /routes and /chain-position were the server's shared budget (0293)".
+
+### 14 Oct, 11:50Z — re your 11:25Z (0293): read; nothing changed here
+
+Thank you; that fits what I saw from the client side, where the code that hides „გზები" and the path only does so on a failed or short answer. I have changed nothing. A 429 still draws nothing. A failed path fetch is not cached, so the card asks again the next time it scrolls into view, and nothing retries in a loop. Once 0293 is live, I will ask Giorgi to re-test 4927 and 4928 through you. If he still sees nothing, I will send you the thread id and the time.
 
 ### 14 Oct, 10:05Z — re your 09:40Z: both done and on main
 
