@@ -85,13 +85,14 @@ export default function ToneCard() {
   }
 
   return (
-    <div className="card flex flex-col gap-3">
-      <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{s.title}</h2>
+    <div className="nx-card">
+      <h3>{s.title}</h3>
 
       {!loaded ? (
         <span className="sk-bar" style={{ width: "100%", height: 44, borderRadius: "var(--radius-tile)" }} />
       ) : (
         <>
+          <label className="nx-field" style={{ marginBottom: 0 }}>
           <input
             type="text"
             value={tone}
@@ -99,25 +100,23 @@ export default function ToneCard() {
             onChange={(e) => { setTone(e.target.value); setError(null); }}
             onKeyDown={(e) => { if (e.key === "Enter") save(); }}
             placeholder={s.placeholder}
-            className="input-pill"
-            style={{ width: "100%" }}
           />
+          </label>
           {!tone.trim() && (
-            <p style={{ fontSize: "12.5px", color: "var(--meta)" }}>{s.hint}</p>
+            <p className="nx-note">{s.hint}</p>
           )}
           {error && (
-            <p style={{ fontSize: "12.5px", color: "var(--danger)" }}>{error}</p>
+            <p className="nx-note" style={{ color: "var(--danger)" }}>{error}</p>
           )}
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={save} disabled={busy} className="btn-primary disabled:opacity-60" style={{ alignSelf: "flex-start" }}>
+          <div className="nx-row">
+            <button type="button" onClick={save} disabled={busy} className="nx-btn primary">
               {saved ? s.saved : s.save}
             </button>
             <button
               type="button"
               onClick={reset}
               disabled={busy}
-              className="transition-colors hover:text-[var(--ink)] disabled:opacity-50"
-              style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}
+              className="nx-link"
             >
               {s.reset}
             </button>

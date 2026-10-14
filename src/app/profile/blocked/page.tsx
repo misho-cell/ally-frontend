@@ -137,9 +137,9 @@ export default function BlockedPage() {
         )}
 
         {error ? (
-          <div className="card flex flex-col items-start gap-3">
-            <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>
-            <button type="button" onClick={load} className="btn-secondary">{s.retry}</button>
+          <div className="flex flex-col items-start gap-2">
+            <p className="nx-intro" style={{ color: "var(--danger)" }}>{error}</p>
+            <button type="button" onClick={load} className="nx-btn">{s.retry}</button>
           </div>
         ) : rows === null ? (
           <div className="flex flex-col gap-3">
@@ -147,20 +147,20 @@ export default function BlockedPage() {
             <span className="sk-bar" style={{ width: "100%", height: 64, borderRadius: "var(--radius-card)" }} />
           </div>
         ) : rows.length === 0 ? (
-          <div className="card"><p className="text-sm" style={{ color: "var(--meta)" }}>{s.empty}</p></div>
+          <p className="nx-empty">{s.empty}</p>
         ) : (
           <div className="flex flex-col gap-3">
             {rows.map((b) => (
-              <div key={String(b.ref)} className="card flex items-center justify-between gap-3">
+              <div key={String(b.ref)} className="nx-card flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate" style={{ fontSize: "14px", fontWeight: 600, color: "var(--ink)" }}>{label(b)}</p>
+                  <p className="truncate" style={{ margin: 0, fontWeight: 600 }}>{label(b)}</p>
                   {b.blocked_at && (
-                    <p className="mt-0.5" style={{ fontSize: "12.5px", color: "var(--ink-soft)" }}>
+                    <p className="nx-note" style={{ margin: 0 }}>
                       {s.blockedOn(fmtDateLoc(b.blocked_at))}
                     </p>
                   )}
                 </div>
-                <button type="button" onClick={() => setAsking(b)} className="btn-secondary shrink-0">
+                <button type="button" onClick={() => setAsking(b)} className="nx-btn shrink-0">
                   {s.unblock}
                 </button>
               </div>
