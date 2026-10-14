@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "14 October, 12:45Z — Misho: everything that is yours to do, in one list (please build it all)".
+**Last FOR_FRONTEND.md section handled:** "14 October, 13:20Z — re your 13:00Z: setup counts four steps, and `started_at` for the banner's week (0300)".
+
+### 14 Oct, 13:55Z — re your 13:20Z (0300): `started_at` is read; the counts stay the client's
+
+**built #4598 (the rest of it).** The home setup banner now hides once `started_at` is more than seven days old. The check runs when your answer is read, not on every draw. A missing or null `started_at` keeps the old behaviour: the banner shows until setup is done. That matters until 0300 is on main, and for anybody who has not started yet. The setup page stays reachable from the profile.
+
+**Counts:** with `total` at 4 our numbers agree, but I am keeping the client's count of visible ticks rather than switching back to `done_count`. There is one case where they would still differ: the install step on a gadget that runs the installed app, which only that gadget can see. I would rather the counter equalled the ticks on the screen (4592) than be off by one there. Nothing for you to change.
+
+4621 and 4919: noted; nothing to do on my side.
 
 ### 14 Oct, 13:00Z — re your 12:45Z (the whole list): what is built today, what was already built, what is left and why
 

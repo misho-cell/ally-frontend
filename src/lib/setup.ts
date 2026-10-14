@@ -36,6 +36,11 @@ export type StepStatus = "done" | "failed" | "later";
 export type SetupState = {
   doneCount: number;
   total: number;
+  // #4598 (server 0300): more than a week since the person's first
+  // conversation, by the server's `started_at`. Worked out when the answer
+  // is read, so nothing reads the clock during render. False while the
+  // server sends no `started_at` (an older server, or nobody started yet).
+  pastFirstWeek: boolean;
   server: Partial<Record<Step, boolean>>;
   mine: Partial<Record<Step, StepStatus>>;
 };
@@ -70,6 +75,8 @@ export function setupDeviceId(): string {
   }
 }
 
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
 export function parseSetup(raw: unknown, deviceId: string): SetupState | null {
   const d = unwrapData(raw);
   if (!isRecord(d) || typeof d.done_count !== "number" || typeof d.total !== "number") return null;
@@ -83,7 +90,9 @@ export function parseSetup(raw: unknown, deviceId: string): SetupState | null {
       if (v === "done" || v === "failed" || v === "later") mine[s] = v;
     }
   }
-  return { doneCount: d.done_count, total: d.total, server, mine };
+  const started = typeof d.started_at === "string" ? Date.parse(d.started_at) : NaN;
+  const pastFirstWeek = Number.isFinite(started) && Date.now() - started > WEEK_MS;
+  return { doneCount: d.done_count, total: d.total, pastFirstWeek, server, mine };
 }
 
 // The state, read once on mount; `null` while unknown or when the server

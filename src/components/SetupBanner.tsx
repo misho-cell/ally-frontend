@@ -11,7 +11,9 @@ import { tickCount, useGadget, useSetupState } from "@/lib/setup";
 export default function SetupBanner({ className = "" }: { className?: string }) {
   const [state] = useSetupState();
   const gadget = useGadget();
-  if (!state) return null;
+  // #4598: a week after the person started, the banner steps aside; the
+  // setup page stays one tap away on the profile.
+  if (!state || state.pastFirstWeek) return null;
   const { done, total } = tickCount(state, gadget !== null && isStandalone());
   if (done >= total) return null;
   return (
