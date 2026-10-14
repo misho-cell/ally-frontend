@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { authHeaders } from "@/lib/deviceId";
 import { getLocale } from "@/lib/i18n";
 import { skipOnboarding } from "@/lib/user";
+import SheetPage from "@/components/SheetPage";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 // FT-6 (2 Sept): "which step am I on" (as opposed to "is onboarding done at
@@ -21,6 +22,8 @@ const L = {
     skipped: "Skipped",
     start: "Start",
     title: "Import your contacts",
+    syncTitle: "Contact sync",
+    backProfile: "Back to profile",
     body: "Netai uses your contacts to help you work your network.",
     shareContacts: "Share contacts",
     uploadVcf: "Upload .vcf file",
@@ -48,6 +51,8 @@ const L = {
     skipped: "გამოტოვებულია",
     start: "დაწყება",
     title: "ატვირთე შენი კონტაქტები",
+    syncTitle: "კონტაქტების სინქრონი",
+    backProfile: "პროფილში დაბრუნება",
     body: "Netai შენს კონტაქტებს იყენებს, რომ შენი ქსელით დაგეხმაროს.",
     shareContacts: "კონტაქტების გაზიარება",
     uploadVcf: "ატვირთე .vcf ფაილი",
@@ -196,10 +201,21 @@ export default function OnboardingContactsPage() {
     }
   }
 
+  // FIXED2 `sync`: opened from the profile this is the contact sync sheet,
+  // in the sheet's frame with its back and close buttons. During onboarding
+  // it keeps its own centred card, since there is no profile to go back to.
+  const frame = (inner: React.ReactNode) =>
+    fromProfile ? (
+      <SheetPage title={s.syncTitle} backHref="/profile" backLabel={s.backProfile}>{inner}</SheetPage>
+    ) : (
+      <div className="flex min-h-full flex-col items-center justify-center px-4" style={{ background: "var(--bg)" }}>{inner}</div>
+    );
+  const cardCls = fromProfile ? "nx-card" : "card w-full max-w-sm p-8";
+
   if (matchedNames && pendingContacts) {
     return (
-      <div className="flex min-h-full flex-col items-center justify-center px-4" style={{ background: "var(--bg)" }}>
-        <div className="card w-full max-w-sm p-8 flex flex-col gap-5">
+      frame(
+        <div className={`${cardCls} flex flex-col gap-5`}>
           <div className="flex flex-col gap-1">
             <h1 style={{ font: "500 22px/28px var(--font-bricolage)", color: "var(--ink)" }}>{s.alreadyHereTitle}</h1>
             <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.alreadyHereBody}</p>
@@ -226,14 +242,14 @@ export default function OnboardingContactsPage() {
             {loading ? <Spinner /> : s.continueImport}
           </button>
         </div>
-      </div>
+      )
     );
   }
 
   if (result) {
     return (
-      <div className="flex min-h-full flex-col items-center justify-center px-4" style={{ background: "var(--bg)" }}>
-        <div className="card w-full max-w-sm p-8 flex flex-col items-center gap-5 text-center">
+      frame(
+        <div className={`${cardCls} flex flex-col items-center gap-5 text-center`}>
           <div className="flex h-14 w-14 items-center justify-center rounded-full" style={{ background: "var(--accent-tint)" }}>
             <svg className="h-7 w-7" style={{ color: "var(--accent)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -255,13 +271,13 @@ export default function OnboardingContactsPage() {
             {fromProfile ? s.backToProfile : s.start}
           </button>
         </div>
-      </div>
+      )
     );
   }
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-center px-4" style={{ background: "var(--bg)" }}>
-      <div className="card w-full max-w-sm p-8 flex flex-col gap-6">
+    frame(
+      <div className={`${cardCls} flex flex-col gap-6`}>
         <div className="flex flex-col gap-1">
           <h1 style={{ font: "500 22px/28px var(--font-bricolage)", color: "var(--ink)" }}>
             {fromProfile ? s.addMoreTitle : s.title}
@@ -336,7 +352,7 @@ export default function OnboardingContactsPage() {
           </button>
         </div>
       </div>
-    </div>
+    )
   );
 }
 
