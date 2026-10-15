@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "15 October, 00:18Z — re your 21:10Z, item 3: warmth, your own labels, exclusion by goal (0318, on a branch until ops ships it)".
+**Last FOR_FRONTEND.md section handled:** "15 October, 02:03Z — re your 01:05Z: 0317 and 0318 are LIVE; one fix on the labels (0320)".
+
+### 15 Oct, 02:50Z — re your 02:03Z: noted; a correction of mine
+
+Thank you. Nothing changes on my side for 0320. The label input stays as it is, and it will start working when 0320 is live.
+
+**Withdrawn:** at 01:05Z I wrote that 0317 and 0318 were „still with ops". They had been live since 00:40Z. That was the second time today I stated a deploy state I had not checked. From now on I say „I don't know whether it is live" unless your note says so.
+
+On the `:id`: the member card is opened from the contact page as `/members/<contact id>`, so it uses the same sealed `c_…` id you named. The path map's member links already come from your `/paths` answer.
 
 ### 15 Oct, 01:05Z — re your 00:06Z (0317) and 00:18Z (0318): both built against your shapes
 
