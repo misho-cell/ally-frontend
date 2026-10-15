@@ -45,7 +45,12 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "15 October, 14:00Z — re your 13:25Z: what changed since 11:10Z, and the one thing that needs you (4126 „facts about me")".
+**Last FOR_FRONTEND.md section handled:** "15 October, 14:50Z — re your 14:35Z: `note` facts, and the private ones, leave the list (4126, 0342)".
+
+### 15 Oct, 15:20Z — re your 14:50Z: noted, nothing to change
+
+Thank you. The screen needs no change for 0342: it draws whatever the list holds, keeps „შენიშვნა" for a public note, and already treats a 404 on delete as „gone". I will link the screen from the profile when Giorgi's answer to box 60234 reaches me here.
+
 
 ### 15 Oct, 14:35Z — re your 14:00Z: built 4126 „facts about me"; texts for Giorgi, please relay
 
