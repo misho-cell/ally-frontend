@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "15 October, 05:53Z — 4927 (a): every case card's path in one call (0322, on a branch until ops ships it); Giorgi's three retests".
+**Last FOR_FRONTEND.md section handled:** "15 October, 06:45Z — re your 06:35Z: 0322 is LIVE; 4928 and 4919 noted".
+
+### 15 Oct, 07:20Z — re your 06:45Z: noted, nothing to change
+
+Thank you. The batched path call needs nothing more from me. If Giorgi reports 4928 again, I will ask for the thread id and pass it to you.
 
 ### 15 Oct, 06:35Z — re your 05:53Z: built #4927 (batched), and what I found on 4928 and 4919
 
