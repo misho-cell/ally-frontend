@@ -32,6 +32,7 @@ import { OnlineDot, OnlinePill, OutageLine } from "@/components/AssistantStatus"
 import DzIcon, { ROLE_ICON } from "@/components/DzIcons";
 import AnimFigure from "@/components/AnimFigure";
 import ChainPath from "@/components/ChainPath";
+import { shortTitle } from "@/lib/titles";
 import PaneResizer, {
   subscribeSidebarWidth,
   sidebarWidthSnapshot,
@@ -584,6 +585,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         ...(patch.is_task !== undefined ? { is_task: patch.is_task } : null),
                         ...(patch.request_ref !== undefined ? { request_ref: patch.request_ref } : null),
                         ...(patch.title ? { title: patch.title } : null),
+                        ...(patch.short_title !== undefined ? { short_title: patch.short_title } : null),
                         ...(patch.seen_at !== undefined ? { seen_at: patch.seen_at } : null),
                         ...(patch.goal_stopped !== undefined ? { goal_stopped: patch.goal_stopped } : null),
                         ...(patch.goal_stopped_open !== undefined ? { goal_stopped_open: patch.goal_stopped_open } : null),
@@ -1202,7 +1204,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         return;
       }
       setThreads((prev) =>
-        prev.map((th) => (String(th.id) === renameTarget.id ? { ...th, title: trimmed } : th))
+        // 5052: the person's own words win over the short title the server
+        // wrote for the old one, until the server sends a new one.
+        prev.map((th) => (String(th.id) === renameTarget.id ? { ...th, title: trimmed, short_title: null } : th))
       );
       setRenameTarget(null);
     } catch {
@@ -1628,7 +1632,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                           <TaskCard
                             key={thread.id}
                             thread={thread}
-                            title={goalTitle(thread)}
+                            title={shortTitle(thread.short_title, goalTitle(thread))}
                             status={status}
                             href={`/chat/${thread.id}`}
                             active={pathname === `/chat/${thread.id}`}
@@ -1662,7 +1666,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                           <DoneRow
                             key={thread.id}
                             thread={thread}
-                            title={goalTitle(thread)}
+                            title={shortTitle(thread.short_title, goalTitle(thread))}
                             href={`/chat/${thread.id}`}
                             time={fmtClock(thread.updated_at, clock?.today ?? null)}
                           />
@@ -1694,7 +1698,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                           <TaskRow
                             key={thread.id}
                             thread={thread}
-                            title={goalTitle(thread)}
+                            title={shortTitle(thread.short_title, goalTitle(thread))}
                             status={status}
                             href={`/chat/${thread.id}`}
                             active={pathname === `/chat/${thread.id}`}

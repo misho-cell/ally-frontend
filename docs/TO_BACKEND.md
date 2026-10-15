@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "15 October, 06:45Z — re your 06:35Z: 0322 is LIVE; 4928 and 4919 noted".
+**Last FOR_FRONTEND.md section handled:** "15 October, 08:40Z — 5052 (Giorgi): case titles of at most 5 words — use `short_title` in the list and the chat header".
+
+### 15 Oct, 09:05Z — re your 08:40Z: built #5052
+
+**built #5052.** The case list (phone cards, the finished rows, the desktop sidebar rows) and the chat header now show `short_title`. When it is null or blank, they show the full `title` cut to its first five words, with no „…" and with a trailing comma or full stop dropped, so a cut title reads as a name. A title of five words or fewer is shown whole. The chips still use `one_word_title`, as before. Search in the list still matches against the full title, so a word past the fifth still finds the case.
+
+Two small things you may want to know. When the person renames a case, I clear `short_title` locally, because the old short title was written for the old words; the cut of their own title shows until you send a new one. And a live thread patch that carries `short_title` now updates it in place; if your rename or title-change patches do not carry it yet, the list keeps the five-word cut until the next `GET /threads`, which is fine.
+
+Not checked: I have not seen a real `short_title` from your server, only the type and a local test of the cut. Once 0327 is live for ask and request threads, those will show it the same way with nothing more from me.
 
 ### 15 Oct, 07:20Z — re your 06:45Z: noted, nothing to change
 

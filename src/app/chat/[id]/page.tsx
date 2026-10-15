@@ -25,6 +25,7 @@ import DzIcon, { ROLE_ICON } from "@/components/DzIcons";
 import ContextPanel, { ContextPanelToggle } from "@/components/ContextPanel";
 import RoutesList, { useRoutes } from "@/components/RoutesBoard";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
+import { shortTitle } from "@/lib/titles";
 import {
   useThreads,
   updateThreadState,
@@ -1702,9 +1703,11 @@ export default function ThreadPage() {
       : t("stDone")
     : null;
 
-  const displayTitle = titles[threadId] && (thread?.title === "New task" || thread?.title === "ახალი დავალება" || !thread?.title)
+  const fullTitle = titles[threadId] && (thread?.title === "New task" || thread?.title === "ახალი დავალება" || !thread?.title)
     ? titles[threadId]
     : thread?.title ?? t("threadFallback");
+  // 5052: at most five words in the header, as in the list.
+  const displayTitle = shortTitle(thread?.short_title, fullTitle);
 
   const resultRows: Array<{ key: "who" | "when" | "where" | "topic"; label: string }> = [
     { key: "who", label: t("rWho") },
