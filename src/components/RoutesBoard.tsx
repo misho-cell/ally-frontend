@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 import { t, fmtDateShort } from "@/lib/i18n";
 
@@ -57,10 +57,24 @@ export function useRoutes(threadId: string | null, stamp: string | null | undefi
   useEffect(() => {
     if (!threadId) return;
     let alive = true;
-    apiFetch<unknown>(`/threads/${encodeURIComponent(threadId)}/routes`)
-      .then((raw) => { if (alive) setRoutes(parse(raw)); })
-      .catch(() => { if (alive) setRoutes([]); });
-    return () => { alive = false; };
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    // 4928 (Giorgi's regression): a 429 used to leave the header without
+    // „გზები" until the conversation moved again. Now a refused read is
+    // asked once more after the server's Retry-After (or 30 s).
+    const read = (again: boolean) => {
+      apiFetch<unknown>(`/threads/${encodeURIComponent(threadId)}/routes`)
+        .then((raw) => { if (alive) setRoutes(parse(raw)); })
+        .catch((e: unknown) => {
+          if (!alive) return;
+          if (again && e instanceof ApiError && e.status === 429) {
+            retry = setTimeout(() => read(false), Math.min(120, Math.max(5, e.retryAfter ?? 30)) * 1000);
+            return;
+          }
+          setRoutes([]);
+        });
+    };
+    read(true);
+    return () => { alive = false; if (retry) clearTimeout(retry); };
   }, [threadId, stamp]);
   return routes.length >= 2 ? routes : [];
 }

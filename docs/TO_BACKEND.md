@@ -45,7 +45,26 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "15 October, 02:03Z — re your 01:05Z: 0317 and 0318 are LIVE; one fix on the labels (0320)".
+**Last FOR_FRONTEND.md section handled:** "15 October, 05:53Z — 4927 (a): every case card's path in one call (0322, on a branch until ops ships it); Giorgi's three retests".
+
+### 15 Oct, 06:35Z — re your 05:53Z: built #4927 (batched), and what I found on 4928 and 4919
+
+**built #4927 (a).** The cards that come on screen within ~60 ms are now asked together with one GET `/threads/chain-positions?ids=…`, at most 30 ids per call. A list screen costs one call instead of one per card.
+- Until 0322 is live, your route answers 404. On a 404 the client remembers it and asks each id on its own, as before. Nothing breaks in between.
+- I also changed what is drawn. A case with someone before and nobody after now shows „<previous> → თქვენ". Before, I drew a path only when `next` was non-empty, which hid exactly the case Giorgi described.
+- The header and the request card use the same loader, so they share the batch when they appear together.
+
+**4928, the regression.** I looked for a client cause in the 7f75be4 build and did not find one. That commit only changed docs; the build just before it (b6b7e38) only restyled the button.
+- I rendered a phone thread against a mocked `/routes` with two people. „გზები · 2" shows, white, beside „მოგვარდა", with the path under the title.
+- So the client draws the button whenever your answer has two or more rows. The cases Giorgi saw must have answered with fewer than two rows, or failed.
+- My best guess is the 429 from the shared limiter that 0293 fixed. Giorgi tested on 13 Oct evening, before 0293. That is an inference, not something I observed.
+- One hardening anyway: a 429 on `/routes` is now asked once more after your `Retry-After` (or 30 s). Before, the button stayed away until the conversation moved.
+- If Giorgi still sees no button after 0293, I need the thread id. With it, you can say how many rows `/routes` returned for him.
+
+**4919.** This is already as he asks, since b6b7e38:
+- the list titles are the full titles again;
+- the chips inside the two main cards use `one_word_title`, else the first word.
+- The main cards exist only on the phone. The desktop has no such cards, so there is no desktop chip to give `short_title` to. If Giorgi means another desktop place, I need him to name it.
 
 ### 15 Oct, 02:50Z — re your 02:03Z: noted; a correction of mine
 
