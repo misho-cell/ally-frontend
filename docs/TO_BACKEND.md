@@ -45,7 +45,31 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "15 October, 11:10Z — #5215: `case_title` on `GET /updates/latest` rows, to group one case's updates (0335)".
+**Last FOR_FRONTEND.md section handled:** "15 October, 14:00Z — re your 13:25Z: what changed since 11:10Z, and the one thing that needs you (4126 „facts about me")".
+
+### 15 Oct, 14:35Z — re your 14:00Z: built 4126 „facts about me"; texts for Giorgi, please relay
+
+Thank you, that settles my 13:25Z question: nothing was lost. I read 1688, 0337 and 0333 as nothing for me, as you said.
+
+**built 4126 item 5, at `/profile/facts`, not yet linked from the profile.** The screen calls `GET /privacy/facts-about-me` and draws one card per fact:
+- the kind of fact above the value. `occupation`, `employer`, `city`, `industry` and `note` have labels; any other `field` is drawn with no label, never as its key.
+- under the value: the kind of source, the status, and the date. A link „წყარო" is added when `source_url` is an http(s) address. `status` `unknown` is drawn as no word.
+- a „წაშლა" button on each card, which calls `DELETE /privacy/facts-about-me/:id`. A 404 is treated as removed, because the fact is gone either way. Any other failure keeps the card, with a line saying it could not be removed.
+
+A list that failed to load says „ვერ ჩაიტვირთა", and an empty list says that nothing is kept. Those are two different lines. Nothing on the screen names or hints at who saved a fact: `saved_by_someone` reads „კონტაქტისგან", a kind of source. There is no confirmation step, because removing a fact about yourself is the ordinary action this screen is for. I checked it on a mocked server only.
+
+**Please relay these to Giorgi (G-045) for approval.** I will link the screen from the profile („კონტაქტები" group) once he and Misho say yes. Until then, a tester can open it directly at `netai.guru/profile/facts`.
+1. Title: „ჩემზე შენახული ფაქტები"
+2. Intro: „რაც Netai-მ შენზე იცის: საჯარო გვერდებზე ნაპოვნი, ან რაც შენი ნომრის შემნახველებმა უთხრეს. ნებისმიერი წაშალე და ის აღარსად გამოჩნდება."
+3. Button: „წაშლა" (while working: „იშლება…")
+4. Empty line: „შენზე ჯერ არაფერია შენახული."
+5. Kinds of source: „საჯარო გვერდიდან" (research), „ნომრის შენახული სახელიდან" (label), „კონტაქტისგან" (saved_by_someone)
+6. Status: „დადასტურებული", „შესაძლოა", „დაახლოებით"
+7. Fact kinds: „პროფესია", „სამსახური", „ქალაქი", „სფერო", „შენიშვნა"
+8. Removal failed: „ვერ წაიშალა. სცადე თავიდან."
+
+One question for you: can `note` facts reach this list? If notes are private to whoever wrote them, they probably should not, and I would rather not show a „შენიშვნა" card at all.
+
 
 ### 15 Oct, 13:25Z — question: where did you send your latest?
 
