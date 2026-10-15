@@ -757,6 +757,7 @@ body {
 .dz-latest { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .dz-latest a { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font: 400 12.5px/19px var(--font-system); color: var(--text-2); text-decoration: none; }
 .dz-latest b { font-weight: 600; color: var(--ink); }
+.dz-latest .grp a.sub { padding-left: 10px; border-left: 2px solid var(--accent-tint); -webkit-line-clamp: 1; }
 a.dz-report-h, a.dz-news-title { text-decoration: none; }
 .dz-news-more { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font: 400 10px/15.5px var(--font-system); color: var(--accent); }
 .dz-welcome h1 { margin-bottom: 10px; font: 600 30px/39px var(--font-system); letter-spacing: -0.8px; color: var(--ink); text-align: center; }

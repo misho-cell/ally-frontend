@@ -8,6 +8,7 @@ import { isRecord, unwrapData } from "@/lib/payload";
 import { OnlinePill } from "@/components/AssistantStatus";
 import DzIcon from "@/components/DzIcons";
 import AnimFigure from "@/components/AnimFigure";
+import { shortTitle } from "@/lib/titles";
 
 // 9 Oct, the new design's news card, on the desktop home and the phone home.
 // It reads only the count: GET /updates releases and marks seen what it
@@ -115,7 +116,7 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
 }
 
 
-type Latest = { ref: string; threadId: string | null; title: string; detail: string; line: string };
+type Latest = { ref: string; threadId: string | null; caseTitle: string | null; title: string; detail: string; line: string };
 
 function parseLatest(v: unknown): Latest | null {
   if (!isRecord(v)) return null;
@@ -129,31 +130,86 @@ function parseLatest(v: unknown): Latest | null {
     ref: str(v.update_ref) || `${String(tid)}:${line || title}`,
     // thread_id is the conversation to open; null for an update with no goal.
     threadId: typeof tid === "number" || (typeof tid === "string" && tid.trim()) ? String(tid) : null,
+    // 5215: the case's own short title, absent on an older server.
+    caseTitle: str(v.case_title) || null,
     title,
     detail,
     line,
   };
 }
 
-// One line per update: the case in bold, then what happened. Drawn from the
-// two parts rather than from `line`, which joins them with a dash. A row with
-// no conversation opens the updates screen, which a person tapping may spend.
+// 5215: updates of one case (the same thread_id, which is identity, never
+// the title text) are drawn under the case's name once. A group keeps the
+// place of its newest row. An update with no conversation is its own group.
+type LatestGroup = { key: string; threadId: string | null; name: string; rows: Latest[] };
+
+function groupLatest(rows: Latest[]): LatestGroup[] {
+  const out: LatestGroup[] = [];
+  const byThread = new Map<string, LatestGroup>();
+  for (const u of rows) {
+    const found = u.threadId ? byThread.get(u.threadId) : undefined;
+    if (found) {
+      found.rows.push(u);
+      continue;
+    }
+    const g: LatestGroup = {
+      key: u.threadId ? `t:${u.threadId}` : `u:${u.ref}`,
+      threadId: u.threadId,
+      // The server's case title; while it has none, the update's title cut
+      // to its first four words.
+      name: u.title ? shortTitle(u.caseTitle, u.title, 4) : u.caseTitle ?? "",
+      rows: [u],
+    };
+    out.push(g);
+    if (u.threadId) byThread.set(u.threadId, g);
+  }
+  return out;
+}
+
+// What happened, without the case's name, which the group already says.
+function whatHappened(u: Latest): string {
+  return u.detail || u.line || u.title;
+}
+
+// One case per entry: its name in bold, then what happened. A case with one
+// update reads on one line; a case with more draws its name once and each
+// update under it. Drawn from the parts rather than from `line`, which joins
+// them with a dash. A row with no conversation opens the updates screen,
+// which a person tapping may spend.
 function LatestRows({ rows }: { rows: Latest[] }) {
   return (
     <ul className="dz-latest">
-      {rows.map((u) => (
-        <li key={u.ref}>
-          <Link href={u.threadId ? `/chat/${encodeURIComponent(u.threadId)}` : "/updates"} prefetch={false}>
-            {u.title && u.detail ? (
-              <>
-                <b>{u.title}</b> {u.detail}
-              </>
-            ) : (
-              u.line || u.title || u.detail
-            )}
-          </Link>
-        </li>
-      ))}
+      {groupLatest(rows).map((g) => {
+        const href = g.threadId ? `/chat/${encodeURIComponent(g.threadId)}` : "/updates";
+        if (g.rows.length === 1) {
+          const u = g.rows[0];
+          return (
+            <li key={g.key}>
+              <Link href={href} prefetch={false}>
+                {g.name && u.detail ? (
+                  <>
+                    <b>{g.name}</b> {u.detail}
+                  </>
+                ) : (
+                  u.line || u.title || u.detail
+                )}
+              </Link>
+            </li>
+          );
+        }
+        return (
+          <li key={g.key} className="grp">
+            <Link href={href} prefetch={false}>
+              <b>{g.name}</b>
+            </Link>
+            {g.rows.map((u) => (
+              <Link key={u.ref} href={href} prefetch={false} className="sub">
+                {whatHappened(u)}
+              </Link>
+            ))}
+          </li>
+        );
+      })}
     </ul>
   );
 }

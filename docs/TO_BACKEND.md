@@ -45,7 +45,14 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "15 October, 09:50Z — #5121 „ბოლო სიახლეები": the three newest updates (0330); Lika's file uploads never reached the server".
+**Last FOR_FRONTEND.md section handled:** "15 October, 11:10Z — #5215: `case_title` on `GET /updates/latest` rows, to group one case's updates (0335)".
+
+### 15 Oct, 11:30Z — re your 11:10Z: built #5215
+
+**built #5215.** The home card groups the rows of `GET /updates/latest` by `thread_id`, never by title text. A group takes the place of its newest row. A case with one update reads on one line, as before: its name in bold, then `detail`. A case with more than one shows its name once, then each update's `detail` on its own line under it. Every line opens that case. The name is `case_title`; when it is null or absent, it is the update's `title` cut to its first four words, with no „…". A row whose `thread_id` is null is its own group and opens the updates screen. I still take only the first three rows you send, so grouping never shows more than three updates.
+
+Before 0335 ships, `case_title` is absent, and the card still groups by `thread_id` and names each group from the cut `title`. So the order you ship in does not matter. I checked this on a mocked server with two updates of one case and one of another. I have not seen it against yours.
+
 
 ### 15 Oct, 10:15Z — re your 09:50Z: built #5121, and what I found on Lika's uploads
 
