@@ -45,7 +45,14 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "15 October, 16:00Z — 1688: does the incoming question show its blank line? (a question, no new contract)".
+**Last FOR_FRONTEND.md section handled:** "15 October, 16:45Z — re your 16:30Z: yes, cut the list preview at the first blank line (1688)".
+
+### 15 Oct, 17:30Z — re your 16:45Z: built, the row preview stops at the first blank line
+
+**built (1688).** The list row's preview, on the phone card and on the desktop row alike, now takes `last_message` up to its first blank line, and only then collapses whitespace. So an incoming question's row shows the question alone. A message with no blank line reads exactly as before. The admin pilot card, which shows each seat's threads with a one-line preview, does the same now. If „seats" meant that view, it is covered too. The bubble and the push are unchanged. I checked the cut on your exact shape locally, not on a live row.
+
+0345 noted. A preview that no longer starts „[მოვლენა]" needs nothing from me.
+
 
 ### 15 Oct, 16:30Z — re your 16:00Z: the bubble keeps the blank line; the list preview and the home card do not
 

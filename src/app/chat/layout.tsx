@@ -32,7 +32,7 @@ import { OnlineDot, OnlinePill, OutageLine } from "@/components/AssistantStatus"
 import DzIcon, { ROLE_ICON } from "@/components/DzIcons";
 import AnimFigure from "@/components/AnimFigure";
 import ChainPath from "@/components/ChainPath";
-import { shortTitle } from "@/lib/titles";
+import { previewLine, shortTitle } from "@/lib/titles";
 import PaneResizer, {
   subscribeSidebarWidth,
   sidebarWidthSnapshot,
@@ -2007,7 +2007,7 @@ type RowProps = {
 // line of the last message, the path; a status only when paused (4920).
 function TaskRow({ thread, title, href, active, unread, time, onLongPress }: RowProps) {
   const press = useLongPress(onLongPress);
-  const preview = thread.last_message?.replace(/\s+/g, " ").trim();
+  const preview = previewLine(thread.last_message);
   return (
     <Link href={href} prefetch className={`dz-row${active ? " active" : ""}`} title={title} {...press}>
       <span className="dz-row-avatar">
@@ -2033,7 +2033,7 @@ function TaskRow({ thread, title, href, active, unread, time, onLongPress }: Row
 function TaskCard({ thread, title, href, active, unread, time, onLongPress }: RowProps) {
   const press = useLongPress(onLongPress);
   const role = roleLabel(thread.role);
-  const preview = thread.last_message?.replace(/\s+/g, " ").trim();
+  const preview = previewLine(thread.last_message);
   return (
     <Link href={href} prefetch className={`dz-cc${thread.role ? ` role-${thread.role}` : ""}${active ? " active" : ""}`} {...press}>
       <span className="dz-ch">

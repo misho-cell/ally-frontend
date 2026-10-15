@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { unwrapData, pickArray, recordItems, isRecord } from "@/lib/payload";
+import { previewLine } from "@/lib/titles";
 
 // Task 16 (9 Sept, D147): during the pilot the founder's admin login can read
 // any user↔Netai conversation from the user page. Any 403 (other admin, pilot
@@ -124,7 +125,7 @@ export default function PilotThreadsCard({ userId }: { userId: string }) {
                       {t.type && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">{t.type}</span>}
                       {t.status && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">{t.status}</span>}
                     </div>
-                    {t.last_message && <p className="mt-0.5 truncate text-xs text-gray-500">{t.last_message}</p>}
+                    {t.last_message && <p className="mt-0.5 truncate text-xs text-gray-500">{previewLine(t.last_message)}</p>}
                   </div>
                   <span className="shrink-0 text-xs text-gray-400">{fmt(t.updated_at)} {isOpen ? "▾" : "▸"}</span>
                 </button>

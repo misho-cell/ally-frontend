@@ -10,3 +10,13 @@ export function shortTitle(short: string | null | undefined, full: string, n = S
   if (words.length <= n) return full.trim() || full;
   return words.slice(0, n).join(" ").replace(/[\s,.;:!?…-]+$/u, "") || full;
 }
+
+// 1688 (15 Oct): a list row shows one line of the last message. Where the
+// message has paragraphs, the row shows the first one only: an incoming
+// question is followed by a blank line and the asker's assistant line, and
+// collapsed into one line the two read as one run-on sentence.
+export function previewLine(text: string | null | undefined): string {
+  if (typeof text !== "string") return "";
+  const first = text.trim().split(/\n[ \t]*\n/)[0] ?? "";
+  return first.replace(/\s+/g, " ").trim();
+}
