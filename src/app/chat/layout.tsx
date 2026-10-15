@@ -24,7 +24,7 @@ import {
 } from "@/contexts/ThreadsContext";
 import { parseTokenBalance } from "@/lib/tokens";
 import { readSessionToken } from "@/lib/session";
-import { FILE_ACCEPT, FILE_MAX_BYTES, uploadThreadFile } from "@/lib/threadFiles";
+import { FILE_ACCEPT, FILE_MAX_BYTES, readFileBytes, uploadFailureText, uploadThreadFile } from "@/lib/threadFiles";
 import { appendedKind } from "@/contexts/ThreadsContext";
 import StagedFile from "@/components/StagedFile";
 import NewsCard from "@/components/NewsCard";
@@ -202,6 +202,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const homeFileRef = useRef<HTMLInputElement>(null);
   // #2346: the file chosen on the phone home box, waiting for Send.
   const [homeStaged, setHomeStaged] = useState<File | null>(null);
+  // 5121: the conversation made for a file that did not arrive, reused on
+  // the next try.
+  const fileThreadRef = useRef<string | null>(null);
   // True only between pressing "+ ახალი მიზანი" and the next send from the home
   // box. It is a ref, not state, because nothing renders from it and a stale
   // closure here would hand as_goal to the wrong line.
@@ -1021,43 +1024,66 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // about. It goes in even when the file was refused: the person pressed
   // Send on it, and the conversation they land in is where they would look
   // for it.
-  const createWithFile = useCallback(async (file: File, text?: string) => {
-    if (creating) return;
+  const createWithFile = useCallback(async (file: File, text?: string): Promise<boolean> => {
+    if (creating) return false;
     if (file.size > FILE_MAX_BYTES) {
       showToast(t("attachTooBig"));
-      return;
+      return false;
     }
     const line = text?.trim() ?? "";
     setCreating(true);
     setFileCreating(true);
     try {
-      const res = await fetch(`${BASE_URL}/threads`, {
-        method: "POST",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-      });
-      if (!res.ok) {
-        if (res.status === 401) { forceLogin(); return; }
-        const body = await res.json().catch(() => ({}));
-        if (handleAdminTokenMisuse(res.status, body)) return;
-        if (isSubscriptionError(res.status, body)) {
-          router.replace("/pricing");
-          return;
-        }
-        showToast(t("attachFailed"));
-        return;
+      // 5121: read the file before a conversation is made for it. A file the
+      // phone cannot read fails here, with nothing created and nothing sent.
+      const bytes = await readFileBytes(file);
+      if (!bytes) {
+        showToast(t("attachUnreadable"));
+        return false;
       }
+      // A conversation made for a file that then did not arrive is reused by
+      // the next try, so trying again does not leave empty ones behind.
+      let id = fileThreadRef.current;
+      if (!id) {
+        const res = await fetch(`${BASE_URL}/threads`, {
+          method: "POST",
+          headers: authHeaders({ "Content-Type": "application/json" }),
+        });
+        if (!res.ok) {
+          if (res.status === 401) { forceLogin(); return false; }
+          const body = await res.json().catch(() => ({}));
+          if (handleAdminTokenMisuse(res.status, body)) return false;
+          if (isSubscriptionError(res.status, body)) {
+            router.replace("/pricing");
+            return false;
+          }
+          showToast(t("attachFailed"));
+          return false;
+        }
+        const json = await res.json();
+        const thread: Thread = json.data ?? json;
+        id = String(thread.id);
+        knownIdsRef.current?.set(id, thread.updated_at ?? new Date().toISOString());
+        setThreads((prev) => dedup([thread, ...prev.filter((th) => String(th.id) !== id)]));
+        fileThreadRef.current = id;
+      }
+      const out = await uploadThreadFile(id, file, t("attachFailed"), bytes);
+      // 5121 (Lika): the line used to go in even when the file had not. „Read
+      // the attached CSV" then reached Netai with no CSV. Now a file that did
+      // not arrive keeps the person here, with the file and the line still in
+      // the composer, and nothing is sent.
+      if (!out.ok) {
+        showToast(uploadFailureText(out, t("attachUnreadable"), t("attachNetFailed")));
+        return false;
+      }
+      fileThreadRef.current = null;
       if (line) setHomeInput("");
-      const json = await res.json();
-      const thread: Thread = json.data ?? json;
-      const id = String(thread.id);
-      knownIdsRef.current?.set(id, thread.updated_at ?? new Date().toISOString());
-      setThreads((prev) => dedup([thread, ...prev.filter((th) => String(th.id) !== id)]));
-      const out = await uploadThreadFile(id, file, t("attachFailed"));
-      if (!out.ok) showToast(out.error);
       router.push(`/chat/${id}`);
       if (line) await sendIntoThread(id, line, true);
+      return true;
     } catch {
       showToast(t("attachFailed"));
+      return false;
     } finally {
       setCreating(false);
       setFileCreating(false);
@@ -1765,7 +1791,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               if (homeStaged) {
                 const f = homeStaged;
                 setHomeStaged(null);
-                void createWithFile(f, homeInput);
+                void createWithFile(f, homeInput).then((ok) => { if (!ok) setHomeStaged(f); });
               } else if (homeInput.trim()) {
                 createTask(homeInput);
               } else {

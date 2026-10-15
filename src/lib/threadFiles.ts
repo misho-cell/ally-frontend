@@ -46,7 +46,32 @@ export type UploadResult =
   // of ours: the server knows whether the file was too big, the wrong kind,
   // empty, damaged or locked, and a sentence of ours would be a guess at
   // which.
-  | { ok: false; error: string };
+  | { ok: false; error: string; kind: UploadFailure };
+
+// 5121 (Lika, 15 Oct): three different facts that used to read the same.
+// "unreadable": this device could not read the file it was given, so nothing
+// left it. "network": the request broke before the server answered, so the
+// server never saw the file. "server": the server answered and refused it,
+// and `error` is its own sentence.
+export type UploadFailure = "unreadable" | "network" | "server";
+
+// 5121: the file is read into memory before anything is sent. On an iPhone a
+// picked file can be a promise of one (a file kept in iCloud, say), and if it
+// cannot be read while the request is streaming it, Safari drops the
+// connection mid-upload: the server logs an aborted request and the person
+// is told the file could not be read, with no way to tell which side failed.
+// Read first, the failure happens here, before a byte is sent, and an upload
+// that starts has its whole body. The server's limit is 2 MB, so holding it
+// costs nothing.
+export async function readFileBytes(file: File): Promise<Blob | null> {
+  try {
+    const buf = await file.arrayBuffer();
+    if (buf.byteLength === 0 && file.size > 0) return null;
+    return new Blob([buf], { type: file.type || "application/octet-stream" });
+  } catch {
+    return null;
+  }
+}
 
 function str(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v : null;
@@ -56,9 +81,12 @@ export async function uploadThreadFile(
   threadId: string,
   file: File,
   fallbackError: string,
+  bytes?: Blob,
 ): Promise<UploadResult> {
+  const body0 = bytes ?? (await readFileBytes(file));
+  if (!body0) return { ok: false, error: fallbackError, kind: "unreadable" };
   const form = new FormData();
-  form.append("file", file);
+  form.append("file", body0, file.name);
 
   let res: Response;
   try {
@@ -68,7 +96,7 @@ export async function uploadThreadFile(
       body: form,
     });
   } catch {
-    return { ok: false, error: fallbackError };
+    return { ok: false, error: fallbackError, kind: "network" };
   }
 
   let body: unknown = null;
@@ -80,17 +108,17 @@ export async function uploadThreadFile(
 
   if (!res.ok) {
     const said = isRecord(body) ? str(body.error) : null;
-    return { ok: false, error: said ?? fallbackError };
+    return { ok: false, error: said ?? fallbackError, kind: "server" };
   }
 
   const data = unwrapData(body);
-  if (!isRecord(data)) return { ok: false, error: fallbackError };
+  if (!isRecord(data)) return { ok: false, error: fallbackError, kind: "server" };
 
   // A 201 with no summary is a reply we did not understand. Treating it as
   // success would put an empty bubble in the conversation and tell the owner
   // their list was read when we cannot show that it was.
   const summary = str(data.summary);
-  if (!summary) return { ok: false, error: fallbackError };
+  if (!summary) return { ok: false, error: fallbackError, kind: "server" };
 
   return {
     ok: true,
@@ -147,4 +175,16 @@ export async function fetchGoalList(
   const match = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(disposition);
   const filename = match ? decodeURIComponent(match[1].replace(/"$/, "")) : `netai-list-${taskId}.xlsx`;
   return { ok: true, filename, blob };
+}
+
+// The sentence to show for a failed upload: the server's own when it
+// answered, ours when it never saw the file.
+export function uploadFailureText(
+  out: { error: string; kind: UploadFailure },
+  unreadable: string,
+  network: string,
+): string {
+  if (out.kind === "unreadable") return unreadable;
+  if (out.kind === "network") return network;
+  return out.error;
 }

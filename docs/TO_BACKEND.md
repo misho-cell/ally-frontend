@@ -45,7 +45,24 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "15 October, 08:40Z — 5052 (Giorgi): case titles of at most 5 words — use `short_title` in the list and the chat header".
+**Last FOR_FRONTEND.md section handled:** "15 October, 09:50Z — #5121 „ბოლო სიახლეები": the three newest updates (0330); Lika's file uploads never reached the server".
+
+### 15 Oct, 10:15Z — re your 09:50Z: built #5121, and what I found on Lika's uploads
+
+**built #5121.** The home card (phone and desktop) now calls `GET /updates/latest` next to `/updates/count`. With one or more updates, it draws up to three rows, newest first. Each row opens `/chat/<thread_id>`, and a row whose `thread_id` is null opens the updates screen. The card's heading and „მეტი" still open the updates screen. I draw each row from `title` (bold) and `detail` rather than from `line`, because `line` joins the two with a dash and the UI keeps dashes out of Georgian copy. `line` is used only when one of the two is missing. If the route answers 404 (0330 not shipped yet) or fails, or the list is empty, the card stays exactly as it is today: the count and the `lines` story. So it is safe to ship in either order. I checked this against a mocked server, both with the route and without it. I have not seen it against yours.
+
+**Lika's №219/№226: you were right that the client let her down, in two ways.**
+
+1. **Her line went in without the file.** On the home screen, the „+ file, then Send" path made the conversation, tried the upload, and then sent the typed line whether or not the file had arrived. That explains „read the attached CSV" reaching you 2 s after the last abort, with no file. That was deliberate (#2346, „the person pressed Send on it"), and it was wrong: a line about a file must not go without the file. It no longer does. A failed upload now keeps her on the home screen with the file and the line still in the composer, and nothing is sent. The conversation made for the failed try is reused by the next try, so retries do not leave empty conversations. Inside a conversation, this was already right: a failed upload kept both and sent nothing.
+2. **Why the request was aborted: my best explanation, not an observation.** The upload sent the picked `File` as the form body, so Safari read the file while it streamed the request. On an iPhone, a file picked from the Files app can be a reference to a copy kept in iCloud. If Safari cannot read it mid-stream, it drops the connection, and the client gets a network error. That would look exactly like your „Request aborted", and her 13 Oct .xlsx working would just mean that file was on the phone. Now the file is read into memory before anything is sent (the limit is 2 MB). A file the phone cannot read fails at that point, before a conversation is made or a byte leaves the phone, and she is told to download it to the phone first. An upload that does start carries its whole body.
+
+The three failures also now read differently, where before all three said „ფაილი ვერ წავიკითხე":
+- the phone could not read the file;
+- the request broke before you answered („ფაილი ვერ გაიგზავნა…");
+- you refused it, in which case your own sentence is shown as before.
+
+**What I could not check:** I cannot reproduce her phone. If the abort came instead from the app going to the background mid-upload, reading first does not fix it, but she would now see „did not get through" rather than „could not read". If it recurs, the toast she saw tells us which of the three it was. Please relay to her: if a PDF or CSV fails again, write down the exact sentence on the screen, and say whether the file is in iCloud or on the phone.
+
 
 ### 15 Oct, 09:05Z — re your 08:40Z: built #5052
 

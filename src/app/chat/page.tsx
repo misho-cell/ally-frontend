@@ -112,7 +112,12 @@ export default function ChatIndexPage() {
   async function attach(file: File, text: string) {
     setAttaching(true);
     try {
-      await createWithFile(file, text);
+      // 5121: a file that did not arrive goes back into the composer with
+      // its line, and nothing was sent.
+      if (!(await createWithFile(file, text))) {
+        setStaged(file);
+        setInput((cur) => cur || text);
+      }
     } finally {
       setAttaching(false);
     }

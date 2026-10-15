@@ -16,7 +16,7 @@ import { isWriteMyOwn } from "@/lib/choices";
 import { apiFetch } from "@/lib/api";
 import { isRecord, unwrapData } from "@/lib/payload";
 import { saveBlob, saveTextFile } from "@/lib/download";
-import { FILE_ACCEPT, FILE_MAX_BYTES, fetchGoalList, uploadThreadFile } from "@/lib/threadFiles";
+import { FILE_ACCEPT, FILE_MAX_BYTES, fetchGoalList, uploadFailureText, uploadThreadFile } from "@/lib/threadFiles";
 import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import ThreadMenu from "@/components/ThreadMenu";
@@ -764,7 +764,7 @@ export default function ThreadPage() {
     try {
       const out = await uploadThreadFile(threadId, file, t("attachFailed"));
       if (!out.ok) {
-        showToast(out.error, false);
+        showToast(uploadFailureText(out, t("attachUnreadable"), t("attachNetFailed")), false);
         return false;
       }
       setThreadStates((prev) =>

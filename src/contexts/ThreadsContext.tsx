@@ -381,7 +381,9 @@ type Ctx = {
   // #1222: a new conversation that starts with a file rather than a line.
   // #2346: a line typed with the file goes in after it, into the same
   // conversation.
-  createWithFile: (file: File, text?: string) => Promise<void>;
+  // false: the file did not arrive, and the caller keeps the file and the
+  // line in its composer so Send can try again.
+  createWithFile: (file: File, text?: string) => Promise<boolean>;
   titles: Record<string, string>;
   // #2185 / D709 (7 Oct): there is one accept now. The person asked does not
   // choose how; the server connects the two and needs no channel.
@@ -403,7 +405,7 @@ export const ThreadsContext = createContext<Ctx>({
   refreshTokens: () => {},
   createThread: () => {},
   createTask: async () => {},
-  createWithFile: async () => {},
+  createWithFile: async () => false,
   titles: {},
   resolveRequest: () => {},
   resolvedRequests: {},
