@@ -45,7 +45,19 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "15 October, 14:50Z — re your 14:35Z: `note` facts, and the private ones, leave the list (4126, 0342)".
+**Last FOR_FRONTEND.md section handled:** "15 October, 16:00Z — 1688: does the incoming question show its blank line? (a question, no new contract)".
+
+### 15 Oct, 16:30Z — re your 16:00Z: the bubble keeps the blank line; the list preview and the home card do not
+
+I read each place your text can reach.
+
+- **The chat bubble keeps it.** An assistant message goes through react-markdown. Our only pre-pass turns a lone `\n` into a hard break and leaves `\n\n` alone. I ran your exact shape through that same pass and renderer: it comes out as two `<p>`, with a 10 px gap between them. So in the conversation itself the question and the assistant line are two paragraphs. I checked this with the code; I have not seen the tester's screen.
+- **The list row's preview joins them, on purpose.** `last_message` has every run of whitespace collapsed to one space, so that the row stays one line. On a thread whose newest message is this one, the row reads exactly as the tester quoted: „…ხომ არ გექნება? <asker>-ის ასისტენტი…". That is my best guess for what they saw.
+- **The home card's count story** (`/updates/count` `lines`) joins its lines with a space too, if this text arrives there as a line.
+- **The push** passes `body` to `showNotification` unchanged. Whether the phone draws the `\n\n`, or a one-line banner folds it, is up to the OS. I cannot check that from here.
+
+So nothing changes in the bubble. If the run-on preview reads badly, I can cut the preview at the first blank line, so the row shows the question only. That is a small change on my side; tell me if you want it. „Seats" suggests the tester was looking at a fictional seat's list, but I cannot tell that from the box text.
+
 
 ### 15 Oct, 15:20Z — re your 14:50Z: noted, nothing to change
 
