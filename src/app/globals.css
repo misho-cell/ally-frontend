@@ -1043,3 +1043,7 @@ body {
 .pd-group { margin: 28px 0 0; font: 700 12px/1.4 var(--font-system); color: var(--meta); }
 .pd-group + .pd-nav, .pd-group + .pd-section { margin-top: 4px; padding-top: 0; }
 .dz-fc.none .dz-fsum { min-height: 0; }
+/* 0318: the warmth choice and an own label's remove mark. */
+button.nx-pill { border: 1px solid transparent; cursor: pointer; }
+.nx-pill.on { background: var(--accent); color: #FFFFFF; }
+.nx-pill button { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 0; }

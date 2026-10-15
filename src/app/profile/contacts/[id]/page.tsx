@@ -20,8 +20,12 @@ import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 // 14 Oct (backend 0301, Misho's list): the owner's own facts can be added,
 // corrected and forgotten, a goal exclusion can be lifted, and the contact
 // can be removed or marked deceased. Every write is by the id the server
-// gave, never by matching text. Labels, warmth and adding an exclusion wait
-// on a product decision on the server's side, so they stay read-only.
+// gave, never by matching text.
+//
+// 15 Oct (backend 0318, Misho's yes): the owner sets the warmth by hand
+// (pressing the chosen one again hands it back to Netai's own reading), adds
+// and removes labels of their own (the phonebook's stay as they are), and
+// keeps the contact out of one of their goals, picked by goal id.
 //
 // 12:15Z (D773): also what is public about the person, each fact with its
 // source and date when the server has them. Public, not saved by another
@@ -56,6 +60,11 @@ const L = {
     deceased: "Deceased",
     deceasedAsk: "Mark as deceased?",
     saveFailed: "Could not save. Try again.",
+    warmthTitle: "Connection warmth",
+    labelPlaceholder: "New label",
+    add: "Add",
+    excludeGoal: "Exclude for a goal",
+    noGoals: "No goals to choose from.",
   },
   ka: {
     back: "კონტაქტებში დაბრუნება",
@@ -84,6 +93,11 @@ const L = {
     deceased: "გარდაცვლილი",
     deceasedAsk: "მოვნიშნოთ გარდაცვლილად?",
     saveFailed: "ვერ შეინახა. სცადე თავიდან.",
+    warmthTitle: "კავშირის სითბო",
+    labelPlaceholder: "ახალი იარლიყი",
+    add: "დამატება",
+    excludeGoal: "მიზნისთვის გამორიცხვა",
+    noGoals: "ასარჩევი მიზანი არ არის.",
   },
 };
 
@@ -92,6 +106,7 @@ type Contact = {
   role: string | null;
   onNetai: boolean;
   labels: string[];
+  ownLabels: string[];
   warmth: "warm" | "neutral" | "distant" | null;
   facts: Fact[];
   publicFacts: { value: string; sourceUrl: string | null; date: string | null }[];
@@ -118,6 +133,7 @@ function parse(raw: unknown): Contact | null {
     role: str(d.role),
     onNetai: d.on_netai === true,
     labels: pickArray(d.labels).filter((l): l is string => typeof l === "string" && l.trim() !== ""),
+    ownLabels: pickArray(d.own_labels).filter((l): l is string => typeof l === "string" && l.trim() !== ""),
     warmth: d.warmth === "warm" || d.warmth === "neutral" || d.warmth === "distant" ? d.warmth : null,
     facts: parseFacts(d.facts),
     publicFacts: recordItems(pickArray(d.public_facts)).flatMap((f) => (typeof f.value === "string" && f.value.trim()
@@ -141,6 +157,10 @@ export default function ContactPage() {
   const [err, setErr] = useState(false);
   const [ask, setAsk] = useState<"remove" | "deceased" | null>(null);
   const base = `/contacts/${encodeURIComponent(id)}`;
+  const [labelDraft, setLabelDraft] = useState("");
+  // The owner's goals for „exclude for a goal": null until asked for.
+  const [goals, setGoals] = useState<{ id: string; title: string }[] | null>(null);
+  const [picking, setPicking] = useState(false);
 
   const load = useCallback(() => {
     return apiFetch<unknown>(base)
@@ -159,7 +179,7 @@ export default function ContactPage() {
   // One door for every write: on success the page shows what the server
   // answered (the fact list) or reads the contact again; on failure it says
   // so and keeps what the person typed.
-  async function write(path: string, method: "POST" | "PATCH" | "DELETE", body?: unknown): Promise<unknown | null> {
+  async function write(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body?: unknown): Promise<unknown | null> {
     setBusy(true);
     setErr(false);
     try {
@@ -208,6 +228,56 @@ export default function ContactPage() {
     if (out === null) return;
     if (which === "remove") router.push("/profile/contacts");
     else void load();
+  }
+
+  async function setWarmth(w: "warm" | "neutral" | "distant") {
+    if (!c) return;
+    const next = c.warmth === w ? null : w;
+    const out = await write(`${base}/warmth`, "PUT", { warmth: next });
+    // With null the server goes back to its own reading, which only a fresh
+    // read of the contact can show.
+    if (out !== null) void load();
+  }
+
+  async function addLabel() {
+    const label = labelDraft.trim();
+    if (!label || busy) return;
+    const out = await write(`${base}/labels`, "POST", { label });
+    if (out === null) return;
+    setLabelDraft("");
+    void load();
+  }
+
+  async function removeLabel(label: string) {
+    const out = await write(`${base}/labels/${encodeURIComponent(label)}`, "DELETE");
+    if (out !== null) setC((prev) => (prev ? { ...prev, ownLabels: prev.ownLabels.filter((l) => l !== label) } : prev));
+  }
+
+  async function openGoalPicker() {
+    setPicking(true);
+    if (goals !== null) return;
+    try {
+      const raw = await apiFetch<unknown>("/threads?limit=50");
+      const list = recordItems(pickArray(unwrapData(raw)));
+      const seen = new Set<string>();
+      setGoals(list.flatMap((t) => {
+        // The goal id, never the thread id: they are different numbers.
+        const gid = idOf(t.goal_id);
+        if (!gid || seen.has(gid) || t.is_task !== true) return [];
+        seen.add(gid);
+        return [{ id: gid, title: typeof t.title === "string" && t.title.trim() ? t.title : `#${gid}` }];
+      }));
+    } catch {
+      setGoals([]);
+      setErr(true);
+    }
+  }
+
+  async function excludeFor(goalId: string) {
+    const out = await write(`${base}/exclusions`, "POST", { goal_id: Number(goalId) });
+    if (out === null) return;
+    setPicking(false);
+    void load();
   }
 
   const initial = c?.name ? Array.from(c.name.trim())[0] ?? "" : "";
@@ -267,15 +337,38 @@ export default function ContactPage() {
           )}
           <p className="nx-note">{s.note}</p>
 
-          {(c.labels.length > 0 || c.warmth) && (
-            <>
-              <h3 className="nx-h3">{s.labels}</h3>
-              <div className="nx-tags">
-                {c.labels.map((l) => <span key={l} className="nx-pill">{l}</span>)}
-                {c.warmth && <span className="nx-pill">{s.warmth[c.warmth]}</span>}
-              </div>
-            </>
-          )}
+          <h3 className="nx-h3">{s.labels}</h3>
+          <div className="nx-tags">
+            {c.labels.map((l) => <span key={`i-${l}`} className="nx-pill">{l}</span>)}
+            {c.ownLabels.map((l) => (
+              <span key={`o-${l}`} className="nx-pill">
+                {l}
+                <button type="button" aria-label={`${s.forget}: ${l}`} disabled={busy} onClick={() => removeLabel(l)} style={{ marginLeft: 6 }}>×</button>
+              </span>
+            ))}
+          </div>
+          <div className="nx-row" style={{ marginTop: 6, flexWrap: "nowrap" }}>
+            <label className="nx-field" style={{ marginBottom: 0, flex: 1 }}>
+              <input value={labelDraft} maxLength={40} placeholder={s.labelPlaceholder} onChange={(e) => setLabelDraft(e.target.value)} style={{ fontSize: 16 }} />
+            </label>
+            <button type="button" className="nx-btn shrink-0" disabled={busy || !labelDraft.trim()} onClick={addLabel}>{s.add}</button>
+          </div>
+
+          <h3 className="nx-h3">{s.warmthTitle}</h3>
+          <div className="nx-tags" role="group" aria-label={s.warmthTitle}>
+            {(["warm", "neutral", "distant"] as const).map((w) => (
+              <button
+                key={w}
+                type="button"
+                className={`nx-pill${c.warmth === w ? " on" : ""}`}
+                aria-pressed={c.warmth === w}
+                disabled={busy}
+                onClick={() => setWarmth(w)}
+              >
+                {s.warmth[w]}
+              </button>
+            ))}
+          </div>
 
           {err && <p role="status" className="nx-note" style={{ color: "var(--danger)" }}>{s.saveFailed}</p>}
 
@@ -319,7 +412,7 @@ export default function ContactPage() {
             </div>
           )}
 
-          {c.exclusions.length > 0 && (
+          {(
             <div className="nx-card">
               <h3>{s.excluded}</h3>
               {c.exclusions.map((e, i) => (
@@ -332,6 +425,20 @@ export default function ContactPage() {
                   )}
                 </div>
               ))}
+              {picking ? (
+                goals === null ? <span className="sk-bar" style={{ width: "60%" }} /> : goals.length === 0 ? (
+                  <p className="nx-note">{s.noGoals}</p>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {goals.map((g) => (
+                      <button key={g.id} type="button" className="nx-btn self-start" disabled={busy} onClick={() => excludeFor(g.id)}>{g.title}</button>
+                    ))}
+                    <div className="nx-links"><button type="button" onClick={() => setPicking(false)}>{s.cancel}</button></div>
+                  </div>
+                )
+              ) : (
+                <button type="button" className="nx-btn self-start" disabled={busy} onClick={openGoalPicker}>{s.excludeGoal}</button>
+              )}
             </div>
           )}
 

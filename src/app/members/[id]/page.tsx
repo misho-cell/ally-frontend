@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import SheetPage from "@/components/SheetPage";
 import { apiFetch, ApiError } from "@/lib/api";
 import { getLocale } from "@/lib/i18n";
@@ -11,7 +11,13 @@ import { isRecord, unwrapData, pickArray } from "@/lib/payload";
 // the member themselves show: role and company, city, their areas, and what
 // they said they are open to. A hidden or never-filled field is simply not
 // drawn. Reached from a contact who is on Netai, and from a person in the
-// middle of a path map. Read-only; nothing here contacts anyone.
+// middle of a path map.
+//
+// 15 Oct (4621, backend 0317, Misho's yes): „გაცნობის თხოვნა" asks the first
+// friend on the best path who uses Netai, the same request the assistant
+// makes. The server picks the friend; the card only sends and then opens the
+// request's own thread (thread id, never a goal id). Refusals come back as
+// codes and are worded here.
 
 const L = {
   en: {
@@ -23,6 +29,10 @@ const L = {
     notFound: "No member found",
     nothing: "Nothing shared yet",
     failed: "Could not load",
+    ask: "Request an introduction",
+    noBridge: "No friend on Netai leads to this person yet. Inviting someone may help.",
+    notSent: "The request was not sent. One may already be waiting for an answer.",
+    sendFailed: "Could not send. Try again.",
   },
   ka: {
     title: "წევრის ბარათი",
@@ -33,6 +43,10 @@ const L = {
     notFound: "წევრი ვერ მოიძებნა",
     nothing: "ჯერ არაფერი გაუზიარებია",
     failed: "ვერ ჩაიტვირთა",
+    ask: "გაცნობის თხოვნა",
+    noBridge: "ამ ადამიანამდე Netai-ზე მეგობარი ჯერ არ მიდის. შეიძლება ვინმეს მოწვევა დაგეხმაროს.",
+    notSent: "თხოვნა არ გაიგზავნა. შეიძლება ერთი უკვე ელოდება პასუხს.",
+    sendFailed: "ვერ გაიგზავნა. სცადე თავიდან.",
   },
 };
 
@@ -52,6 +66,30 @@ export default function MemberPage() {
   const id = String(params.id ?? "");
   const [m, setM] = useState<Member | null | undefined>(undefined);
   const [state, setState] = useState<"ok" | "missing" | "failed">("ok");
+  const router = useRouter();
+  const [asking, setAsking] = useState(false);
+  const [askErr, setAskErr] = useState<string | null>(null);
+
+  async function askIntro() {
+    if (asking) return;
+    setAsking(true);
+    setAskErr(null);
+    try {
+      const raw = await apiFetch<unknown>(`/members/${encodeURIComponent(id)}/intro-request`, { method: "POST", body: {} });
+      const d = unwrapData(raw);
+      const tid = isRecord(d) && (typeof d.thread_id === "number" || typeof d.thread_id === "string") ? String(d.thread_id) : null;
+      router.push(tid ? `/chat/${encodeURIComponent(tid)}` : "/chat");
+    } catch (e) {
+      const code = e instanceof ApiError ? e.message : "";
+      setAskErr(
+        code === "no_bridge_on_netai" ? s.noBridge
+          : code === "not_sent" ? s.notSent
+          : e instanceof ApiError && e.status === 429 ? e.message
+          : s.sendFailed,
+      );
+      setAsking(false);
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -115,6 +153,14 @@ export default function MemberPage() {
             </>
           )}
         </>
+      )}
+      {m && (
+        <div className="flex flex-col gap-2" style={{ marginTop: 8 }}>
+          <button type="button" className="nx-btn primary self-start" disabled={asking} onClick={askIntro}>
+            {asking ? "…" : s.ask}
+          </button>
+          {askErr && <p role="status" className="nx-note" style={{ color: "var(--danger)" }}>{askErr}</p>}
+        </div>
       )}
     </SheetPage>
   );

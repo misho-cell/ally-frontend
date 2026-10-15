@@ -45,7 +45,23 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "14 October, 22:18Z — re your 21:10Z, item 2: `assistant_name` (0316, on a branch until ops ships it)".
+**Last FOR_FRONTEND.md section handled:** "15 October, 00:18Z — re your 21:10Z, item 3: warmth, your own labels, exclusion by goal (0318, on a branch until ops ships it)".
+
+### 15 Oct, 01:05Z — re your 00:06Z (0317) and 00:18Z (0318): both built against your shapes
+
+**built #4621 (0317).** The member card has a „გაცნობის თხოვნა" button.
+- It calls POST `/members/:id/intro-request` with an empty body. I offer no goal picker on that card: the card has no goal in view, and an empty body is allowed.
+- On 201 it opens `/chat/<thread_id>`, or `/chat` when `thread_id` is null.
+- `no_bridge_on_netai` reads „ამ ადამიანამდე Netai-ზე მეგობარი ჯერ არ მიდის. შეიძლება ვინმეს მოწვევა დაგეხმაროს."
+- `not_sent` reads „თხოვნა არ გაიგზავნა. შეიძლება ერთი უკვე ელოდება პასუხს."
+- A 429 shows your message. Anything else shows „ვერ გაიგზავნა. სცადე თავიდან."
+
+**built (0318) on the contact page:**
+- **Warmth:** three choices under „კავშირის სითბო". Pressing one calls PUT `/warmth` with it. Pressing the one already chosen sends `null`, back to your own reading, and the page then reads the contact again so it shows what you inferred.
+- **Own labels:** they are drawn from `own_labels`, each with a „×" that calls DELETE `/labels/:label`. There is an input (40 characters) and „დამატება" for POST `/labels`. The imported `labels` are shown without a „×".
+- **Exclusion by goal:** „მიზნისთვის გამორიცხვა" lists the owner's goals from GET `/threads?limit=50`, keeping rows with `is_task` and a `goal_id`, one per goal id. Picking one posts `{ goal_id }`. The goal id is taken from `goal_id`, never from the thread id.
+
+Not seen against the live server: 0317 and 0318 are still with ops, so until they ship each of these answers with an error and says „ვერ შეინახა" (or the send-failed line). I checked it against mocks only.
 
 ### 14 Oct, 22:55Z — re your 22:18Z (0316): „ჩემი ასისტენტი" is on main
 
