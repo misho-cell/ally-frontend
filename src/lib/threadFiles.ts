@@ -142,38 +142,68 @@ export async function fetchGoalList(
   taskId: string,
   fallbackError: string,
 ): Promise<ListDownload> {
+  return fetchXlsx(
+    `${BASE_URL}/thread-files/goals/${encodeURIComponent(taskId)}/list.xlsx`,
+    `netai-list-${taskId}.xlsx`,
+    fallbackError,
+  );
+}
+
+// #2347 (16 Oct). A reply that lists something, as a spreadsheet: a
+// Markdown table row by row, or else a numbered or bulleted list item by
+// item. The route takes the conversation's id and the reply's own server
+// id, never its text.
+export async function fetchReplyTable(
+  threadId: string,
+  messageId: string,
+  fallbackError: string,
+): Promise<ListDownload> {
+  return fetchXlsx(
+    `${BASE_URL}/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/table.xlsx`,
+    `netai-${threadId}.xlsx`,
+    fallbackError,
+  );
+}
+
+// Whether a reply looks like it holds something the table route can turn
+// into rows: a Markdown table, or two or more list lines. Only decides
+// whether to offer the action; the server decides what the rows are.
+export function replyHasList(text: string): boolean {
+  if (/^\s*\|.*\|\s*$/m.test(text) && /^\s*\|?\s*:?-{3,}/m.test(text)) return true;
+  return (text.match(/^\s*(?:\d+[.)]|[-*\u2022])\s+\S/gm) ?? []).length >= 2;
+}
+
+async function fetchXlsx(url: string, fallbackName: string, fallbackError: string): Promise<ListDownload> {
   let res: Response;
   try {
-    res = await fetch(
-      `${BASE_URL}/thread-files/goals/${encodeURIComponent(taskId)}/list.xlsx`,
-      { headers: authHeaders() },
-    );
+    res = await fetch(url, { headers: authHeaders() });
   } catch {
     return { ok: false, error: fallbackError, missing: false };
   }
 
   if (!res.ok) {
-    // A 404 here means this goal has no list, which is a fact about the goal
-    // and not a failure. The caller shows the button only where there is
-    // one, so reaching this is either a race or a goal that lost its list;
-    // either way the server's sentence is the honest thing to show.
+    // A 404 here means there is no list to give, which is a fact about the
+    // goal or the reply and not a failure. Only a 404 the server answered
+    // in its own shape counts as that; any other 404 (a route not deployed
+    // yet) is a failure, so "no list" is never said when we do not know.
     let said: string | null = null;
+    let own = false;
     try {
       const body: unknown = await res.json();
+      own = isRecord(body) && body.success === false;
       said = isRecord(body) ? str(body.error) : null;
     } catch {
       said = null;
     }
-    return { ok: false, error: said ?? fallbackError, missing: res.status === 404 };
+    return { ok: false, error: said ?? fallbackError, missing: res.status === 404 && own };
   }
 
   const blob = await res.blob();
-  // The server names the file, and the name carries the goal's number. Taken
-  // from the header when it is readable, because a name we invent would be
-  // a worse one, and the header is where the server put the real one.
+  // The server names the file. Taken from the header when it is readable,
+  // because a name we invent would be a worse one.
   const disposition = res.headers.get("Content-Disposition") ?? "";
   const match = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(disposition);
-  const filename = match ? decodeURIComponent(match[1].replace(/"$/, "")) : `netai-list-${taskId}.xlsx`;
+  const filename = match ? decodeURIComponent(match[1].replace(/"$/, "")) : fallbackName;
   return { ok: true, filename, blob };
 }
 

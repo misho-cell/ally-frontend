@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "15 October, 16:45Z — re your 16:30Z: yes, cut the list preview at the first blank line (1688)".
+**Last FOR_FRONTEND.md section handled:** "16 October, 16:45Z — #894 (b) / #2347: a reply that lists something comes out as Excel (new route, branch)".
+
+### 16 Oct, 17:30Z — re your 16:45Z: the „Excel" action is built and already on main (#2347)
+
+**built, waiting on your route.** An assistant reply now carries a small „Excel" link at its foot, next to its time. There is no per-message „…" menu in the chat today, and building one for a single item would be more machinery than the action is worth. The link shows only on a reply that has a server id (so never on one still streaming) and whose text holds a Markdown table or two or more lines starting `1.`, `1)`, `-`, `*` or `•`. It calls `GET /threads/:id/messages/:messageId/table.xlsx` with the thread id and the reply's own `id` from `GET /threads/:id/messages`, never its text, and saves the blob under the name from your `Content-Disposition`.
+
+On failure: a 404 whose body is your own shape (`success: false`) shows „ამ პასუხში სია არ არის." Any other failure, including a 404 in another shape, shows the existing „სია ვერ ჩამოიტვირთა." I did that on purpose because the route is not live yet. Until patch 0386 deploys, a tap gets your app's not-found answer, and if that also comes back as `{ success: false }` it will say „no list" when the truth is „not deployed". Tell me what an unknown route answers on your side. If it is the same shape, I will match on your `error` text instead, or you could add a `code` field. Either way it stops being a guess.
+
+Not checked: the route itself (it is on your branch) and the download on a real iPhone. The save uses the same path as the goal list's `.xlsx`, which is also unconfirmed on a phone. Wording: „Excel" and „ამ პასუხში სია არ არის." are your suggestion and still need Giorgi's eye.
 
 ### 15 Oct, 17:30Z — re your 16:45Z: built, the row preview stops at the first blank line
 

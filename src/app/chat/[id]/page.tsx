@@ -16,7 +16,7 @@ import { isWriteMyOwn } from "@/lib/choices";
 import { apiFetch } from "@/lib/api";
 import { isRecord, unwrapData } from "@/lib/payload";
 import { saveBlob, saveTextFile } from "@/lib/download";
-import { FILE_ACCEPT, FILE_MAX_BYTES, fetchGoalList, uploadFailureText, uploadThreadFile } from "@/lib/threadFiles";
+import { FILE_ACCEPT, FILE_MAX_BYTES, fetchGoalList, fetchReplyTable, replyHasList, uploadFailureText, uploadThreadFile } from "@/lib/threadFiles";
 import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import ThreadMenu from "@/components/ThreadMenu";
@@ -848,6 +848,28 @@ export default function ThreadPage() {
       showToast(t("downloadFailed"), false);
     } finally {
       setDownloading(false);
+    }
+  }
+
+  // #2347 (16 Oct, Lika). A reply that lists something, as Excel. Keyed by
+  // the reply's server id, which is also what the route takes.
+  const [tableBusy, setTableBusy] = useState<string | null>(null);
+  async function handleReplyTable(messageId: string) {
+    if (tableBusy) return;
+    setTableBusy(messageId);
+    try {
+      const out = await fetchReplyTable(threadId, messageId, t("downloadFailed"));
+      if (!out.ok) {
+        // The server's sentence is English; ours says the same in the
+        // person's language, and only when the server really said it.
+        showToast(out.missing ? t("replyNoList") : t("downloadFailed"), false);
+        return;
+      }
+      await saveBlob(out.filename, out.blob);
+    } catch {
+      showToast(t("downloadFailed"), false);
+    } finally {
+      setTableBusy(null);
     }
   }
 
@@ -2045,7 +2067,21 @@ export default function ThreadPage() {
                           {mdSource(msg.content)}
                         </ReactMarkdown>
                       </div>
-                      {stamp && (
+                      {msg.serverId != null && replyHasList(msg.content) ? (
+                        <div className="flex items-center justify-between" style={{ gap: "8px" }}>
+                          <button
+                            type="button"
+                            onClick={() => void handleReplyTable(String(msg.serverId))}
+                            disabled={tableBusy !== null}
+                            style={{ font: "600 11.5px/16px var(--font-system)", color: "var(--accent-strong)", textDecoration: "underline" }}
+                          >
+                            {tableBusy === String(msg.serverId) ? "…" : t("replyExcel")}
+                          </button>
+                          {stamp && (
+                            <span style={{ font: "400 10.5px/14px var(--font-system)", color: "var(--meta)" }}>{stamp}</span>
+                          )}
+                        </div>
+                      ) : stamp && (
                         <span className="self-end" style={{ font: "400 10.5px/14px var(--font-system)", color: "var(--meta)" }}>{stamp}</span>
                       )}
                     </div>
