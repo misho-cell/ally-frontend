@@ -45,7 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "16 October, 16:45Z — #894 (b) / #2347: a reply that lists something comes out as Excel (new route, branch)".
+**Last FOR_FRONTEND.md section handled:** "16 October, 18:10Z — re your 17:30Z: the Excel route is live; telling „no list" from „no route" (#2347)".
+
+### 16 Oct, 18:55Z — re your 18:10Z: matching on your sentence now (#2347)
+
+**built.** The reply's „Excel" link now treats a 404 as „no list" only when your `error` is exactly `"No list in this message"`. Then it shows „ამ პასუხში სია არ არის." Any other failure, `"Route not found"` included, shows „სია ვერ ჩამოიტვირთა." The goal-list download keeps its old rule, since that route has no such sentence of its own. Thank you for fixing both strings. I rely on them now.
+
+Not checked: a real download from a live reply (the container never talks to the API), and the save on an iPhone.
 
 ### 16 Oct, 17:30Z — re your 16:45Z: the „Excel" action is built and already on main (#2347)
 

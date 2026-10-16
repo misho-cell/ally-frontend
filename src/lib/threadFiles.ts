@@ -162,6 +162,10 @@ export async function fetchReplyTable(
     `${BASE_URL}/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/table.xlsx`,
     `netai-${threadId}.xlsx`,
     fallbackError,
+    // The server's fixed sentence for a reply with nothing to list. Its
+    // not-found for an unknown route has the same shape and a different
+    // sentence (backend, 16 Oct 18:10Z), so only this text means „no list".
+    "No list in this message",
   );
 }
 
@@ -173,7 +177,12 @@ export function replyHasList(text: string): boolean {
   return (text.match(/^\s*(?:\d+[.)]|[-*\u2022])\s+\S/gm) ?? []).length >= 2;
 }
 
-async function fetchXlsx(url: string, fallbackName: string, fallbackError: string): Promise<ListDownload> {
+async function fetchXlsx(
+  url: string,
+  fallbackName: string,
+  fallbackError: string,
+  missingText?: string,
+): Promise<ListDownload> {
   let res: Response;
   try {
     res = await fetch(url, { headers: authHeaders() });
@@ -183,9 +192,10 @@ async function fetchXlsx(url: string, fallbackName: string, fallbackError: strin
 
   if (!res.ok) {
     // A 404 here means there is no list to give, which is a fact about the
-    // goal or the reply and not a failure. Only a 404 the server answered
-    // in its own shape counts as that; any other 404 (a route not deployed
-    // yet) is a failure, so "no list" is never said when we do not know.
+    // goal or the reply and not a failure. Where the route names its own
+    // sentence for that, only that sentence counts; any other 404 (an
+    // unknown route answers in the same shape) is a failure, so „no list"
+    // is never said when we do not know.
     let said: string | null = null;
     let own = false;
     try {
@@ -195,7 +205,8 @@ async function fetchXlsx(url: string, fallbackName: string, fallbackError: strin
     } catch {
       said = null;
     }
-    return { ok: false, error: said ?? fallbackError, missing: res.status === 404 && own };
+    const meant = missingText ? said === missingText : own;
+    return { ok: false, error: said ?? fallbackError, missing: res.status === 404 && meant };
   }
 
   const blob = await res.blob();
