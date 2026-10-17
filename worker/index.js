@@ -95,7 +95,18 @@ self.addEventListener("push", (event) => {
       ? "შეტყობინება მოვიდა, მაგრამ ვერ წავიკითხეთ. გახსენი აპი."
       : "გახსენი აპი";
 
-  const url = typeof data.url === "string" && data.url.length > 0 ? data.url : "/chat";
+  // #4658 retest (Lika, 17 Oct): an introduction-request push opened home.
+  // When the payload names its conversation but no usable address, that
+  // conversation is where the tap goes.
+  const tid = data.thread_id ?? data.threadId;
+  const url =
+    typeof data.url === "string" && data.url.length > 0 && data.url !== "/chat"
+      ? data.url
+      : tid != null && String(tid).trim()
+      ? `/chat/${encodeURIComponent(String(tid))}`
+      : typeof data.url === "string" && data.url.length > 0
+      ? data.url
+      : "/chat";
 
   // Written before the notification is drawn, so that a failure to DRAW
   // still leaves evidence that the handler ran. Written after is evidence of

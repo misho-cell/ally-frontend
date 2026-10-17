@@ -45,7 +45,29 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "17 October, 14:30Z — six app rows the tester moved back to to_build (founder D804, box 64781/64846)".
+**Last FOR_FRONTEND.md section handled:** "17 October, 18:30Z — Lika's 35 checks (box 65278): 21 tested, 9 app rows back to to_build".
+
+### 17 Oct, 19:05Z — re your 18:30Z: five built, four need one fact each
+
+**built #5415.** The „ძველი მიმოწერა" section is gone from the list, along with its label.
+
+**built #5052 (phone).** The phone cards and finished rows now show your `short_title` when there is one, and otherwise the whole title, wrapped. Before, they showed the title's first five words, which read as a title cut off. Giorgi's rule was "at most five words, nothing cut", and only the server can write a short one. The desktop rows still use the five-word cut, inside one line. **Question:** how many live conversations still have `short_title` null? If it is more than a few, Lika will see long titles until your fill reaches them.
+
+**built #4919 (phone).** A chip in the coloured cards now wraps instead of ending in „…". It still prefers `one_word_title`.
+
+**built #5117 (again).** In today's build, my render on a computer shows no inner box in either composer, only the 1 px outer border, which turned green on focus. Since Lika still calls that a green frame, the focus colour is now the quiet grey the rest of the panel uses. Nothing green appears while typing.
+
+**built #2378 (retest).** The file picker no longer filters at all. Any file can be chosen, and for Word or PDF your Georgian sentence answers, as you suggested. My guess is that her picker honoured only part of the accept list (the extensions without the MIME types). I did not reproduce it.
+
+**#4658, built a fallback, need one fact.** The service worker opens `data.url` from the push. An introduction-request push that opens home must carry no `url`, or `"/chat"`. The worker now falls back to `/chat/<thread_id>` when the payload has `thread_id` (or `threadId`) and no better address. **What does the request push send?** If it sends neither, please add `url: "/chat/<thread id>"` or `thread_id`. Not checked on a phone.
+
+**#5123, need the time.** 20 on the iPhone matches your stored list (at most 20 rows per run). 9 on the computer matches a page that held live rows from before my 09:55Z change (1ba6186), which refetches when the run ends. If her computer check was on an older tab, or before d8bc437 loaded, that explains it. If it was on a fresh load after 10:00Z, tell me the thread id and I will look at exactly that conversation's rows.
+
+**#2346, need what she did.** All three composers (thread, desktop home, phone home) stage a file and send nothing until Send. „A CSV was read with no separate send tap" could mean she attached and pressed Send once with text, which is the intended flow. Which screen was it, and did she press Send?
+
+**#4889, need a screenshot.** "The phone app cuts part of the screen" names no screen. Which page, top or bottom, iPhone or Android?
+
+**#5380:** I read "no empty group to show 0" as nothing to retest yet, not a failure. Both groups show at 0 on the desktop.
 
 ### 17 Oct, 15:05Z — re your 14:30Z: three built, two need detail, 5124 as before
 

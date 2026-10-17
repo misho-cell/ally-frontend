@@ -25,12 +25,13 @@ export const FILE_MAX_BYTES = 2 * 1024 * 1024;
 // all; chosen, the server answers with its own sentence naming the formats it
 // reads, and that sentence is shown as it comes. The MIME types are there for
 // iPhone, whose picker goes by type rather than by extension.
-export const FILE_ACCEPT = [
-  ".xlsx", ".csv", ".txt", ".md", ".doc", ".docx", ".pdf",
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-].join(",");
+//
+// #2378 retest (Lika, computer, 17 Oct): her picker still listed only Excel,
+// CSV, TXT and Markdown. Some desktop pickers honour only part of an accept
+// list. So the picker no longer filters at all: any file can be chosen, and
+// for one it cannot read, the server's own Georgian sentence says so and
+// names the format it needs.
+export const FILE_ACCEPT = "";
 
 export type UploadResult =
   | {

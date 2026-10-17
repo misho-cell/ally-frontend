@@ -153,7 +153,6 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // #5421: which page of ten each phone group shows. The tab keeps the true
   // total; only the list under it is paged.
   const [phonePage, setPhonePage] = useState<Record<string, number>>({});
-  const [showLegacy, setShowLegacy] = useState(false);
   // 11 Oct, the FIXED2 design. Phone: which group the counters show below
   // them (null: the one that waits on the person, if it has anything).
   // Desktop: which open groups the person folded.
@@ -1694,7 +1693,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                           <TaskCard
                             key={thread.id}
                             thread={thread}
-                            title={shortTitle(thread.short_title, goalTitle(thread))}
+                            title={phoneTitle(thread, goalTitle(thread))}
                             status={status}
                             href={`/chat/${thread.id}`}
                             active={pathname === `/chat/${thread.id}`}
@@ -1738,7 +1737,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                           <DoneRow
                             key={thread.id}
                             thread={thread}
-                            title={shortTitle(thread.short_title, goalTitle(thread))}
+                            title={phoneTitle(thread, goalTitle(thread))}
                             href={`/chat/${thread.id}`}
                             time={fmtClock(thread.updated_at, clock?.today ?? null)}
                           />
@@ -1789,35 +1788,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   })}
                 </div>
 
-                {legacyThreads.length > 0 && (
-                  <section className="mt-3 flex flex-col gap-[2px]">
-                    <button
-                      onClick={() => setShowLegacy((v) => !v)}
-                      className="self-start transition-colors"
-                      style={{ padding: "2px 6px", font: "500 12.5px/17px var(--font-system)", color: "var(--meta)" }}
-                    >
-                      {t("legacyChats")}
-                    </button>
-                    {(showLegacy || !!q) && legacyThreads.map((th) => (
-                      <Link
-                        key={th.id}
-                        href={`/chat/${th.id}`}
-                        prefetch
-                        className={`thread-row flex items-center transition-colors${isUnread(th) ? " unread" : ""}`}
-                        style={{
-                          padding: "7px 10px",
-                          borderRadius: "var(--radius-row)",
-                          background: pathname === `/chat/${th.id}` ? "var(--thread-active-bg)" : undefined,
-                          boxShadow: pathname === `/chat/${th.id}` ? "inset 3px 0 0 var(--accent)" : undefined,
-                        }}
-                      >
-                        <span className="flex-1 truncate" style={{ font: `${isUnread(th) ? 600 : 400} 13px/18px var(--font-system)`, color: "var(--ink-soft)" }}>
-                          {th.title || "…"}
-                        </span>
-                      </Link>
-                    ))}
-                  </section>
-                )}
+                {/* #5415 (Lika, 17 Oct): the „old conversations" tab is gone. The
+                    server removed the test seats' old request threads; the
+                    real ones are Misho's call. */}
 
                 {loadingMore && (
                   <div className="flex flex-col gap-2 py-3">
@@ -2020,6 +1993,15 @@ function firstWords(title: string, n: number): string {
   const words = title.trim().split(/\s+/);
   const out = words.slice(0, n).join(" ");
   return out.replace(/[\s,.;:!?…-]+$/u, "") || title;
+}
+
+// #5052 retest (Lika, iPhone, 17 Oct): Giorgi's rule is a short title of
+// at most five words, and nothing cut off. The server writes short_title;
+// where it has not, the phone shows the whole title, wrapped, rather than
+// its first five words, which read as a title cut off.
+function phoneTitle(thread: Thread, full: string): string {
+  const short = thread.short_title;
+  return typeof short === "string" && short.trim() ? short.trim() : full;
 }
 
 function chipTitle(thread: Thread, full: string): string {

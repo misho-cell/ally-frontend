@@ -625,7 +625,8 @@ body {
 }
 @container (max-width: 140px) { .dz-fcta { padding: 0 6px; font-size: 10px; gap: 4px; } }
 .dz-peek { display: flex; flex-wrap: wrap; gap: 6px; min-height: 19px; }
-.dz-peek span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 4px 8px; border-radius: 8px; font: 400 9.7px/11.2px var(--font-system); }
+/* #4919 retest (Lika, iPhone): a long chip wraps instead of ending in „…". */
+.dz-peek span { max-width: 100%; overflow-wrap: anywhere; padding: 4px 8px; border-radius: 8px; font: 400 9.7px/11.2px var(--font-system); }
 .dz-fc.w .dz-peek span { background: #006C65; }
 .dz-fc.k .dz-peek span { background: #E39963; }
 /* 5017: the CTA is pinned to the bottom, so both cards keep it level. */
@@ -908,14 +909,15 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
 .dz-write { padding: 12px 20px max(16px, env(safe-area-inset-bottom)); background: var(--bg); }
 .dz-wbox { display: flex; align-items: flex-end; gap: 5px; padding: 5px 6px; background: #FFFFFF; border: 1px solid var(--cta-border); border-radius: 16px; }
 .dz-wbox.rec { border-color: var(--danger); }
-.dz-wbox:focus-within { border-color: var(--accent); }
+/* #5117 retest (Lika, computer): no green frame while typing; a quiet grey. */
+.dz-wbox:focus-within { border-color: var(--ink-muted); }
 .dz-wbox textarea { min-height: 40px; padding: 9px 2px; border: 0; outline: 0; background: transparent; font: 400 16px/22px var(--font-system); }
 .dz-wbox textarea::placeholder { color: var(--ink-muted); }
 /* #5117: the global focus ring drew a second green box inside the composer.
    Focus shows on the outer card's border instead. */
 .dz-wbox textarea:focus, .dz-wbox textarea:focus-visible,
 .dz-wcompose textarea:focus, .dz-wcompose textarea:focus-visible { outline: 0; box-shadow: none; }
-.dz-wcompose:focus-within { border-color: var(--accent); }
+.dz-wcompose:focus-within { border-color: var(--ink-muted); }
 .dz-attach { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 34px; height: 40px; border-radius: 10px; color: var(--accent); flex-shrink: 0; }
 /* 4951 (Giorgi): as in the Claude chat, send is the solid button on the
    right and the mic the plain one to its left, on the phone as on desktop. */
