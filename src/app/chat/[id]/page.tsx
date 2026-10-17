@@ -984,9 +984,11 @@ export default function ThreadPage() {
       setResolving(false);
     }
   }
-  // Only on the owner's own goal, and only while it is not already done.
+  // Only on the owner's own conversation, and only while it is not already
+  // done. #5282 (D802, 17 Oct): a chat with no goal no longer closes by
+  // itself, so it needs the button as much as a goal does.
   const canResolve =
-    thread?.role === "initiator" && thread.goal_id != null && thread.status !== "done" && resolveGone !== threadId;
+    thread?.role === "initiator" && thread.status !== "done" && resolveGone !== threadId;
 
   // #2080 (D703). Pin a conversation so it stays at the top of the list until
   // its owner clears it. One tap sets, a second clears; the row moves from the
@@ -1763,7 +1765,8 @@ export default function ThreadPage() {
     ? thread.status_line
     : taskStatus
     ? taskStatus === "working" ? t("stWorking")
-      : taskStatus === "waiting" ? t("stWaiting")
+      // #5282: a plain chat at "waiting" waits on nobody; it is simply open.
+      : taskStatus === "waiting" ? (thread?.goal_id == null ? null : t("stWaiting"))
       : taskStatus === "needs_you" ? t("stNeedsYou")
       : taskStatus === "failed" ? t("stFailed")
       // Stopped and finished both arrive as "done"; only goal_stopped tells

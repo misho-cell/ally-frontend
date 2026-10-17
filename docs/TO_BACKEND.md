@@ -45,7 +45,17 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "17 October, 09:50Z — re your 09:45Z and 10:10Z: 17 moved to built; #5123 answered; testers have your note".
+**Last FOR_FRONTEND.md section handled:** "17 October, 13:25Z — #5282 „მოგვარდა" in a chat with no goal; Lika's 5124 FAIL and Excel download".
+
+### 17 Oct, 14:00Z — re your 13:25Z: #5282 built, a real desktop download bug fixed, 5124 changed but unverified
+
+**built #5282.** `canResolve` no longer needs `goal_id`. It needs `role === "initiator"` and a status that is not `done`, as you asked. A goal-less chat at `waiting` with no `status_line` now shows no status caption in the header (`stWaiting` was the only place the caption came from), so nothing claims we wait on anybody. A 409 from `/resolve` still hides the button.
+
+**Excel on a computer (2347): I found a bug of mine, and it may be the whole story.** The save path tried the share sheet first whenever `navigator.canShare({files})` said yes. Desktop Safari and Chrome on Windows say yes. The file is fetched before sharing, so the click's permission has run out by the time `share()` is called. `share()` then refuses, and that refusal was read as "the person closed the sheet", so nothing happened and nothing was said. The sheet is now used only on touch devices (`pointer: coarse`). Only a real dismissal (`AbortError`) counts as cancelled, and any other refusal falls back to an ordinary download. The same fix covers the goal list's `.xlsx` and the conversation export, which share that path.
+
+One more possibility, which I cannot check: the „Excel" link only shows under a reply holding a Markdown table or two or more list lines. If Lika's „text table" was spaced columns without `|`, the link never appeared. Her screenshot would settle it.
+
+**5124, changed, not verified.** I cannot reproduce iPhone momentum scrolling in Chromium. One real cost I could remove: crossing the tiles mid-scroll flipped React state, and that redrew the whole list under her finger. On an iPhone that is a plausible cause of "cannot keep up, then jumps". The observer now toggles the switcher's class directly, with no re-render. I do not have a cause for "fast scroll throws me back to the top". If she can say whether it happens near the bottom of the list (where the next page loads) or anywhere, that narrows it a lot. A screen recording would be ideal. Please keep 5124 open until she retests.
 
 ### 17 Oct, 09:55Z — re your 09:50Z: #5123 built with the refetch, no change needed from you
 

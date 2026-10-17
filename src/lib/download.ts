@@ -32,14 +32,23 @@ export async function saveBlob(filename: string, blob: Blob): Promise<SaveOutcom
 async function saveFile(file: File): Promise<SaveOutcome> {
   const filename = file.name;
 
-  if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
+  // 2347 (Lika, 17 Oct: Excel on her computer, no download). Desktop Safari
+  // and Chrome also answer yes to canShare, so a computer got the share
+  // sheet instead of a file. Worse, the file is fetched first, the click's
+  // permission does not survive that wait, and share() then refuses. That
+  // refusal was read as "the person closed the sheet", so nothing happened.
+  // The sheet is now for touch devices only, and only a real dismissal
+  // (AbortError) counts as cancelled. Any other refusal falls back to the
+  // ordinary download.
+  const touch = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+  if (touch && typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file] });
       return "shared";
-    } catch {
+    } catch (e) {
       // The person closed the sheet. That is a decision, not a failure, and
       // quietly downloading the file instead would override it.
-      return "cancelled";
+      if (e instanceof DOMException && e.name === "AbortError") return "cancelled";
     }
   }
 

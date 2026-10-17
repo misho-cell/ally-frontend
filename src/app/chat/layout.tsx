@@ -160,13 +160,24 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [phonePane, setPhonePane] = useState<"needs" | "ongoing" | null>(null);
   const [folded, setFolded] = useState<Record<string, boolean>>({});
   // The sticky switcher appears once the counters have scrolled away.
-  const [tilesOut, setTilesOut] = useState(false);
+  // #5124 (Lika, iPhone, 17 Oct: slow scrolling lags, then jumps): this used
+  // to be React state, so crossing that line mid-scroll re-rendered the whole
+  // list under the finger. The observer now flips the switcher's class
+  // directly and nothing else is drawn again.
+  const switcherEl = useRef<HTMLDivElement | null>(null);
   const tilesObs = useRef<IntersectionObserver | null>(null);
   const tilesRef = useCallback((el: HTMLDivElement | null) => {
     tilesObs.current?.disconnect();
     tilesObs.current = null;
     if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([e]) => setTilesOut(!e.isIntersecting && e.boundingClientRect.top < 0));
+    const io = new IntersectionObserver(([e]) => {
+      const on = !e.isIntersecting && e.boundingClientRect.top < 0;
+      const sw = switcherEl.current;
+      if (!sw) return;
+      sw.classList.toggle("on", on);
+      sw.setAttribute("aria-hidden", on ? "false" : "true");
+      sw.querySelectorAll("a").forEach((a) => (on ? a.removeAttribute("tabindex") : a.setAttribute("tabindex", "-1")));
+    });
     io.observe(el);
     tilesObs.current = io;
   }, []);
@@ -1658,9 +1669,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     past the tiles only fades it in, so nothing below jumps. */}
                 {!q && (needsYou.length + ongoing.length) > 0 && (
                   <div className="dz-switch-wrap">
-                  <div className={`dz-switcher${tilesOut ? " on" : ""}`} aria-hidden={!tilesOut}>
+                  <div ref={switcherEl} className="dz-switcher" aria-hidden="true">
                     {phoneGroups.map((g) => (
-                      <a key={g.key} href={`#pane-${g.key}`} tabIndex={tilesOut ? undefined : -1} className={g.key === "needs" ? "wait" : "run"} onClick={(e) => { e.preventDefault(); choosePane(g.key); }}>
+                      <a key={g.key} href={`#pane-${g.key}`} tabIndex={-1} className={g.key === "needs" ? "wait" : "run"} onClick={(e) => { e.preventDefault(); choosePane(g.key); }}>
                         <span className="sn">{g.rows.length}</span>
                         <span>{g.label}</span>
                         <DzIcon name={pane === g.key ? "down" : "right"} size={12} />
