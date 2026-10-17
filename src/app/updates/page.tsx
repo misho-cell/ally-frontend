@@ -42,8 +42,8 @@ const L = {
     later: "Later",
     laterWeekShort: "In one week",
     snoozeTitle: "When should I remind you?",
-    snoozeDay: "Day",
-    snoozeSave: "Save reminder",
+    laterTomorrow: "Tomorrow",
+    laterThree: "In 3 days",
     dueEmpty: "Nothing new right now.",
     seenTitle: "Already read",
     seenEmpty: "Nothing here yet.",
@@ -96,8 +96,8 @@ const L = {
     later: "მოგვიანებით",
     laterWeekShort: "ერთ კვირაში",
     snoozeTitle: "როდის შეგახსენო?",
-    snoozeDay: "დღე",
-    snoozeSave: "შეხსენების შენახვა",
+    laterTomorrow: "ხვალ",
+    laterThree: "3 დღეში",
     dueEmpty: "ახალი ჯერ არაფერია.",
     seenTitle: "უკვე წაკითხული",
     seenEmpty: "ჯერ არაფერია.",
@@ -364,31 +364,20 @@ export default function UpdatesPage() {
     }
   };
 
-  // 13 Oct (FIXED2). „Later" on a card opens a day to choose, as in the
-  // design, and „in one week" is the one-tap version of the same thing. The
-  // server takes whole days from 1 to 30 (MIN/MAX_SNOOZE_DAYS in the
-  // backend's pendingUpdates.service); the picker offers that same range,
-  // and if the two ever disagree the server's refusal is what is shown.
+  // 13 Oct (FIXED2). „Later" on a card opens the choice of when.
+  // #1686 (Lika's phone, 16 Oct; server 93775c0): the choice is three taps,
+  // tomorrow, in 3 days or in a week, instead of a date field. The native
+  // date picker was the part that failed on her phone, and the server takes
+  // exactly these whole days. „In one week" stays on the card as the one-tap
+  // version of the last of them.
   const [snoozing, setSnoozing] = useState<Update | null>(null);
-  const [snoozeDate, setSnoozeDate] = useState("");
-  const dayISO = (offset: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + offset);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  };
   const openSnooze = (u: Update) => {
-    setSnoozeDate(dayISO(1));
     setNotice(null);
     setSnoozing(u);
   };
-  const saveSnooze = async () => {
+  const pickSnooze = async (days: number) => {
     const ref = snoozing?.update_ref;
-    if (!ref || !snoozeDate) return;
-    const [y, m, d] = snoozeDate.split("-").map(Number);
-    const today = new Date();
-    const days = Math.round(
-      (Date.UTC(y, m - 1, d) - Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) / 86400000,
-    );
+    if (!ref) return;
     setSnoozing(null);
     await snooze(ref, days);
   };
@@ -459,20 +448,12 @@ export default function UpdatesPage() {
   if (snoozing) {
     return (
       <SheetPage title={s.snoozeTitle} backHref="/updates" onBack={() => setSnoozing(null)} backLabel={s.title} closeLabel={s.close}>
-        <label className="nx-field">
-          {s.snoozeDay}
-          <input
-            type="date"
-            value={snoozeDate}
-            min={dayISO(1)}
-            max={dayISO(30)}
-            onChange={(e) => setSnoozeDate(e.target.value)}
-          />
-        </label>
-        <div>
-          <button type="button" className="nx-btn primary" disabled={!snoozeDate} onClick={saveSnooze}>
-            {s.snoozeSave}
-          </button>
+        <div className="nx-row">
+          {([[1, s.laterTomorrow], [3, s.laterThree], [7, s.laterWeekShort]] as const).map(([days, label]) => (
+            <button key={days} type="button" className="nx-btn" onClick={() => void pickSnooze(days)}>
+              {label}
+            </button>
+          ))}
         </div>
       </SheetPage>
     );
