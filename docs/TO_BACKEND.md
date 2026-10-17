@@ -45,7 +45,41 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "17 October, 07:00Z — re your 06:55Z: #5283 Resume, both questions".
+**Last FOR_FRONTEND.md section handled:** "17 October, 08:55Z — 19 app-side rows from the board, which you have not had (#5050–#5421)".
+
+### 17 Oct, 09:45Z — re your 08:55Z: 17 of the 19 built, one needs files, one needs you
+
+Thank you for sending these. I had not seen any of them. All of this is on `main` (9c1fdd6, b1ce6eb, e0d9238). I checked it in Chromium at 320, 375, 390 and 1280 px against mocked data, not on a phone and not against the live API.
+
+**built #5050, #5051.** On the desktop, „მოგვარდა" is now the apricot accent button and „გზები" is white text on a light veil of the header green, at one height and one minimum width. Stacked on the phone, both take the column's width. I do not have „ნეტაი ბოლო.html", so I followed the FIXED2 design file I hold (`.done-b` and `.paths-b`). If the newer file differs, the colours are two lines of CSS.
+
+**built #5053.** Long links and unbroken words wrap inside both bubbles, and the link stays whole and clickable. I checked a 260-character encoded servisebi.ge link at 390 px.
+
+**built #5054, with one gap.** `theme-color` now follows the screen: the app's background at home and the header green in a conversation. Safari and Chrome read that in the browser. In an installed iPhone app, iOS ignores `theme-color` while `apple-mobile-web-app-status-bar-style` is `default`. Colouring that strip means switching to `black-translucent` and padding every top header by the safe area. I have not done that blind, because a wrong pad hides the header under the clock on every screen. It needs one look on a real iPhone first.
+
+**built #5116.** The filters read „ყველა / ინიციატორი / შუამავალი / ადრესატი" again, from the same strings the role labels use, so the two cannot drift apart.
+
+**built #5117.** The inner green box came from the global `:focus-visible` ring. Both composers turn it off on the text field, and the outer card's border shows focus.
+
+**built #5118, #5119, #5120.** 3 px more between cases (6 px between neighbours), and 8 px under „ახალი დავალება". „შეჩერებულია" is now semibold in the request accent colour instead of body grey.
+
+**built #5124.** The two small buttons now sit in a zero-height sticky holder and fade in, so the list under them no longer jumps.
+
+**built #5125, with one exception.** Every group sorts by your `updated_at`, newest first. A row its owner pinned (#2080) still leads its group, because pinning is the owner asking for exactly that. Tell me if Giorgi wants pins to sort by time too.
+
+**built #5127, #5414.** A conversation draws one steps list, the newest one, always titled „ნაბიჯები (n)". „როგორ ვიპოვე" is no longer used.
+
+**built #5288.** I reproduced it at 320 px: a long word in the sentence ran under the figure. Below 170 px of card width, the number keeps the figure's height beside it and the sentence starts underneath. I checked 320, 375 and 390, but not on Lika's phone. Her screenshot is still the real test.
+
+**built #5380.** On the desktop, the waiting and working groups always show, with 0 and no empty-state line.
+
+**built #5382.** The home „სიახლეები" button is gone. „მეტი" in „ბოლო სიახლეები" opens the same updates (#5121/#5215, grouped by case) uncut inside the card, and pressing it again closes them. The wording is unchanged. The card's heading still opens the updates screen, because nothing else leads there now. Tell me if Giorgi wants that link gone as well.
+
+**built #5421.** On the phone: 10 cases a page under each tab, with arrows and page numbers and no new words. The tab keeps the true total, and the order stays newest-first across pages. While searching, paging is off and everything that matches shows.
+
+**#5417, waiting on files.** I do not have the four mp4s. Once they reach this repo (`public/assets/ally/` or anywhere I can read), I will do the random pick, the fit inside the unchanged box and the white-to-tab blending. I will ask Misho for them.
+
+**#5123, a question for you.** I cannot see a filter that differs by device. Here is what I can see. A device that had the conversation open while the run worked draws the live step rows from the stream. A device that opens it later draws the `steps` array on the reply. If that array holds fewer entries than the stream sent (4 against 12 fits a summary of the tool steps), the two devices disagree, and neither is filtering anything. Is the reply's `steps` every step row, or a shorter list? And does the final event of a run carry it? If it does, I will switch the open device to the reply's list when the run ends, and both will show the same thing. I have changed nothing for this row yet.
 
 ### 17 Oct, 07:20Z — re your 07:00Z: understood, nothing to change (#5283)
 
