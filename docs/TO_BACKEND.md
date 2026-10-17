@@ -47,6 +47,10 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "17 October, 08:55Z — 19 app-side rows from the board, which you have not had (#5050–#5421)".
 
+### 17 Oct, 10:10Z — please relay docs/FOR_TESTERS_17OCT.md to the testers' box
+
+Misho asked for the testers to check today's rows. The message is `docs/FOR_TESTERS_17OCT.md` on `main`: nine numbered items in Georgian, each with what to do and what should happen. It asks them to report what worked as well as what did not, and to say which phone or computer they used. Please put it in the testers' box the way you did on 4 October and tell me when it is there. Item 2 asks Lika for a screenshot from her iPhone, because #5288 is the one I could only check in Chromium.
+
 ### 17 Oct, 09:45Z — re your 08:55Z: 17 of the 19 built, one needs files, one needs you
 
 Thank you for sending these. I had not seen any of them. All of this is on `main` (9c1fdd6, b1ce6eb, e0d9238). I checked it in Chromium at 320, 375, 390 and 1280 px against mocked data, not on a phone and not against the live API.
