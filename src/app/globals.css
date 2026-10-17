@@ -465,6 +465,10 @@ body {
 /* FE-2 (30 Aug): reserve one line's height so the assistant bubble doesn't
    pop from 0 to full height the instant the first streamed token arrives. */
 .msg-ally { min-height: 24px; font: 400 15px/24px var(--font-system); color: var(--ink); }
+/* #5053: a 200-character link or an unbroken word wraps inside its bubble
+   instead of pushing the page sideways. The link stays whole and clickable. */
+.msg-ally, .msg-ally a, .msg-user, .dz-ububble { overflow-wrap: anywhere; word-break: break-word; }
+.msg-ally { min-width: 0; max-width: 100%; }
 /* 9 Oct, the new design: the assistant's white card. The small corner sits
    toward the speaker, at the bottom by the figure. */
 .ally-bubble {
@@ -559,6 +563,8 @@ body {
 
 .dz-new-task { display: none; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 40px; border-radius: 11px; background: var(--accent); color: #FFFFFF; font: 600 12px/18px var(--font-system); }
 .dz-new-task:hover { background: var(--accent-strong); }
+/* #5120: visible room between „new task" and the search, like the rest of the panel. */
+.dz-new-task { margin-bottom: 8px; }
 
 /* Search over my tasks */
 .dz-search { display: flex; align-items: center; gap: 9px; height: 44px; padding: 0 11px; background: #FFFFFF; border: 1px solid var(--header-border); border-radius: 12px; color: var(--text-2); }
@@ -673,7 +679,8 @@ body {
 .dz-cc p { margin-top: 2px; font: 400 13px/20.15px var(--font-system); color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .dz-cf { display: flex; justify-content: flex-end; padding-top: 12px; }
 .dz-open { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1px solid var(--accent); border-radius: 12px; background: #FFFFFF; color: var(--accent); font: 600 12.5px/20px var(--font-system); }
-.dz-status { display: block; margin-top: 4px; padding-right: 24px; font: 400 10px/16px var(--font-system); color: var(--nx-muted); }
+/* #5119: „paused" must read as a status at a glance, not as body text. */
+.dz-status { display: block; margin-top: 4px; padding-right: 24px; font: 600 10px/16px var(--font-system); color: var(--request-accent); }
 
 /* Resolved, plain rows (phone) */
 .dz-done { margin-top: 32px; }
@@ -715,7 +722,8 @@ body {
 .dz-group-head svg { color: var(--ink-muted); transition: transform .16s ease; }
 .dz-group-head[aria-expanded="false"] svg { transform: rotate(-90deg); }
 
-.dz-row { position: relative; display: flex; gap: 10px; margin: 1px 0; padding: 10px; border: 1px solid transparent; border-radius: 10px; text-decoration: none; color: var(--ink); }
+/* #5118 (17 Oct): a little more air between cases, still compact. */
+.dz-row { position: relative; display: flex; gap: 10px; margin: 4px 0; padding: 10px; border: 1px solid transparent; border-radius: 10px; text-decoration: none; color: var(--ink); }
 .dz-row:hover { background: rgba(255, 255, 255, .55); }
 .dz-row.active { background: #FFFFFF; border-color: var(--header-border); box-shadow: inset 3px 0 0 var(--accent); }
 .dz-row-avatar { width: 30px; height: 30px; margin-top: 1px; border-radius: 9px; background: var(--sidebar-bg); color: var(--text-2); display: grid; place-items: center; flex-shrink: 0; }
@@ -835,6 +843,8 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
 @media (max-width: 767px) {
   .dz-thd-acts { flex-direction: column; align-items: flex-end; justify-content: space-between; align-self: stretch; gap: 8px; }
   .dz-thd-acts .dz-resolve { order: -1; }
+  /* #5051: stacked, both buttons take the column's width so they match. */
+  .dz-thd-acts .dz-resolve { align-self: stretch; justify-content: center; }
 }
 .dz-hbtn { width: 32px; height: 32px; border-radius: 10px; border: 1px solid #FFFFFF; background: transparent; color: #FFFFFF; }
 .dz-hbtn:hover { background: rgba(255, 255, 255, .1); }
@@ -858,7 +868,10 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
   .dz-thd-mt { margin-top: 5px; font-size: 10px; line-height: 15.5px; }
   .dz-thd-acts { align-self: center; margin-top: 25px; gap: 6px; }
   .dz-hbtn { border-radius: 9px; border-color: #9ED1C7; }
-  .dz-resolve { border-radius: 9px; background: #FFFFFF; color: var(--accent); border: 1px solid #FFFFFF; font: 500 11px/14px var(--font-system); }
+  /* #5050: „Resolved" is the accent button, „Paths" the white one, so the
+     two no longer look alike on the desktop. #5051: one size for both. */
+  .dz-resolve { min-width: 92px; justify-content: center; border-radius: 9px; background: var(--apricot); color: #3F2D20; border: 1px solid var(--apricot); font: 600 11px/14px var(--font-system); }
+  .dz-resolve.white { background: #FFFFFF; color: var(--accent); border-color: #FFFFFF; }
 }
 
 .dz-ububble { max-width: 79%; padding: 13px 16px; border-radius: 16px 16px 6px 16px; background: var(--user-bubble-bg); color: var(--user-bubble-ink); border: 1px solid #C2D8F5; font: 400 14px/22.4px var(--font-system); }
@@ -875,6 +888,11 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
 .dz-wbox:focus-within { border-color: var(--accent); }
 .dz-wbox textarea { min-height: 40px; padding: 9px 2px; border: 0; outline: 0; background: transparent; font: 400 16px/22px var(--font-system); }
 .dz-wbox textarea::placeholder { color: var(--ink-muted); }
+/* #5117: the global focus ring drew a second green box inside the composer.
+   Focus shows on the outer card's border instead. */
+.dz-wbox textarea:focus, .dz-wbox textarea:focus-visible,
+.dz-wcompose textarea:focus, .dz-wcompose textarea:focus-visible { outline: 0; box-shadow: none; }
+.dz-wcompose:focus-within { border-color: var(--accent); }
 .dz-attach { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 34px; height: 40px; border-radius: 10px; color: var(--accent); flex-shrink: 0; }
 /* 4951 (Giorgi): as in the Claude chat, send is the solid button on the
    right and the mic the plain one to its left, on the phone as on desktop. */

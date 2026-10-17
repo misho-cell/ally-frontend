@@ -50,11 +50,11 @@ const SEND = {
 // 23 Aug #5: the two client-side strings inside the conversation follow the
 // THREAD's language (last message), like the backend's step lines do.
 type ThreadLang = "ka" | "en" | "ru" | "es";
-const CHROME: Record<ThreadLang, { steps: string; howFound: string; spent: string; share: string }> = {
-  ka: { steps: "ნაბიჯები ({n})", howFound: "როგორ ვიპოვე ({n})", spent: "თვის პაკეტი ამოიწურა, ახლა ბალანსიდან იხარჯება", share: "გაზიარება" },
-  en: { steps: "Steps ({n})", howFound: "How I found it ({n})", spent: "Monthly allowance used up. Now spending from your balance.", share: "Share" },
-  ru: { steps: "Шаги ({n})", howFound: "Как я нашёл ({n})", spent: "Месячный пакет израсходован. Теперь списывается с баланса.", share: "Поделиться" },
-  es: { steps: "Pasos ({n})", howFound: "Cómo lo encontré ({n})", spent: "El paquete mensual se ha agotado. Ahora se descuenta de tu saldo.", share: "Compartir" },
+const CHROME: Record<ThreadLang, { steps: string; spent: string; share: string }> = {
+  ka: { steps: "ნაბიჯები ({n})", spent: "თვის პაკეტი ამოიწურა, ახლა ბალანსიდან იხარჯება", share: "გაზიარება" },
+  en: { steps: "Steps ({n})", spent: "Monthly allowance used up. Now spending from your balance.", share: "Share" },
+  ru: { steps: "Шаги ({n})", spent: "Месячный пакет израсходован. Теперь списывается с баланса.", share: "Поделиться" },
+  es: { steps: "Pasos ({n})", spent: "El paquete mensual se ha agotado. Ahora se descuenta de tu saldo.", share: "Compartir" },
 };
 
 // T3 (26 Aug): get_invite_link drops a plain /join?ref=CODE URL into the
@@ -1643,6 +1643,11 @@ export default function ThreadPage() {
   const trailingSteps =
     lastBlock && lastBlock.type === "steps" && lastBlock.trailing ? lastBlock.steps : [];
   const renderBlocks = loading && trailingSteps.length > 0 ? blocks.slice(0, -1) : blocks;
+  // #5414 (Giorgi, 16 Oct; replaces #375's "old steps under each reply"):
+  // a conversation shows one steps list, the newest. Earlier ones are not
+  // drawn at all.
+  let latestStepsAt = -1;
+  renderBlocks.forEach((b, i) => { if (b.steps.length > 0) latestStepsAt = i; });
 
   // Row 294: the single line shown while the run is going. The newest step is
   // the freshest thing we have — both tool_progress and step_summary append a
@@ -2006,8 +2011,9 @@ export default function ThreadPage() {
               </div>
             )}
 
-            {renderBlocks.map((block) => {
+            {renderBlocks.map((block, blockAt) => {
               if (block.type === "steps") {
+                if (blockAt !== latestStepsAt) return null;
                 const gid = stepsGroupId(block.steps);
                 return (
                   <StepGroup
@@ -2092,14 +2098,15 @@ export default function ThreadPage() {
                       (Tornike, Misho's yes): after the answer, as „how I
                       found it", because the answer is what the person came
                       for. While a run is still working its steps stay above,
-                      as „steps", in the trailing block. */}
-                  {block.steps.length > 0 && (() => {
+                      in the trailing block. #5127 (17 Oct): one name, „steps",
+                      both while working and after. */}
+                  {block.steps.length > 0 && blockAt === latestStepsAt && (() => {
                     const gid = stepsGroupId(block.steps);
                     return (
                       <StepGroup
                         key={gid}
                         steps={block.steps}
-                        label={chrome.howFound.replace("{n}", String(block.steps.length))}
+                        label={chrome.steps.replace("{n}", String(block.steps.length))}
                         open={openSteps.has(gid)}
                         onToggle={() => toggleSteps(gid)}
                       />

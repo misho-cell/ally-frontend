@@ -1562,7 +1562,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               <div className="dz-roles" role="group" aria-label={t("roleAll")}>
                 {(["all", "initiator", "mediator", "addressee"] as const).map((r) => (
                   <button key={r} type="button" aria-pressed={roleFilter === r} onClick={() => setRoleFilter(r)}>
-                    {r === "all" ? t("roleAll") : r === "initiator" ? t("filterMine") : r === "mediator" ? t("filterHelping") : t("filterAsked")}
+                    {/* #5116 (Giorgi, 15 Oct): the role names, not the #4588 renames. */}
+                    {r === "all" ? t("roleAll") : r === "initiator" ? t("roleInitiator") : r === "mediator" ? t("roleMediator") : t("roleAddressee")}
                   </button>
                 ))}
               </div>

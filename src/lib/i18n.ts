@@ -209,9 +209,6 @@ const en = {
   roleAll: "All",
   // #4588 (Tornike, Misho's yes): the filters in plain words; the cards keep
   // the role names above.
-  filterMine: "Mine",
-  filterHelping: "Helping",
-  filterAsked: "Asked of me",
   routesTitle: "Paths",
   routesCount: "Paths · {n}",
   routeWaiting: "Waiting for a reply",
@@ -440,9 +437,6 @@ const ka: typeof en = {
   roleAddressee: "ადრესატი",
   roleMediator: "შუამავალი",
   roleAll: "ყველა",
-  filterMine: "ჩემი",
-  filterHelping: "ვეხმარები",
-  filterAsked: "მეკითხებიან",
   routesTitle: "გზები",
   routesCount: "გზები · {n}",
   routeWaiting: "ველოდები პასუხს",
