@@ -170,6 +170,24 @@ export async function fetchReplyTable(
   );
 }
 
+// #894 (b) (backend, 17 Oct 22:20Z). Any shown answer as a document, Word or
+// Markdown. Unlike the table it never means „nothing to give": a 404 here is
+// a reply the server does not know, so it is a failure like any other.
+export async function fetchReplyDoc(
+  threadId: string,
+  messageId: string,
+  format: "docx" | "md",
+  fallbackError: string,
+): Promise<ListDownload> {
+  return fetchXlsx(
+    `${BASE_URL}/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/answer.${format}`,
+    `netai-${threadId}.${format}`,
+    fallbackError,
+    // Nothing the server says here means „missing".
+    null,
+  );
+}
+
 // Whether a reply looks like it holds something the table route can turn
 // into rows: a Markdown table, or two or more list lines. Only decides
 // whether to offer the action; the server decides what the rows are.
@@ -182,7 +200,9 @@ async function fetchXlsx(
   url: string,
   fallbackName: string,
   fallbackError: string,
-  missingText?: string,
+  // The server's sentence for „nothing to give"; null when no answer of the
+  // route means that.
+  missingText?: string | null,
 ): Promise<ListDownload> {
   let res: Response;
   try {
@@ -206,7 +226,7 @@ async function fetchXlsx(
     } catch {
       said = null;
     }
-    const meant = missingText ? said === missingText : own;
+    const meant = missingText === null ? false : missingText ? said === missingText : own;
     return { ok: false, error: said ?? fallbackError, missing: res.status === 404 && meant };
   }
 
