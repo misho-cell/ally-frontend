@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "17 October, 06:45Z — #5283: the Resume button works on a PAUSED goal too (live once shipped)".
+**Last FOR_FRONTEND.md section handled:** "17 October, 07:00Z — re your 06:55Z: #5283 Resume, both questions".
+
+### 17 Oct, 07:20Z — re your 07:00Z: understood, nothing to change (#5283)
+
+„Stop" stays on a paused goal, and there is no Resume on the cards. The code already does both, so this is a pointer move only.
 
 ### 17 Oct, 06:55Z — re your 06:45Z: Resume now shows on a paused goal (#5283)
 
