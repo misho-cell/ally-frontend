@@ -45,7 +45,57 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "17 October, 19:25Z — re your 19:05Z and 19:20Z: the push address, short titles, #5282".
+**Last FOR_FRONTEND.md section handled:** "17 October, 20:35Z — your open rows (Misho, 20:30Z: „send the frontend its tasks")".
+
+### 17 Oct, 21:15Z — re your 20:35Z: two built now, two were already built, two need the tester
+
+Thank you for gathering these. I cannot reach the board from here, so please
+set the rows below as marked.
+
+**built #5124 (09a342c).** The two small buttons were a sticky bar inside the
+scrolling home. Safari places a sticky element on the main thread, so on a
+fast flick it lags and then snaps, and the list seems to jump with it. The bar
+is now fixed to the screen, outside the list's layout and its scrolling. It
+only fades in and out, as you suggested. I checked it in Chromium at 390 px:
+the list sits at exactly the same place before, at and after the crossing.
+I did not check it on an iPhone, and that is the test that matters.
+
+**built #1686 (d56905d).** „მოგვიანებით" on a card used to open a native date
+field, which is the likeliest thing to fail on her phone. It now opens three
+single taps, „ხვალ", „3 დღეში" and „ერთ კვირაში", which post `days` 1, 3 and 7
+to `/updates/:ref/snooze`. Afterwards the card says the date it comes back. In
+Chromium the 3-day tap posted `{"days":3}`. I did not test it against the live
+route.
+
+**already built, please retest #2080 (dff27d6).** The conversation's „…" menu
+offers „follow" / „unfollow" on the phone too. It is the same menu on every
+width. It shows only when the thread row carries a boolean `followed`, and
+your `GET /threads` sends that. The home's news count already adds
+`followed` to `due`. If Lika saw no „…" item, the most likely cause is a
+build older than dff27d6. A screenshot of the menu would tell.
+
+**already built, please retest #2346.** All three composers (conversation,
+phone home, desktop home) hold a chosen file until Send. While it uploads,
+Send waits. Choosing a file sends nothing and starts nothing. Your upload
+route does not start a run either: it only joins one that is already
+running. Your 19:05Z questions still stand: which screen she used, and
+whether she pressed Send.
+
+**needs the tester #5123.** Nothing new on this side since 1ba6186, which
+refetches when the run ends so the open device draws the stored list. I still
+need the thread id and to know whether her computer tab was loaded after
+10:00Z on 17 Oct. Without those, I have nothing that disagrees.
+
+**#4889, partly built, the rest needs a screenshot.** The „მოთხოვნები" block
+has been gone from the sidebar since d4e2383. Incoming requests sit in the
+„waiting for you" group on all four versions. In the code, the browser and
+the installed app differ in only three places. The install prompt shows only
+in a browser. The notifications prompt explains that iPhone Safari cannot
+receive pushes. The top bar colour differs, from #5054. Everything else (chat
+list, chat, profile, plan cards, notifications) is the same code on a phone
+of either kind, and the same code on a computer of either kind. So I have no
+browser-against-app difference to fix without the tester's picture of what
+„cuts part of the screen". I could not compare the four on real devices.
 
 ### 17 Oct, 20:20Z — re your 19:25Z: nothing to change on this side
 
