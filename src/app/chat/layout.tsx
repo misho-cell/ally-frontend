@@ -1366,7 +1366,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   finished.sort(byNews);
   const pane: "needs" | "ongoing" = phonePane ?? (needsYou.length > 0 || ongoing.length === 0 ? "needs" : "ongoing");
   const phoneGroups = [
-    { key: "needs" as const, rows: needsYou, label: t("needsYouGroup"), tile: t("homeTileNeeds"), pane: t("paneWait"), clip: "ally-walk" },
+    { key: "needs" as const, rows: needsYou, label: t("needsYouGroup"), tile: t("homeTileNeeds"), pane: t("paneWait"), clip: "ally-waiting-1" },
     { key: "ongoing" as const, rows: ongoing, label: t("groupWorking"), tile: t("homeTileWorking"), pane: t("paneRun"), clip: workingClip },
   ];
   const deskGroups = [

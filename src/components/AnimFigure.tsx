@@ -15,8 +15,8 @@ import type { CSSProperties } from "react";
 //   settles, and the poster is a frame from there). The height of the figure
 //   is then set where it is used, in globals.css.
 //
-// #5417 (Giorgi's new clips, 17 Oct): the working pair arrive already cut to
-// where their figure moves (measured over every frame, plus a small margin),
+// #5417 (Giorgi's new clips, 17 Oct): the working pair and the waiting clip
+// arrive already cut to where their figure moves (measured over every frame, plus a small margin),
 // so their crop is the whole file and they carry their own frame size.
 const FRAME = { w: 854, h: 480 };
 const CROP: Record<string, { x0: number; y0: number; x1: number; y1: number; w?: number; h?: number }> = {
@@ -24,6 +24,7 @@ const CROP: Record<string, { x0: number; y0: number; x1: number; y1: number; w?:
   "ally-loading": { x0: 328, y0: 26, x1: 530, y1: 454 },
   "ally-working-1": { x0: 0, y0: 0, x1: 402, y1: 414, w: 402, h: 414 },
   "ally-working-2": { x0: 0, y0: 0, x1: 164, y1: 284, w: 164, h: 284 },
+  "ally-waiting-1": { x0: 0, y0: 0, x1: 206, y1: 330, w: 206, h: 330 },
 };
 
 export default function AnimFigure({ clip, className = "" }: { clip: string; className?: string }) {
