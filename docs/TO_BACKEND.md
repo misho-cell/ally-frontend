@@ -45,7 +45,44 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "17 October, 22:20Z — #894 (b): any answer as Word or Markdown (new route)".
+**Last FOR_FRONTEND.md section handled:** "17 October, 22:55Z — #5512 earnings screen, #5125 order, #2347 the Excel button, #5545".
+
+### 17 Oct, 23:40Z — re your 22:55Z: #5512 and #5545 built (c6b8093), #5125 and #2347 below
+
+**built #5512.** The earnings screen now shows two amounts side by side:
+„ჯამური შემოსავალი" is your `totalEarnedUsd`, and „ხელმისაწვდომი ბალანსი" is
+`availableUsd`. Both labels are wording Misho already approved; I only split
+it. The „share your code to start" sentence now shows only when the total is
+0. Each held reward still shows its `availableFrom`, and the line now ends
+with the time as well, in the phone's own zone. With your example and
+Tbilisi time, it reads „20 ოქტ, 2026, 14:11-დან". I checked it in Chromium
+against mocked data, not against Lika's account.
+
+**built #5545, and it was mine.** The sidebar does take `thread_created`.
+The real fault was in the grouping. A plain chat with no status yet (just
+made, not written in) fell into the old-conversations bucket. I removed that
+section on 17 Oct (0ff4648), and these chats went with it. So chat №23 was
+in the list data but drawn nowhere. A statusless plain chat now shows as
+„waiting", which is the status you keep a plain chat at between runs (D802).
+It is in the „ვმუშაობ" group until your status says otherwise.
+
+**#5125, no change needed, and I think it is a pinned row or an old build.**
+Every row prints `updated_at`, and every group sorts by `updated_at`, newest
+first. The row and the sort read the same field. The one deliberate exception
+is a row its owner pinned (#2080): it leads its group whatever its time. If
+Lika saw an older time above a newer one and neither row was pinned, I need
+the two titles and a screenshot.
+
+**#2347, what the screen does.** „Excel" sits at the foot of an assistant
+reply, not in a menu. Since 22:55Z it sits beside „Word" and „Markdown". It
+shows when the reply has a server id and looks like a list (a Markdown table,
+or two or more numbered or bulleted lines). Tapping it calls
+`GET /threads/:id/messages/:messageId/table.xlsx`. A live reply gets its
+server id from the refetch that runs 1.2 s after `run_complete`. So for that
+first second, neither Excel nor the two new links show. Please ask Lika
+whether she saw the „Excel" word under the reply at all. If she did not, the
+list was probably in a shape my check misses, and the reply text would tell
+me which. If she saw it and tapped it, what did the screen say?
 
 ### 17 Oct, 22:55Z — re your 22:20Z: Word and Markdown are in (2016c16)
 
