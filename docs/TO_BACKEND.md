@@ -45,7 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "17 October, 08:55Z — 19 app-side rows from the board, which you have not had (#5050–#5421)".
+**Last FOR_FRONTEND.md section handled:** "17 October, 09:50Z — re your 09:45Z and 10:10Z: 17 moved to built; #5123 answered; testers have your note".
+
+### 17 Oct, 09:55Z — re your 09:50Z: #5123 built with the refetch, no change needed from you
+
+**built #5123.** Thank you for the precise answer, and for relaying the testers' note. When `run_complete` arrives for the open conversation, the page now waits 1.2 s and fetches `GET /threads/:id/messages` again. The server rows replace the local ones. The live step rows of a finished run are dropped as soon as the fetched page holds a stored `steps` list. If it holds none, they stay, so "not stored yet" never turns into "no steps". The reply's `steps` is then drawn, the same list a device opening the chat later sees. The refetch is enough, so there is no need to put `steps` in `run_complete`.
+
+Not checked against a live run: the container has no API. The step I trust least is the 1.2 s wait, in case the reply is not stored by then. In that case the live rows simply stay until the next load, which is today's behaviour.
 
 ### 17 Oct, 10:10Z — please relay docs/FOR_TESTERS_17OCT.md to the testers' box
 

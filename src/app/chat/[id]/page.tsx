@@ -1289,6 +1289,48 @@ export default function ThreadPage() {
     }
   }
 
+  // #5123 (backend, 17 Oct). The stream sends every step caption live,
+  // repeats included; the server stores each distinct one once and puts that
+  // list on the reply. A device that watched the run counted the first, one
+  // that opened later the second (12 against 4 on one chat). When the run
+  // ends, this page fetches the conversation again: the server rows replace
+  // the live step rows, and the reply's own steps are drawn, as everywhere
+  // else. A short wait lets the reply land in the store first.
+  useEffect(() => {
+    if (!threadId) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onDone = (e: Event) => {
+      if (String((e as CustomEvent<{ threadId?: string }>).detail?.threadId) !== threadId) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        fetchMessagePage(threadId)
+          .then((page) => {
+            if (!page) return;
+            setThreadStates((prev) =>
+              updateThreadState(prev, threadId, (ts) => {
+                const merged = mergeMessages(page.messages, ts.messages);
+                // The live step rows are local and pending, so the merge keeps
+                // them. Once no run is going and the server sent a stored list,
+                // they give way to it; with no stored list they stay, since
+                // dropping them would turn "not stored" into "no steps".
+                const stored = page.messages.some((m) => m.kind === "message" && (m.steps?.length ?? 0) > 0);
+                const messages = !ts.loading && stored
+                  ? merged.filter((m) => !(m.kind === "step" && m.pending && m.serverId == null))
+                  : merged;
+                return { ...ts, messages };
+              })
+            );
+          })
+          .catch(() => { /* the live rows stay; a reload shows the stored ones */ });
+      }, 1200);
+    };
+    window.addEventListener("netai:run-complete", onDone);
+    return () => {
+      window.removeEventListener("netai:run-complete", onDone);
+      if (timer) clearTimeout(timer);
+    };
+  }, [threadId, setThreadStates]);
+
   useEffect(() => {
     if (!threadId) return;
     let cancelled = false;

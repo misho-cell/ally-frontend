@@ -788,6 +788,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     })
                   );
                   loadThreads();
+                  // #5123: the open conversation reloads its messages once
+                  // the run ends, so it draws the steps the server stored on
+                  // the reply, the same list any other device sees.
+                  window.dispatchEvent(new CustomEvent("netai:run-complete", { detail: { threadId: tKey } }));
                 }
                 break;
 
