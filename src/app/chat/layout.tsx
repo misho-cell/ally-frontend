@@ -592,6 +592,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         ...(patch.seen_at !== undefined ? { seen_at: patch.seen_at } : null),
                         ...(patch.goal_stopped !== undefined ? { goal_stopped: patch.goal_stopped } : null),
                         ...(patch.goal_stopped_open !== undefined ? { goal_stopped_open: patch.goal_stopped_open } : null),
+                        // #5283: resuming a paused goal clears this on the event.
+                        ...(patch.goal_paused !== undefined ? { goal_paused: patch.goal_paused === true } : null),
                         ...(patch.followed !== undefined ? { followed: patch.followed === true } : null),
                       };
                     })

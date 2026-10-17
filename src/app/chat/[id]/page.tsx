@@ -946,7 +946,7 @@ export default function ThreadPage() {
           String(th.id) !== threadId
             ? th
             : kind === "resume"
-            ? { ...th, goal_stopped: false, goal_stopped_open: false, status: "waiting" }
+            ? { ...th, goal_stopped: false, goal_stopped_open: false, goal_paused: false, status: "waiting" }
             : { ...th, goal_stopped_open: false }
         )
       );
@@ -1924,11 +1924,13 @@ export default function ThreadPage() {
             // #4596 (Tornike, Misho's yes): stopping or resuming a running
             // task comes first; delete stays last and set apart.
             items={[
+              // #5283 (17 Oct): resume takes a paused goal too. Close does
+              // not (the server refuses it), so it stays with stopped only.
+              ...(thread?.is_task === true && (thread.goal_stopped_open === true || thread.goal_paused === true)
+                ? [{ key: "resume", label: t("resumeGoal"), onSelect: () => stoppedGoalAction("resume"), disabled: goalActing }]
+                : []),
               ...(thread?.is_task === true && thread.goal_stopped_open === true
-                ? [
-                    { key: "resume", label: t("resumeGoal"), onSelect: () => stoppedGoalAction("resume"), disabled: goalActing },
-                    { key: "close", label: t("closeGoal"), onSelect: () => stoppedGoalAction("dismiss"), disabled: goalActing },
-                  ]
+                ? [{ key: "close", label: t("closeGoal"), onSelect: () => stoppedGoalAction("dismiss"), disabled: goalActing }]
                 : []),
               ...(thread?.is_task === true && thread.goal_stopped_open !== true
                 ? [{ key: "stop", label: t("stopGoal"), onSelect: stopTask, disabled: stopping }]

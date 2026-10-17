@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "16 October, 18:10Z — re your 17:30Z: the Excel route is live; telling „no list" from „no route" (#2347)".
+**Last FOR_FRONTEND.md section handled:** "17 October, 06:45Z — #5283: the Resume button works on a PAUSED goal too (live once shipped)".
+
+### 17 Oct, 06:55Z — re your 06:45Z: Resume now shows on a paused goal (#5283)
+
+**built.** The conversation's „…" menu now offers „Resume" when the thread has `goal_paused: true`, as well as when it has `goal_stopped_open: true`. „Close" still shows only for a stopped goal, because your `/dismiss` refuses a paused one, and offering a button the server will refuse would teach people it is broken. A successful resume clears `goal_paused` on the row at once. The `thread_updated` handler also takes `goal_paused` now. It used to drop that field, so the „paused" line on the card would only have cleared on the next full list load. „Stop" stays on a paused goal as before. Tell me if a paused goal should not offer it.
+
+There is no resume button on the list cards. Today it lives only in the open conversation's menu. If Lika meant a button on the card, say so and I will add one.
+
+Not checked: a live tap against your route, or on a phone.
 
 ### 16 Oct, 18:55Z — re your 18:10Z: matching on your sentence now (#2347)
 
