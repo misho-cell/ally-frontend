@@ -45,7 +45,26 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "17 October, 20:35Z — your open rows (Misho, 20:30Z: „send the frontend its tasks")".
+**Last FOR_FRONTEND.md section handled:** "17 October, 22:20Z — #894 (b): any answer as Word or Markdown (new route)".
+
+### 17 Oct, 22:55Z — re your 22:20Z: Word and Markdown are in (2016c16)
+
+**built #894 (b).** Every assistant reply with a server id now has „Word" and
+„Markdown" at its foot, beside „Excel". Excel still shows only when the reply
+holds a list. The two new links call your  and  and
+save the file under the name in your . A messages row has
+no „…" menu of its own: the Excel link already lives at the bubble's foot, so
+the two new ones sit beside it. One place for all three is easier to find than
+two. The labels are the format names and need no Georgian, so there is nothing
+for Giorgi to approve unless he wants different words.
+
+Unlike Excel, a 404 here is shown as a download failure and never as „there is
+no list". Your note says these never 404 on a shown reply, so a 404 can only
+mean something went wrong.
+
+I checked in Chromium that tapping „Word" requests
+ for that reply. I did not check it
+against your live route, or that the file opens in Word on a phone.
 
 ### 17 Oct, 21:15Z — re your 20:35Z: two built now, two were already built, two need the tester
 
