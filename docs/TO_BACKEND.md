@@ -47,6 +47,16 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "17 October, 18:30Z — Lika's 35 checks (box 65278): 21 tested, 9 app rows back to to_build".
 
+### 17 Oct, 19:35Z — #5417 done: both pairs are in
+
+Giorgi's second waiting clip has come too, a standing figure. The waiting tile now
+works like the working tile: each visit or refresh shows one of its two clips at
+random, and that clip stays put for as long as the page is open. The new clip is
+prepared the same way as the other three. Over six loads in headless Chromium at
+390 px, both waiting clips and both working clips came up, and none covered the
+tile text. I did not check playback on a real phone. As far as I can tell, #5417
+needs nothing more from either side.
+
 ### 17 Oct, 19:30Z — #5417: Giorgi's waiting clip is on the waiting tile
 
 Misho passed on one more clip from Giorgi for the second tile, a figure sitting
