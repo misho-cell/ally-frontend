@@ -16,7 +16,10 @@ const L = {
     backProfile: "← Profile",
     title: "My earnings",
     availableTitle: "Available balance",
-    totalEarned: (v: string) => `Total earned: ${v} — share your referral code to start.`,
+    // #5512 (founder D807): the two amounts side by side. The words are the
+    // ones already approved, split so the invitation shows only at zero.
+    totalTitle: "Total earned",
+    shareToStart: "Share your referral code to start.",
     onHold: (v: string, days: number) => `${v} more will become available within ${days} days.`,
     availableFrom: (d: string, days: number | null) =>
       days != null ? `On hold, available from ${d} (${days}-day refund window)` : `On hold, available from ${d}`,
@@ -82,7 +85,8 @@ const L = {
     backProfile: "← პროფილი",
     title: "ჩემი შემოსავალი",
     availableTitle: "ხელმისაწვდომი ბალანსი",
-    totalEarned: (v: string) => `ჯამური შემოსავალი: ${v}. გააზიარე შენი მოსაწვევი კოდი დასაწყებად.`,
+    totalTitle: "ჯამური შემოსავალი",
+    shareToStart: "გააზიარე შენი მოსაწვევი კოდი დასაწყებად.",
     // D674 / D677, wording approved by Misho on 6 Oct. Both numbers are the
     // server's (`onHoldUsd`, `holdDays`); neither is ever written here.
     onHold: (v: string, days: number) => `კიდევ ${v} ხელმისაწვდომი გახდება ${days} დღის განმავლობაში.`,
@@ -334,6 +338,12 @@ export default function EarningsPage() {
   // fallback only when the server sends no `availableUsd` at all, which is
   // not the same thing as sending 0.
   const balance = data?.availableUsd ?? data?.balanceUsd ?? 0;
+  // #5512: a held reward unlocks at a moment, not on a day, so the time is
+  // shown too, in the phone's own zone.
+  const unlockAt = (iso: string) => {
+    const time = new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    return `${fmtDateLoc(iso, { month: "short", day: "numeric", year: "numeric" })}, ${time}`;
+  };
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
@@ -359,10 +369,21 @@ export default function EarningsPage() {
             {/* FIXED2 `money` (earnings tab): the spendable balance as a
                 heading and a big number, then what it can be used for. The
                 numbers are all the server's (D674); none is written here. */}
+            {/* #5512 (founder D807): two amounts, never one. Lika's held
+                reward counted in the total and nowhere else, so a screen with
+                only the spendable number read as if she had earned nothing. */}
             <div>
-              <h3 className="nx-h3">{s.availableTitle}</h3>
-              <p style={{ font: "750 32px/1.2 var(--font-system)", color: "var(--nx-ink)", marginTop: 6 }}>{usd(balance)}</p>
-              <p className="nx-note">{s.totalEarned(usd(data.totalEarnedUsd))}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="min-w-0 flex flex-col">
+                  <h3 className="nx-h3">{s.totalTitle}</h3>
+                  <p className="mt-auto" style={{ font: "750 28px/1.2 var(--font-system)", color: "var(--nx-ink)", paddingTop: 6 }}>{usd(data.totalEarnedUsd)}</p>
+                </div>
+                <div className="min-w-0 flex flex-col">
+                  <h3 className="nx-h3">{s.availableTitle}</h3>
+                  <p className="mt-auto" style={{ font: "750 28px/1.2 var(--font-system)", color: "var(--nx-ink)", paddingTop: 6 }}>{usd(balance)}</p>
+                </div>
+              </div>
+              {data.totalEarnedUsd === 0 && <p className="nx-note">{s.shareToStart}</p>}
               {/* Only when the server says something is held and for how
                   long. No hold and an absent field are both "say nothing",
                   because there is nothing true to say about either. */}
@@ -481,7 +502,7 @@ export default function EarningsPage() {
                       <p className="nx-note" style={{ margin: 0 }}>{fmtDateLoc(item.createdAt, { month: "short", day: "numeric", year: "numeric" })}</p>
                       {item.availableFrom && fmtDateLoc(item.availableFrom) && (
                         <p className="nx-note" style={{ margin: 0 }}>
-                          {s.availableFrom(fmtDateLoc(item.availableFrom, { month: "short", day: "numeric", year: "numeric" }), data.holdDays ?? null)}
+                          {s.availableFrom(unlockAt(item.availableFrom), data.holdDays ?? null)}
                         </p>
                       )}
                     </div>

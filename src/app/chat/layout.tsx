@@ -1320,7 +1320,12 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const legacyThreads: Thread[] = [];
   for (const th of threads) {
     if (th.type === "incoming_request" || th.type === "incoming_ask" || !matches(th)) continue;
-    const st = taskStatusOf(th, threadStates[String(th.id)]);
+    // #5545 (17 Oct): a chat with no status yet, such as one just made and
+    // not written in, used to fall to the old-conversations section, and
+    // that section is gone (0ff4648), so the chat vanished from the list.
+    // The server keeps a plain chat at „waiting" between runs (D802), so a
+    // statusless one is shown as that until the server says otherwise.
+    const st = taskStatusOf(th, threadStates[String(th.id)]) ?? (th.type === "regular" ? "waiting" : null);
     if (st) goalThreads.push({ thread: th, status: st });
     else legacyThreads.push(th);
   }
