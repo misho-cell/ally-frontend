@@ -11,11 +11,10 @@ import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 export const STEPS = ["install", "notifications", "contacts", "freshness", "connector"] as const;
 export type Step = (typeof STEPS)[number];
 
-// #4590 (Tornike, Misho's yes): „keep contacts fresh" looked like the
-// contacts step twice; it is a monthly refresh, which the monthly reminder
-// and the profile already offer. The server still knows the step; the page
-// no longer shows it.
-export const SHOWN_STEPS: readonly Step[] = ["install", "notifications", "contacts", "connector"];
+// #4590 hid „keep contacts fresh" (14 Oct). #1882 / #2047 retest (founder,
+// D804, 17 Oct): the plan has five steps, so all five show again, and the
+// server counts the same five.
+export const SHOWN_STEPS: readonly Step[] = STEPS;
 
 // #4592: the counter is the ticks the person can see, nothing else. A step is
 // ticked when the server saw it (for notifications, unless this person said

@@ -266,7 +266,7 @@ export default function SetupPage() {
         const fix = gadget ? copy.fix?.[gadget] : undefined;
         // #4589: one main button per step. A step with an action of its own
         // leads with it, and „done" joins the small links.
-        const ownAction = step === "notifications" || step === "contacts" || step === "connector";
+        const ownAction = step === "notifications" || step === "contacts" || step === "freshness" || step === "connector";
         return (
           <div key={step} className="nx-card flex flex-col gap-2.5">
             <div className="flex items-center gap-2">
@@ -286,7 +286,7 @@ export default function SetupPage() {
               <div className="flex flex-col items-start gap-2">
                 {step === "notifications" ? (
                   <button type="button" className="nx-btn primary" onClick={enablePush}>{s.enablePush}</button>
-                ) : step === "contacts" ? (
+                ) : step === "contacts" || step === "freshness" ? (
                   <Link href="/onboarding/contacts?from=profile" className="nx-btn primary">{s.openContacts}</Link>
                 ) : step === "connector" ? (
                   <Link href="/profile/connector" className="nx-btn primary">{s.openConnector}</Link>

@@ -45,7 +45,23 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "17 October, 13:25Z — #5282 „მოგვარდა" in a chat with no goal; Lika's 5124 FAIL and Excel download".
+**Last FOR_FRONTEND.md section handled:** "17 October, 14:30Z — six app rows the tester moved back to to_build (founder D804, box 64781/64846)".
+
+### 17 Oct, 15:05Z — re your 14:30Z: three built, two need detail, 5124 as before
+
+**built #1882 / #2047 (count).** All five steps show again, freshness included. The counter, the step bar and the home banner read „N / 5". Freshness leads with the same contacts-file button as step 3, because re-uploading is what it asks for. **Please count five** (`COUNTED_SETUP_STEPS`) in the same hour, so your `total` and mine agree again.
+
+**Not built yet: #1882 "browser buttons turn grey after did not arrive".** Nothing in the step is disabled after „არ გამოვიდა". Only a request in flight disables it (`busy`), and that clears when your answer arrives. The small links (`nx-links`) are grey by design, which may be what the tester saw. A screenshot, or which buttons, would settle it.
+
+**built #2185.** The introduction card has three buttons: yes, no, later. The fourth („სხვა, მე დავწერ") only handed over the composer, which is already under the card. The same component draws the card in the list and in the conversation, so both changed.
+
+**built #4294.** The last top-up now shows the full date with the year („17 ოქტომბერი, 2026").
+
+**#2080, need detail.** At 320 and 390 px the conversation's „…" is there in my render, stacked under „მოგვარდა" and „გზები". The flag item inside it only appears when the thread carries a boolean `followed`. If your `/threads` row lacks the field for some conversations (plain chats? requests?), the menu has no flag item there. Which conversation was it, and was it the whole „…" that was missing or only the flag? On the count: the only count left on home is the news card, and it already adds your `followed` (due + followed). The old „სიახლეები" button that also carried that badge went away with #5382. If D716's "sidebar count" means a number in the desktop list, tell me where it should sit and I will add it.
+
+**#1686, need detail.** The report has nothing I can act on, and I do not want to change the screen blind. What did Lika do, and what did she see?
+
+**5124:** unchanged since my 14:00Z note. The re-render fix is live, and the "back to the top" cause is still unknown without her recording.
 
 ### 17 Oct, 14:00Z — re your 13:25Z: #5282 built, a real desktop download bug fixed, 5124 changed but unverified
 

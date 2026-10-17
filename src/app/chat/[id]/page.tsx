@@ -2208,7 +2208,6 @@ export default function ThreadPage() {
                            row, so the two screens cannot drift apart. */
                         <RequestActions
                           onResolve={(a) => resolveRequest(threadId, a)}
-                          onOther={() => inputRef.current?.focus()}
                         />
                       )}
                     </div>
@@ -2337,7 +2336,6 @@ export default function ThreadPage() {
                 <div className="rc-label">{t("introRequestLabel")}</div>
                 <RequestActions
                   onResolve={(a) => resolveRequest(threadId, a)}
-                  onOther={() => inputRef.current?.focus()}
                 />
               </div>
             )}

@@ -10,9 +10,8 @@ export type RequestAction = "accept_direct" | "deny" | "later";
 // #2185 / D709 (7 Oct). The person asked no longer chooses HOW an introduction
 // happens: on yes, Netai connects the two. So there is one way to say yes, and
 // the second one that kept the number back is gone, by the founder's decision.
-// The fourth button is not an answer. It names an intention to type and only
-// hands over the composer, the same rule #68 set for every other button set:
-// sent, it would cost a turn and the question would be asked again.
+// #2185 retest (D804, 17 Oct): three buttons, not four. The fourth only
+// handed over the composer, which is already there under the card.
 //
 // One component for both places it appears, the bubble in the goal and the
 // row in the list, because they were written apart once before.
@@ -24,12 +23,9 @@ const ACTIONS: { action: RequestAction; cls: string; label: () => string; note: 
 
 export default function RequestActions({
   onResolve,
-  onOther,
   stopPropagation = false,
 }: {
   onResolve: (action: RequestAction) => void;
-  // Posts nothing. The chat focuses its composer; the list opens the chat.
-  onOther: () => void;
   // In the list a press also opens the goal behind it. The press meant the
   // button, not the row.
   stopPropagation?: boolean;
@@ -50,17 +46,6 @@ export default function RequestActions({
           <span className="req-note">{a.note()}</span>
         </div>
       ))}
-      <div className="req-action">
-        <button
-          className="req-btn later"
-          onClick={(e) => {
-            if (stopPropagation) e.stopPropagation();
-            onOther();
-          }}
-        >
-          {t("reqOther")}
-        </button>
-      </div>
     </div>
   );
 }

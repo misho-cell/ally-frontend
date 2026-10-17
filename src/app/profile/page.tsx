@@ -9,7 +9,7 @@ import { isRecord, unwrapData } from "@/lib/payload";
 import { authHeaders } from "@/lib/deviceId";
 import { onCheckoutCompleted } from "@/lib/paddle";
 import { startStripeTopup } from "@/lib/stripe";
-import { getLocale, fmtDateLoc, fmtDateShort } from "@/lib/i18n";
+import { getLocale, fmtDateLoc } from "@/lib/i18n";
 import { clearUserName } from "@/lib/user";
 import { openStripePortal, portalErrorText, cancelSubscription, resumeSubscription } from "@/lib/stripe";
 import PushDiagnostics from "@/components/PushDiagnostics";
@@ -974,7 +974,7 @@ function TokensSection() {
       {isTrial && <span className="pd-note">{s.trialBalance}</span>}
       {/* 4294: the newest credit, amount and date both the server's. */}
       {tokens?.lastTopUp && (
-        <span className="pd-note">{s.lastTopUp(fmtTokens(tokens.lastTopUp.amount), fmtDateShort(tokens.lastTopUp.at))}</span>
+        <span className="pd-note">{s.lastTopUp(fmtTokens(tokens.lastTopUp.amount), fmtDateLoc(tokens.lastTopUp.at))}</span>
       )}
     </Section>
   );
