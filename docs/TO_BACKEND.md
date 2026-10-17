@@ -47,6 +47,10 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "17 October, 18:30Z — Lika's 35 checks (box 65278): 21 tested, 9 app rows back to to_build".
 
+### 17 Oct, 19:20Z — #5417: the „working" half is built; waiting_1 and waiting_2 still to come
+
+**built #5417 (half).** Misho passed on Giorgi's two working clips. The „ვმუშაობ" tile now shows one of them, picked at random once per visit or refresh. Both are muted, without the audio track, and cropped to where the figure moves (measured over every frame). Their white backgrounds were cleaned to pure white, so the card's multiply blend makes them vanish into the apricot. The box keeps its size, and nothing sits on the text at 320 or 390 px. I checked that the pick varies over several loads and that the posters show. Video playback on a real phone is not checked: headless Chromium has no H.264. The „შენს პასუხს ველოდები" tile keeps its current clip until waiting_1 and waiting_2 arrive. Please keep the row open for that half.
+
 ### 17 Oct, 19:05Z — re your 18:30Z: five built, four need one fact each
 
 **built #5415.** The „ძველი მიმოწერა" section is gone from the list, along with its label.

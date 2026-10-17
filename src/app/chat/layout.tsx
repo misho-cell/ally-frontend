@@ -33,6 +33,7 @@ import DzIcon, { ROLE_ICON } from "@/components/DzIcons";
 import AnimFigure from "@/components/AnimFigure";
 import ChainPath from "@/components/ChainPath";
 import { previewLine, shortTitle } from "@/lib/titles";
+import { useWorkingClip } from "@/lib/workingClip";
 import PaneResizer, {
   subscribeSidebarWidth,
   sidebarWidthSnapshot,
@@ -153,6 +154,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // #5421: which page of ten each phone group shows. The tab keeps the true
   // total; only the list under it is paged.
   const [phonePage, setPhonePage] = useState<Record<string, number>>({});
+  const workingClip = useWorkingClip();
   // 11 Oct, the FIXED2 design. Phone: which group the counters show below
   // them (null: the one that waits on the person, if it has anything).
   // Desktop: which open groups the person folded.
@@ -1365,7 +1367,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const pane: "needs" | "ongoing" = phonePane ?? (needsYou.length > 0 || ongoing.length === 0 ? "needs" : "ongoing");
   const phoneGroups = [
     { key: "needs" as const, rows: needsYou, label: t("needsYouGroup"), tile: t("homeTileNeeds"), pane: t("paneWait"), clip: "ally-walk" },
-    { key: "ongoing" as const, rows: ongoing, label: t("groupWorking"), tile: t("homeTileWorking"), pane: t("paneRun"), clip: "ally-loading" },
+    { key: "ongoing" as const, rows: ongoing, label: t("groupWorking"), tile: t("homeTileWorking"), pane: t("paneRun"), clip: workingClip },
   ];
   const deskGroups = [
     { key: "wait", tone: "wait", label: t("needsYouGroup"), rows: needsYou },
@@ -1637,7 +1639,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                           aria-pressed={pane === g.key}
                         >
                           <span className="dz-fc-anim" aria-hidden="true">
-                            <AnimFigure clip={g.clip} />
+                            {g.clip && <AnimFigure clip={g.clip} />}
                           </span>
                           <span className="dz-fsum">
                             <span className="big">{g.rows.length}</span>
