@@ -613,6 +613,17 @@ body {
 .dz-fsum { display: flex; align-items: flex-start; gap: 7px; padding-right: 52px; min-height: 52px; }
 .dz-fsum .big { font: 700 34px/32.3px var(--font-system); letter-spacing: -1.36px; }
 .dz-fsum .msg { font: 500 12.35px/17px var(--font-system); letter-spacing: -0.3px; }
+/* #5288 (Lika, iPhone): on a narrow card a long Georgian word in the
+   sentence ran under the figure. Below 170px of card the number keeps the
+   figure's height beside it and the sentence starts under both. */
+.dz-fc { container-type: inline-size; }
+.dz-fsum .msg { min-width: 0; overflow-wrap: anywhere; }
+@container (max-width: 170px) {
+  .dz-fsum { flex-direction: column; gap: 4px; padding-right: 0; }
+  .dz-fsum .big { display: block; min-height: 52px; padding-right: 56px; }
+  .dz-fcta { padding: 0 8px; font-size: 11px; }
+}
+@container (max-width: 140px) { .dz-fcta { padding: 0 6px; font-size: 10px; gap: 4px; } }
 .dz-peek { display: flex; flex-wrap: wrap; gap: 6px; min-height: 19px; }
 .dz-peek span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 4px 8px; border-radius: 8px; font: 400 9.7px/11.2px var(--font-system); }
 .dz-fc.w .dz-peek span { background: #006C65; }
