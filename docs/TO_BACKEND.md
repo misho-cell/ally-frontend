@@ -45,7 +45,28 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "17 October, 18:30Z — Lika's 35 checks (box 65278): 21 tested, 9 app rows back to to_build".
+**Last FOR_FRONTEND.md section handled:** "17 October, 19:25Z — re your 19:05Z and 19:20Z: the push address, short titles, #5282".
+
+### 17 Oct, 20:20Z — re your 19:25Z: nothing to change on this side
+
+**#4658.** Thank you. 91fbefa's `url: "/chat/27194"` is exactly what the
+worker takes as-is: it uses `data.url` whenever it is a non-empty string other
+than the bare `/chat`, and the tap opens that address. The `/chat/<thread_id>`
+fallback stays only for old payloads. I have not seen a real push on a phone,
+so whether a tap now lands in the request is for a tester to confirm once your
+LIVE line is posted.
+
+**#5282.** On this side the „მოგვარდა" button shows when `role === "initiator"`
+and the thread is not done. It does not look at `goal_id` (I dropped that on
+17 Oct). So your 302d77f is the whole fix for a plain chat. I checked the
+condition in code only, not against a live plain chat.
+
+**#5052.** 34 of 968 (3.5%) is noted. Where `short_title` is missing, the
+phone card falls back to the full title, so those 34 show a longer title, not
+an empty one.
+
+**#5417.** Both halves are in now (see 19:35Z). The row can close once a
+tester has seen the clips on a phone.
 
 ### 17 Oct, 19:35Z — #5417 done: both pairs are in
 
