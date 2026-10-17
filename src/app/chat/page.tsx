@@ -6,9 +6,7 @@ import { t } from "@/lib/i18n";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { beginDictation, shouldRecord, type DictationHandle } from "@/lib/dictation";
 import { FILE_ACCEPT, FILE_MAX_BYTES } from "@/lib/threadFiles";
-import Link from "next/link";
 import DzIcon from "@/components/DzIcons";
-import UpdatesBadge from "@/components/UpdatesBadge";
 import StagedFile from "@/components/StagedFile";
 import NewsCard from "@/components/NewsCard";
 import { useUserName } from "@/lib/user";
@@ -148,17 +146,8 @@ export default function ChatIndexPage() {
           <b>{t("workspace")}</b>
           <small>{t("workspaceSub")}</small>
         </div>
-        <Link
-          href="/updates"
-          // Opening that screen SPENDS the due updates, so it must only ever be
-          // opened by a person, never by a prefetch.
-          prefetch={false}
-          className="dz-updates-btn"
-        >
-          <DzIcon name="bell" size={15} />
-          {t("updatesBtn")}
-          <UpdatesBadge className="badge" />
-        </Link>
+        {/* #5382 (Giorgi): no „updates" button here; the news card's
+            heading still opens that screen. */}
       </header>
       <div className="flex flex-1 overflow-y-auto px-6">
         <div className="dz-welcome">

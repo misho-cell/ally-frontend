@@ -28,6 +28,9 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
   // server without the route, or a failure, and then the card keeps the
   // count story above. An empty list keeps today's empty state too.
   const [latest, setLatest] = useState<Latest[] | null>(null);
+  // #5382 (Giorgi): „more" opens the same updates in full inside the card,
+  // and closes them again. It no longer leaves the home screen.
+  const [full, setFull] = useState(false);
   useEffect(() => {
     let alive = true;
     void (async () => {
@@ -72,8 +75,8 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
               <b>{t("homeNewsTitle")} ›</b>
               {count > 0 && <span className="dz-rnew"><i />{tf("newsNew", { n: count })}</span>}
             </Link>
-            <LatestRows rows={rows} />
-            <Link href="/updates" prefetch={false} className="dz-more">{t("homeNewsMore")}</Link>
+            <LatestRows rows={rows} full={full} />
+            <button type="button" className="dz-more" aria-expanded={full} onClick={() => setFull((v) => !v)}>{t("homeNewsMore")}</button>
           </div>
         ) : (
           <Link href="/updates" prefetch={false} className="dz-report">
@@ -98,8 +101,8 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
             <span>{t("homeNewsTitle")}</span>
             {count > 0 && <span className="dz-new-badge">{count}</span>}
           </Link>
-          <LatestRows rows={rows} />
-          <Link href="/updates" prefetch={false} className="dz-news-more">{t("homeNewsMore")} <DzIcon name="right" size={11} /></Link>
+          <LatestRows rows={rows} full={full} />
+          <button type="button" className="dz-news-more" aria-expanded={full} onClick={() => setFull((v) => !v)}>{t("homeNewsMore")} <DzIcon name={full ? "up" : "down"} size={11} /></button>
         </div>
       ) : (
         <Link href="/updates" prefetch={false} className="dz-news">
@@ -176,9 +179,9 @@ function whatHappened(u: Latest): string {
 // update under it. Drawn from the parts rather than from `line`, which joins
 // them with a dash. A row with no conversation opens the updates screen,
 // which a person tapping may spend.
-function LatestRows({ rows }: { rows: Latest[] }) {
+function LatestRows({ rows, full }: { rows: Latest[]; full: boolean }) {
   return (
-    <ul className="dz-latest">
+    <ul className={full ? "dz-latest full" : "dz-latest"}>
       {groupLatest(rows).map((g) => {
         const href = g.threadId ? `/chat/${encodeURIComponent(g.threadId)}` : "/updates";
         if (g.rows.length === 1) {

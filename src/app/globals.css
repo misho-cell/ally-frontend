@@ -623,7 +623,13 @@ body {
 .dz-fc.k .dz-fcta { border: 1px solid #835737; }
 
 /* Sticky group switcher (phone, once the counters scroll away) */
-.dz-switcher { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; margin: 0 -6px; background: var(--bg); border-radius: 16px; }
+/* #5124: a zero-height sticky holder, so the switcher overlays the list
+   instead of pushing it down when it appears. */
+.dz-switch-wrap { position: sticky; top: 0; z-index: 5; height: 0; }
+.dz-switcher { opacity: 0; transform: translateY(-6px); pointer-events: none; transition: opacity .18s ease, transform .18s ease; }
+.dz-switcher.on { opacity: 1; transform: none; pointer-events: auto; }
+@media (prefers-reduced-motion: reduce) { .dz-switcher { transition: none; } }
+.dz-switcher { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; margin: 0 -6px; background: var(--bg); border-radius: 16px; }
 .dz-switcher a { display: grid; grid-template-columns: 22px 1fr 12px; align-items: center; gap: 6px; height: 44px; padding: 0 8px; border-radius: 12px; font: 600 11px/14.85px var(--font-system); text-decoration: none; }
 .dz-switcher .wait { background: var(--accent); color: #FFFFFF; }
 .dz-switcher .run { background: var(--apricot); color: #3F2D20; }
@@ -766,6 +772,10 @@ body {
 .dz-latest a { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font: 400 12.5px/19px var(--font-system); color: var(--text-2); text-decoration: none; }
 .dz-latest b { font-weight: 600; color: var(--ink); }
 .dz-latest .grp a.sub { padding-left: 10px; border-left: 2px solid var(--accent-tint); -webkit-line-clamp: 1; }
+/* #5382: opened in place, every update reads in full. */
+.dz-latest.full a, .dz-latest.full .grp a.sub { display: block; -webkit-line-clamp: unset; overflow: visible; }
+button.dz-more, button.dz-news-more { background: none; border: 0; cursor: pointer; text-align: left; }
+button.dz-news-more { padding: 0; }
 a.dz-report-h, a.dz-news-title { text-decoration: none; }
 .dz-news-more { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font: 400 10px/15.5px var(--font-system); color: var(--accent); }
 .dz-welcome h1 { margin-bottom: 10px; font: 600 30px/39px var(--font-system); letter-spacing: -0.8px; color: var(--ink); text-align: center; }
@@ -871,7 +881,9 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
   /* #5050: „Resolved" is the accent button, „Paths" the white one, so the
      two no longer look alike on the desktop. #5051: one size for both. */
   .dz-resolve { min-width: 92px; justify-content: center; border-radius: 9px; background: var(--apricot); color: #3F2D20; border: 1px solid var(--apricot); font: 600 11px/14px var(--font-system); }
-  .dz-resolve.white { background: #FFFFFF; color: var(--accent); border-color: #FFFFFF; }
+  /* The design's .paths-b: white text on a light veil of the header green. */
+  .dz-resolve.white { background: rgba(255, 255, 255, .16); color: #FFFFFF; border-color: rgba(255, 255, 255, .5); }
+  .dz-resolve.white:hover { background: rgba(255, 255, 255, .26); }
 }
 
 .dz-ububble { max-width: 79%; padding: 13px 16px; border-radius: 16px 16px 6px 16px; background: var(--user-bubble-bg); color: var(--user-bubble-ink); border: 1px solid #C2D8F5; font: 400 14px/22.4px var(--font-system); }
@@ -1071,3 +1083,9 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
 button.nx-pill { border: 1px solid transparent; cursor: pointer; }
 .nx-pill.on { background: var(--accent); color: #FFFFFF; }
 .nx-pill button { background: none; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 0; }
+
+/* #5421: the phone's pager under each group, ten cases a page. */
+.dz-pager { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 12px 0 4px; }
+.dz-pager button { min-width: 36px; height: 36px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--header-border); background: #FFFFFF; color: var(--ink); font: 600 13px/1 var(--font-system); display: inline-grid; place-items: center; }
+.dz-pager button[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
+.dz-pager button:disabled { opacity: .35; }

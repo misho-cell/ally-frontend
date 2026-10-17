@@ -150,6 +150,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const [roleFilter, setRoleFilter] = useState<"all" | "initiator" | "mediator" | "addressee">("all");
   const [toast, setToast] = useState<string | null>(null);
   const [showAllDone, setShowAllDone] = useState(false);
+  // #5421: which page of ten each phone group shows. The tab keeps the true
+  // total; only the list under it is paged.
+  const [phonePage, setPhonePage] = useState<Record<string, number>>({});
   const [showLegacy, setShowLegacy] = useState(false);
   // 11 Oct, the FIXED2 design. Phone: which group the counters show below
   // them (null: the one that waits on the person, if it has anything).
@@ -1336,6 +1339,15 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     ...active.filter(waitsOnYou),
   ];
   const ongoing = active.filter((g) => !waitsOnYou(g));
+  // #5125 (17 Oct): inside every group the case with the latest news comes
+  // first. A row its owner pinned (#2080) still leads, because that is the
+  // owner's own choice; everything else goes by the server's updated_at.
+  const byNews = (a: { thread: Thread }, b: { thread: Thread }) =>
+    Number(b.thread.followed === true) - Number(a.thread.followed === true) ||
+    (Date.parse(b.thread.updated_at ?? "") || 0) - (Date.parse(a.thread.updated_at ?? "") || 0);
+  needsYou.sort(byNews);
+  ongoing.sort(byNews);
+  finished.sort(byNews);
   const pane: "needs" | "ongoing" = phonePane ?? (needsYou.length > 0 || ongoing.length === 0 ? "needs" : "ongoing");
   const phoneGroups = [
     { key: "needs" as const, rows: needsYou, label: t("needsYouGroup"), tile: t("homeTileNeeds"), pane: t("paneWait"), clip: "ally-walk" },
@@ -1345,7 +1357,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     { key: "wait", tone: "wait", label: t("needsYouGroup"), rows: needsYou },
     { key: "run", tone: "run", label: t("groupWorking"), rows: ongoing },
     { key: "done", tone: "done", label: t("groupResolved"), rows: finished },
-  ].filter((g) => g.rows.length > 0 || g.key === "run");
+  // #5380 (Giorgi): waiting and working always show, with 0 when empty, so
+  // an empty group reads as empty rather than as missing.
+  ].filter((g) => g.rows.length > 0 || g.key !== "done");
   function choosePane(key: "needs" | "ongoing") {
     setPhonePane(key);
     requestAnimationFrame(() => document.getElementById(`pane-${key}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -1635,16 +1649,20 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
 
 
                 {/* Sticky, so it is a child of the list itself: inside a
-                    smaller box it would scroll away with that box. */}
-                {!q && (needsYou.length + ongoing.length) > 0 && tilesOut && (
-                  <div className="dz-switcher" style={{ marginTop: 12 }}>
+                    smaller box it would scroll away with that box.
+                    #5124: it is always there and takes no height; scrolling
+                    past the tiles only fades it in, so nothing below jumps. */}
+                {!q && (needsYou.length + ongoing.length) > 0 && (
+                  <div className="dz-switch-wrap">
+                  <div className={`dz-switcher${tilesOut ? " on" : ""}`} aria-hidden={!tilesOut}>
                     {phoneGroups.map((g) => (
-                      <a key={g.key} href={`#pane-${g.key}`} className={g.key === "needs" ? "wait" : "run"} onClick={(e) => { e.preventDefault(); choosePane(g.key); }}>
+                      <a key={g.key} href={`#pane-${g.key}`} tabIndex={tilesOut ? undefined : -1} className={g.key === "needs" ? "wait" : "run"} onClick={(e) => { e.preventDefault(); choosePane(g.key); }}>
                         <span className="sn">{g.rows.length}</span>
                         <span>{g.label}</span>
                         <DzIcon name={pane === g.key ? "down" : "right"} size={12} />
                       </a>
                     ))}
+                  </div>
                   </div>
                 )}
                 {/* Phone: the chosen group as cards (all of them while
@@ -1657,7 +1675,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         {g.pane}
                       </p>
                       <div className="dz-cgrid">
-                        {g.rows.map(({ thread, status }) => (
+                        {(q ? g.rows : pageOf(g.rows, phonePage[g.key] ?? 0)).map(({ thread, status }) => (
                           <TaskCard
                             key={thread.id}
                             thread={thread}
@@ -1671,6 +1689,16 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                           />
                         ))}
                       </div>
+                      {!q && (
+                        <PhonePager
+                          total={g.rows.length}
+                          page={phonePage[g.key] ?? 0}
+                          onPage={(n) => {
+                            setPhonePage((p) => ({ ...p, [g.key]: n }));
+                            document.getElementById(`pane-${g.key}`)?.scrollIntoView({ block: "start" });
+                          }}
+                        />
+                      )}
                       {g.rows.length === 0 && (
                         <p style={{ padding: "2px 6px", fontSize: "12px", color: "var(--meta)" }}>
                           {roleFilter !== "all" ? t("filterEmpty") : t("threadsHint")}
@@ -1984,6 +2012,38 @@ function chipTitle(thread: Thread, full: string): string {
   if (typeof v === "string" && v.trim()) return v.trim();
   // G-028: one word on the phone's chips, also while the server has none.
   return firstWords(full, 1);
+}
+
+// #5421 (Giorgi: "create the UI yourself"): ten cases a page on the phone,
+// newest news first across the pages (#5125). A page past the end, after
+// cases left the group, shows the last page rather than an empty one.
+const PHONE_PAGE = 10;
+function pageOf<T>(rows: T[], page: number): T[] {
+  const last = Math.max(0, Math.ceil(rows.length / PHONE_PAGE) - 1);
+  const p = Math.min(Math.max(0, page), last);
+  return rows.slice(p * PHONE_PAGE, p * PHONE_PAGE + PHONE_PAGE);
+}
+
+// Arrows and page numbers only, so the pager adds no words to approve.
+function PhonePager({ total, page, onPage }: { total: number; page: number; onPage: (n: number) => void }) {
+  const count = Math.ceil(total / PHONE_PAGE);
+  if (count <= 1) return null;
+  const at = Math.min(Math.max(0, page), count - 1);
+  return (
+    <nav className="dz-pager">
+      <button type="button" disabled={at === 0} onClick={() => onPage(at - 1)} aria-label={String(at)}>
+        <DzIcon name="left" size={14} />
+      </button>
+      {Array.from({ length: count }, (_, i) => (
+        <button key={i} type="button" aria-current={i === at ? "page" : undefined} onClick={() => onPage(i)}>
+          {i + 1}
+        </button>
+      ))}
+      <button type="button" disabled={at === count - 1} onClick={() => onPage(at + 1)} aria-label={String(at + 2)}>
+        <DzIcon name="right" size={14} />
+      </button>
+    </nav>
+  );
 }
 
 function isPaused(thread: Thread): boolean {

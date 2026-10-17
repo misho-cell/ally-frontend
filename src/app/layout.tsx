@@ -8,6 +8,7 @@ import PastDueBanner from "@/components/PastDueBanner";
 import CheckoutReturn from "@/components/CheckoutReturn";
 import PushHeartbeat from "@/components/PushHeartbeat";
 import PushRouter from "@/components/PushRouter";
+import ThemeColor from "@/components/ThemeColor";
 
 export const metadata: Metadata = {
   title: "Netai",
@@ -58,6 +59,7 @@ export default function RootLayout({
       </head>
       <body className="h-full antialiased">
         <LocaleHtml />
+        <ThemeColor />
         <PastDueBanner />
         <CheckoutReturn />
         <PushHeartbeat />
