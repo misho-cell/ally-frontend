@@ -1665,13 +1665,12 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 <div className="mt-3 md:mt-0 md:mb-2"><PushPrompt /></div>
 
 
-                {/* Sticky, so it is a child of the list itself: inside a
-                    smaller box it would scroll away with that box.
-                    #5124: it is always there and takes no height; scrolling
-                    past the tiles only fades it in, so nothing below jumps. */}
+                {/* #5124: the switcher is always there, fixed to the screen and out of
+                    the list's layout; scrolling past the tiles only fades it
+                    in, so nothing below jumps. */}
                 {!q && (needsYou.length + ongoing.length) > 0 && (
-                  <div className="dz-switch-wrap">
-                  <div ref={switcherEl} className="dz-switcher" aria-hidden="true">
+                  <div ref={switcherEl} className="dz-switch-wrap" aria-hidden="true">
+                  <div className="dz-switcher">
                     {phoneGroups.map((g) => (
                       <a key={g.key} href={`#pane-${g.key}`} tabIndex={-1} className={g.key === "needs" ? "wait" : "run"} onClick={(e) => { e.preventDefault(); choosePane(g.key); }}>
                         <span className="sn">{g.rows.length}</span>

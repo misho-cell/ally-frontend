@@ -637,10 +637,15 @@ body {
 /* Sticky group switcher (phone, once the counters scroll away) */
 /* #5124: a zero-height sticky holder, so the switcher overlays the list
    instead of pushing it down when it appears. */
-.dz-switch-wrap { position: sticky; top: 0; z-index: 5; height: 0; }
-.dz-switcher { opacity: 0; transform: translateY(-6px); pointer-events: none; transition: opacity .18s ease, transform .18s ease; }
-.dz-switcher.on { opacity: 1; transform: none; pointer-events: auto; }
-@media (prefers-reduced-motion: reduce) { .dz-switcher { transition: none; } }
+/* #5124 (Lika, iPhone, still jumping on 17 Oct): a sticky bar inside the
+   scrolling home is placed by Safari on the main thread, so on a fast flick it
+   lags and then snaps, and the list seems to jump with it. The bar is now
+   fixed to the screen, outside the list's layout and its scrolling, and only
+   fades in and out. */
+.dz-switch-wrap { position: fixed; top: 0; left: 0; right: 0; z-index: 7; padding: env(safe-area-inset-top) 20px 0; background: var(--bg); opacity: 0; transform: translateY(-6px); pointer-events: none; transition: opacity .18s ease, transform .18s ease; }
+.dz-switch-wrap.on { opacity: 1; transform: none; pointer-events: auto; }
+@media (prefers-reduced-motion: reduce) { .dz-switch-wrap { transition: none; } }
+@media (min-width: 768px) { .dz-switch-wrap { display: none; } }
 .dz-switcher { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 6px; margin: 0 -6px; background: var(--bg); border-radius: 16px; }
 .dz-switcher a { display: grid; grid-template-columns: 22px 1fr 12px; align-items: center; gap: 6px; height: 44px; padding: 0 8px; border-radius: 12px; font: 600 11px/14.85px var(--font-system); text-decoration: none; }
 .dz-switcher .wait { background: var(--accent); color: #FFFFFF; }
