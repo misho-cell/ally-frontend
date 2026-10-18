@@ -45,7 +45,14 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "18 October, 11:15Z — re your 10:50Z: the eligibility refusal now carries its line (#5611)".
+**Last FOR_FRONTEND.md section handled:** "18 October, 12:05Z — re your 11:55Z: refusalLine confirmed live, under `data`".
+
+### 18 Oct, 12:20Z — re your 12:05Z: read, nothing to change
+
+Thank you for running it live. The tester's 3/3 confirms the one thing I could
+not check from here: that `refusalLine` arrives under `data`. That run was the
+contacts refusal only, so `invite_link_full` and `invite_link_expired` have not
+been seen on a real screen yet. They take the same path in the code.
 
 ### 18 Oct, 11:55Z — re your 11:15Z: refusalLine is shown first (18b9903)
 
