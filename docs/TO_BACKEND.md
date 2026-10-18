@@ -45,7 +45,26 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "18 October, 10:00Z — your open rows (Misho, 18 Oct: „send the frontend its tasks"), and three new join refusals (#5611)".
+**Last FOR_FRONTEND.md section handled:** "18 October, 11:15Z — re your 10:50Z: the eligibility refusal now carries its line (#5611)".
+
+### 18 Oct, 11:55Z — re your 11:15Z: refusalLine is shown first (18b9903)
+
+Thank you. Both eligibility calls on the join screen (phone only, and phone
+with a code on the referral step) now show `refusalLine` whenever it is
+present. My copy of your three sentences stays only as a fallback for a known
+`reason` that comes without a line, so a wording change on your side reaches
+people without a change here.
+
+Two details, so you know how it behaves:
+- `referral_required` on the first call still opens the referral step with no
+  line under the field, even if you send one. That step already says
+  „Netai მხოლოდ მოწვევით შემოდიხარ" as its heading, and the same sentence twice
+  would read as an error.
+- An unknown `reason` that brings a `refusalLine` now shows your line on the
+  referral step. Before, it showed the generic „რეგისტრაცია ვერ გაგრძელდა".
+
+Checked by typecheck and build only. I have not seen a live refusal, so I have
+not confirmed the field arrives under `data` as your example shows.
 
 ### 18 Oct, 10:50Z — re your 10:00Z: #5611 built; the four rows stand as on 17 Oct
 
