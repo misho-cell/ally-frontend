@@ -137,6 +137,9 @@ type Eligibility = {
   eligible: boolean;
   mode?: string;
   reason?: string;
+  // #5611 (18 Oct, 11:15Z): the server's own sentence for a refusal, the same
+  // one register sends as `error`. Its words win over this screen's copy.
+  refusalLine?: string;
 };
 
 // #5611: a refusal with its own sentence. "Code not found" is wrong for each
@@ -324,6 +327,14 @@ export default function LoginPage() {
     return (json.data ?? json) as T;
   }
 
+  // #5611: the server's line when it sent one; this screen's copy only for a
+  // known reason that arrived without it.
+  function refusalText(elig: Eligibility): string | null {
+    if (typeof elig.refusalLine === "string" && elig.refusalLine.trim()) return elig.refusalLine;
+    const key = refusalKey(elig.reason);
+    return key ? s[key] : null;
+  }
+
   function handleError(err: unknown, fallback: string) {
     const e = err as PostError;
     if (e?.retryAfter) {
@@ -380,10 +391,10 @@ export default function LoginPage() {
       // ?ref= prefill from /join, and clearing it here erased that.
       setReferralError("");
       setStep("referral");
-    } else if (refusalKey(elig.reason)) {
+    } else if (refusalText(elig)) {
       // #5611: the referral step, with the reason, so another code can be
       // tried there.
-      setReferralError(s[refusalKey(elig.reason)!]);
+      setReferralError(refusalText(elig)!);
       setStep("referral");
     } else {
       // Unknown ineligible reason — fail closed with a generic message.
@@ -512,8 +523,7 @@ export default function LoginPage() {
         confirmedReferralRef.current = val;
         setStep("name");
       } else {
-        const key = refusalKey(elig.reason);
-        setReferralError(key ? s[key] : s.referralNotFound);
+        setReferralError(refusalText(elig) ?? s.referralNotFound);
       }
     } catch (err) {
       const ee = err as PostError;
