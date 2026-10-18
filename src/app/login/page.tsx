@@ -131,7 +131,7 @@ type Step = "phone" | "otp" | "referral" | "name" | "loginInvite";
 // it every 400 looks the same to the caller, and "you need an invite" would be
 // shown as "invalid code" — the one message that tells somebody to fix the
 // thing that is not broken.
-type PostError = Error & { retryAfter?: number; reason?: string };
+type PostError = Error & { retryAfter?: number; reason?: string; status?: number };
 
 type Eligibility = {
   eligible: boolean;
@@ -184,6 +184,13 @@ export default function LoginPage() {
   const [loginInviteMsg, setLoginInviteMsg] = useState<string | null>(null);
   const [referralError, setReferralError] = useState("");
   const confirmedReferralRef = useRef<string | null>(null);
+  // #5875 (18 Oct, founder D831): a number with no invitation gets no code.
+  // request-otp may now refuse with 403 before sending anything, and then the
+  // invite step comes BEFORE the code step. otpReferralRef is the code that
+  // request-otp accepted, so the same code carries on to eligibility and the
+  // person is never asked for it twice.
+  const otpReferralRef = useRef<string | null>(null);
+  const [referralBeforeCode, setReferralBeforeCode] = useState(false);
   // Optional referrer on the name step: builds the referral chain in ALL modes
   // (gate off included). No validation — unknown values register fine without
   // a link, and the backend ignores self-referrals.
@@ -322,6 +329,7 @@ export default function LoginPage() {
       ) as PostError;
       const reason = (json as { reason?: unknown }).reason;
       if (typeof reason === "string" && reason) err.reason = reason;
+      err.status = res.status;
       throw err;
     }
     return (json.data ?? json) as T;
@@ -352,6 +360,8 @@ export default function LoginPage() {
     clearToken();
     otpPassedRef.current = false;
     confirmedReferralRef.current = null;
+    otpReferralRef.current = null;
+    setReferralBeforeCode(false);
     // Clearing what a previous attempt typed is right; clearing what the
     // invite link brought is not, so the field falls back to the URL's code
     // rather than to nothing.
@@ -359,12 +369,39 @@ export default function LoginPage() {
     const full = composePhone(dial, phoneRaw);
     setPhone(full);
     try {
-      await post("/auth/request-otp", { phone: full, actionType: "AUTH" });
+      // #5875: the code the invite link brought travels with the request, so
+      // an invited number is let through before any code is sent.
+      const ref = urlRefRef.current;
+      await post("/auth/request-otp", ref ? { phone: full, actionType: "AUTH", referralCode: ref } : { phone: full, actionType: "AUTH" });
+      otpReferralRef.current = ref;
       setStep("otp");
     } catch (err) {
-      handleError(err, s.genericError);
+      if ((err as PostError)?.status === 403) {
+        // No invitation: ask for one now, with the server's own line, and
+        // send no code until there is one.
+        setReferralError(err instanceof Error ? err.message : s.referralNotFound);
+        setReferralBeforeCode(true);
+        setStep("referral");
+      } else {
+        handleError(err, s.genericError);
+      }
     } finally {
       setLoading(false);
+    }
+  }
+
+  // #5875: the invite step before the code. A code that request-otp accepts
+  // sends the WhatsApp code and moves on to the code step as before.
+  async function requestOtpWithReferral(val: string) {
+    try {
+      await post("/auth/request-otp", { phone, actionType: "AUTH", referralCode: val });
+      otpReferralRef.current = val;
+      setReferralBeforeCode(false);
+      setStep("otp");
+    } catch (err) {
+      const ee = err as PostError;
+      if (ee?.retryAfter) startRateLimit(ee.retryAfter);
+      setReferralError(ee instanceof Error ? ee.message : s.cantVerify);
     }
   }
 
@@ -372,9 +409,12 @@ export default function LoginPage() {
   // proceed. The gate is fully server-driven: eligible → name step; a
   // referral_required reason → referral screen. No client-side rules.
   async function routeNewUser() {
-    const elig = await post<Eligibility>("/auth/eligibility", { phone });
+    // #5875: a code request-otp already accepted is asked about again here
+    // rather than asking the person for it a second time.
+    const sent = otpReferralRef.current;
+    const elig = await post<Eligibility>("/auth/eligibility", sent ? { phone, referralCode: sent } : { phone });
     if (elig.eligible) {
-      confirmedReferralRef.current = null;
+      confirmedReferralRef.current = sent;
       // 24 Sept. Two modes can admit somebody with no inviter and in both the
       // "Invited by" field is genuinely optional: `open` (a review or QA
       // number, which has nobody to be invited by) and `existing` (already
@@ -511,6 +551,11 @@ export default function LoginPage() {
     setReferralError("");
     setError("");
     setLoading(true);
+    if (referralBeforeCode) {
+      await requestOtpWithReferral(referralInput.trim());
+      setLoading(false);
+      return;
+    }
     try {
       // 14 Oct (server 0281): the value is a member's invitation code only.
       const val = referralInput.trim();
@@ -719,6 +764,18 @@ export default function LoginPage() {
                 >
                   {loading ? <Spinner /> : rateLimited ? s.wait(rlSecs) : s.continueBtn}
                 </button>
+                {/* #5875: before the code, the number itself may be the
+                    mistake, so the way back to it stays open. */}
+                {referralBeforeCode && (
+                  <button
+                    type="button"
+                    onClick={() => { setStep("phone"); setReferralError(""); setReferralBeforeCode(false); }}
+                    className="text-xs transition-colors"
+                    style={{ color: "var(--ink-soft)" }}
+                  >
+                    {s.back}
+                  </button>
+                )}
               </form>
             )}
 
@@ -808,7 +865,8 @@ export default function LoginPage() {
   async function handleSmsResend() {
     setSmsLoading(true);
     try {
-      await post("/auth/resend-otp", { phone, actionType: "AUTH" });
+      const ref = otpReferralRef.current;
+      await post("/auth/resend-otp", ref ? { phone, actionType: "AUTH", referralCode: ref } : { phone, actionType: "AUTH" });
       showSmsToast(s.smsSent);
       // restart cooldown
       setSmsCooldown(SMS_COOLDOWN);
