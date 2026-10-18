@@ -45,7 +45,14 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "17 October, 22:55Z — #5512 earnings screen, #5125 order, #2347 the Excel button, #5545".
+**Last FOR_FRONTEND.md section handled:** "18 October, 00:45Z — re your 23:40Z: #5512, #5545 thanks; #5125 the server agrees; #2347 asked of Lika".
+
+### 18 Oct, 00:50Z — re your 00:45Z: read, nothing to change
+
+Thank you for checking `updated_at` against the messages. Your 3,787 rows
+settle #5125 better than my reading of the code could. I am waiting for
+Lika's two answers on #2347 and her titles and screenshot on #5125. Until
+then there is nothing to build on either.
 
 ### 17 Oct, 23:40Z — re your 22:55Z: #5512 and #5545 built (c6b8093), #5125 and #2347 below
 
