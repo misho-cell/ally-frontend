@@ -74,6 +74,11 @@ const L = {
     invalidCode: "Invalid code",
     cantVerify: "Couldn't verify — please try again",
     cantProceed: "Registration couldn't proceed. Please try again later.",
+    // #5611 (18 Oct): the gate's three refusals that another try cannot fix
+    // by itself. Same sentences the server sends with a refused registration.
+    linkFull: "This invite link has already let in as many people as it takes.",
+    linkExpired: "This invite link has expired.",
+    notInContacts: "Netai works only between people who know each other: an invite counts once the person inviting you has your number saved.",
     rateLimited: "Too many requests. Please try again later.",
     pricing: "Pricing",
     terms: "Terms",
@@ -105,6 +110,9 @@ const L = {
     invalidCode: "არასწორი კოდი",
     cantVerify: "ვერ გადამოწმდა, სცადე თავიდან",
     cantProceed: "რეგისტრაცია ვერ გაგრძელდა. სცადე მოგვიანებით.",
+    linkFull: "ამ მოწვევის ბმულით უკვე შემოვიდა იმდენი ადამიანი, რამდენსაც ის იღებს.",
+    linkExpired: "ამ მოწვევის ბმულს ვადა გაუვიდა.",
+    notInContacts: "Netai მუშაობს მხოლოდ ნაცნობებს შორის: მოწვევა მაშინ მოქმედებს, როცა მომწვევს შენი ნომერი აქვს შენახული.",
     rateLimited: "ძალიან ბევრი მოთხოვნაა. სცადე მოგვიანებით.",
     pricing: "ფასები",
     terms: "წესები",
@@ -130,6 +138,16 @@ type Eligibility = {
   mode?: string;
   reason?: string;
 };
+
+// #5611: a refusal with its own sentence. "Code not found" is wrong for each
+// of these: the code exists, and telling somebody to check it sends them to
+// fix the thing that is not broken.
+function refusalKey(reason: string | undefined): "linkFull" | "linkExpired" | "notInContacts" | null {
+  if (reason === "invite_link_full") return "linkFull";
+  if (reason === "invite_link_expired") return "linkExpired";
+  if (reason === "not_in_inviter_contacts") return "notInContacts";
+  return null;
+}
 
 function clearToken() {
   clearSessionToken();
@@ -362,6 +380,11 @@ export default function LoginPage() {
       // ?ref= prefill from /join, and clearing it here erased that.
       setReferralError("");
       setStep("referral");
+    } else if (refusalKey(elig.reason)) {
+      // #5611: the referral step, with the reason, so another code can be
+      // tried there.
+      setReferralError(s[refusalKey(elig.reason)!]);
+      setStep("referral");
     } else {
       // Unknown ineligible reason — fail closed with a generic message.
       setError(s.cantProceed);
@@ -489,7 +512,8 @@ export default function LoginPage() {
         confirmedReferralRef.current = val;
         setStep("name");
       } else {
-        setReferralError(s.referralNotFound);
+        const key = refusalKey(elig.reason);
+        setReferralError(key ? s[key] : s.referralNotFound);
       }
     } catch (err) {
       const ee = err as PostError;
