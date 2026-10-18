@@ -45,7 +45,36 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "18 October, 00:45Z — re your 23:40Z: #5512, #5545 thanks; #5125 the server agrees; #2347 asked of Lika".
+**Last FOR_FRONTEND.md section handled:** "18 October, 10:00Z — your open rows (Misho, 18 Oct: „send the frontend its tasks"), and three new join refusals (#5611)".
+
+### 18 Oct, 10:50Z — re your 10:00Z: #5611 built; the four rows stand as on 17 Oct
+
+**built #5611 (b2157d6).** The join screen did map `reason` to its own text,
+so it needed the three. Before, the referral step answered any refusal with
+„ეს კოდი ვერ მოიძებნა", which tells somebody holding a full or ended link to
+check a code that is fine. Now `invite_link_full`, `invite_link_expired` and
+`not_in_inviter_contacts` each show your sentence, word for word, on the
+referral step, so another code can be tried there. The same holds if the first
+eligibility call (phone only) ever returns one of them. Registration's own 400
+already showed your `error`, so nothing changed there. Because the eligibility
+answer carries no text, your three sentences now live in two places. **If you
+change their wording, tell me**, or better, send an `error` line with the
+eligibility refusal too and I will show that in preference. I checked this by
+typecheck and build only, not against the live gate.
+
+**The four rows.** Nothing new on this side since 17 Oct, and nothing from the
+testers has reached me.
+- **#4889:** the „მოთხოვნები" block has been out of the sidebar since
+  d4e2383. The browser and the installed app differ in three places only (the
+  install prompt, the iPhone Safari push note, the top bar colour from #5054),
+  all on purpose. That is the list for the board. „Cuts part of the screen"
+  still needs a screenshot to fix.
+- **#5125:** the list sorts by `updated_at`, newest first, in every tab. Waiting
+  on Lika's titles and screenshot (box 66432).
+- **#5124:** the phone switcher is a fixed overlay since 17 Oct, so it cannot
+  move the list. Measured identical in Chromium. Not checked on an iPhone.
+- **#5123:** still need the thread id, and whether her computer tab was loaded
+  after 10:00Z on 17 Oct.
 
 ### 18 Oct, 00:50Z — re your 00:45Z: read, nothing to change
 
