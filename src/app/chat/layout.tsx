@@ -367,6 +367,37 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     toastTimerRef.current = setTimeout(() => setToast(null), 2400);
   }, []);
 
+  // #5283: the same call and the same row update as the conversation's
+  // „…" menu. It takes the THREAD id; the server finds the goal itself.
+  const [resumingIds, setResumingIds] = useState<Set<string>>(() => new Set());
+  const resumeGoal = useCallback(async (id: Thread["id"]) => {
+    const key = String(id);
+    setResumingIds((prev) => new Set(prev).add(key));
+    try {
+      const res = await fetch(`${BASE_URL}/threads/${key}/resume`, {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+      });
+      if (res.status === 401) { forceLogin(); return; }
+      if (!res.ok) { showToast(t("resumeFailed")); return; }
+      setThreads((prev) =>
+        prev.map((th) =>
+          String(th.id) !== key
+            ? th
+            : { ...th, goal_stopped: false, goal_stopped_open: false, goal_paused: false, status: "waiting" }
+        )
+      );
+    } catch {
+      showToast(t("resumeFailed"));
+    } finally {
+      setResumingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  }, [showToast]);
+
   const loadThreads = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/threads?limit=${PAGE_SIZE}`, { headers: authHeaders() });
@@ -1707,6 +1738,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             unread={isUnread(thread) || answerUnseen(thread)}
                             time={fmtClock(thread.updated_at, clock?.today ?? null)}
                             onLongPress={() => openRename(thread, goalTitle(thread))}
+                            onResume={() => resumeGoal(thread.id)}
+                            resuming={resumingIds.has(String(thread.id))}
                           />
                         ))}
                       </div>
@@ -1783,6 +1816,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             unread={isUnread(thread) || (g.key !== "done" && answerUnseen(thread))}
                             onLongPress={() => openRename(thread, goalTitle(thread))}
                             time={fmtClock(thread.updated_at, clock?.today ?? null)}
+                            onResume={() => resumeGoal(thread.id)}
+                            resuming={resumingIds.has(String(thread.id))}
                           />
                         ))}
                         {open && g.key === "run" && (needsYou.length + ongoing.length) === 0 && !q && (
@@ -2054,9 +2089,32 @@ function isPaused(thread: Thread): boolean {
   return thread.goal_paused === true || thread.goal_stopped_open === true;
 }
 
-function StatusLine({ thread }: { thread: Thread }) {
+// #5283 (18 Oct): a paused goal is resumed from its card, on the phone and
+// the desktop alike, not only from the open conversation's menu. The button
+// sits inside the card's link, so it keeps the tap (and the long press) to
+// itself rather than opening the conversation as well.
+function StatusLine({ thread, onResume, resuming }: { thread: Thread; onResume?: () => void; resuming?: boolean }) {
   if (!isPaused(thread)) return null;
-  return <small className="dz-status">{t("stPaused")}</small>;
+  return (
+    <small className="dz-status">
+      {t("stPaused")}
+      {onResume && (
+        <button
+          type="button"
+          className="dz-resume"
+          disabled={resuming}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onResume();
+          }}
+        >
+          {t("resumeGoal")}
+        </button>
+      )}
+    </small>
+  );
 }
 
 type RowProps = {
@@ -2068,11 +2126,13 @@ type RowProps = {
   unread: boolean;
   time?: string;
   onLongPress: () => void;
+  onResume?: () => void;
+  resuming?: boolean;
 };
 
 // Desktop sidebar row of the design: the role's icon, title and time, one
 // line of the last message, the path; a status only when paused (4920).
-function TaskRow({ thread, title, href, active, unread, time, onLongPress }: RowProps) {
+function TaskRow({ thread, title, href, active, unread, time, onLongPress, onResume, resuming }: RowProps) {
   const press = useLongPress(onLongPress);
   const preview = previewLine(thread.last_message);
   return (
@@ -2088,7 +2148,7 @@ function TaskRow({ thread, title, href, active, unread, time, onLongPress }: Row
         {preview && <span className="dz-row-preview">{preview}</span>}
         {/* 4927 (a): the path on every case in the list, desktop too. */}
         <ChainPath threadId={String(thread.id)} stamp={thread.updated_at ?? ""} className="compact" />
-        <StatusLine thread={thread} />
+        <StatusLine thread={thread} onResume={onResume} resuming={resuming} />
       </span>
     </Link>
   );
@@ -2097,7 +2157,7 @@ function TaskRow({ thread, title, href, active, unread, time, onLongPress }: Row
 // Phone card of the design: role tag and time, the title, the last message,
 // "details", a status only when paused (4920). The role's colour runs down the
 // left edge.
-function TaskCard({ thread, title, href, active, unread, time, onLongPress }: RowProps) {
+function TaskCard({ thread, title, href, active, unread, time, onLongPress, onResume, resuming }: RowProps) {
   const press = useLongPress(onLongPress);
   const role = roleLabel(thread.role);
   const preview = previewLine(thread.last_message);
@@ -2121,7 +2181,7 @@ function TaskCard({ thread, title, href, active, unread, time, onLongPress }: Ro
       <span className="dz-cf">
         <span className="dz-open">{t("details")}<DzIcon name="right" size={14} /></span>
       </span>
-      <StatusLine thread={thread} />
+      <StatusLine thread={thread} onResume={onResume} resuming={resuming} />
     </Link>
   );
 }

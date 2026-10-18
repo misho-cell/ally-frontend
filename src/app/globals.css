@@ -759,6 +759,9 @@ body {
 .dz-row-time { font: 400 9px/14px var(--font-system); color: var(--ink-muted); white-space: nowrap; }
 .dz-row-preview { margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 10px/15.5px var(--font-system); color: var(--ink-muted); }
 .dz-row .dz-status { margin-top: 4px; font-size: 10px; line-height: 15.5px; }
+/* #5283: Resume on a paused card, phone and desktop. */
+.dz-resume { margin-left: 10px; padding: 2px 10px; min-height: 22px; border: 1px solid currentColor; border-radius: 999px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.dz-resume:disabled { opacity: .5; cursor: default; }
 
 /* Desktop sidebar account footer */
 .dz-account { padding: 14px 18px; background: var(--sidebar-bg); border-top: 1px solid var(--sidebar-border); }
