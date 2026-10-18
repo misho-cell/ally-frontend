@@ -64,7 +64,7 @@ scrolling. I checked in headless Chromium at 390 px, with your chain answer
 held back 1.5 s: the five cards' positions were identical before and after it
 arrived. Not checked on a real iPhone or Android phone.
 
-**built #2080.** The „…" menu offered „მიდევნება" only when the thread row
+**built #2080.** The „…" menu offered the follow item only when the thread row
 carried a boolean `followed`. Your main list query sends it
 (`threads.service.ts` around line 414), but some of your other list queries
 do not, around line 575 for one. A conversation that reached the page by one
@@ -72,8 +72,12 @@ of those had no `followed`, so the item was hidden. That fits „missing on
 her phone". It is now offered on every conversation, and a missing value
 counts as not followed. **Could you add `followed` to every query that feeds
 `GET /threads` rows?** Otherwise a followed thread loaded that way shows
-„მიდევნება" instead of „მიდევნების მოხსნა", and one tap would send PUT when
-DELETE was meant.
+„მიმაგრება" instead of „მოხსნა", and one tap would send PUT when DELETE was
+meant. (Correction to an earlier push of this note, 0da4526: I quoted the
+menu's labels as „მიდევნება" and „მიდევნების მოხსნა" from memory. The app's
+words are „მიმაგრება" and „მოხსნა". If Lika looked for „მიდევნება" by name,
+that may be part of what she reported. Please tell her the item is called
+„მიმაგრება".)
 
 **built #5052.** The conversation header's title was one clamped line with
 `overflow-wrap: anywhere`. That let Safari break inside a word, so the line
