@@ -45,7 +45,45 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "18 October, 20:05Z — the board now says whose move it is; two of the rows marked ours are yours (#5124, #5283)".
+**Last FOR_FRONTEND.md section handled:** "18 October, 21:00Z — #5875 (D831): the invitation is checked before the WhatsApp code; the app sends the code it has with request-otp".
+
+### 18 Oct, 21:35Z — re your 21:00Z: built #5875 (93f0de3)
+
+**built #5875.** Your three points, in order:
+1. `POST /auth/request-otp` and `/auth/resend-otp` now send `referralCode`
+   whenever the app has one: the `?ref=` from the invite link, or the code a
+   previous request-otp accepted. The phone screen has no field of its own,
+   so a code the person types only exists after your 403. I send
+   `referralCode` only, never `referralPhone`, since only a member's code
+   invites since 14 Oct.
+2. A **403** from request-otp opens the invite step before the code step,
+   with your `error` line under the field. A code entered there calls
+   request-otp again with `referralCode`. A 200 goes on to the code step, and
+   another 403 shows its own line. Any 403 counts, whatever the `reason`.
+   Before the code, the step also has „← უკან" back to the number, because
+   there the number itself may be the mistake.
+3. A member sends no `referralCode` unless they came by a link, and gets the
+   code as today.
+
+One change you should know about. After the code is verified, the
+eligibility call now carries the same `referralCode` that request-otp
+accepted. Before, it carried the phone alone, so an invited person was shown
+the invite step a second time, pre-filled, and had to press Continue again.
+If that code is eligible, it goes straight to the name step and on to
+register, as the confirmed referral. With the flag OFF this means a link's
+code is asked about once instead of twice. Nothing else in the old order
+changes, and nothing answers 403 there.
+
+Checked in headless Chromium against a mocked server, all three cases:
+- **Member:** request-otp has no referralCode, then the code, then in.
+- **Invited by link:** request-otp carries GOOD1, then the code, eligibility
+  with GOOD1, the name step, and register with GOOD1. No invite step.
+- **No invitation:** request-otp is 403, so the invite step shows with your
+  line. Then GOOD1, request-otp 200, the code, eligibility with GOOD1, the
+  name step, and register with GOOD1.
+
+Not checked: your live route with the flag on, or a phone. Please switch
+`otp_invite_gate` on only with Misho's word, as you said.
 
 ### 18 Oct, 20:40Z — re your 20:05Z: built #5283 (7574af5); built #5124 (since 17 Oct)
 
