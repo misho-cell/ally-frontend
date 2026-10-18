@@ -91,10 +91,16 @@ function load(threadId: string, stamp: string): Promise<Chain | null> {
 
 // Backend 17:39Z: asked only for cards on screen, so a long list does not
 // spend the minute's calls on cards nobody sees.
-export default function ChainPath({ threadId, stamp, className = "" }: { threadId: string; stamp: string; className?: string }) {
-  const [chain, setChain] = useState<Chain | null>(null);
+//
+// #5124 (Lika, 18 Oct): on the phone's cards the path arrived after the card
+// was drawn and pushed everything below it down, mid-scroll. There (`eager`)
+// it is asked for at once rather than on sight, and the line it will take is
+// held empty until the answer comes, so a card with a path never grows.
+export default function ChainPath({ threadId, stamp, className = "", eager = false }: { threadId: string; stamp: string; className?: string; eager?: boolean }) {
+  const [chain, setChain] = useState<Chain | null | undefined>(undefined);
   const [anchor, setAnchor] = useState<HTMLSpanElement | null>(null);
-  const [seen, setSeen] = useState(false);
+  const [seenOnScreen, setSeen] = useState(false);
+  const seen = eager || seenOnScreen;
 
   useEffect(() => {
     if (!anchor || seen) return;
@@ -118,6 +124,13 @@ export default function ChainPath({ threadId, stamp, className = "" }: { threadI
 
   // Giorgi's retest (14 Oct): „<previous> → თქვენ" is a path too, so a case
   // with someone before and nobody after still shows it.
+  if (chain === undefined && eager) {
+    return (
+      <span className={`dz-chain ${className}`} aria-hidden="true">
+        <span className="nm" style={{ visibility: "hidden" }}>{t("chainYou")}</span>
+      </span>
+    );
+  }
   if (!chain || (chain.next.length === 0 && !chain.previous)) return <span ref={setAnchor} aria-hidden="true" />;
   const shown = chain.next.slice(0, 2);
   const more = chain.next.length - shown.length;

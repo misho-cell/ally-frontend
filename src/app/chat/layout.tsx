@@ -2176,8 +2176,9 @@ function TaskCard({ thread, title, href, active, unread, time, onLongPress, onRe
       {preview && <p>{preview}</p>}
       {/* 4927: the path of this case. Since 19:45Z the server answers for the
           owner's own goals too (no one before, the people it talks to after),
-          so every card asks, and only once it is on screen. */}
-      <ChainPath threadId={String(thread.id)} stamp={thread.updated_at ?? ""} />
+          so every card asks. #5124: at once, with its line held, so the
+          card does not grow under a scrolling thumb. */}
+      <ChainPath threadId={String(thread.id)} stamp={thread.updated_at ?? ""} eager />
       <span className="dz-cf">
         <span className="dz-open">{t("details")}<DzIcon name="right" size={14} /></span>
       </span>

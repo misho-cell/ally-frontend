@@ -1990,8 +1990,11 @@ export default function ThreadPage() {
               ...(thread?.is_task === true && thread.goal_stopped_open !== true
                 ? [{ key: "stop", label: t("stopGoal"), onSelect: stopTask, disabled: stopping }]
                 : []),
-              ...(thread && typeof thread.followed === "boolean"
-                ? [{ key: "follow", label: t(thread.followed ? "unfollow" : "follow"), onSelect: toggleFollow, disabled: following }]
+              // #2080 (Lika, 18 Oct): offered on every conversation. A row
+              // whose list query did not carry `followed` is one not followed;
+              // hiding the item there hid it on exactly the phone she used.
+              ...(thread
+                ? [{ key: "follow", label: t(thread.followed === true ? "unfollow" : "follow"), onSelect: toggleFollow, disabled: following }]
                 : []),
               ...(!isRequest && thread
                 ? [{ key: "rename", label: t("renameGoal"), onSelect: () => { setRenameValue(thread?.title ?? ""); setRenameOpen(true); } }]

@@ -16,8 +16,11 @@ export default function BuildTag() {
       aria-hidden
       style={{
         position: "fixed",
-        right: 6,
-        bottom: 3,
+        // #4889 (Lika, 18 Oct): the installed app on a phone draws under the
+        // rounded corner and the home bar, which cut the tag; keep it inside
+        // the safe area there, and where it is no inset it stays as it was.
+        right: "calc(6px + env(safe-area-inset-right, 0px))",
+        bottom: "calc(3px + env(safe-area-inset-bottom, 0px))",
         zIndex: 40,
         font: "400 9px/12px monospace",
         color: "rgba(107,114,101,0.5)",
