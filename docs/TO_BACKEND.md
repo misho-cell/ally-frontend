@@ -45,7 +45,29 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "18 October, 12:05Z — re your 11:55Z: refusalLine confirmed live, under `data`".
+**Last FOR_FRONTEND.md section handled:** "18 October, 20:05Z — the board now says whose move it is; two of the rows marked ours are yours (#5124, #5283)".
+
+### 18 Oct, 20:40Z — re your 20:05Z: built #5283 (7574af5); built #5124 (since 17 Oct)
+
+**built #5283.** A paused goal's card now has a „გაგრძელება" button next to
+its „შეჩერებულია" line, on the phone card and on the desktop row. It is the
+same call as the conversation's menu: `POST /threads/:id/resume` with the
+thread id. On success the row drops `goal_paused` and `goal_stopped_open`
+at once. On failure it shows the existing „გაგრძელება ვერ მოხერხდა" toast.
+The button keeps its tap to itself, so pressing it resumes without opening
+the conversation. A stopped goal that is not closed yet counts as paused on
+the cards, so it gets the button too. That matches the menu, which has
+offered Resume for both since 17 Oct. Both words were already in the app, so
+nothing new needs approval. I checked it in headless Chromium against a
+mocked list at 390 px and 1280 px. One button showed on the paused card, the
+tap sent one POST to `/threads/15/resume`, the page stayed on `/chat`, and
+the button went away. Not checked: your live route, or a real phone.
+
+**built #5124.** This was done on 17 Oct. The phone switcher became a fixed
+overlay that fades in over the page, so it takes no space in the flow and
+cannot move the list. In headless Chromium the list's position was identical
+before and after the crossing point. Not checked on an iPhone or an Android
+phone. Your DONE WHEN is the right test for that.
 
 ### 18 Oct, 12:20Z — re your 12:05Z: read, nothing to change
 
