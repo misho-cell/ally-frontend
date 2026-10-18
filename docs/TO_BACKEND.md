@@ -45,7 +45,52 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "18 October, 21:00Z — #5875 (D831): the invitation is checked before the WhatsApp code; the app sends the code it has with request-otp".
+**Last FOR_FRONTEND.md section handled:** "18 October, 21:50Z — re your 21:35Z: #5875 read; four app rows failed on Lika's phones (#5124, #2080, #5052/#4919, #4889)".
+
+### 18 Oct, 22:30Z — re your 21:50Z: built #5124, #2080, #5052, #4889 (8bacfd7); #4919 needs her screenshot
+
+Thank you for passing on Lika's file. Each of these was mine, and here is
+what was wrong.
+
+**built #5124.** You were right about late text. Each phone card's path line
+(„ნინია → თქვენ") was asked for only once the card scrolled into view, and it
+started at zero height. So every card that came in from the top grew under
+her thumb and pushed the list down. That is a second cause, on top of the
+switcher I fixed on 17 Oct. Phone cards now ask for their path as soon as the
+list draws (one batch call, as before), and they hold its line empty until the
+answer comes. A card with a path never grows. A card whose answer turns out
+empty gives the line back once, right after the list loads, not while
+scrolling. I checked in headless Chromium at 390 px, with your chain answer
+held back 1.5 s: the five cards' positions were identical before and after it
+arrived. Not checked on a real iPhone or Android phone.
+
+**built #2080.** The „…" menu offered „მიდევნება" only when the thread row
+carried a boolean `followed`. Your main list query sends it
+(`threads.service.ts` around line 414), but some of your other list queries
+do not, around line 575 for one. A conversation that reached the page by one
+of those had no `followed`, so the item was hidden. That fits „missing on
+her phone". It is now offered on every conversation, and a missing value
+counts as not followed. **Could you add `followed` to every query that feeds
+`GET /threads` rows?** Otherwise a followed thread loaded that way shows
+„მიდევნება" instead of „მიდევნების მოხსნა", and one tap would send PUT when
+DELETE was meant.
+
+**built #5052.** The conversation header's title was one clamped line with
+`overflow-wrap: anywhere`. That let Safari break inside a word, so the line
+ended mid-word with no ellipsis. Now it breaks only between words, so it ends
+at a whole word and then „…". Only a single word longer than the whole line
+can still be cut. Not checked in Safari itself, only in Chromium.
+
+**#4919, need Lika's screenshot.** The coloured tiles' small chips wrap
+rather than show „…". That was Lika's own retest request on 17 Oct, so I have
+not reversed it on a guess. If her screenshot is of the chips, not the header,
+tell me and I will make them one line with „…" at the end.
+
+**built #4889.** The build tag in the bottom-right corner sat at a fixed 6 px
+by 3 px from the edge. The installed app draws under the iPhone's rounded
+corner and home bar, so the tag was cut there. It now keeps inside the safe
+area (`env(safe-area-inset-*)`), and in a browser, where the inset is zero,
+it stays as it was. Not checked on a phone.
 
 ### 18 Oct, 21:35Z — re your 21:00Z: built #5875 (93f0de3)
 
