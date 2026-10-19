@@ -15,16 +15,24 @@ import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 // so the list does not ask again on each render. Any failure draws nothing:
 // a path is extra information and its absence says nothing false.
 
-type Chain = { previous: string | null; next: string[] };
+// #6342 (Giorgi G-087, backend 19 Oct 16:10Z): `target` is the person the
+// routes lead to, from the rows' own `target_name`, so the helpers stop
+// reading as the people sought. Drawn only when every row that names one
+// names the same person; two different targets would be a guess.
+type Chain = { previous: string | null; next: string[]; target: string | null };
 
 const cache = new Map<string, Promise<Chain | null>>();
 
 function parseChain(d: unknown): Chain | null {
   if (!isRecord(d)) return null;
   const prev = isRecord(d.previous) && typeof d.previous.name === "string" && d.previous.name.trim() ? d.previous.name.trim() : null;
-  const next = recordItems(pickArray(d.next)).flatMap((r) =>
+  const rows = recordItems(pickArray(d.next));
+  const next = rows.flatMap((r) =>
     typeof r.person_name === "string" && r.person_name.trim() ? [r.person_name.trim()] : []);
-  return { previous: prev, next };
+  const targets = new Set(rows.flatMap((r) =>
+    typeof r.target_name === "string" && r.target_name.trim() ? [r.target_name.trim()] : []));
+  const only = targets.size === 1 ? [...targets][0] : null;
+  return { previous: prev, next, target: only && !next.includes(only) ? only : null };
 }
 
 function loadOne(threadId: string): Promise<Chain | null> {
@@ -53,7 +61,7 @@ function flush() {
         const d = unwrapData(raw);
         const positions = isRecord(d) && isRecord(d.positions) ? d.positions : null;
         if (!positions) { part.forEach((q) => q.reject()); return; }
-        part.forEach((q) => q.resolve(parseChain(positions[q.id]) ?? { previous: null, next: [] }));
+        part.forEach((q) => q.resolve(parseChain(positions[q.id]) ?? { previous: null, next: [], target: null }));
       })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.status === 404) {
@@ -135,12 +143,13 @@ export default function ChainPath({ threadId, stamp, className = "", eager = fal
   const shown = chain.next.slice(0, 2);
   const more = chain.next.length - shown.length;
   return (
-    <span className={`dz-chain ${className}`} aria-label={[chain.previous, t("chainYou"), ...chain.next].filter(Boolean).join(" → ")}>
+    <span className={`dz-chain ${className}`} aria-label={[chain.previous, t("chainYou"), chain.next.join(", "), chain.target].filter(Boolean).join(" → ")}>
       {chain.previous && (<><span className="nm">{chain.previous}</span><span className="arr" aria-hidden="true">→</span></>)}
       <span className="nm me">{t("chainYou")}</span>
       {shown.length > 0 && <span className="arr" aria-hidden="true">→</span>}
       {shown.map((n, i) => <span key={i} className="nm">{n}</span>)}
       {more > 0 && <span className="nm">+{more}</span>}
+      {chain.target && shown.length > 0 && (<><span className="arr" aria-hidden="true">→</span><span className="nm">{chain.target}</span></>)}
     </span>
   );
 }

@@ -19,6 +19,9 @@ export type Route = {
   key: string;
   kind: string;
   personName: string | null;
+  // #6342: whom this route leads to, when the server knows and it is not the
+  // person on the route.
+  targetName: string | null;
   role: string | null;
   state: "waiting" | "answered" | "declined" | "confirmed" | "closed" | null;
   summary: string | null;
@@ -40,6 +43,7 @@ function parse(raw: unknown): Route[] {
       key: `${kind}:${id}`,
       kind,
       personName: typeof r.person_name === "string" && r.person_name.trim() ? r.person_name : null,
+      targetName: typeof r.target_name === "string" && r.target_name.trim() ? r.target_name.trim() : null,
       role: typeof r.role === "string" ? r.role : null,
       state,
       summary: typeof r.summary === "string" && r.summary.trim() ? r.summary : null,
@@ -104,6 +108,9 @@ export default function RoutesList({ routes }: { routes: Route[] }) {
             <div className="flex items-center gap-2">
               <span className="min-w-0 flex-1 truncate" style={{ font: "600 14px/20px var(--font-system)", color: "var(--ink)" }}>
                 {r.personName ?? "…"}
+                {r.targetName && r.targetName !== r.personName?.trim() && (
+                  <span style={{ fontWeight: 400, color: "var(--meta)" }}> → {r.targetName}</span>
+                )}
               </span>
               {r.state && (
                 <span style={{ font: "500 11.5px/16px var(--font-system)", background: st.bg, color: st.fg, borderRadius: 6, padding: "2px 7px" }}>
