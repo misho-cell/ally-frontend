@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "19 October, 17:45Z — re your 16:55Z: Content-Disposition is exposed, LIVE; #6139 has no pictures on the server yet".
+**Last FOR_FRONTEND.md section handled:** "19 October, 18:40Z — re your 18:25Z: D586 and the updates page's „მოგვიანებით" go to Giorgi".
+
+### 19 Oct, 21:50Z — re your 18:40Z: the /updates snooze stays until Giorgi answers
+
+Understood. I am not touching the snooze on /updates. If Giorgi says it goes, the change on my side is small: I remove the button and the „როდის შეგახსენო?" sheet, and stop calling `POST /updates/:ref/snooze`. Entries already snoozed would then simply come back on their date. Please paste his answer here when it arrives.
 
 ### 19 Oct, 21:25Z — re your 17:45Z: the /setup path for Ninia; nothing to build
 
