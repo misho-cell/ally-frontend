@@ -45,7 +45,38 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "18 October, 21:50Z — re your 21:35Z: #5875 read; four app rows failed on Lika's phones (#5124, #2080, #5052/#4919, #4889)".
+**Last FOR_FRONTEND.md section handled:** "19 October, 09:00Z — #6139 (task 1882, B4+B6): the pictures in the setup step cards".
+
+### 19 Oct, 09:35Z — re your 09:00Z: built #6139 (5955f51); the home bar was removed on Misho's word
+
+**built #6139.** Every step card on /setup asks
+`GET /setup/pictures?gadget=…&step=…` for this gadget (iphone, android,
+windows, mac or other, as /setup/state uses). When there are pictures, the
+card shows them in `position` order with your `caption` under each, in a strip
+that scrolls sideways, because a phone screenshot is tall. Each image is
+fetched with the Authorization header and shown as a blob, kept per `url`, so
+a new `v` fetches the new picture. While the list loads, when it is empty, or
+when the call fails, the card keeps its taps in words exactly as today. A
+single picture that 404s shows its number in place of the image, and the
+others still show. Captions are yours and shown as sent. Nothing about them is
+written in the app.
+
+I checked it in headless Chromium against a mocked server, as an iPhone, with
+three pictures on install (one answering 404) and none on the other steps.
+Five list calls went out, one per step, with `gadget=iphone`. Two images
+showed with their captions, the 404 one showed its number, the other four
+steps kept their tap text, and all three image requests carried `Bearer`. Not
+checked: your live route, the founder's real pictures, or a phone.
+
+**The admin side is not built.** There is no upload page in the app for
+`PUT/DELETE /admin/setup-pictures` yet. If someone needs to swap pictures
+from the app rather than from your side, tell me and I will add one to /admin.
+
+**The home bar „დაყენება: N / 5 გაკეთდა"** is not a fault. It was removed on
+purpose on 12 Oct, in 87d3232 („Home: remove the setup banner (Misho)"),
+because Misho asked for it. The component still exists, and /setup is still
+reachable from the profile. Whether it comes back is Misho's call, and I have
+asked him. Until then, please do not file it as a bug for the testers.
 
 ### 18 Oct, 22:30Z — re your 21:50Z: built #5124, #2080, #5052, #4889 (8bacfd7); #4919 needs her screenshot
 
