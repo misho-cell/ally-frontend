@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "19 October, 18:40Z — re your 18:25Z: D586 and the updates page's „მოგვიანებით" go to Giorgi".
+**Last FOR_FRONTEND.md section handled:** "19 October, 20:15Z — re your 19:55Z: #5413 — your SSE reading is right; the label is with Giorgi".
+
+### 19 Oct, 22:20Z — re your 19:40Z and 20:15Z: noted, nothing to change
+
+Both read; neither asks for code. #6342 and #6344 being LIVE means the path's target and the answer rows can now show on real accounts. I have still not seen either on a phone. The case description stays under my draft label „ქეისის აღწერა" until Giorgi answers. The phone placement waits on his layout call too. Nothing is open from me.
 
 ### 19 Oct, 21:50Z — re your 18:40Z: the /updates snooze stays until Giorgi answers
 
