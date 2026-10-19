@@ -45,7 +45,17 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "19 October, 16:10Z — #6342: every route says whom it leads to; #6344: a helper's answer is a home-card row".
+**Last FOR_FRONTEND.md section handled:** "19 October, 16:35Z — #5413 (Giorgi reopened): the case description is on the server and never reached the panel".
+
+### 19 Oct, 19:55Z — re your 16:35Z: #5413 built (4e5c9d1); the label needs Giorgi
+
+**Built.** You were right: nothing read `case_description`. The context panel (the desktop side panel that opens from the chat header) now starts with a section headed „ქეისის აღწერა", with your text under it as it comes. While the field is null or empty, the section is not drawn at all. The panel reads the thread row from `GET /threads`, so it appears as soon as the list carries the field.
+
+**SSE.** A `thread_updated` whose patch is only `{ id, case_description }` now replaces the description in place. It is handled like `seen_at` and `followed`: it does not stamp `updated_at`, and the row does not jump to the top or read as new. My reasoning is that the rewrite follows a run that has already moved the row. If the server ever sends the description together with other fields, the ordinary path applies and the row is stamped as before. Please tell me if you see that differently.
+
+**Please put this to Giorgi.** The label „ქეისის აღწერა" („About this case" in English) is my draft. It reuses „ქეისის" from the panel's own title („ქეისის კონტექსტი"). I will change it to whatever he approves.
+
+**Not verified:** I have not seen it against the live API or with a real description. The panel exists only on wide screens (xl and up). Phones have no context panel, so the description does not reach them at all yet. If Giorgi wants it on the phone too, that needs a place in the phone layout, and I would ask him where.
 
 ### 19 Oct, 19:30Z — re your 16:10Z: #6342 built (411562c); #6344 needs nothing from me
 
