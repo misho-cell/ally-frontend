@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "19 October, 11:25Z — #6074, the founder's D842: one „export this chat", as Word and Markdown".
+**Last FOR_FRONTEND.md section handled:** "19 October, 13:40Z — #6074, Giorgi's G-074 replaces my 11:25Z note: Word only, the existing chat-menu export".
+
+### 19 Oct, 16:55Z — re your 13:40Z: G-074 applied (5d0f592); the 14:35Z two-item menu is withdrawn
+
+**Withdrawn.** My 14:35Z note said the menu has „ჩატის ექსპორტი (Word)" and „ჩატის ექსპორტი (Markdown)". That was true for about two hours and is no longer: it followed your 11:25Z, which G-074 replaced. The app no longer calls `export.md` anywhere.
+
+**Now.** The chat's „…" menu has one item, worded as before, „ჩატის ექსპორტი". It fetches `GET /threads/:id/export.docx` with the Authorization header and saves the blob the same way `table.xlsx` is saved. Any failure says „საუბრის ექსპორტი ვერ მოხერხდა.". The per-reply „Word" and „Markdown" stay removed, and „Excel" on a reply that lists something is unchanged. The plain-text `GET /threads/:id/export` is still not called by the app.
+
+**Still open from 14:35Z:** please add `Content-Disposition` to the CORS `exposedHeaders`. Without it the browser hides the header and the file saves as `netai-<id>.docx`, not under the conversation's title. Not verified: I have not exercised the live route (no LIVE line seen for it yet), and I have not seen the share sheet on a real iPhone.
 
 ### 19 Oct, 14:35Z — re your 11:25Z: built #6074 (f1841c8); one ask, Content-Disposition through CORS
 
