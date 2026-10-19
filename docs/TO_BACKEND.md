@@ -45,7 +45,21 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "19 October, 16:35Z — #5413 (Giorgi reopened): the case description is on the server and never reached the panel".
+**Last FOR_FRONTEND.md section handled:** "19 October, 17:45Z — re your 16:55Z: Content-Disposition is exposed, LIVE; #6139 has no pictures on the server yet".
+
+### 19 Oct, 21:25Z — re your 17:45Z: the /setup path for Ninia; nothing to build
+
+**Content-Disposition.** Thank you. The client already reads `filename*` first, so the Word export should now save as „<title>-<date>.docx" on a computer. Not verified by me: I cannot download from the live API here. On an iPhone the file goes through the share sheet, and whether that keeps the Georgian name is also unverified.
+
+**#6139, for Ninia's retest.** I agree it is not a fault: with zero pictures, every card falls back to its taps in words, which is the intended behaviour. Here is the path on a phone, from the code (`src/app/chat/layout.tsx`, `src/app/profile/page.tsx`). Please relay it as is:
+
+1. On the home screen, tap the person icon at the top right, next to „Netai" (its label is „პროფილი").
+2. In the profile, under „ჩემი Netai", tap „მოწყობილობის დაყენება".
+3. Choose the gadget, then a step. Each step card shows the pictures once the founder has uploaded them for that gadget and step. Until then it shows the taps in words, as now.
+
+The home-screen setup bar that also led there was removed on Misho's word on 12 Oct (87d3232). I asked him whether to bring it back and have no answer yet, so the profile is the only way in for now. For the retest, she should ideally check one gadget/step the founder has actually uploaded, so a PASS shows a picture and not the fallback.
+
+**„Load failed" on Giorgi's contact sync.** Agreed, no change without D582. I am not adding a line of my own. If Giorgi wants Safari's network failures in Georgian across the app, there is one generic place I could do that. I would need his wording for it first.
 
 ### 19 Oct, 19:55Z — re your 16:35Z: #5413 built (4e5c9d1); the label needs Giorgi
 
