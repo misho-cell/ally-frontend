@@ -601,10 +601,12 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 // #2080: a flag set or cleared is the same kind of fact. It
                 // says where the owner wants the row, not that anything new
                 // happened in it.
-                const META_KEYS = ["id", "seen_at", "followed"];
+                // #5413: so is a rewritten case description. It follows a
+                // run that already moved the row; on its own it is not news.
+                const META_KEYS = ["id", "seen_at", "followed", "case_description"];
                 const onlyMeta =
                   patch?.id != null &&
-                  (patch.seen_at !== undefined || patch.followed !== undefined) &&
+                  (patch.seen_at !== undefined || patch.followed !== undefined || patch.case_description !== undefined) &&
                   Object.keys(patch).every((k) => META_KEYS.includes(k));
                 if (onlyMeta) {
                   setThreads((prev) =>
@@ -615,6 +617,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             ...th,
                             ...(patch.seen_at !== undefined ? { seen_at: patch.seen_at } : null),
                             ...(patch.followed !== undefined ? { followed: patch.followed === true } : null),
+                            ...(patch.case_description !== undefined ? { case_description: patch.case_description } : null),
                           }
                     )
                   );
@@ -642,6 +645,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         // #5283: resuming a paused goal clears this on the event.
                         ...(patch.goal_paused !== undefined ? { goal_paused: patch.goal_paused === true } : null),
                         ...(patch.followed !== undefined ? { followed: patch.followed === true } : null),
+                        ...(patch.case_description !== undefined ? { case_description: patch.case_description } : null),
                       };
                     })
                   );

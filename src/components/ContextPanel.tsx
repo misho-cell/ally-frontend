@@ -92,6 +92,7 @@ export default function ContextPanel({
   const open = useContextPanelOpen();
   if (!open || !thread) return null;
   const role = roleOf(thread);
+  const description = typeof thread.case_description === "string" ? thread.case_description.trim() : "";
   const rows: { label: string; value: React.ReactNode }[] = [];
   if (role) rows.push({ label: t("ctxRole"), value: role });
   if (statusLabel) {
@@ -130,6 +131,14 @@ export default function ContextPanel({
         </button>
       </div>
       <div className="flex flex-col gap-4 overflow-y-auto px-5 py-4">
+        {/* #5413: the server's own few sentences about the case. Nothing at
+            all while it has none, not an empty box. */}
+        {description && (
+          <>
+            <p className="section-label" style={{ padding: 0 }}>{t("ctxDescription")}</p>
+            <p style={{ font: "400 13.5px/20px var(--font-system)", color: "var(--ink)", whiteSpace: "pre-line", overflowWrap: "anywhere" }}>{description}</p>
+          </>
+        )}
         <p className="section-label" style={{ padding: 0 }}>{t("ctxDetails")}</p>
         {rows.map((r) => (
           <div key={r.label} className="flex flex-col gap-0.5">

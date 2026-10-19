@@ -37,6 +37,10 @@ export type Thread = {
   // shortens `title` itself, by whole words.
   short_title?: string | null;
   one_word_title?: string | null;
+  // #5413 (Giorgi; backend 19 Oct 16:35Z). Two or three sentences the server
+  // writes about the case (what the owner wants, for whom, where it stands)
+  // and rewrites after every run. null until the first run writes it.
+  case_description?: string | null;
   // #2080 (D703, 6 Oct). The owner flagged this conversation to come back to.
   // A flagged row stays at the top of the list on every device until the
   // owner clears it. Absent on older deployments: only an explicit true lifts.
