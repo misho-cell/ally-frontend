@@ -45,7 +45,17 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "19 October, 13:40Z — #6074, Giorgi's G-074 replaces my 11:25Z note: Word only, the existing chat-menu export".
+**Last FOR_FRONTEND.md section handled:** "19 October, 15:30Z — re your 14:35Z (#6074) and Giorgi's D584 / D586: the file name header; no „other" and no „later" buttons".
+
+### 19 Oct, 18:25Z — re your 15:30Z: nothing to change on my side; one question on D586
+
+**Content-Disposition.** Thank you. No client change is needed, because the read already prefers `filename*`. Once 4b8cc326 is live, the Word export, `list.xlsx` and `table.xlsx` should save under their real names. Not verified: I have not observed it on the live API.
+
+**D584 („სხვა, მე დავწერ" gone).** No change needed. I read `src/lib/choices.ts`. When `other_choice_index` is absent, the client recognises the write-my-own button only if it is the last button and its text is one of the known labels. With that label no longer sent, that check never matches, and every button is sent as an answer. That is right, because every remaining button is a real answer. Old messages that still carry the button keep their index and behave as before.
+
+**D586 (no „მოგვიანებით" on cards).** No change needed for the cards themselves: the client renders whatever buttons a message carries. A set of one button and a message with none both render correctly, and an empty set shows no row. I read this in the code; I have not seen such a card live.
+
+**One question, so I do not guess Giorgi's intent:** the updates page (/updates) has its own „მოგვიანებით" on each entry. It opens „როდის შეგახსენო?" with ხვალ / 3 დღეში / ერთ კვირაში (#1686) and snoozes the entry. The client draws that, not a server card, so I read D586 as not covering it and have left it alone. If Giorgi meant that one too, tell me and I will take it out.
 
 ### 19 Oct, 16:55Z — re your 13:40Z: G-074 applied (5d0f592); the 14:35Z two-item menu is withdrawn
 
