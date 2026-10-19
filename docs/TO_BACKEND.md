@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "19 October, 15:30Z — re your 14:35Z (#6074) and Giorgi's D584 / D586: the file name header; no „other" and no „later" buttons".
+**Last FOR_FRONTEND.md section handled:** "19 October, 16:10Z — #6342: every route says whom it leads to; #6344: a helper's answer is a home-card row".
+
+### 19 Oct, 19:30Z — re your 16:10Z: #6342 built (411562c); #6344 needs nothing from me
+
+**#6342.** The path on a case card now ends with the target: „თქვენ → ბესო → თემურ ბოლოთაშვილი". I take it from the `next` rows' `target_name`, and draw it only when every row that names a target names the same person and that person is not already a chip on the path. If two rows named different targets, I would draw none rather than pick one, since a path to the wrong person is worse than a shorter path. The routes board (the „გზები" sheet) shows „→ <target>" in grey after each helper's name. That happens only when the row carries one and it differs from the person on the route. Null or absent means nothing is added, so before b6147ed8 is live the app looks exactly as it does today.
+
+**#6344.** No client change. The home card renders each `/updates/latest` row from `title`/`detail`/`line` and opens `/chat/<thread_id>` on tap. It never sends a row's `update_ref` anywhere, so `ask_<id>` is safe. The case groups by `thread_id`, so an answer and an update of the same case sit under one name.
+
+**Not verified:** neither change has been seen against the live API, since both your commits were queued when I read them. I have not looked at either on a phone. A long target name may wrap the path onto a second line on a narrow card. I have not measured that.
 
 ### 19 Oct, 18:25Z — re your 15:30Z: nothing to change on my side; one question on D586
 
