@@ -1113,3 +1113,14 @@ button.nx-pill { border: 1px solid transparent; cursor: pointer; }
 .dz-pager button { min-width: 36px; height: 36px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--header-border); background: #FFFFFF; color: var(--ink); font: 600 13px/1 var(--font-system); display: inline-grid; place-items: center; }
 .dz-pager button[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
 .dz-pager button:disabled { opacity: .35; }
+
+/* #6139: the setup step's pictures, side by side in tap order, each with the
+   server's caption under it. A phone screenshot is tall, so the strip scrolls
+   sideways rather than stacking a screen of pictures per step. */
+.nx-shots { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; margin: 0 -2px; }
+.nx-shot { flex: 0 0 auto; width: min(62%, 220px); scroll-snap-align: start; display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.nx-shot-img { display: flex; align-items: center; justify-content: center; min-height: 160px; border: 1px solid var(--nx-line); border-radius: 12px; background: var(--nx-tint); overflow: hidden; }
+.nx-shot-img img { display: block; width: 100%; height: auto; max-height: 420px; object-fit: contain; }
+.nx-shot-missing { font: 600 15px/20px var(--font-system); color: var(--meta); }
+.nx-shot figcaption { font: 400 13px/19px var(--font-system); color: var(--ink); }
+.nx-shot figcaption b { font-weight: 600; color: var(--accent-strong); }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import SheetPage from "@/components/SheetPage";
+import SetupPictures from "@/components/SetupPictures";
 import { apiFetch, ApiError } from "@/lib/api";
 import { isRecord, unwrapData } from "@/lib/payload";
 import { getLocale } from "@/lib/i18n";
@@ -16,10 +17,9 @@ import { SHOWN_STEPS, parseSetup, setupDeviceId, stepTicked, tickCount, useGadge
 // anyone tapped ("a step is ticked by evidence"). Wording is the design's
 // (strings CSV), with its em dashes made commas.
 //
-// What is NOT here yet, said plainly:
-//  - the pictures of each gadget's real screen with the tap marked. They
-//    come from Lika's recordings (D701) and do not exist yet; the card has
-//    the taps in words until they do.
+// #6139 (19 Oct): the pictures of each gadget's real screen with the tap
+// marked come from the server, step by step. Where a step has none for this
+// gadget yet, the card keeps its taps in words.
 //
 // The test push (backend 12:15Z, on Misho's yes): POST /setup/test-push
 // sends one, and the person says whether it arrived. That answer, not the
@@ -276,10 +276,16 @@ export default function SetupPage() {
             </div>
             <p style={{ font: "400 13.5px/20px var(--font-system)", color: "var(--ink-soft)" }}>{copy.why}</p>
 
-            {!ticked && taps && taps.length > 0 && (
-              <ol className="flex flex-col gap-1.5 pl-5" style={{ listStyleType: "decimal", font: "400 14px/21px var(--font-system)", color: "var(--ink)" }}>
-                {taps.map((tp) => <li key={tp}>{tp}</li>)}
-              </ol>
+            {!ticked && gadget && (
+              <SetupPictures
+                gadget={gadget}
+                step={step}
+                fallback={taps && taps.length > 0 ? (
+                  <ol className="flex flex-col gap-1.5 pl-5" style={{ listStyleType: "decimal", font: "400 14px/21px var(--font-system)", color: "var(--ink)" }}>
+                    {taps.map((tp) => <li key={tp}>{tp}</li>)}
+                  </ol>
+                ) : null}
+              />
             )}
 
             {!ticked && (
