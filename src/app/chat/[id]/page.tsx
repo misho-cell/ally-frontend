@@ -14,9 +14,8 @@ import { fetchMessagePage } from "@/lib/messages";
 import { shareInvite } from "@/lib/invite";
 import { isWriteMyOwn } from "@/lib/choices";
 import { apiFetch } from "@/lib/api";
-import { isRecord, unwrapData } from "@/lib/payload";
-import { saveBlob, saveTextFile } from "@/lib/download";
-import { FILE_ACCEPT, FILE_MAX_BYTES, fetchGoalList, fetchReplyDoc, fetchReplyTable, replyHasList, uploadFailureText, uploadThreadFile } from "@/lib/threadFiles";
+import { saveBlob } from "@/lib/download";
+import { FILE_ACCEPT, FILE_MAX_BYTES, fetchChatDoc, fetchGoalList, fetchReplyTable, replyHasList, uploadFailureText, uploadThreadFile } from "@/lib/threadFiles";
 import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import ThreadMenu from "@/components/ThreadMenu";
@@ -730,22 +729,20 @@ export default function ThreadPage() {
       return next;
     });
   }, []);
-  async function handleExport() {
+  // #6074 (founder D842, 19 Oct). The whole conversation as a document,
+  // Word or Markdown, fetched with the token and saved like the list. It
+  // replaces the plain-text export of #71 and the per-reply Word and
+  // Markdown of #894 (b): one way to take the chat away, not three.
+  async function handleExport(format: "docx" | "md") {
     if (exporting) return;
     setExporting(true);
     try {
-      const res = await apiFetch<unknown>(`/threads/${encodeURIComponent(threadId)}/export`);
-      const body = unwrapData(res);
-      const filename = isRecord(body) && typeof body.filename === "string" ? body.filename : "";
-      const text = isRecord(body) && typeof body.text === "string" ? body.text : "";
-      // An empty body is not an empty conversation, it is a reply we did not
-      // understand. Saving a blank file under a real name would be worse
-      // than saying nothing worked.
-      if (!filename || !text) {
+      const out = await fetchChatDoc(threadId, format, t("exportFailed"));
+      if (!out.ok) {
         showToast(t("exportFailed"), false);
         return;
       }
-      await saveTextFile(filename, text);
+      await saveBlob(out.filename, out.blob);
     } catch {
       showToast(t("exportFailed"), false);
     } finally {
@@ -852,18 +849,14 @@ export default function ThreadPage() {
   }
 
   // #2347 (16 Oct, Lika). A reply that lists something, as Excel. Keyed by
-  // the reply's server id, which is also what the route takes. #894 (b):
-  // any reply also as Word or Markdown. One download at a time, keyed by
-  // reply and format, so only the link pressed shows it is working.
+  // the reply's server id, which is also what the route takes. One download
+  // at a time, so only the link pressed shows it is working.
   const [replyBusy, setReplyBusy] = useState<string | null>(null);
-  async function handleReplyFile(messageId: string, format: "xlsx" | "docx" | "md") {
+  async function handleReplyFile(messageId: string) {
     if (replyBusy) return;
-    setReplyBusy(`${messageId}:${format}`);
+    setReplyBusy(messageId);
     try {
-      const out =
-        format === "xlsx"
-          ? await fetchReplyTable(threadId, messageId, t("downloadFailed"))
-          : await fetchReplyDoc(threadId, messageId, format, t("downloadFailed"));
+      const out = await fetchReplyTable(threadId, messageId, t("downloadFailed"));
       if (!out.ok) {
         // The server's sentence is English; ours says the same in the
         // person's language, and only when the server really said it.
@@ -2002,7 +1995,8 @@ export default function ThreadPage() {
               ...(thread?.has_list === true && thread.goal_id != null
                 ? [{ key: "list", label: t("downloadList"), onSelect: handleDownloadList, disabled: downloading }]
                 : []),
-              { key: "export", label: t("exportChat"), onSelect: handleExport, disabled: exporting },
+              { key: "export-docx", label: t("exportWord"), onSelect: () => void handleExport("docx"), disabled: exporting },
+              { key: "export-md", label: t("exportMarkdown"), onSelect: () => void handleExport("md"), disabled: exporting },
               { key: "share", label: t("share"), onSelect: handleShare },
               ...(thread && thread.seen_at !== undefined
                 ? [{ key: "unread", label: t("markUnread"), onSelect: () => void markUnread() }]
@@ -2128,25 +2122,19 @@ export default function ThreadPage() {
                           {mdSource(msg.content)}
                         </ReactMarkdown>
                       </div>
-                      {msg.serverId != null ? (
+                      {msg.serverId != null && replyHasList(msg.content) ? (
                         <div className="flex items-center justify-between" style={{ gap: "8px" }}>
-                          <span className="flex items-center" style={{ gap: "12px" }}>
-                            {([
-                              ...(replyHasList(msg.content) ? [["xlsx", t("replyExcel")] as const] : []),
-                              ["docx", t("replyWord")] as const,
-                              ["md", t("replyMarkdown")] as const,
-                            ]).map(([format, label]) => (
-                              <button
-                                key={format}
-                                type="button"
-                                onClick={() => void handleReplyFile(String(msg.serverId), format)}
-                                disabled={replyBusy !== null}
-                                style={{ font: "600 11.5px/16px var(--font-system)", color: "var(--accent-strong)", textDecoration: "underline" }}
-                              >
-                                {replyBusy === `${msg.serverId}:${format}` ? "…" : label}
-                              </button>
-                            ))}
-                          </span>
+                          {/* #6074: Word and Markdown left this row for the
+                              chat's own menu; a reply that lists something
+                              still goes out as Excel. */}
+                          <button
+                            type="button"
+                            onClick={() => void handleReplyFile(String(msg.serverId))}
+                            disabled={replyBusy !== null}
+                            style={{ font: "600 11.5px/16px var(--font-system)", color: "var(--accent-strong)", textDecoration: "underline" }}
+                          >
+                            {replyBusy === String(msg.serverId) ? "…" : t("replyExcel")}
+                          </button>
                           {stamp && (
                             <span style={{ font: "400 10.5px/14px var(--font-system)", color: "var(--meta)" }}>{stamp}</span>
                           )}

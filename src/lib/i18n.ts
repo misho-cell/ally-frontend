@@ -271,7 +271,9 @@ const en = {
   linkCopied: "Link copied",
   // #71 (3 Oct): a customer who uses several assistants and will not explain
   // her business twice asked to take the conversation with her.
-  exportChat: "Export chat",
+  // #6074 (founder D842, 19 Oct): the whole conversation, as Word or Markdown.
+  exportWord: "Export chat (Word)",
+  exportMarkdown: "Export chat (Markdown)",
   moreActions: "More actions",
   exportFailed: "Could not export this conversation.",
   // #892/#894 (4 Oct): attach a list, and take the worked one back.
@@ -285,8 +287,6 @@ const en = {
   downloadList: "Download the list",
   downloadFailed: "Could not download the list.",
   replyExcel: "Excel",
-  replyWord: "Word",
-  replyMarkdown: "Markdown",
   replyNoList: "There is no list in this reply.",
   tokensAdded: "Tokens added",
   tokensLow: "Tokens running low",
@@ -497,7 +497,8 @@ const ka: typeof en = {
   share: "გაზიარება",
   markUnread: "წაუკითხავად მონიშვნა",
   linkCopied: "ლინკი დაკოპირდა",
-  exportChat: "ჩატის ექსპორტი",
+  exportWord: "ჩატის ექსპორტი (Word)",
+  exportMarkdown: "ჩატის ექსპორტი (Markdown)",
   moreActions: "სხვა მოქმედებები",
   exportFailed: "საუბრის ექსპორტი ვერ მოხერხდა.",
   attachFile: "სიის მიმაგრება",
@@ -510,8 +511,6 @@ const ka: typeof en = {
   downloadList: "სიის ჩამოტვირთვა",
   downloadFailed: "სია ვერ ჩამოიტვირთა.",
   replyExcel: "Excel",
-  replyWord: "Word",
-  replyMarkdown: "Markdown",
   replyNoList: "ამ პასუხში სია არ არის.",
   tokensAdded: "ტოკენები დაემატა",
   tokensLow: "ტოკენები იწურება",

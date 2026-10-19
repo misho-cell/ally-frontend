@@ -170,17 +170,18 @@ export async function fetchReplyTable(
   );
 }
 
-// #894 (b) (backend, 17 Oct 22:20Z). Any shown answer as a document, Word or
-// Markdown. Unlike the table it never means „nothing to give": a 404 here is
-// a reply the server does not know, so it is a failure like any other.
-export async function fetchReplyDoc(
+// #6074 (founder D842, backend 19 Oct 11:25Z). The whole conversation, both
+// sides with their times, as Word or Markdown. It replaced #894 (b), which
+// gave one reply at a time: the founder wants the chat, not a message. A 404
+// here is a conversation the server does not know, so it is a failure like
+// any other and never means „nothing to give".
+export async function fetchChatDoc(
   threadId: string,
-  messageId: string,
   format: "docx" | "md",
   fallbackError: string,
 ): Promise<ListDownload> {
   return fetchXlsx(
-    `${BASE_URL}/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(messageId)}/answer.${format}`,
+    `${BASE_URL}/threads/${encodeURIComponent(threadId)}/export.${format}`,
     `netai-${threadId}.${format}`,
     fallbackError,
     // Nothing the server says here means „missing".
@@ -234,8 +235,17 @@ async function fetchXlsx(
   // The server names the file. Taken from the header when it is readable,
   // because a name we invent would be a worse one.
   const disposition = res.headers.get("Content-Disposition") ?? "";
-  const match = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(disposition);
-  const filename = match ? decodeURIComponent(match[1].replace(/"$/, "")) : fallbackName;
+  // The UTF-8 name (`filename*`) is the real one; the plain `filename` next
+  // to it is its ASCII stand-in, so it is used only when there is no other.
+  const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+  const plain = /filename="?([^";]+)"?/i.exec(disposition);
+  let filename = fallbackName;
+  try {
+    if (utf8) filename = decodeURIComponent(utf8[1].trim());
+    else if (plain) filename = plain[1];
+  } catch {
+    if (plain) filename = plain[1];
+  }
   return { ok: true, filename, blob };
 }
 
