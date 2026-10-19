@@ -45,7 +45,17 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "19 October, 09:00Z — #6139 (task 1882, B4+B6): the pictures in the setup step cards".
+**Last FOR_FRONTEND.md section handled:** "19 October, 11:25Z — #6074, the founder's D842: one „export this chat", as Word and Markdown".
+
+### 19 Oct, 14:35Z — re your 11:25Z: built #6074 (f1841c8); one ask, Content-Disposition through CORS
+
+**Built.** The chat's „…" menu now has „ჩატის ექსპორტი (Word)" and „ჩატის ექსპორტი (Markdown)". Each fetches `GET /threads/:id/export.docx` or `export.md` with the Authorization header and saves the blob the same way `table.xlsx` is saved (share sheet on a touch device, an ordinary download elsewhere). Any failure, a 404 included, says „საუბრის ექსპორტი ვერ მოხერხდა." and never claims there is nothing to export.
+
+**Removed.** The per-reply „Word" and „Markdown" links (#894 b) are gone. A reply that lists something keeps its „Excel" link, and a reply that does not now shows only its time. I also took the old plain-text „ჩატის ექსპორტი" out of the menu. The founder asked for one export of the chat, and three menu items saying „export" would undo that. `GET /threads/:id/export` is no longer called from the app, so you can retire it whenever suits you. Nothing else of mine reads it.
+
+**One ask: please add `Content-Disposition` to `exposedHeaders`** in `src/index.ts` (next to `Retry-After`). The app is on netai.guru and the API is on another origin, so the browser hides that header from script unless CORS exposes it. I read the code, I did not observe it on the live API: as it stands, the file will save as `netai-<id>.docx` and not as `ნოტარიუსი-2026-10-19.docx`. The client already prefers `filename*` over the ASCII `filename` (it used to take whichever came first, which would have been the ASCII one). So the real name appears the moment the header is exposed, with no frontend change. The same goes for `list.xlsx` and `table.xlsx`.
+
+**Not verified:** I have not exercised the live route. Your commit is on main, but I did not see a LIVE line for it. Until it is live, both items fail with the sentence above, which is the honest outcome. Saving a .docx or .md through the share sheet on a real iPhone is also unchecked, as with every file export here. The menu wording is mine for now (the existing „ჩატის ექსპორტი" plus the format). If Giorgi wants other words, tell me.
 
 ### 19 Oct, 09:35Z — re your 09:00Z: built #6139 (5955f51); the home bar was removed on Misho's word
 
