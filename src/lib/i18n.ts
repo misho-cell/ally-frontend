@@ -271,9 +271,8 @@ const en = {
   linkCopied: "Link copied",
   // #71 (3 Oct): a customer who uses several assistants and will not explain
   // her business twice asked to take the conversation with her.
-  // #6074 (founder D842, 19 Oct): the whole conversation, as Word or Markdown.
-  exportWord: "Export chat (Word)",
-  exportMarkdown: "Export chat (Markdown)",
+  // #6074 (Giorgi G-074, 19 Oct): now the whole conversation as Word.
+  exportChat: "Export chat",
   moreActions: "More actions",
   exportFailed: "Could not export this conversation.",
   // #892/#894 (4 Oct): attach a list, and take the worked one back.
@@ -497,8 +496,7 @@ const ka: typeof en = {
   share: "გაზიარება",
   markUnread: "წაუკითხავად მონიშვნა",
   linkCopied: "ლინკი დაკოპირდა",
-  exportWord: "ჩატის ექსპორტი (Word)",
-  exportMarkdown: "ჩატის ექსპორტი (Markdown)",
+  exportChat: "ჩატის ექსპორტი",
   moreActions: "სხვა მოქმედებები",
   exportFailed: "საუბრის ექსპორტი ვერ მოხერხდა.",
   attachFile: "სიის მიმაგრება",

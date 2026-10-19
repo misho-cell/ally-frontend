@@ -729,15 +729,15 @@ export default function ThreadPage() {
       return next;
     });
   }, []);
-  // #6074 (founder D842, 19 Oct). The whole conversation as a document,
-  // Word or Markdown, fetched with the token and saved like the list. It
-  // replaces the plain-text export of #71 and the per-reply Word and
+  // #6074 (Giorgi G-074, 19 Oct). The existing „export chat" now gives the
+  // whole conversation as Word instead of plain text, fetched with the token
+  // and saved like the list. It also replaces the per-reply Word and
   // Markdown of #894 (b): one way to take the chat away, not three.
-  async function handleExport(format: "docx" | "md") {
+  async function handleExport() {
     if (exporting) return;
     setExporting(true);
     try {
-      const out = await fetchChatDoc(threadId, format, t("exportFailed"));
+      const out = await fetchChatDoc(threadId, t("exportFailed"));
       if (!out.ok) {
         showToast(t("exportFailed"), false);
         return;
@@ -1995,8 +1995,7 @@ export default function ThreadPage() {
               ...(thread?.has_list === true && thread.goal_id != null
                 ? [{ key: "list", label: t("downloadList"), onSelect: handleDownloadList, disabled: downloading }]
                 : []),
-              { key: "export-docx", label: t("exportWord"), onSelect: () => void handleExport("docx"), disabled: exporting },
-              { key: "export-md", label: t("exportMarkdown"), onSelect: () => void handleExport("md"), disabled: exporting },
+              { key: "export", label: t("exportChat"), onSelect: handleExport, disabled: exporting },
               { key: "share", label: t("share"), onSelect: handleShare },
               ...(thread && thread.seen_at !== undefined
                 ? [{ key: "unread", label: t("markUnread"), onSelect: () => void markUnread() }]

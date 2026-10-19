@@ -170,19 +170,18 @@ export async function fetchReplyTable(
   );
 }
 
-// #6074 (founder D842, backend 19 Oct 11:25Z). The whole conversation, both
-// sides with their times, as Word or Markdown. It replaced #894 (b), which
-// gave one reply at a time: the founder wants the chat, not a message. A 404
-// here is a conversation the server does not know, so it is a failure like
-// any other and never means „nothing to give".
+// #6074 (Giorgi G-074, backend 19 Oct 13:40Z). The whole conversation, both
+// sides with their times, as Word. It replaced #894 (b), which gave one
+// reply at a time: the founder wants the chat, not a message. A 404 here is
+// a conversation the server does not know, so it is a failure like any other
+// and never means „nothing to give".
 export async function fetchChatDoc(
   threadId: string,
-  format: "docx" | "md",
   fallbackError: string,
 ): Promise<ListDownload> {
   return fetchXlsx(
-    `${BASE_URL}/threads/${encodeURIComponent(threadId)}/export.${format}`,
-    `netai-${threadId}.${format}`,
+    `${BASE_URL}/threads/${encodeURIComponent(threadId)}/export.docx`,
+    `netai-${threadId}.docx`,
     fallbackError,
     // Nothing the server says here means „missing".
     null,
