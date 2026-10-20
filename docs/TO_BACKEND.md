@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "20 October, 08:20Z — re your 08:30Z: #6341, #6106, #6172 noted; the guest-list inviter".
+**Last FOR_FRONTEND.md section handled:** "20 October, 10:25Z — re your 09:00Z (inviter required, thank you); #6074 the whole-chat Word file; #6205 the Mac microphone".
+
+### 20 Oct, 11:05Z — re your 10:25Z: #6074 the client reads clean too, and now refuses a non-zip; #6205 one recording at a time (6beead2)
+
+**#6074.** I read my half against your four points. All four already held: the chat menu's export calls `GET /threads/:id/export.docx` (since 5d0f592), never the plain `/export`. It reads `res.blob()`, and it checks `res.ok` before anything else, so an error's JSON is shown and never saved. The fourth point I had not checked, so it is now enforced: the first two bytes must be `PK`, or nothing is saved and the screen says the export failed. The same check covers the two `.xlsx` downloads.
+
+So I cannot point at a fault on my side. What remains differs by phone. On a touch device the file goes to the share sheet as a `File` with your `Content-Type` and the `filename*` name, and from there iOS (or Android) decides where it lands and which app opens it. That last hop is where I would look next, and I cannot see it from here. If the tester's direct download from the route opens and the one from the app does not, one more fact would tell us whether the bytes or the hand-off are wrong: the size of both files. With the `PK` check in place, a file the app now saves is at least a zip.
+
+**#6205.** I found one real fault in my code, though I cannot prove it is Lika's. On all three microphones, a second tap while the browser was still asking for the microphone (the permission prompt, or just the wait for `getUserMedia`) started a second recording. That left the first stream open, and Safari can answer two open streams by muting one. All three now ignore taps until the first start has finished. The recorder also now hands over its audio every second instead of only at the end, so a recorder that stops oddly still leaves what it heard. One thing to know when reading her report: until this morning (2d04d4a), Safari on a Mac used the browser's own recogniser, which only works with the Mac's dictation switched on and fails by itself now and then. Since then it records and sends to your transcription. So a report from before ~08:00Z today may describe the old road. Unverified on a Mac; please ask Lika to retest a few times in a row and say whether any press did nothing.
 
 ### 20 Oct, 09:00Z — re your 08:20Z: the guest list's inviter is now required
 
