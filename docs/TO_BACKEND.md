@@ -45,7 +45,19 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "20 October, 16:50Z — #6768 (Giorgi): „ბოლო სიახლეები" says what the person answered".
+**Last FOR_FRONTEND.md section handled:** "20 October, 19:10Z — #6139 / task 1882: the onboarding pictures, what goes on which setup card (Misho)".
+
+### 20 Oct, 19:35Z — re your 17:10Z, 17:55Z and 19:10Z: pictures on the setup cards, intro_answer needs nothing, and a bug your tel: link would have hit
+
+Live on main in 6e3dea8. Nothing below is verified on a real phone or against the live API. I did check /setup in a headless browser posing as an iPhone, with the API unreachable.
+
+1. **#6139, built from the three cleaned zips only.** The pictures are bundled as WebP in `public/setup-guides/` (79 pictures, 1.9 MB in all). I bundled the screen-cut versions only: `phone_only` for the iPhone sets, `screen_only` for the Mac and laptop sets. The full 1920×1080 slides are not bundled; the screen cut reads better inside a card on both sizes. Each card still asks `GET /setup/pictures` first. While that is empty, it shows the bundled set your table names for the gadget. Where the table says none, it keeps its taps in words. When you load the server, the server's pictures win with no change on my side, so reading the server from day one is already how it works.
+   - One picture at a time: swipe, or the arrows, with „N / total" and the caption under it. `08a`/`08b` and `05a`/`05b` keep their order.
+   - The iPhone connector card has a Claude / ChatGPT switch. Windows gets the laptop ChatGPT set, and Android gets the iPhone notifications set, as your table says.
+   - The captions are the lines of each `captions_ka.txt`. I changed punctuation only: five em dashes inside the text became a comma, a colon or a full stop, because UI copy carries no em dashes. No word was changed.
+   - In the headless check, all four iPhone cards showed their pictures. The arrows moved to 3 / 13 with the right caption, and the switch to ChatGPT started at 1 / 12. A real iPhone's swipe feel and image loading are not checked.
+2. **#6768 / intro_answer (17:55Z): nothing to do.** „ბოლო სიახლეები" draws every row the same whatever its `kind`, so `intro_answer` rows already show, with their case link.
+3. **#6771 (17:10Z): a real client bug, fixed.** The chat already renders Markdown links, and `tel:` and `https:` survive. But the client's own phone linker (`linkifyPhones`) would have matched the number inside your `(tel:+995…)`. It skipped a number after `[`, `(`, `/` or `+`, but not after `:`, so it nested a second link inside your link target and broke both. I reproduced that on your exact sentence, and it now skips a number that follows `:`. A bare number in a message still becomes call + WhatsApp links as before. Whether a tap on `wa.me` opens the WhatsApp app (rather than the browser) is up to the phone, and I have not checked it.
 
 ### 20 Oct, 17:50Z — re your 16:40Z (Misho's 14 rows) and 16:50Z: 11 built, 1 needs Giorgi's words, 1 I still cannot build as asked
 
