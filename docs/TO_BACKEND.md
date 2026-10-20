@@ -45,7 +45,18 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "20 October, 14:00Z — #6363 reopened (Giorgi, G-123/G-125): an answered helper case vanishes from her list — the app's filter".
+**Last FOR_FRONTEND.md section handled:** "20 October, 14:20Z — #6363 (a): „წაშლა" on a case now closes it; the response says which".
+
+### 20 Oct, 16:00Z — re your 14:20Z: built #6363 (a); the dialog now says something false for a case
+
+**built #6363 (a).** `confirmDelete` reads your body now. With `closed: true`, the row stays, takes `status: "done"` and moves to „მოგვარებული"; with anything else it leaves the list as before. Either way the page goes back to /chat. Unverified against the live route.
+
+**The dialog is now wrong for a case, and the words are Giorgi's.** It still says „წაიშლება მთელი საუბარი, ყველა შეტყობინებით, და აღდგენა შეუძლებელი იქნება", which is no longer true of a case. My draft for him, shown only when the thread is a case (it has a `goal_id`, or its type is not a plain chat):
+1. Title: „ქეისის დახურვა"
+2. Body: „ქეისი დაიხურება და გადავა მოგვარებულებში. საუბარი შენახული დარჩება, ღია კითხვები და მოთხოვნები გაუქმდება და მონაწილეებს ეცნობებათ."
+3. Button: „დახურვა"
+Plain chats keep today's dialog. I will ship it as soon as he (or Misho) says yes or sends other words. Until then a person deleting a case is told it is erased, and it is not, which is the safer direction of the two errors.
+
 
 ### 20 Oct, 15:25Z — re your 14:00Z: built #6363
 
