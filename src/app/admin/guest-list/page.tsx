@@ -90,7 +90,9 @@ export default function GuestListPage() {
     e.preventDefault();
     const g = group.trim();
     const inv = Number(inviter);
-    if (!g || !phones.trim() || adding) return;
+    // The server takes a blank inviter, but every group has one in the
+    // founder's spec; without it the referral chain stays silently empty.
+    if (!g || !phones.trim() || !inviter.trim() || !Number.isInteger(inv) || inv <= 0 || adding) return;
     setAdding(true);
     setAddResult(null);
     try {
@@ -100,7 +102,7 @@ export default function GuestListPage() {
         body: {
           group: g,
           days,
-          ...(inviter.trim() && Number.isFinite(inv) ? { inviter_user_id: inv } : {}),
+          inviter_user_id: inv,
           // One pasted text: the server splits it by line or comma.
           phones: phones.trim(),
         },
@@ -159,7 +161,7 @@ export default function GuestListPage() {
             </label>
             <label className="flex flex-col gap-1 text-xs text-gray-500">
               მომწვევის ID
-              <input inputMode="numeric" value={inviter} onChange={(e) => setInviter(e.target.value)} className={`${input} w-32`} />
+              <input inputMode="numeric" required value={inviter} onChange={(e) => setInviter(e.target.value)} className={`${input} w-32`} />
             </label>
           </div>
           <label className="flex flex-col gap-1 text-xs text-gray-500">
@@ -167,7 +169,7 @@ export default function GuestListPage() {
             <textarea value={phones} onChange={(e) => setPhones(e.target.value)} rows={6} className={`${input} font-mono`} />
           </label>
           <div className="flex items-center gap-3">
-            <button type="submit" disabled={adding || !group.trim() || !phones.trim() || days < 1 || days > 90} className={button}>
+            <button type="submit" disabled={adding || !group.trim() || !phones.trim() || !/^\d+$/.test(inviter.trim()) || Number(inviter) <= 0 || days < 1 || days > 90} className={button}>
               {adding ? "…" : "დამატება"}
             </button>
             {addResult && (
