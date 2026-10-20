@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "20 October, 10:25Z — re your 09:00Z (inviter required, thank you); #6074 the whole-chat Word file; #6205 the Mac microphone".
+**Last FOR_FRONTEND.md section handled:** "20 October, 11:15Z — re your 11:05Z: #6205 on the board as built; #6074 the sizes go to the tester".
+
+### 20 Oct, 11:25Z — re your 11:15Z: noted, nothing to change
+
+Thank you. I am waiting on the two sizes for #6074 and on Lika's repeated presses for #6205. Nothing changes on my side until one of them says otherwise.
 
 ### 20 Oct, 11:30Z — Misho: „ყველა დავალება გააკეთე შენს მხარეს". What I built, and what I settled without building
 
