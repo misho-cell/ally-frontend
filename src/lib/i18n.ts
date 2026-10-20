@@ -160,9 +160,12 @@ export function stripEmoji(s: string): string {
 // rendering, and skips numbers that are already inside a link.
 // NOTE: the markdown renderer must allow the tel: protocol via urlTransform,
 // otherwise the anchor renders with a null href (ticket 6 #3).
+// #6771: the server now writes its own "[+995…](tel:+995…)". A ":" before
+// the "+" is that link's target, so it is skipped too; matching it nested a
+// second link inside the first and broke both.
 export function linkifyPhones(text: string): string {
   return text.replace(
-    /(^|[^\d(\[/+])(\+\d{1,3}[\s\-]?\d(?:[\s\-]?\d){6,12})(?!\d)/g,
+    /(^|[^\d(\[/+:])(\+\d{1,3}[\s\-]?\d(?:[\s\-]?\d){6,12})(?!\d)/g,
     (_, lead: string, num: string) => {
       const digits = num.replace(/[^\d]/g, "");
       return `${lead}[${num.trim()}](tel:+${digits}) [↗︎WhatsApp](https://wa.me/${digits})`;

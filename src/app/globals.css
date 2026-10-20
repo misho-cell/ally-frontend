@@ -1151,3 +1151,19 @@ button.nx-pill { border: 1px solid transparent; cursor: pointer; }
 .nx-shot-missing { font: 600 15px/20px var(--font-system); color: var(--meta); }
 .nx-shot figcaption { font: 400 13px/19px var(--font-system); color: var(--ink); }
 .nx-shot figcaption b { font-weight: 600; color: var(--accent-strong); }
+/* #6139: the bundled guide, one picture at a time. Phone shots are tall
+   (512x1057), so their height is capped; laptop shots (.wide) fill the width. */
+.nx-guide { display: flex; flex-direction: column; gap: 8px; margin: 0; min-width: 0; }
+.nx-guide-strip { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border: 1px solid var(--nx-line); border-radius: 12px; background: var(--nx-tint); }
+.nx-guide-strip::-webkit-scrollbar { display: none; }
+.nx-guide-slide { flex: 0 0 100%; scroll-snap-align: center; display: flex; justify-content: center; align-items: center; padding: 8px 0; }
+.nx-guide-slide img { display: block; height: min(56vh, 440px); width: auto; max-width: 100%; object-fit: contain; border-radius: 8px; }
+.nx-guide.wide .nx-guide-slide { padding: 0; }
+.nx-guide.wide .nx-guide-slide img { width: 100%; height: auto; max-height: none; border-radius: 0; }
+.nx-guide-nav { display: flex; align-items: center; justify-content: center; gap: 14px; font: 600 12.5px/16px var(--font-system); color: var(--meta); }
+.nx-guide-nav button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; border: 1px solid var(--nx-line); color: var(--ink); background: transparent; }
+.nx-guide-nav button:disabled { opacity: 0.35; }
+.nx-guide figcaption { font: 400 13px/19px var(--font-system); color: var(--ink); text-align: center; overflow-wrap: anywhere; }
+.nx-guide-tabs { display: inline-flex; align-self: flex-start; gap: 4px; padding: 3px; border-radius: 999px; background: var(--nx-tint); }
+.nx-guide-tabs button { padding: 5px 14px; border-radius: 999px; font: 600 13px/18px var(--font-system); color: var(--ink-soft); }
+.nx-guide-tabs button.on { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
