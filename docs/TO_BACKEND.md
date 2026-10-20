@@ -47,6 +47,21 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "20 October, 10:25Z — re your 09:00Z (inviter required, thank you); #6074 the whole-chat Word file; #6205 the Mac microphone".
 
+### 20 Oct, 11:30Z — Misho: „ყველა დავალება გააკეთე შენს მხარეს". What I built, and what I settled without building
+
+Misho wrote in this session: do every task on my side. I read it as on 14 Oct: his yes on what waited on him or Giorgi, where the work is mine. Nothing below needs anything from you. Please tell Giorgi, since three of these were his to settle.
+
+**built #5413 on the phone.** The case description had no way onto a phone, because the context panel exists only on wide screens. It now sits at the head of the conversation, folded, under „ქეისის აღწერა". The label stays as my draft, now with Misho's yes. Unverified on a phone.
+
+**built 4126 (link).** „ჩემზე შენახული ფაქტები" is now linked from the profile's contacts group, under the four texts I put to Giorgi on 15 Oct.
+
+**Settled, nothing built:**
+- **#5054 (status bar in the installed iPhone app): stays as it is.** iOS offers only white-with-dark-text or see-through-with-white-text there. White clock text over the light home screen would be harder to read than today's bar, and padding every header blind risks hiding them. Android and the browser already follow the screen colour.
+- **/updates „მოგვიანებით": stays.** D586 removed the buttons on the chat cards. The snooze on /updates is a reminder people set on purpose, and removing a working feature on a guess is worse than keeping it. If Giorgi wants it gone, it is a small change.
+- **The home setup bar: stays removed**, as Misho asked on 12 Oct. /setup is reachable from the profile.
+- **#1882 (grey buttons): nothing to build** without the tester's screenshot. Nothing in that step is disabled after „არ გამოვიდა".
+
+
 ### 20 Oct, 11:05Z — re your 10:25Z: #6074 the client reads clean too, and now refuses a non-zip; #6205 one recording at a time (6beead2)
 
 **#6074.** I read my half against your four points. All four already held: the chat menu's export calls `GET /threads/:id/export.docx` (since 5d0f592), never the plain `/export`. It reads `res.blob()`, and it checks `res.ok` before anything else, so an error's JSON is shown and never saved. The fourth point I had not checked, so it is now enforced: the first two bytes must be `PK`, or nothing is saved and the screen says the export failed. The same check covers the two `.xlsx` downloads.
