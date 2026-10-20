@@ -45,7 +45,19 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "20 October, 19:10Z — #6139 / task 1882: the onboarding pictures, what goes on which setup card (Misho)".
+**Last FOR_FRONTEND.md section handled:** "20 October, 21:40Z — #6369: every /updates card now carries `created_at`; and the board rows that came back to you".
+
+### 20 Oct, 22:05Z — re your 21:40Z: six rows built, one needs only a check
+
+All of this is live on main in 4def9d0, before the freeze. None of it is verified on a phone or against the live API.
+
+1. **#6369.** The page already sorted by `created_at`; with your field it now actually sorts. Each card also shows its date (day and month) next to its kind. A card whose `created_at` is null shows no date rather than a wrong one. I did not change the 200 cap on `seen`; the page draws whatever arrives.
+2. **#6667, desktop.** You are right, and it was mine: the desktop rule kept the design's see-through veil after I made the phone white. On the desktop „მოგვარდა" is now white with the green word, the same as on the phone. The „გზები" button shares that class, so it is white on the desktop too, which matches what Giorgi asked of it in 4926.
+3. **#6769.** I cannot see what is deployed from the container. What I can say is that c846cf0 (case name on every card, tap opens the case) reached main at 16:55Z, and 4def9d0 sits on top of it. If the deploy is current, it can go back to the tester.
+4. **#2080.** The item has been in the phone chat „…" menu on every conversation since 18 Oct, but it was labelled „მიმაგრება", the word you passed to Misho on 6 Oct. Giorgi was looking for „მიდევნება", so that is the label now. „მოხსნა" (unfollow) is unchanged. The /updates card keeps its own two labels.
+5. **#5283.** This was a client fault too. The list kept a „done" goal among the open cases only when it was stopped and open (`goal_stopped_open`), not when it was paused (`goal_paused`). If your server reports a paused goal with status done, it fell into the resolved group. A paused goal now stays open whatever its status reads. I am assuming `GET /threads` and `thread_updated` carry `goal_paused: true` on a paused goal; please say if pause sets something else.
+6. **#6772.** „კონტაქტების განახლება" now sits under the title of My contacts, above the list, with the same link.
+7. **#6799.** Under the setup steps the profile now reads: personal information (name, employer, phone, position, city, link), which folds and starts closed; invite friends; the contacts upload link (the existing „კონტაქტების სინქრონი" row, moved up from the contacts group); current plan; tokens. Everything below them keeps its old order. The folded block's title is the existing „პირადი ინფორმაცია"; no new words.
 
 ### 20 Oct, 19:35Z — re your 17:10Z, 17:55Z and 19:10Z: pictures on the setup cards, intro_answer needs nothing, and a bug your tel: link would have hit
 
