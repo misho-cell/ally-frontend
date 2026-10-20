@@ -17,7 +17,6 @@ import { isWriteMyOwn } from "@/lib/choices";
 import { apiFetch } from "@/lib/api";
 import { saveBlob } from "@/lib/download";
 import { FILE_ACCEPT, FILE_MAX_BYTES, fetchChatDoc, fetchGoalList, fetchReplyTable, replyHasList, uploadFailureText, uploadThreadFile } from "@/lib/threadFiles";
-import RequestActions from "@/components/RequestActions";
 import StagedFile from "@/components/StagedFile";
 import ThreadMenu from "@/components/ThreadMenu";
 import ChainPath from "@/components/ChainPath";
@@ -397,7 +396,7 @@ export default function ThreadPage() {
   const router = useRouter();
   const {
     threads, setThreads, threadStates, setThreadStates, reconnectNonce, tokens, refreshTokens,
-    titles, resolveRequest, resolvedRequests, threadBumps,
+    titles, resolvedRequests, threadBumps,
   } = useThreads();
 
   const st = threadStates[threadId] ?? DEFAULT_THREAD_STATE;
@@ -2251,13 +2250,10 @@ export default function ThreadPage() {
                         {/* 4927 (c): the path on the request card as well. */}
                         {thread && <ChainPath threadId={threadId} stamp={thread.updated_at ?? ""} />}
                       </div>
-                      {!reqResolved && (
-                        /* Item 5: literally the same component as the list
-                           row, so the two screens cannot drift apart. */
-                        <RequestActions
-                          onResolve={(a) => resolveRequest(threadId, a)}
-                        />
-                      )}
+                      {/* #6364 / D589 (20 Oct): no answer buttons on a
+                          request. The go-between answers by writing yes, no
+                          or later here, which the server reads as the answer
+                          to the request still waiting (#1783). */}
                     </div>
                   )}
                 </div>
@@ -2379,12 +2375,11 @@ export default function ThreadPage() {
                 conversation: without the label this reads as four odd answers
                 to the question the owner asked earlier. The ask's own yes / no
                 / later buttons are untouched and keep their place. */}
+            {/* #6364 / D589: the label stays, so the request still reads as
+                one; the buttons are gone, as on the request card above. */}
             {carriesRequest && !reqResolved && (
               <div style={{ marginLeft: "36px" }} className="flex flex-col gap-2">
                 <div className="rc-label">{t("introRequestLabel")}</div>
-                <RequestActions
-                  onResolve={(a) => resolveRequest(threadId, a)}
-                />
               </div>
             )}
 

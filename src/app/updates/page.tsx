@@ -169,6 +169,11 @@ type Update = {
   followed?: boolean | null;
   payload?: unknown;
   task_id?: number | string | null;
+  // #6769 (backend, 20 Oct). The case's own conversation and its short title.
+  // task_id is a GOAL id; opening /chat/<task_id> read it as a thread id,
+  // which are different numbers. thread_id is the one a tap must open.
+  thread_id?: number | string | null;
+  case_title?: string | null;
   created_at?: string | null;
 };
 
@@ -394,7 +399,10 @@ export default function UpdatesPage() {
     // A task card offers to look at it (the design's „ვნახოთ"). A question
     // card is answered in the conversation that one tap opens, so it offers
     // the same, which is what the design draws on every card.
-    const canView = u.task_id != null;
+    // thread_id when the server sends it; an older card keeps today's link.
+    const chatId = u.thread_id ?? u.task_id;
+    const canView = chatId != null;
+    const caseTitle = typeof u.case_title === "string" && u.case_title.trim() ? u.case_title.trim() : null;
     const canSnooze = withActions && !!ref && u.answered !== true;
     const canFollow = !!ref && typeof u.followed === "boolean";
     return (
@@ -416,6 +424,16 @@ export default function UpdatesPage() {
           </div>
         )}
 
+        {/* #6769: which case this is, above the card's own words, as on the
+            home „ბოლო სიახლეები" card. A tap opens the case. */}
+        {caseTitle && (
+          u.thread_id != null ? (
+            <Link href={`/chat/${u.thread_id}`} className="nx-case">{caseTitle}</Link>
+          ) : (
+            <p className="nx-case">{caseTitle}</p>
+          )
+        )}
+
         {/* The card says what it is about. The number is a fallback only for
             a server that sends no title. */}
         <h3>{heading ?? (u.task_id != null ? `${s.goal} #${u.task_id}` : s.goal)}</h3>
@@ -425,7 +443,7 @@ export default function UpdatesPage() {
         {(canView || canSnooze) && (
           <div className="nx-row">
             {canView && (
-              <Link href={`/chat/${u.task_id}`} className="nx-btn">
+              <Link href={`/chat/${chatId}`} className="nx-btn">
                 {s.view}
               </Link>
             )}

@@ -971,6 +971,7 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
 /* ============ Sheet pages (FIXED2 `.nx-*`, 13 Oct) ============
    Every account page the design opens as a sheet (what happened, later,
    the evening card, contacts, money, privacy) is built from these few
+.nx-case { display: block; margin-bottom: 4px; font: 600 12px/17px var(--font-system); color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
    parts. The values are the design's own (css `.nx-btn`, `.nx-card`, ...),
    so one page matched means the rest match by construction. */
 .nx-btn {
