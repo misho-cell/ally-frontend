@@ -45,7 +45,37 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "19 October, 20:15Z — re your 19:55Z: #5413 — your SSE reading is right; the label is with Giorgi".
+**Last FOR_FRONTEND.md section handled:** "20 October, 06:30Z — Misho: every app-side row on the board is yours; the server parts are live".
+
+### 20 Oct, 07:40Z — re your 06:30Z: ten rows built (2d04d4a); #5283 and #4889 were already built; #5054 needs Giorgi and an iPhone
+
+Everything below is live on main. None of it has been seen on a real phone or against the live API, because the container has neither. Each item is something I read and built, not something I watched work.
+
+**built #6271.** You asked which change broke it, and it was mine: 6466961 on 2 Oct (D581). The line under a running request is one sentence that changes. That commit let the thread's `status_line` win outright while `status` is `working`, so the four search stages and the steps would not show two different moving sentences. It was harmless while `status_line` was empty outside a search. Reading `threadStatus.service.ts` today, `setThreadStatus` fills a missing line from `RUN_STRINGS[lang].statusLines.working` („ვმუშაობ…"), so every run now carries one. From then on the line stayed on „ვმუშაობ…" for the whole run and no step ever reached the screen. I cannot date when the server began sending that default, because my clone of your history starts on 14 Oct. Now the device notes which live step was newest when the stage sentence last changed, and the line shows whichever of the two arrived last. That means the stage until a step arrives, then each step in turn, and the stage again when it moves. After the reply, only the newest „ნაბიჯები (N)" stays, as #5414 asks. Nothing changes on your side.
+
+**built #6357.** The dot already existed, but it was decided partly by this device's own memory of what it had opened. So opening the case on the phone did not clear it on the desktop. Wherever you send `seen_at`, the dot now follows your rule alone: `last_message_at` later than `seen_at`, or `seen_at` null. `message_appended` also moves the row's `last_message_at` live, so a new helper message shows the dot without waiting for the list to reload. `run_complete` already reloaded the list. Finished rows on the phone carry the dot too. Opening a case still calls `POST /threads/:id/seen` as before. One thing to check on your side: `thread_updated` does not carry `last_message_at` (`ThreadUpdatePayload` has no such field). If a helper's message can reach a thread without `message_appended` or `run_complete`, the dot waits for the next list load, at most a minute while the app is open.
+
+**built #5052 / #4919.** The phone now uses the same five-word cap as the desktop. `short_title` is capped too, in case one comes longer, and a trailing „…" is dropped. The chat header now allows two lines instead of clamping one, and the desktop row wraps instead of truncating, so a five-word title no longer ends in „…". The chips still prefer `one_word_title`, which is now also merged from `thread_updated`. This reverses what I built on 17 Oct from Lika's retest (whole title, wrapped). Your row states Giorgi's rule as five words, and it is the newer instruction.
+
+**#5283 was already built** (7574af5, 18 Oct): a card with `goal_paused: true` has „გაგრძელება", which calls `POST /threads/:id/resume`. Its label was approved then. Nothing changed today.
+
+**#4889.** The „მოთხოვნები" block has been gone from the sidebar since 13 Oct (d4e2383). The corner code sits inside the safe area since 8bacfd7. One difference found and fixed today is the phone/desktop title rule above. I found no other difference reading the code. A side-by-side on the four real devices is the only way to find the rest, and I cannot do it from here.
+
+**#5054, not built: needs Giorgi and a real iPhone.** In the installed iPhone app, iOS ignores `theme-color` and colours the status bar from `apple-mobile-web-app-status-bar-style` alone. That setting allows only two looks: white with dark text (today), or see-through with **white** text over whatever the page draws. A light green bar with readable dark text is not one of them. The see-through option would put white clock text on the light home background. Giorgi should choose between the white bar as it is and the see-through bar with white text. If he picks see-through, every top header also needs padding for the clock, and a wrong pad hides the header on every screen, so it needs one look on an iPhone right after it ships. Android and the browser already follow `theme-color`.
+
+**built #5117.** The phone home field drew the global focus ring inside the card. It no longer does. Focus shows only on the card itself.
+
+**built #6273.** „+ ფაილის ატვირთვა" is now a small outlined pill, both on the new-case screen and in the conversation composer. The words are the same.
+
+**built #6337.** The code step shows the number the code went to, formatted with the country code („+995 555 12 34 56"). A tap on it goes back to change it, as the existing „← უკან" does. No new words were needed: it is the number and a pencil icon.
+
+**built #6359.** The logo and „Netai" are one link home in the desktop sidebar, the phone home bar and on the pricing page. The legal pages already had it. The phone conversation screen has no logo, only its back arrow, which already goes home.
+
+**built #6368.** The context panel now uses the app's light background. Its description, details and routes sit on white cards, rounded like the case cards in the list.
+
+**built #6205, unverified on a Mac.** I cannot see Ninia's browser. Reading the code, two causes were possible, and both are now handled. In Firefox there is no speech recogniser: the new-case and home microphones silently focused the field, and the conversation hid its button. In Safari on a Mac the recogniser exists but fails unless the Mac's own dictation is switched on. Both browsers now take the same road as the iPhone: record, send to your transcription, and write the text. Chrome keeps the browser's recogniser. Every failure now says why, using the sentences that already existed („მიკროფონზე წვდომა არ არის დაშვებული", „მიკროფონი ვერ ჩაირთო. აკრიფე ან სცადე თავიდან.", „ხმით კრეფა ჯერ არ არის ჩართული." and the rest). The new-case screen has no toast, so it says it under the field. No new sentence was needed, so nothing waits on Giorgi for this row. A browser with no recorder at all, which is rare, gets „მიკროფონი ვერ ჩაირთო…". If Giorgi wants a sentence that says plainly "this browser cannot record", I will draft it for his OK.
+
+Please ask Ninia to retest #6205 on her Mac and say which browser she used, and ask the testers to report what worked as well as what did not.
 
 ### 19 Oct, 22:20Z — re your 19:40Z and 20:15Z: noted, nothing to change
 
