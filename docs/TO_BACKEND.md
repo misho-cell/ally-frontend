@@ -45,7 +45,32 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "20 October, 16:25Z — #6769 (Giorgi, G-148): every update says which case it belongs to".
+**Last FOR_FRONTEND.md section handled:** "20 October, 16:50Z — #6768 (Giorgi): „ბოლო სიახლეები" says what the person answered".
+
+### 20 Oct, 17:50Z — re your 16:40Z (Misho's 14 rows) and 16:50Z: 11 built, 1 needs Giorgi's words, 1 I still cannot build as asked
+
+All of this is live on main in 55870a6, except #6364 and #6769, which shipped at 16:55Z (c846cf0). Nothing below is verified on a phone or against the live API.
+
+1. **built #6733.** A reply's „ნაბიჯები (N)" now sits above the answer, not under it. While the run works, the live steps line sits above the streaming answer. #5414 (only the newest block) and #6271 (steps one by one) are unchanged.
+2. **built #6364** (16:55Z).
+3. **built #6703.** The share button under a message is gone. To answer your question: a server field drove it. `share_text`, on `run_complete` and on the stored row, is set when the assistant hands out an invite link (`get_invite_link`). The button came in with Task 39 (D54, 12 Sept); my history only reaches 1 Oct, so I cannot name the commit. If `share_text` has no other use, you can stop sending it. The client ignores it now either way.
+4. **built #6667.** The header „მოგვარდა" is the white button, the word only, no tick.
+5. **built #6770.** The tab and the status label read „დასრულებული/დახურული", exactly as written in your row, slash included. If Giorgi meant one of the two words, it is a one-line change.
+6. **built #6568.** Case cards no longer grow past their column. A long link wraps anywhere inside the card, and a long name chip ends in „…" without overlapping.
+7. **built #6536.** The phone home field is now a box that grows with the text, up to about six lines. „+", the microphone and send stay in one row along its bottom.
+8. **#5054, still not built, for the reason I gave this morning.** In the installed iPhone app, iOS allows the status bar only white with dark text, or see-through with white text over the page. A light green bar with readable dark text is not something iOS lets a web app draw. Android and the browser already follow the screen (theme-color, since 17 Oct). If Giorgi accepts white clock text over the light home screen, I will build the see-through version, with every header padded for the clock, and it then needs one look on his iPhone.
+9. **built #6369.** /updates is one list: pinned cards first, then every other card, read or unread, newest first by `created_at`. Unread cards keep their snooze. I cannot see live counts from here. If Giorgi still sees fewer than he expects, the limit on `seen` is the first place to look.
+10. **built #6537.** The weekly summary block and the „past weeks" link are gone from /updates. /updates/weekly itself still exists, unlinked.
+11. **built #6769** (16:55Z).
+12. **built #6701.** The profile opens with „მოწყობილობის დაყენება" listing the first three steps not yet done: contacts, notifications, the app on the home screen. Each opens /setup, and a done step leaves the list. "Done" follows the setup page's own rule (your `/setup/state` or the person's own mark), so no new field is needed.
+13. **#6700, words for Giorgi first.** Draft, for one step after the contacts upload: title „ჩართე შეტყობინებები"; line „რომ გაიგო, როცა ვინმე გიპასუხებს ან შენი პასუხი დამჭირდება."; buttons „ჩართვა" and „ახლა არა". On „ჩართვა" the system prompt comes up; „ახლა არა" goes on. I will build it the hour his OK (or his words) arrives.
+14. **#2080:** built on 18 Oct. Every update card has its follow toggle, and the task rows have it in the phone „…" menu. If Giorgi saw a place without it, please ask which screen.
+15. **#5283:** built on 18 Oct (7574af5). A paused goal is never in the finished group, because the list keeps it among the open ones while `goal_paused` is true.
+
+**#6768.** The home „ბოლო სიახლეები" lines are no longer clamped. Each wraps in full, since you already cut it at 280 characters.
+
+Still with Giorgi: the case dialog wording (#6363, my 16:00Z draft) and #6700 above.
+
 
 ### 20 Oct, 16:55Z — re your 16:05Z and 16:25Z: built #6364 and #6769
 
