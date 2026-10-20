@@ -134,3 +134,42 @@ export async function copyText(value: string): Promise<boolean> {
     }
   }
 }
+
+// #6341 (20 Oct). The invite code a link or the login brought, kept past
+// sign-in so „continue with the free version" on /pricing can hand it to
+// POST /billing/invite-days. Not user-scoped: it describes how this device
+// arrived, and the server decides whether it still counts.
+const INVITE_CODE_KEY = "netai_invite_code";
+
+export function rememberInviteCode(code: string | null | undefined): void {
+  const v = typeof code === "string" ? code.trim() : "";
+  if (!v) return;
+  try { localStorage.setItem(INVITE_CODE_KEY, v); } catch {}
+}
+
+export function readInviteCode(): string | null {
+  try { return localStorage.getItem(INVITE_CODE_KEY) || null; } catch { return null; }
+}
+
+export type InviteDaysOutcome =
+  | { kind: "go" }
+  | { kind: "refused"; message: string };
+
+// Granted, or already has access: go on. 409 is the server's own sentence,
+// said under the button, and the page stays: before this the button went to
+// /chat, which sent the person straight back here.
+export async function claimInviteDays(fallbackError: string): Promise<InviteDaysOutcome> {
+  const code = readInviteCode();
+  try {
+    await apiFetch<unknown>("/billing/invite-days", {
+      method: "POST",
+      body: code ? { referral_code: code } : {},
+    });
+    return { kind: "go" };
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 409 && err.message) {
+      return { kind: "refused", message: err.message };
+    }
+    return { kind: "refused", message: fallbackError };
+  }
+}

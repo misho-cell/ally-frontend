@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { getLocale } from "@/lib/i18n";
+import { getLocale, t } from "@/lib/i18n";
+import { claimInviteDays } from "@/lib/invite";
+import { readSessionToken } from "@/lib/session";
 import { startStripeCheckout } from "@/lib/stripe";
 import { useOffer } from "@/lib/offer";
 
@@ -50,6 +52,28 @@ export default function PricingPage() {
   const inviteDays = offer.inviteFreeDays;
   const price = usd(offer.prices.pro ?? PRO_PRICE_FALLBACK);
 
+  // #6341: „continue with the free version" (and the close button, which
+  // leads to the same place) first asks the server for the invitation's free
+  // days. Without them /chat answered subscription_required and sent the
+  // person back here, in a loop. A visitor who is not signed in has no
+  // account to grant to and goes on to /chat, which asks them to sign in.
+  const [skipping, setSkipping] = useState(false);
+  const [skipError, setSkipError] = useState<string | null>(null);
+  async function continueFree(e: React.MouseEvent) {
+    if (!readSessionToken()) return;
+    e.preventDefault();
+    if (skipping) return;
+    setSkipping(true);
+    setSkipError(null);
+    const out = await claimInviteDays(t("genericError"));
+    if (out.kind === "go") {
+      window.location.href = "/chat";
+      return;
+    }
+    setSkipError(out.message);
+    setSkipping(false);
+  }
+
   async function subscribe() {
     if (loading || unavailable) return;
     setLoading(true);
@@ -71,6 +95,7 @@ export default function PricingPage() {
         <div className="relative text-center mb-10">
           <Link
             href="/chat"
+            onClick={continueFree}
             className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center rounded-full transition-colors"
             style={{ background: "var(--skeleton)", color: "var(--ink-soft)" }}
             aria-label="Close"
@@ -154,9 +179,18 @@ export default function PricingPage() {
         </div>
 
         <div className="text-center">
-          <Link href="/chat" className="text-sm transition-colors hover:text-[var(--ink)]" style={{ color: "var(--meta)" }}>
+          <Link
+            href="/chat"
+            onClick={continueFree}
+            aria-disabled={skipping}
+            className="text-sm transition-colors hover:text-[var(--ink)]"
+            style={{ color: "var(--meta)", opacity: skipping ? 0.6 : 1 }}
+          >
             {s.skip}
           </Link>
+          {skipError && (
+            <p role="alert" className="mt-2 text-sm" style={{ color: "var(--danger)" }}>{skipError}</p>
+          )}
         </div>
       </div>
     </div>

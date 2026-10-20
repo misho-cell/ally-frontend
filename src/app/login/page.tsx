@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getLocale } from "@/lib/i18n";
 import { clearUserScopedStorage } from "@/lib/user";
 import { readSessionToken, persistSessionToken, clearSessionToken } from "@/lib/session";
+import { rememberInviteCode } from "@/lib/invite";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -280,6 +281,7 @@ export default function LoginPage() {
     if (ref) {
       const code = ref.trim();
       urlRefRef.current = code || null;
+      rememberInviteCode(code);
       setInviteInput(code);
       setReferralInput(code);
     }
@@ -413,6 +415,7 @@ export default function LoginPage() {
     try {
       await post("/auth/request-otp", { phone, actionType: "AUTH", referralCode: val });
       otpReferralRef.current = val;
+      rememberInviteCode(val);
       setReferralBeforeCode(false);
       setStep("otp");
     } catch (err) {

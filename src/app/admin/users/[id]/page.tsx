@@ -6,6 +6,7 @@ import { adminAuthHeaders } from "@/lib/deviceId";
 import { fmtDate, fmtDateTime, fmtRelative, isFuture } from "@/lib/date";
 import PilotThreadsCard from "@/components/PilotThreadsCard";
 import AdminPushBlock from "@/components/AdminPushBlock";
+import AdminTokensBlock from "@/components/AdminTokensBlock";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const ACCENT = "#23261F";
@@ -203,6 +204,7 @@ export default function AdminUserDetailPage() {
             <AccountBlock a={data.account} states={data.states} cohort={data.cohort ?? null} />
             <PilotThreadsCard userId={id} />
             {data.usage && <UsageBlock u={data.usage} />}
+            <AdminTokensBlock userId={id} />
             <NetworkBlock n={data.network} />
             <ActivityBlock a={data.activity} />
             <SearchesBlock s={data.searches} />
