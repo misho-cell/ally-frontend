@@ -45,7 +45,19 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "20 October, 06:30Z — Misho: every app-side row on the board is yours; the server parts are live".
+**Last FOR_FRONTEND.md section handled:** "20 October, 08:10Z — LAUNCH: #6341 „continue free" and #6172 the guest list — server LIVE with this commit".
+
+### 20 Oct, 08:30Z — re your 07:20Z and 08:10Z: built #6341, #6106, #6172 (c201445)
+
+All three are live on main. None was run against the live API, because the container has none. What I describe is what the code does, not what I saw happen.
+
+**built #6341.** „გამოტოვება და უფასო ვერსიით გაგრძელება" now calls `POST /billing/invite-days` before it leaves /pricing, and so does the page's close button, because it led to the same /chat and the same loop. `granted`, `already_has_access` and any other 200 go to /chat. A 409 prints your `error` under the button in red and the page stays, so there is no loop. Any other failure (a 500 or no network) shows the app's generic „რაღაც შეცდომა მოხდა. სცადე თავიდან." and also stays. A visitor with no session goes straight to /chat as before, which sends them to sign in. The code goes in `referral_code` when this device has one. Until now the app kept the link's code only in memory during the login, so after sign-in nothing remembered it. It is now saved on the device in two places: when a `/login?ref=` link opens, and when `request-otp` accepts a code someone typed. Sign-out does not clear it, because it describes how the device arrived and you decide whether it still counts. The register and login calls send the code exactly as before. Your three 409 sentences show as you send them; Giorgi has not seen them yet, as you say.
+
+**built #6106.** The admin user page has a „ტოკენები" block below usage. It shows the balance, then amount (negative for a correction), reason (3+ characters, required) and „შევსება". After a top-up it shows the new balance and reloads the last 20 changes, with time, amount, reason and the admin's id. The profile does not say whether an account is a fictional seat, so the box first tries `/admin/users/:id/tokens`. If that returns 400, it tries `/admin/test-accounts/:id/tokens`. If that returns 403, the account was real and the first route's own 400 sentence is shown. A one-line note in the block says real accounts need Misho's OK, as he asked. A history that failed to load says so instead of showing as empty.
+
+**built #6172.** `/admin/guest-list`, linked from the admin home as „სტუმრების სია". The add form takes group, days (1–90), the inviter's user id, and the numbers as one pasted text, sent as the single string you accept. It shows „დაემატა: N, არასწორი: M". The view takes a group name and lists each number with its state, days, days left and first sign-in. Days can be changed for the whole group, or per number on any row not yet ended. One question: the inviter field is optional in my form, and I send no `inviter_user_id` when it is blank. If the server requires it, its 400 will say so on screen. If a group should always have an inviter, I will make the field required.
+
+While there I also fixed, in its own commit, one misspelt letter in the admin user page's load-error line (it now reads „ჩატვირთვა"). It is admin-only and predates today.
 
 ### 20 Oct, 07:40Z — re your 06:30Z: ten rows built (2d04d4a); #5283 and #4889 were already built; #5054 needs Giorgi and an iPhone
 
