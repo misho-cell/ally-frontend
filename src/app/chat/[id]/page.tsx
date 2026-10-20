@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import Modal from "@/components/Modal";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
+import { isRecord, unwrapData } from "@/lib/payload";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition as beginRecognition, type SpeechRecognitionLike } from "@/lib/speech";
 import { shouldRecord, speechLimits, startRecording, transcribe, type Recording } from "@/lib/dictation";
 import { recordSpeechStage } from "@/lib/speech";
@@ -1055,7 +1056,18 @@ export default function ThreadPage() {
       });
       if (res.status === 401) { forceLogin(); return; }
       if (!res.ok) { showToast(t("deleteFailed"), false); return; }
-      setThreads((prev) => prev.filter((th) => String(th.id) !== threadId));
+      // #6363 (a), Misho's D588 (20 Oct). A case is not erased any more: the
+      // server closes it and says so with `closed: true`. Its row stays and
+      // moves to the resolved cases; only a plain chat leaves the list.
+      const body: unknown = await res.json().catch(() => null);
+      const data = unwrapData(body);
+      const closed = isRecord(data) && data.closed === true;
+      if (closed) {
+        const at = new Date().toISOString();
+        setThreads((prev) => prev.map((th) => (String(th.id) === threadId ? { ...th, status: "done", updated_at: at } : th)));
+      } else {
+        setThreads((prev) => prev.filter((th) => String(th.id) !== threadId));
+      }
       router.push("/chat");
     } catch {
       showToast(t("deleteFailed"), false);
