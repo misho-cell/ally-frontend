@@ -191,7 +191,7 @@ export default function AdminUserDetailPage() {
           <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">მომხმარებელი ვერ მოიძებნა</div>
         ) : error ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-10 flex flex-col items-center gap-4 text-center">
-            <p className="text-sm text-gray-500">მონაცემების ჭატვირთვა ვერ მოხერხდა</p>
+            <p className="text-sm text-gray-500">მონაცემების ჩატვირთვა ვერ მოხერხდა</p>
             <button type="button" onClick={load} className="rounded-xl bg-[#23261F] px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90">ხელახლა ცდა</button>
           </div>
         ) : data ? (
