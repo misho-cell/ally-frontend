@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import ProfileSetupSteps from "@/components/ProfileSetupSteps";
 import DzIcon from "@/components/DzIcons";
 import { apiFetch, ApiError } from "@/lib/api";
 import { isRecord, unwrapData } from "@/lib/payload";
@@ -1157,6 +1158,8 @@ export default function ProfilePage() {
 
         {profile && (
           <>
+            {/* #6701: setup steps not yet done, first of all. */}
+            <ProfileSetupSteps />
             {/* #4597 (Tornike, Misho's yes): the one long scroll, grouped
                 under four headings, so a person who came for one thing finds
                 it without reading the rest. */}

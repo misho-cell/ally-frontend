@@ -457,7 +457,8 @@ const ka: typeof en = {
   searchGoals: "მოძებნე ჩემი დავალებები",
   sideSub: "შენი პირადი ასისტენტი",
   groupWorking: "ვმუშაობ",
-  groupResolved: "მოგვარებული",
+  // #6770 (Giorgi, 20 Oct): the tab's new name, his exact text.
+  groupResolved: "დასრულებული/დახურული",
   doneHead: "უკვე მოვაგვარე",
   allArrow: "ყველა →",
   lessArrow: "ნაკლები ↑",
@@ -468,7 +469,7 @@ const ka: typeof en = {
   workspaceSub: "ჩატი და ქეისის კონტექსტი ცალ-ცალკე",
   updatesBtn: "სიახლეები",
   uploadFile: "ფაილის ატვირთვა",
-  stResolved: "მოგვარებული",
+  stResolved: "დასრულებული/დახურული",
   pinLater: "მოგვიანებით დავუბრუნდები",
   filterEmpty: "ამ ფილტრით დავალება არ მოიძებნა.",
   newsNew: "{n} ახალი",

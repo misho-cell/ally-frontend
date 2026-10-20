@@ -12,7 +12,6 @@ import { recordSpeechStage } from "@/lib/speech";
 import { onCheckoutCompleted } from "@/lib/paddle";
 import { startStripeTopup } from "@/lib/stripe";
 import { fetchMessagePage } from "@/lib/messages";
-import { shareInvite } from "@/lib/invite";
 import { isWriteMyOwn } from "@/lib/choices";
 import { apiFetch } from "@/lib/api";
 import { saveBlob } from "@/lib/download";
@@ -49,11 +48,11 @@ const SEND = {
 // 23 Aug #5: the two client-side strings inside the conversation follow the
 // THREAD's language (last message), like the backend's step lines do.
 type ThreadLang = "ka" | "en" | "ru" | "es";
-const CHROME: Record<ThreadLang, { steps: string; spent: string; share: string }> = {
-  ka: { steps: "ნაბიჯები ({n})", spent: "თვის პაკეტი ამოიწურა, ახლა ბალანსიდან იხარჯება", share: "გაზიარება" },
-  en: { steps: "Steps ({n})", spent: "Monthly allowance used up. Now spending from your balance.", share: "Share" },
-  ru: { steps: "Шаги ({n})", spent: "Месячный пакет израсходован. Теперь списывается с баланса.", share: "Поделиться" },
-  es: { steps: "Pasos ({n})", spent: "El paquete mensual se ha agotado. Ahora se descuenta de tu saldo.", share: "Compartir" },
+const CHROME: Record<ThreadLang, { steps: string; spent: string }> = {
+  ka: { steps: "ნაბიჯები ({n})", spent: "თვის პაკეტი ამოიწურა, ახლა ბალანსიდან იხარჯება" },
+  en: { steps: "Steps ({n})", spent: "Monthly allowance used up. Now spending from your balance." },
+  ru: { steps: "Шаги ({n})", spent: "Месячный пакет израсходован. Теперь списывается с баланса." },
+  es: { steps: "Pasos ({n})", spent: "El paquete mensual se ha agotado. Ahora se descuenta de tu saldo." },
 };
 
 // T3 (26 Aug): get_invite_link drops a plain /join?ref=CODE URL into the
@@ -88,35 +87,6 @@ function linkifyUrls(text: string): string {
   }
   out.push(wrapBareUrls(text.slice(last)));
   return out.join("");
-}
-
-// F2 (27 Aug): issued (assistant handed out the link) vs sent (the user
-// actually shared it) are now separate funnel events — record `sent` only on
-// a real share action, once per click. 30 Sept: the share and the recording
-// both live in lib/invite now, so this button and the one-tap button on the
-// profile cannot drift into counting differently.
-
-// Task 39 (D54, 12 Sept): run_complete now carries share_text — the exact
-// message get_invite_link composed, link already inside. Share it verbatim;
-// never rebuild it from the reply (a paraphrase would go out in the user's
-// own name) and never add the url as a second field (it would appear twice).
-// It survives a reload too: the row carries share_text, exactly like a pending
-// row carries its choices. No share_text means nothing to share — the button
-// simply isn't there.
-function ShareInviteButton({ text, label }: { text: string; label: string }) {
-  async function share() {
-    await shareInvite(text);
-  }
-  return (
-    <button
-      type="button"
-      onClick={share}
-      className="btn-secondary self-start"
-      style={{ padding: "8px 16px", fontSize: "12.5px", marginLeft: "36px" }}
-    >
-      {label}
-    </button>
-  );
 }
 
 function detectThreadLang(messages: ChatMessage[], serverLang: string | null): ThreadLang {
@@ -1982,8 +1952,8 @@ export default function ThreadPage() {
           {/* On a phone the board opens from here; on a wide desktop it sits in
               the context panel instead. */}
           {canResolve && (
-            <button type="button" className="dz-resolve shrink-0" onClick={resolveCase} disabled={resolving}>
-              <DzIcon name="check" size={14} />
+            // #6667 (Giorgi, 20 Oct): white, the word only, no tick.
+            <button type="button" className="dz-resolve white shrink-0" onClick={resolveCase} disabled={resolving}>
               {t("resolveCase")}
             </button>
           )}
@@ -2154,6 +2124,24 @@ export default function ThreadPage() {
               const isFirstAssistant = firstAssistant && msg.id === firstAssistant.id;
               return (
                 <div key={msg.id} className="flex flex-col gap-3">
+                  {/* Row 312: this reply's own steps, and no others. #5127
+                      (17 Oct): one name, „steps", both while working and
+                      after. #6733 (Giorgi, 20 Oct): above the answer, not
+                      under it, so the order reads question, steps, answer
+                      while the run works and after it ends. This replaces
+                      #4593's „after the answer". */}
+                  {block.steps.length > 0 && blockAt === latestStepsAt && (() => {
+                    const gid = stepsGroupId(block.steps);
+                    return (
+                      <StepGroup
+                        key={gid}
+                        steps={block.steps}
+                        label={chrome.steps.replace("{n}", String(block.steps.length))}
+                        open={openSteps.has(gid)}
+                        onToggle={() => toggleSteps(gid)}
+                      />
+                    );
+                  })()}
                   <div className="flex items-end" style={{ gap: "10px" }}>
                     <AllyAvatar />
                     {/* 9 Oct, the new design: the assistant speaks from a white
@@ -2186,24 +2174,6 @@ export default function ThreadPage() {
                       )}
                     </div>
                   </div>
-                  {/* Row 312: this reply's own steps, and no others. #4593
-                      (Tornike, Misho's yes): after the answer, as „how I
-                      found it", because the answer is what the person came
-                      for. While a run is still working its steps stay above,
-                      in the trailing block. #5127 (17 Oct): one name, „steps",
-                      both while working and after. */}
-                  {block.steps.length > 0 && blockAt === latestStepsAt && (() => {
-                    const gid = stepsGroupId(block.steps);
-                    return (
-                      <StepGroup
-                        key={gid}
-                        steps={block.steps}
-                        label={chrome.steps.replace("{n}", String(block.steps.length))}
-                        open={openSteps.has(gid)}
-                        onToggle={() => toggleSteps(gid)}
-                      />
-                    );
-                  })()}
                   {/* Task 98: this bubble's own buttons — shown until the user
                       answers THIS question.
                       Row 3a (24 Sept): "answered" used to mean any later user
@@ -2234,9 +2204,8 @@ export default function ThreadPage() {
                       />
                     </div>
                   )}
-                  {msg.shareText && (
-                    <ShareInviteButton text={msg.shareText} label={chrome.share} />
-                  )}
+                  {/* #6703 (Giorgi, 20 Oct): no share button under a message;
+                      sharing lives in the chat's own menu. */}
                   {isFirstAssistant && isRequest && (reqNames || reqQuote) && (
                     <div style={{ marginLeft: "36px" }} className="flex flex-col gap-2">
                       <div className="request-card">
@@ -2259,6 +2228,30 @@ export default function ThreadPage() {
                 </div>
               );
             })}
+
+            {/* Row 294 (30 Sept). This used to stack a line per step: six
+                lines for one question, and the screen kept growing while the
+                person waited. It is one line now, replaced as the run moves,
+                beside the figure that is already moving.
+
+                Nothing is dropped by not stacking. Every one of those steps is
+                rendered in full under the reply the moment the run finishes
+                (row 312), so this is a change of when they are read, not
+                whether. What matters while waiting is the step happening NOW.
+
+                #6733: above the streaming answer, where the steps block sits
+                once the run ends. */}
+            {loading && (
+              <div className="flex items-start" style={{ gap: "10px" }}>
+                <AllyAvatar />
+                <div className="flex items-center gap-2" style={{ flex: 1, minWidth: 0 }}>
+                  {!streamingActive && (
+                    <AllyAnim clip={workingClip(trailingSteps.length)} size="inline" />
+                  )}
+                  <p key={liveStep.key} className="working-line">{liveStep.text}</p>
+                </div>
+              </div>
+            )}
 
             {streamingActive && (
               <div className="flex items-start" style={{ gap: "10px" }}>
@@ -2283,27 +2276,6 @@ export default function ThreadPage() {
                 <span className="sk-dot" style={{ width: 6, height: 6 }} />
                 <span className="sk-dot" style={{ width: 6, height: 6, animationDelay: "0.15s" }} />
                 <span className="sk-dot" style={{ width: 6, height: 6, animationDelay: "0.3s" }} />
-              </div>
-            )}
-
-            {/* Row 294 (30 Sept). This used to stack a line per step: six
-                lines for one question, and the screen kept growing while the
-                person waited. It is one line now, replaced as the run moves,
-                beside the figure that is already moving.
-
-                Nothing is dropped by not stacking. Every one of those steps is
-                rendered in full under the reply the moment the run finishes
-                (row 312), so this is a change of when they are read, not
-                whether. What matters while waiting is the step happening NOW. */}
-            {loading && (
-              <div className="flex items-start" style={{ gap: "10px" }}>
-                <AllyAvatar />
-                <div className="flex items-center gap-2" style={{ flex: 1, minWidth: 0 }}>
-                  {!streamingActive && (
-                    <AllyAnim clip={workingClip(trailingSteps.length)} size="inline" />
-                  )}
-                  <p key={liveStep.key} className="working-line">{liveStep.text}</p>
-                </div>
               </div>
             )}
 

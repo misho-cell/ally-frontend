@@ -214,7 +214,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // run_complete actually applied per thread and ignore an exact repeat.
   const lastCompletedRunIdRef = useRef<Record<string, string>>({});
   const pathnameRef = useRef(pathname);
-  const homeInputRef = useRef<HTMLInputElement>(null);
+  const homeInputRef = useRef<HTMLTextAreaElement | null>(null);
   const homeFileRef = useRef<HTMLInputElement>(null);
   // #2346: the file chosen on the phone home box, waiting for Send.
   const [homeStaged, setHomeStaged] = useState<File | null>(null);
@@ -1932,9 +1932,19 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                 <StagedFile name={homeStaged.name} onRemove={() => setHomeStaged(null)} disabled={creating} />
               </div>
             )}
-            <input
-              ref={homeInputRef}
-              type="text"
+            {/* #6536 (20 Oct): the field grows with what is written, up to a
+                few lines, and the +, microphone and send row stays along its
+                bottom edge. A one-line input scrolled sideways instead. The
+                height is set after each render, so dictated text grows it too. */}
+            <textarea
+              ref={(el) => {
+                homeInputRef.current = el;
+                if (el) {
+                  el.style.height = "auto";
+                  el.style.height = `${Math.min(el.scrollHeight, 150)}px`;
+                }
+              }}
+              rows={1}
               value={homeInput}
               onChange={(e) => setHomeInput(e.target.value)}
               placeholder={recording ? t("listening") : t("homePlaceholder")}

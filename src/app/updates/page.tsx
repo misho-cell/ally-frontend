@@ -6,7 +6,7 @@ import SheetPage from "@/components/SheetPage";
 import { apiFetch, ApiError } from "@/lib/api";
 import { getLocale, fmtDateLoc } from "@/lib/i18n";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
-import { WEEKLY_KIND, cardSource, weeklyGoals, weekStart } from "@/lib/weekly";
+import { WEEKLY_KIND } from "@/lib/weekly";
 
 // Row 73 (21 Sept). Updates used to reach a person only as a line in chat, and
 // "later" on one of them did nothing — not because the call was missing, but
@@ -230,9 +230,6 @@ export default function UpdatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  // Closed by default: the point of the card is to say whether the week
-  // concerns you, not to hand you the week.
-  const [weekOpen, setWeekOpen] = useState(false);
   // This call spends what it returns, so it must not be fired twice by a
   // re-render: a second run would consume a second batch for nobody.
   const loadedOnce = useRef(false);
@@ -262,13 +259,6 @@ export default function UpdatesPage() {
     load();
   }, [load]);
 
-  // The founder's second instruction: opening the screen must NOT spend this
-  // card — it stays until it is tapped. That is a deliberate exception to the
-  // rule above, and it is why the summary is looked for in `seen` as well as
-  // `due`: GET /updates has already marked it shown server-side by the time
-  // this renders, and the card has to outlive that.
-  const weekly = due.find((u) => u.kind === WEEKLY_KIND) ?? null;
-  const weeklyWeek = weekly ? weekStart(weekly.payload) : null;
 
   // The summary is never also drawn as an ordinary row: one thing in two
   // places is how a person stops trusting either.
@@ -289,6 +279,17 @@ export default function UpdatesPage() {
   const seenRest = seen.filter(
     (u) => u.kind !== WEEKLY_KIND && !dueRefs.has(u.update_ref) && !followedRefs.has(u.update_ref)
   );
+  const at = (u: Update) => Date.parse(u.created_at ?? "") || 0;
+  // Pinned first, from either list, so a pinned card that is also unread
+  // keeps its snooze and its place on top.
+  const pinnedCards = [
+    ...dueRest.filter((u) => u.followed === true).map((u) => ({ u, isDue: true })),
+    ...followedRest.map((u) => ({ u, isDue: false })),
+  ].sort((a, b) => at(b.u) - at(a.u));
+  const allRest = [
+    ...dueRest.filter((u) => u.followed !== true).map((u) => ({ u, isDue: true })),
+    ...seenRest.map((u) => ({ u, isDue: false })),
+  ].sort((a, b) => at(b.u) - at(a.u));
 
   // #2080. One tap pins, a second clears. The card moves from the reply:
   // pinned goes to the top list, unpinned goes back among the read ones. A
@@ -320,27 +321,6 @@ export default function UpdatesPage() {
     }
   };
 
-  // Tapping is what marks it read, and the server is the one that records it.
-  // This was briefly a flag in this browser, because opening the screen spent
-  // the card server-side and the card had to outlive that. The backend made
-  // the summary an unspent kind instead, so "seen" now means "tapped" and a
-  // local flag would be a second, quieter answer to a question that has one.
-  const readWeek = async (ref: string) => {
-    if (busy) return;
-    setBusy(ref);
-    setNotice(null);
-    try {
-      await apiFetch(`/updates/${encodeURIComponent(ref)}/seen`, { method: "POST" });
-      setDue((prev) => prev.filter((u) => u.update_ref !== ref));
-    } catch {
-      // The card stays exactly where it is. A tap that did not land must not
-      // look like one that did — which is why an unknown ref answers 404
-      // rather than a quiet 200.
-      setNotice({ text: s.failed, ok: false });
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const snooze = async (ref: string, days: number) => {
     if (busy) return;
@@ -490,12 +470,6 @@ export default function UpdatesPage() {
           </Link>
         </div>
 
-        {/* 4296: a summary once read is still reachable. Always offered, not
-            only under a due card, since the week someone wants back is
-            usually one with no card on screen. Reading it spends nothing. */}
-        <Link href="/updates/weekly" prefetch={false} className="nx-link self-start">
-          {s.pastWeeks} ›
-        </Link>
 
         {notice && (
           <p
@@ -516,123 +490,21 @@ export default function UpdatesPage() {
           </div>
         )}
 
-        {/* The card, at the top, before everything else on the screen. */}
-        {!loading && weekly && (
-          <div
-            className="nx-card pinned flex flex-col gap-3"
-          >
-            <span className="nx-pill self-start">{s.kinds.weekly}</span>
-            <div className="flex flex-wrap items-baseline gap-2">
-              {/* This heading stays ours, not the payload's, and that is a
-                  choice rather than an oversight: the server's `title`
-                  follows the language it infers, while this follows the
-                  language the person CHOSE on their profile, and a choice
-                  outranks a reading (row 218). For every other kind the
-                  title is the goal's own words and only the server can know
-                  them; here it is a fixed label we already hold in both
-                  languages. */}
-              <h2 style={{ font: "600 16px/22px var(--font-system)", color: "var(--ink)" }}>{s.weekTitle}</h2>
-              {weeklyWeek && (
-                <span style={{ font: "400 12px/16px var(--font-system)", color: "var(--meta)" }}>
-                  {s.weekOf(fmtDateLoc(weeklyWeek, { day: "numeric", month: "short" }))}
-                </span>
-              )}
-            </div>
-
-            {/* The composed paragraph is NOT drawn. It is the model's script
-                for what it says at the start of a conversation, long by
-                design, and it repeats every goal the list below already has.
-                `detail` is the two-number line meant for this spot: enough to
-                know whether the week concerns you, before deciding to look. */}
-            {typeof weekly.detail === "string" && weekly.detail.trim() && (
-              <p style={{ font: "400 15px/22px var(--font-system)", color: "var(--ink)" }}>
-                {weekly.detail}
-              </p>
-            )}
-
-            {/* Goal by goal, behind a tap. A goal with nothing to report still
-                appears once opened: its silence is the report. Closed by
-                default is the whole of this fix — the information was never
-                wrong, there was simply too much of it to meet unasked. */}
-            {cardSource(weekly.payload) === "goals" && weeklyGoals(weekly.payload).length > 0 && (
-              <button
-                type="button"
-                onClick={() => setWeekOpen((v) => !v)}
-                className="self-start"
-                style={{ font: "600 13px/18px var(--font-system)", color: "var(--accent)" }}
-              >
-                {weekOpen ? s.weekClose : s.weekOpen(weeklyGoals(weekly.payload).length)}
-              </button>
-            )}
-
-            {weekOpen && cardSource(weekly.payload) === "goals" && weeklyGoals(weekly.payload).length > 0 && (
-              <div className="flex flex-col gap-2">
-                {weeklyGoals(weekly.payload).map((g, i) => {
-                  const sent = typeof g.asks_sent === "number" ? g.asks_sent : null;
-                  const answered = typeof g.asks_answered === "number" ? g.asks_answered : null;
-                  return (
-                    <div key={g.task_id ?? i} className="flex flex-col gap-0.5">
-                      <div className="flex flex-wrap items-baseline gap-2">
-                        {g.task_id != null ? (
-                          <Link
-                            href={`/chat/${g.task_id}`}
-                            style={{ font: "600 13px/18px var(--font-system)", color: "var(--accent)" }}
-                          >
-                            {g.title || `${s.goal} #${g.task_id}`}
-                          </Link>
-                        ) : (
-                          <span style={{ font: "600 13px/18px var(--font-system)", color: "var(--ink)" }}>
-                            {g.title || s.goal}
-                          </span>
-                        )}
-                        {sent != null && answered != null && (
-                          <span style={{ font: "400 12px/16px var(--font-system)", color: "var(--meta)" }}>
-                            {s.asks(sent, answered)}
-                          </span>
-                        )}
-                      </div>
-                      {g.pending_question && (
-                        <p style={{ font: "400 13px/19px var(--font-system)", color: "var(--ink-soft)" }}>
-                          {g.pending_question}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            <button
-              type="button"
-              className="nx-btn self-start"
-              disabled={busy === weekly.update_ref}
-              onClick={() => weekly.update_ref && readWeek(weekly.update_ref)}
-            >
-              {s.weekDone}
-            </button>
-          </div>
-        )}
 
         {loading ? (
           <span className="sk-bar" style={{ width: "80%" }} />
         ) : (
           <>
-            {followedRest.length > 0 && (
-              <div className="flex flex-col gap-3">{followedRest.map((u, i) => card(u, i, false))}</div>
-            )}
-            {dueRest.length === 0 ? (
+            {/* #6369 / #6537 (Giorgi, 20 Oct): one list, every update of
+                every case, newest first. Pinned cards (#2080) still lead; the
+                weekly summary block and the separate „seen" heading are gone.
+                Unread ones keep their snooze, as before. */}
+            {pinnedCards.length === 0 && allRest.length === 0 ? (
               <p className="nx-empty">{s.dueEmpty}</p>
             ) : (
-              <div className="flex flex-col gap-3">{dueRest.map((u, i) => card(u, i, true))}</div>
-            )}
-
-            <h2 style={{ margin: "12px 0 0", font: "600 16px/1.35 var(--font-system)", color: "var(--nx-ink)" }}>
-              {s.seenTitle}
-            </h2>
-            {seenRest.length === 0 ? (
-              <p className="nx-intro">{s.seenEmpty}</p>
-            ) : (
-              <div className="flex flex-col gap-3">{seenRest.map((u, i) => card(u, i, false))}</div>
+              <div className="flex flex-col gap-3">
+                {[...pinnedCards, ...allRest].map(({ u, isDue }, i) => card(u, i, isDue))}
+              </div>
             )}
           </>
         )}
