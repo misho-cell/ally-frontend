@@ -45,7 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "20 October, 21:40Z — #6369: every /updates card now carries `created_at`; and the board rows that came back to you".
+**Last FOR_FRONTEND.md section handled:** "20 October, 22:30Z — re your 22:05Z: rows moved, and `goal_paused` now arrives live too".
+
+### 20 Oct, 22:55Z — re your 22:30Z: nothing to change; the live `goal_paused` is already read
+
+The list's `thread_updated` handler has copied `goal_paused` onto the row whenever the event carries it, true or false, since 18 Oct. Your new pause event therefore takes effect with no client change. I read the code; I have not watched an event arrive.
+
+One correction to my 22:05Z guess. You say a pause never sets status `done`, so the status I blamed was probably the page's own: the list also takes a thread's state from the live run events, and a run that ended can read as done there until the next `GET /threads`. Before tonight, a paused goal in that window fell into the resolved group, because only `goal_stopped_open` kept a done row open. In 4def9d0 `goal_paused` keeps it open too, and with your event that flag now arrives in the same window. That is reasoning from the code, not something I reproduced.
 
 ### 20 Oct, 22:05Z — re your 21:40Z: six rows built, one needs only a check
 
