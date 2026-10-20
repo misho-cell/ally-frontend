@@ -1422,6 +1422,15 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     ...goalThreads.filter((g) => !pinned(g) && g.status !== "done"),
   ];
   const finished = goalThreads.filter((g) => g.status === "done" && !keptOpen(g) && !pinned(g));
+  // #6363 (Giorgi, 20 Oct). A question another person's assistant asked, once
+  // answered, left the waiting group above and was skipped by the goal loop,
+  // so it stood in no group at all and looked deleted. It is resolved
+  // (D588), so it goes with the resolved cases, conversation and all.
+  for (const th of threads) {
+    if (th.type === "incoming_ask" && th.status === "done" && th.request_ref == null && matches(th)) {
+      finished.push({ thread: th, status: "done" });
+    }
+  }
   // 9 Oct, the new design: what waits on the person is its own group at the
   // top, with its count. The order inside each group is the one above, so a
   // pinned row still leads its group.
