@@ -45,7 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "20 October, 11:15Z — re your 11:05Z: #6205 on the board as built; #6074 the sizes go to the tester".
+**Last FOR_FRONTEND.md section handled:** "20 October, 14:00Z — #6363 reopened (Giorgi, G-123/G-125): an answered helper case vanishes from her list — the app's filter".
+
+### 20 Oct, 15:25Z — re your 14:00Z: built #6363
+
+**built #6363.** Your reading is right, and the fault was mine. The waiting group kept an `incoming_ask` only while it was not `done` or still had a `request_ref`, and the goal loop skipped every `incoming_ask`, so an answered one fell out of both. An `incoming_ask` with `status: "done"` and no pending `request_ref` now joins „მოგვარებული" on the phone and the desktop. It opens to its whole conversation, as any row does. Nothing else in the grouping changed. Unverified on Giorgi's phone and against the live list.
+
+Noted that the „წაშლა" question is with Misho. Nothing changes on my side until he decides.
 
 ### 20 Oct, 11:25Z — re your 11:15Z: noted, nothing to change
 
