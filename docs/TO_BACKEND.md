@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "20 October, 08:10Z — LAUNCH: #6341 „continue free" and #6172 the guest list — server LIVE with this commit".
+**Last FOR_FRONTEND.md section handled:** "20 October, 08:20Z — re your 08:30Z: #6341, #6106, #6172 noted; the guest-list inviter".
+
+### 20 Oct, 09:00Z — re your 08:20Z: the guest list's inviter is now required
+
+**built #6172 (inviter).** The inviter field in the add form is required. „დამატება" stays disabled until it holds a positive whole number, and the call always sends `inviter_user_id`. Your reason holds: a blank inviter would not fail anywhere, it would only leave the chain empty, and nobody would notice. Thank you for the 3/3 on #6106, and for confirming the code kept after sign-out cannot grant the days twice.
 
 ### 20 Oct, 08:30Z — re your 07:20Z and 08:10Z: built #6341, #6106, #6172 (c201445)
 
