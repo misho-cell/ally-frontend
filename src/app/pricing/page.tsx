@@ -80,13 +80,14 @@ export default function PricingPage() {
             </svg>
           </Link>
 
-          <div className="flex items-center justify-center gap-2.5 mb-6">
+          {/* #6359: the logo and the name open home here too. */}
+          <Link href="/" className="flex w-fit mx-auto items-center justify-center gap-2.5 mb-6">
             <span className="ally-avatar" style={{ width: 32, height: 32 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              <img src="/assets/ally/ally-avatar.jpg" alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
             </span>
             <span style={{ font: "500 26px/32px var(--font-bricolage)", color: "var(--ink)" }}>Netai</span>
-          </div>
+          </Link>
           <h1 className="mb-3" style={{ font: "500 26px/32px var(--font-bricolage)", color: "var(--ink)" }}>{s.title}</h1>
           {inviteDays != null && (
             <p className="max-w-md mx-auto" style={{ font: "500 14px/21px var(--font-system)", color: "var(--accent-strong)" }}>

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useThreads, taskStatusOf } from "@/contexts/ThreadsContext";
 import { t } from "@/lib/i18n";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
-import { beginDictation, shouldRecord, type DictationHandle } from "@/lib/dictation";
+import { beginDictation, shouldRecord, micNoticeKey, type DictationHandle } from "@/lib/dictation";
 import { FILE_ACCEPT, FILE_MAX_BYTES } from "@/lib/threadFiles";
 import DzIcon from "@/components/DzIcons";
 import StagedFile from "@/components/StagedFile";
@@ -24,6 +24,9 @@ export default function ChatIndexPage() {
   // #2346: the chosen file waits here for Send.
   const [staged, setStaged] = useState<File | null>(null);
   const [tooBig, setTooBig] = useState(false);
+  // #6205: why the microphone did not start, said under the field, since
+  // this screen has no toast. Cleared on the next press.
+  const [micNotice, setMicNotice] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const dictationRef = useRef<DictationHandle | null>(null);
 
@@ -59,7 +62,7 @@ export default function ChatIndexPage() {
     const handle = await beginDictation({
       language: speechLang().split("-")[0] || null,
       onText: (t) => setInput((prev) => (prev.trim() ? prev + " " + t : t)),
-      onNotice: () => { /* the screen has no toast; the field simply stays as it was */ },
+      onNotice: (reason) => setMicNotice(t(micNoticeKey(reason))),
     });
     if (!handle) return;
     dictationRef.current = handle;
@@ -67,9 +70,11 @@ export default function ChatIndexPage() {
   }
 
   function startMic() {
+    setMicNotice(null);
     if (shouldRecord()) { void startMicRecorded(); return; }
     const SR = getSpeechRecognition();
     if (!SR) {
+      setMicNotice(t("micFailed"));
       inputRef.current?.focus();
       return;
     }
@@ -98,10 +103,15 @@ export default function ChatIndexPage() {
       setInput([final, interim].filter(Boolean).join(" "));
     };
     rec.onend = () => { recognitionRef.current = null; setRecording(false); };
-    rec.onerror = () => { recognitionRef.current = null; setRecording(false); };
+    rec.onerror = (e) => {
+      recognitionRef.current = null;
+      setRecording(false);
+      if (e.error !== "aborted" && e.error !== "no-speech") setMicNotice(t(micNoticeKey(e.error)));
+    };
     if (startRecognition(rec) !== null) {
       recognitionRef.current = null;
       setRecording(false);
+      setMicNotice(t("micFailed"));
     }
   }
 
@@ -175,13 +185,18 @@ export default function ChatIndexPage() {
               placeholder={recording ? t("listening") : t("homePlaceholder")}
               aria-label={t("homePlaceholder")}
             />
-            {(staged || tooBig) && (
+            {(staged || tooBig || micNotice) && (
               <div className="mt-1 flex flex-col gap-1">
                 {staged && <StagedFile name={staged.name} onRemove={() => setStaged(null)} disabled={attaching} />}
                 {/* This box has no toast of its own, so the refusal is said here. */}
                 {tooBig && (
                   <p role="status" style={{ font: "500 13px/19px var(--font-system)", color: "var(--danger)" }}>
                     {t("attachTooBig")}
+                  </p>
+                )}
+                {micNotice && (
+                  <p role="status" style={{ font: "500 13px/19px var(--font-system)", color: "var(--danger)" }}>
+                    {micNotice}
                   </p>
                 )}
               </div>

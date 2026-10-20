@@ -187,6 +187,10 @@ export type ThreadState = {
   // guess that used to flip "ნაბიჯები (14)" to "Steps (14)" on one open page
   // with no reload.
   language: string | null;
+  // #6271: the server's stage sentence (status_line) as this device last saw
+  // it change, and the newest live step at that moment. The live line shows
+  // whichever of the two arrived last, so neither can freeze the other.
+  stage: { text: string; afterStep: string | null } | null;
 };
 
 export const DEFAULT_THREAD_STATE: ThreadState = {
@@ -204,6 +208,7 @@ export const DEFAULT_THREAD_STATE: ThreadState = {
   hasMoreOlder: true,
   result: null,
   language: null,
+  stage: null,
 };
 
 export function updateThreadState(

@@ -117,7 +117,9 @@ export default function ContextPanel({
   return (
     <aside
       className="hidden w-[315px] shrink-0 flex-col xl:flex"
-      style={{ background: "#FFFFFF", borderLeft: "1px solid var(--header-border)" }}
+      // #6368 (20 Oct): the app's own light background, not white; what the
+      // panel says sits on white cards, like the cases in the list.
+      style={{ background: "var(--bg)", borderLeft: "1px solid var(--header-border)" }}
     >
       {/* 11 Oct, FIXED2: the panel's head, with its one line and a tinted
           close button. */}
@@ -130,31 +132,33 @@ export default function ContextPanel({
           <DzIcon name="x" size={15} />
         </button>
       </div>
-      <div className="flex flex-col gap-4 overflow-y-auto px-5 py-4">
+      <div className="flex flex-col gap-3 overflow-y-auto px-4 py-4">
         {/* #5413: the server's own few sentences about the case. Nothing at
             all while it has none, not an empty box. */}
         {description && (
-          <>
+          <section className="dz-ctx-card">
             <p className="section-label" style={{ padding: 0 }}>{t("ctxDescription")}</p>
             <p style={{ font: "400 13.5px/20px var(--font-system)", color: "var(--ink)", whiteSpace: "pre-line", overflowWrap: "anywhere" }}>{description}</p>
-          </>
+          </section>
         )}
-        <p className="section-label" style={{ padding: 0 }}>{t("ctxDetails")}</p>
-        {rows.map((r) => (
-          <div key={r.label} className="flex flex-col gap-0.5">
-            <span style={{ font: "400 12px/16px var(--font-system)", color: "var(--meta)" }}>{r.label}</span>
-            <span style={{ font: "500 14px/20px var(--font-system)", color: "var(--ink)" }}>{r.value}</span>
-          </div>
-        ))}
-        {thread.status_line && (
-          <p style={{ font: "400 13.5px/20px var(--font-system)", color: "var(--ink-soft)" }}>{thread.status_line}</p>
-        )}
+        <section className="dz-ctx-card">
+          <p className="section-label" style={{ padding: 0 }}>{t("ctxDetails")}</p>
+          {rows.map((r) => (
+            <div key={r.label} className="flex flex-col gap-0.5">
+              <span style={{ font: "400 12px/16px var(--font-system)", color: "var(--meta)" }}>{r.label}</span>
+              <span style={{ font: "500 14px/20px var(--font-system)", color: "var(--ink)" }}>{r.value}</span>
+            </div>
+          ))}
+          {thread.status_line && (
+            <p style={{ font: "400 13.5px/20px var(--font-system)", color: "var(--ink-soft)" }}>{thread.status_line}</p>
+          )}
+        </section>
         {/* D722: the routes, when Netai talks to more than one person here. */}
         {routes.length > 0 && (
-          <>
-            <p className="section-label" style={{ padding: 0, marginTop: 6 }}>{tf("routesCount", { n: routes.length })}</p>
+          <section className="dz-ctx-card">
+            <p className="section-label" style={{ padding: 0 }}>{tf("routesCount", { n: routes.length })}</p>
             <RoutesList routes={routes} />
-          </>
+          </section>
         )}
       </div>
     </aside>

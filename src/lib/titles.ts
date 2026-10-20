@@ -4,11 +4,13 @@
 // cut title reads as a name and not as a sentence that broke off.
 export const SHORT_TITLE_WORDS = 5;
 
+// #5052 / #4919 (20 Oct): the cap holds for the server's short_title too, so
+// no case title on any screen runs past five words or ends in an ellipsis.
 export function shortTitle(short: string | null | undefined, full: string, n = SHORT_TITLE_WORDS): string {
-  if (typeof short === "string" && short.trim()) return short.trim();
-  const words = full.trim().split(/\s+/);
-  if (words.length <= n) return full.trim() || full;
-  return words.slice(0, n).join(" ").replace(/[\s,.;:!?…-]+$/u, "") || full;
+  const base = typeof short === "string" && short.trim() ? short : full;
+  const words = base.trim().split(/\s+/);
+  if (words.length <= n) return base.trim().replace(/\s*(…|\.\.\.)$/u, "") || base;
+  return words.slice(0, n).join(" ").replace(/[\s,.;:!?…-]+$/u, "") || base;
 }
 
 // 1688 (15 Oct): a list row shows one line of the last message. Where the

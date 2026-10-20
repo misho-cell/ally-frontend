@@ -6,7 +6,7 @@ import Link from "next/link";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { authHeaders, getDeviceId, handleAdminTokenMisuse } from "@/lib/deviceId";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition, type SpeechRecognitionLike } from "@/lib/speech";
-import { beginDictation, shouldRecord, type DictationHandle } from "@/lib/dictation";
+import { beginDictation, shouldRecord, micNoticeKey, type DictationHandle } from "@/lib/dictation";
 import { t, tf, fmtDateShort } from "@/lib/i18n";
 import { useUserName } from "@/lib/user";
 import Modal from "@/components/Modal";
@@ -324,6 +324,15 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     return Number.isFinite(last) && last > seen;
   }
 
+  // #6357 (20 Oct). The green dot follows the server's rule on every device:
+  // a message later than `seen_at`, or never seen. Opening the case on one
+  // device sends seen_at to the others, so the dot goes everywhere. This
+  // device's own memory is only the fallback for a server that sends no
+  // seen_at; it could not hear another device opening the case.
+  function rowUnread(th: Thread): boolean {
+    return th.seen_at !== undefined ? answerUnseen(th) : isUnread(th);
+  }
+
   // „Mark as unread" from the thread menu: forget this device's „seen just
   // now", or it would outvote the server's cleared seen_at.
   useEffect(() => {
@@ -639,6 +648,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         ...(patch.request_ref !== undefined ? { request_ref: patch.request_ref } : null),
                         ...(patch.title ? { title: patch.title } : null),
                         ...(patch.short_title !== undefined ? { short_title: patch.short_title } : null),
+                        ...(patch.one_word_title !== undefined ? { one_word_title: patch.one_word_title } : null),
                         ...(patch.seen_at !== undefined ? { seen_at: patch.seen_at } : null),
                         ...(patch.goal_stopped !== undefined ? { goal_stopped: patch.goal_stopped } : null),
                         ...(patch.goal_stopped_open !== undefined ? { goal_stopped_open: patch.goal_stopped_open } : null),
@@ -653,6 +663,21 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                     ...prev,
                     [String(patch.id)]: (prev[String(patch.id)] ?? 0) + 1,
                   }));
+                  // #6271: note which live step was newest when the stage
+                  // sentence changed, so the page can tell which came last.
+                  if (typeof patch.status_line === "string") {
+                    const text: string = patch.status_line;
+                    setThreadStates((prev) =>
+                      updateThreadState(prev, patch.id, (ts) => {
+                        if (ts.stage?.text === text) return ts;
+                        let afterStep: string | null = null;
+                        for (let i = ts.messages.length - 1; i >= 0; i--) {
+                          if (ts.messages[i].kind === "step") { afterStep = ts.messages[i].id; break; }
+                        }
+                        return { ...ts, stage: { text, afterStep } };
+                      })
+                    );
+                  }
                 }
                 break;
               }
@@ -892,6 +917,16 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                         ],
                       };
                     })
+                  );
+                  // #6357: a new message moves the row's last_message_at, so
+                  // the dot shows without waiting for the next list load.
+                  const at = typeof data.createdAt === "string" && data.createdAt ? data.createdAt : new Date().toISOString();
+                  setThreads((prev) =>
+                    prev.map((th) =>
+                      String(th.id) !== String(data.threadId) || Date.parse(th.last_message_at ?? "") >= Date.parse(at)
+                        ? th
+                        : { ...th, last_message_at: at }
+                    )
                   );
                 }
                 break;
@@ -1215,7 +1250,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     const handle = await beginDictation({
       language: speechLang().split("-")[0] || null,
       onText: (t) => setHomeInput((prev) => (prev.trim() ? prev + " " + t : t)),
-      onNotice: () => showToast(t("micFailed")),
+      onNotice: (reason) => showToast(t(micNoticeKey(reason))),
     });
     if (!handle) return;
     dictationRef.current = handle;
@@ -1226,6 +1261,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     if (shouldRecord()) { void startHomeMicRecorded(); return; }
     const SR = getSpeechRecognition();
     if (!SR) {
+      // #6205: said, not silent.
+      showToast(t("micFailed"));
       homeInputRef.current?.focus();
       return;
     }
@@ -1254,7 +1291,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       setHomeInput([final, interim].filter(Boolean).join(" "));
     };
     rec.onend = () => { recognitionRef.current = null; setRecording(false); };
-    rec.onerror = () => { recognitionRef.current = null; setRecording(false); };
+    rec.onerror = (e) => {
+      recognitionRef.current = null;
+      setRecording(false);
+      if (e.error !== "aborted" && e.error !== "no-speech") showToast(t(micNoticeKey(e.error)));
+    };
     if (startRecognition(rec) !== null) {
       recognitionRef.current = null;
       setRecording(false);
@@ -1561,31 +1602,36 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           {/* 11 Oct, the FIXED2 design. Phone: the brand bar with the
               profile button; desktop: the brand with its one line. */}
           <div className="dz-brandbar" style={{ padding: "22px 20px 0", height: "auto", boxSizing: "content-box", minHeight: 36 }}>
-            <span className="relative">
-              <span className="dz-logo">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+            {/* #6359 (20 Oct): the logo and the name are one link home. */}
+            <Link href="/chat" prefetch className="dz-home-link" style={{ gap: 12 }}>
+              <span className="relative">
+                <span className="dz-logo">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/assets/ally/ally-avatar.jpg" alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                </span>
+                {/* D699: lit only while the server says the assistant answers. */}
+                <OnlineDot size={8} />
               </span>
-              {/* D699: lit only while the server says the assistant answers. */}
-              <OnlineDot size={8} />
-            </span>
-            <strong>Netai</strong>
+              <strong>Netai</strong>
+            </Link>
             <Link href="/profile" prefetch className="dz-profile-btn" aria-label={t("profileLink")} title={t("profileLink")}>
               <span><DzIcon name="user" size={16} /></span>
             </Link>
           </div>
           <div className="dz-side-brand">
-            <span className="relative">
-              <span className="dz-logo">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/assets/ally/ally-avatar.jpg" alt="Netai" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+            <Link href="/chat" prefetch className="dz-home-link min-w-0" style={{ gap: 10 }}>
+              <span className="relative">
+                <span className="dz-logo">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/assets/ally/ally-avatar.jpg" alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                </span>
+                <OnlineDot />
               </span>
-              <OnlineDot />
-            </span>
-            <span className="min-w-0">
-              <strong>Netai</strong>
-              <small>{t("sideSub")}</small>
-            </span>
+              <span className="min-w-0">
+                <strong>Netai</strong>
+                <small>{t("sideSub")}</small>
+              </span>
+            </Link>
             {/* 4918 (Giorgi): the „online" pill to the right of the logo, as
                 on the phone. Same fact, same condition (D699): lit while
                 the server says the assistant answers, never during an outage. */}
@@ -1739,7 +1785,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             status={status}
                             href={`/chat/${thread.id}`}
                             active={pathname === `/chat/${thread.id}`}
-                            unread={isUnread(thread) || answerUnseen(thread)}
+                            unread={rowUnread(thread)}
                             time={fmtClock(thread.updated_at, clock?.today ?? null)}
                             onLongPress={() => openRename(thread, goalTitle(thread))}
                             onResume={() => resumeGoal(thread.id)}
@@ -1783,6 +1829,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             thread={thread}
                             title={phoneTitle(thread, goalTitle(thread))}
                             href={`/chat/${thread.id}`}
+                            unread={answerUnseen(thread)}
                             time={fmtClock(thread.updated_at, clock?.today ?? null)}
                           />
                         ))}
@@ -1817,7 +1864,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             status={status}
                             href={`/chat/${thread.id}`}
                             active={pathname === `/chat/${thread.id}`}
-                            unread={isUnread(thread) || (g.key !== "done" && answerUnseen(thread))}
+                            unread={rowUnread(thread)}
                             onLongPress={() => openRename(thread, goalTitle(thread))}
                             time={fmtClock(thread.updated_at, clock?.today ?? null)}
                             onResume={() => resumeGoal(thread.id)}
@@ -2041,13 +2088,11 @@ function firstWords(title: string, n: number): string {
   return out.replace(/[\s,.;:!?…-]+$/u, "") || title;
 }
 
-// #5052 retest (Lika, iPhone, 17 Oct): Giorgi's rule is a short title of
-// at most five words, and nothing cut off. The server writes short_title;
-// where it has not, the phone shows the whole title, wrapped, rather than
-// its first five words, which read as a title cut off.
+// #5052 retest (Lika, iPhone, 17 Oct) showed the whole title on the phone.
+// The board's row (20 Oct) settles it the other way: the same five-word cap
+// as the desktop, from short_title or else the title's first five words.
 function phoneTitle(thread: Thread, full: string): string {
-  const short = thread.short_title;
-  return typeof short === "string" && short.trim() ? short.trim() : full;
+  return shortTitle(thread.short_title, full);
 }
 
 function chipTitle(thread: Thread, full: string): string {
@@ -2192,12 +2237,12 @@ function TaskCard({ thread, title, href, active, unread, time, onLongPress, onRe
 }
 
 // Phone, a resolved task: a plain row with the tick.
-function DoneRow({ thread, title, href, time }: { thread: Thread; title: string; href: string; time?: string }) {
+function DoneRow({ thread, title, href, unread, time }: { thread: Thread; title: string; href: string; unread: boolean; time?: string }) {
   const role = roleLabel(thread.role);
   return (
     <Link href={href} prefetch className="dz-drow">
       <span className="ok"><DzIcon name="check" size={13} /></span>
-      <span className="t">{title}</span>
+      <span className={`t${unread ? " unread" : ""}`}>{title}</span>
       {time ? <span className="d">{time}</span> : <span />}
       <span className="sub">
         {/* 4920: the tab already says resolved. A goal its owner stopped is

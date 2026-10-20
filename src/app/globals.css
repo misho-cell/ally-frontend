@@ -555,6 +555,7 @@ body {
 .dz-profile-btn > span { width: 28px; height: 28px; border-radius: 9px; background: var(--accent-tint); color: var(--accent); display: grid; place-items: center; }
 
 /* Desktop sidebar brand */
+.dz-home-link { display: flex; align-items: center; color: inherit; text-decoration: none; border-radius: 10px; }
 .dz-side-brand { display: none; align-items: center; gap: 10px; padding: 20px 22px 14px 20px; }
 .dz-side-brand .dz-logo { width: 35px; height: 35px; border-radius: 11px; border: 1px solid var(--header-border); background: #FFFFFF; overflow: hidden; display: block; flex-shrink: 0; }
 .dz-side-brand .dz-logo img { width: 100%; height: 100%; object-fit: cover; }
@@ -714,6 +715,8 @@ body {
 .dz-drow:last-child { border-bottom: 0; }
 .dz-drow .ok { width: 22px; height: 22px; border-radius: 999px; background: #DEEEE3; color: #216447; display: grid; place-items: center; grid-row: span 2; }
 .dz-drow .t { font: 400 13.25px/17.9px var(--font-system); letter-spacing: -0.265px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.dz-drow .t.unread { font-weight: 600; color: var(--ink); }
+.dz-drow .t.unread::after { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--accent); vertical-align: middle; }
 .dz-drow .d { font: 400 11px/17.6px var(--font-system); color: var(--ink-muted); padding-left: 4px; white-space: nowrap; }
 .dz-drow .sub { grid-column: 2; display: flex; flex-direction: column; gap: 2px; }
 .dz-drow .sub small { font: 400 10px/16px var(--font-system); color: var(--nx-muted); }
@@ -726,6 +729,9 @@ body {
 .dz-compose { position: sticky; bottom: 0; z-index: 6; margin: 16px -20px 0; background: #FFFFFF; border: 1px solid var(--cta-border); border-bottom: 0; border-radius: 16px 16px 0 0; padding: 22px 22px calc(18px + env(safe-area-inset-bottom)); }
 .dz-compose input { width: 100%; padding: 6px 4px 24px; background: transparent; outline: none; color: var(--ink); font: 400 16.5px/22px var(--font-system); }
 .dz-compose input::placeholder { color: var(--ink-muted); }
+/* #5117 (20 Oct): the phone home field too. The global ring drew a green box
+   inside the card; the card's own border is the focus. */
+.dz-compose input:focus, .dz-compose input:focus-visible { outline: 0; box-shadow: none; }
 .dz-compose .row { display: flex; align-items: center; gap: 9px; }
 .dz-rb { width: 42px; height: 42px; border-radius: 12px; background: var(--sidebar-bg); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
 .dz-rb.rec { background: var(--danger); color: #FFFFFF; }
@@ -753,7 +759,7 @@ body {
 .dz-row.active .dz-row-avatar, .dz-row:hover .dz-row-avatar { background: #FFFFFF; }
 .dz-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .dz-row-top { display: flex; align-items: baseline; gap: 7px; }
-.dz-row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12px/18.6px var(--font-system); color: var(--ink); }
+.dz-row-title { flex: 1; min-width: 0; overflow-wrap: break-word; font: 600 12px/18.6px var(--font-system); color: var(--ink); }
 .dz-row-title.unread { font-weight: 700; }
 .dz-row-title.unread::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--accent); vertical-align: middle; }
 .dz-row-time { font: 400 9px/14px var(--font-system); color: var(--ink-muted); white-space: nowrap; }
@@ -805,7 +811,9 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
 .dz-wcompose textarea::placeholder { color: var(--ink-muted); }
 .dz-wcompose.rec { border-color: var(--danger); }
 .dz-wfoot { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-.dz-file-upload { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 8px; border-radius: 8px; color: var(--text-2); font: 400 11px/17px var(--font-system); }
+/* #6273 (20 Oct): an outlined pill, so the button no longer reads as part of
+   the field's placeholder above it. */
+.dz-file-upload { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px 0 8px; border: 1px solid var(--cta-border); border-radius: 999px; color: var(--text-2); font: 400 11px/17px var(--font-system); }
 .dz-file-upload:hover { background: var(--bg); }
 .dz-voice { margin-left: auto; width: 35px; height: 35px; border-radius: 10px; background: var(--bg); border: 1px solid var(--cta-border); color: var(--accent); display: grid; place-items: center; }
 .dz-voice.rec { background: var(--danger); border-color: var(--danger); color: #FFFFFF; }
@@ -864,7 +872,7 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
 .dz-thd-main { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
 .dz-thd-rt { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 3px; padding: 3px 7px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, .5); background: rgba(255, 255, 255, .07); color: rgba(255, 255, 255, .9); font: 600 10.25px/12.3px var(--font-system); }
 /* 2278 (Misho, 14 Oct: "do all"): one line with an ellipsis on a phone too. */
-.dz-thd h1 { width: 100%; font: 700 15.5px/18.3px var(--font-system); letter-spacing: -0.31px; color: #FFFFFF; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.dz-thd h1 { width: 100%; font: 700 15.5px/18.3px var(--font-system); letter-spacing: -0.31px; color: #FFFFFF; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 /* #5052 (Lika, iPhone, 18 Oct): the header title is one line that ends at a
    whole word with "…". It used to allow a break anywhere, so Safari ended the
    line in the middle of a word with no ellipsis. */
@@ -897,7 +905,7 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
   .dz-thd { grid-template-columns: 32px minmax(0, 1fr) auto; column-gap: 10px; padding: 16px 20px; align-items: center; }
   .dz-thd-back { width: 32px; height: 32px; margin-top: 25px; border-radius: 10px; border-color: var(--cta-border); align-self: start; }
   .dz-thd-rt { margin-bottom: 7px; padding: 3px 7px; border-radius: 6px; border-color: #ADDED5; background: transparent; color: #F1F8FF; font: 400 9px/11.7px var(--font-system); }
-  .dz-thd h1 { font: 600 15px/22.5px var(--font-system); letter-spacing: -0.25px; -webkit-line-clamp: 1; }
+  .dz-thd h1 { font: 600 15px/22.5px var(--font-system); letter-spacing: -0.25px; -webkit-line-clamp: 2; }
   .dz-thd-mt { margin-top: 5px; font-size: 10px; line-height: 15.5px; }
   .dz-thd-acts { align-self: center; margin-top: 25px; gap: 6px; }
   .dz-hbtn { border-radius: 9px; border-color: #9ED1C7; }
@@ -943,7 +951,7 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
   .dz-write > div { max-width: 732px !important; }
   .dz-wbox { align-items: center; gap: 9px; padding: 8px; border-color: var(--header-border); border-radius: 13px; }
   .dz-wbox textarea { min-height: 34px; padding: 5px 4px; font-size: 12px; line-height: 19.2px; }
-  .dz-attach { padding: 0 8px; height: 36px; border-radius: 8px; color: var(--text-2); font: 400 11px/17px var(--font-system); }
+  .dz-attach { padding: 0 11px 0 8px; height: 30px; border: 1px solid var(--cta-border); border-radius: 999px; color: var(--text-2); font: 400 11px/17px var(--font-system); }
   .dz-attach:hover { background: var(--bg); }
   .dz-mic { order: 2; width: 35px; height: 35px; border-radius: 10px; background: var(--bg); border: 1px solid var(--cta-border); color: var(--accent); }
   .dz-mic.rec { background: var(--danger); border-color: var(--danger); color: #FFFFFF; }
@@ -953,8 +961,9 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
 .dz-ctx-head { display: flex; align-items: center; gap: 10px; height: 72px; padding: 0 18px; border-bottom: 1px solid var(--header-border); flex-shrink: 0; }
 .dz-ctx-title { font: 600 12px/18px var(--font-system); color: var(--ink); }
 .dz-ctx-sub { margin-top: 2px; font: 400 10px/15px var(--font-system); color: var(--ink-muted); }
-.dz-ctx-close { width: 30px; height: 30px; border-radius: 9px; background: var(--bg); color: var(--accent); display: grid; place-items: center; }
+.dz-ctx-close { width: 30px; height: 30px; border-radius: 9px; background: #FFFFFF; color: var(--accent); display: grid; place-items: center; }
 .dz-ctx-close:hover { background: var(--accent-tint); }
+.dz-ctx-card { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; background: #FFFFFF; border-radius: 16px; }
 
 /* ============ Sheet pages (FIXED2 `.nx-*`, 13 Oct) ============
    Every account page the design opens as a sheet (what happened, later,

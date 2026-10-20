@@ -6,7 +6,7 @@ import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import Modal from "@/components/Modal";
 import { authHeaders, parseRetryAfter } from "@/lib/deviceId";
 import { getSpeechRecognition, speechLang, transcriptOf, startRecognition as beginRecognition, type SpeechRecognitionLike } from "@/lib/speech";
-import { recorderSupported, speechLimits, startRecording, transcribe, type Recording } from "@/lib/dictation";
+import { shouldRecord, speechLimits, startRecording, transcribe, type Recording } from "@/lib/dictation";
 import { recordSpeechStage } from "@/lib/speech";
 import { onCheckoutCompleted } from "@/lib/paddle";
 import { startStripeTopup } from "@/lib/stripe";
@@ -579,8 +579,8 @@ export default function ThreadPage() {
   }, [bump, loading]);
 
   useEffect(() => {
-    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-    const recorder = ios && recorderSupported();
+    // #6205: the same rule as the other two microphones (shouldRecord).
+    const recorder = shouldRecord();
     setUseRecorder(recorder);
     // The button is offered when either road exists. On an iPhone the browser
     // recogniser may be present and still useless, so the recorder decides.
@@ -1715,8 +1715,16 @@ export default function ThreadPage() {
   // would be worse than the generic word. Everything else is unchanged, so a
   // deployment that sends no status_line, and any run that is not a search,
   // still read the newest step exactly as before.
+  //
+  // #6271 (20 Oct). That made the stage win outright, so once the server kept
+  // one sentence for the whole run the line never moved and the steps never
+  // showed. Now the newer of the two wins: the stage until a step arrives
+  // after it, then each step in turn, then the stage again when it changes.
   const newestStep = trailingSteps[trailingSteps.length - 1];
-  const searchStage = thread?.status === "working" ? thread.status_line?.trim() : null;
+  const workingStage = thread?.status === "working" ? thread.status_line?.trim() : null;
+  const stageIsNewer =
+    !newestStep || (st.stage != null && st.stage.text.trim() === workingStage && st.stage.afterStep === newestStep.id);
+  const searchStage = workingStage && stageIsNewer ? workingStage : null;
   const liveStep = searchStage
     ? { key: searchStage, text: searchStage }
     : newestStep

@@ -328,8 +328,29 @@ export async function beginDictation(opts: {
   };
 }
 
-/** iOS is the only place the browser's own recogniser cannot be trusted. */
+/**
+ * Record and transcribe on the server, rather than ask the browser to
+ * recognise speech: on iOS, where the browser's recogniser is refused in the
+ * home-screen app; and (#6205, 20 Oct, Ninia's Mac) wherever there is no
+ * recogniser at all, as in Firefox, or one that only works with the Mac's
+ * own dictation switched on, as in Safari. There the button did nothing.
+ */
 export function shouldRecord(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /iPhone|iPad|iPod/.test(navigator.userAgent) && recorderSupported();
+  if (typeof navigator === "undefined" || !recorderSupported()) return false;
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua)) return true;
+  const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
+  if (!w.SpeechRecognition && !w.webkitSpeechRecognition) return true;
+  return /Safari\//.test(ua) && !/Chrome\/|Chromium\/|CriOS\/|FxiOS\/|Edg\/|OPR\//.test(ua);
+}
+
+/** Which sentence a dictation notice is, so every microphone says the same. */
+export function micNoticeKey(reason: string):
+  "micNotAllowed" | "micHeardNothing" | "micTooLong" | "micOff" | "netRequired" | "micFailed" {
+  if (reason === "mic-denied" || reason === "not-allowed") return "micNotAllowed";
+  if (reason === "no_speech") return "micHeardNothing";
+  if (reason === "too_long" || reason === "too_large") return "micTooLong";
+  if (reason === "not_enabled") return "micOff";
+  if (reason === "network" || reason === "timeout") return "netRequired";
+  return "micFailed";
 }

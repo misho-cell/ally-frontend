@@ -42,6 +42,23 @@ function composePhone(dial: string, raw: string): string {
   return `${dial}${digits}`;
 }
 
+// #6337 (20 Oct): the code step shows the number the code went to, so a
+// mistyped one is seen before the person waits for a code that cannot come.
+// The dial code is the longest one that matches; a Georgian mobile reads
+// 3-2-2-2, anything else in threes.
+function formatPhone(full: string): string {
+  const match = DIAL_CODES.map((d) => d.code)
+    .filter((c) => full.startsWith(c))
+    .sort((a, b) => b.length - a.length)[0];
+  if (!match) return full;
+  const rest = full.slice(match.length).replace(/\D/g, "");
+  if (!rest) return full;
+  const groups = match === "+995" && rest.length === 9
+    ? [rest.slice(0, 3), rest.slice(3, 5), rest.slice(5, 7), rest.slice(7)]
+    : rest.match(/.{1,3}/g) ?? [rest];
+  return `${match} ${groups.join(" ")}`;
+}
+
 // Screen-local strings (phone locale: ka → Georgian, else English).
 // Georgian: no em-dashes, never italic.
 const L = {
@@ -687,6 +704,22 @@ export default function LoginPage() {
             {step === "otp" && (
               <form onSubmit={handleOtpSubmit} className="flex flex-col gap-4">
                 <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{s.otpSent}</p>
+                {/* #6337: the number itself, and a tap on it goes back to
+                    change it, the same as the back link below. */}
+                {phone && (
+                  <button
+                    type="button"
+                    onClick={() => { setStep("phone"); setOtp(""); setError(""); otpPassedRef.current = false; }}
+                    aria-label={`${formatPhone(phone)}. ${s.back}`}
+                    className="flex items-center justify-center gap-2 self-center"
+                    style={{ font: "600 17px/24px var(--font-system)", color: "var(--ink)", letterSpacing: "0.02em" }}
+                  >
+                    <span dir="ltr">{formatPhone(phone)}</span>
+                    <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden style={{ color: "var(--accent)" }}>
+                      <path d="M12.5 4.5l3 3L7 16H4v-3l8.5-8.5z" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                )}
                 <input
                   type="text"
                   inputMode="numeric"
