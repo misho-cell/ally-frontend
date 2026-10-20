@@ -1411,9 +1411,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     else legacyThreads.push(th);
   }
   // An unseen answer sits at the top of the open goals (#1817).
-  // A stopped goal its owner has not closed stays there too (#1919).
+  // A stopped goal its owner has not closed stays there too (#1919), and so
+  // does a paused one whatever its status reads (#5283, Ninia 19 Oct: a pause
+  // sent the goal to the resolved cases).
   const keptOpen = (g: { thread: Thread; status: TaskStatus }) =>
-    g.status === "done" && (answerUnseen(g.thread) || g.thread.goal_stopped_open === true);
+    g.status === "done" && (answerUnseen(g.thread) || isPaused(g.thread));
   // #2080: a row its owner pinned sits above all of them, finished or not.
   const pinned = (g: { thread: Thread }) => g.thread.followed === true;
   const active = [

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import SheetPage from "@/components/SheetPage";
 import { apiFetch, ApiError } from "@/lib/api";
-import { getLocale, fmtDateLoc } from "@/lib/i18n";
+import { getLocale, fmtDateLoc, fmtDateShort } from "@/lib/i18n";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 import { WEEKLY_KIND } from "@/lib/weekly";
 
@@ -385,11 +385,17 @@ export default function UpdatesPage() {
     const caseTitle = typeof u.case_title === "string" && u.case_title.trim() ? u.case_title.trim() : null;
     const canSnooze = withActions && !!ref && u.answered !== true;
     const canFollow = !!ref && typeof u.followed === "boolean";
+    // #6369 (backend 21:40Z): when the update was made. Absent on an older
+    // server, null when the server could not read it; both draw no date.
+    const made = u.created_at ? fmtDateShort(u.created_at) : "";
     return (
       <article key={ref || i} className={`nx-card${u.followed ? " pinned" : ""}`}>
-        {(kind || canFollow) && (
+        {(kind || canFollow || made) && (
           <div className="nx-row between" style={{ marginTop: 0, marginBottom: 6 }}>
-            {kind ? <span className="nx-pill">{s.kinds[kind]}</span> : <span />}
+            <span className="flex items-center gap-2">
+              {kind && <span className="nx-pill">{s.kinds[kind]}</span>}
+              {made && <time dateTime={u.created_at ?? undefined} style={{ font: "400 12px/16px var(--font-system)", color: "var(--meta)" }}>{made}</time>}
+            </span>
             {canFollow && (
               <button
                 type="button"

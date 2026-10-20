@@ -926,9 +926,10 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
   /* #5050: „Resolved" is the accent button, „Paths" the white one, so the
      two no longer look alike on the desktop. #5051: one size for both. */
   .dz-resolve { min-width: 92px; justify-content: center; border-radius: 9px; background: var(--apricot); color: #3F2D20; border: 1px solid var(--apricot); font: 600 11px/14px var(--font-system); }
-  /* The design's .paths-b: white text on a light veil of the header green. */
-  .dz-resolve.white { background: rgba(255, 255, 255, .16); color: #FFFFFF; border-color: rgba(255, 255, 255, .5); }
-  .dz-resolve.white:hover { background: rgba(255, 255, 255, .26); }
+  /* #6667 (desktop retest, 20 Oct): white with the green word, as on the
+     phone, not the see-through veil the design drew. */
+  .dz-resolve.white { background: #FFFFFF; color: var(--accent); border-color: #FFFFFF; }
+  .dz-resolve.white:hover { background: rgba(255, 255, 255, .9); }
 }
 
 .dz-ububble { max-width: 79%; padding: 13px 16px; border-radius: 16px 16px 6px 16px; background: var(--user-bubble-bg); color: var(--user-bubble-ink); border: 1px solid #C2D8F5; font: 400 14px/22.4px var(--font-system); }
@@ -1058,6 +1059,12 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
 .pd-title { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
 .pd-title > span { font: 700 15px/1.4 var(--font-system); color: var(--ink); white-space: nowrap; }
 .pd-title > small { font: 400 12px/1.4 var(--font-system); color: #78978C; text-align: right; }
+/* #6799: the personal information folds; closed it is the title alone. */
+.pd-fold > summary { cursor: pointer; list-style: none; align-items: center; margin-bottom: 0; }
+.pd-fold > summary::-webkit-details-marker { display: none; }
+.pd-fold > summary svg { color: var(--meta); transition: transform .15s ease; }
+.pd-fold[open] > summary { margin-bottom: 12px; }
+.pd-fold[open] > summary svg { transform: rotate(180deg); }
 .pd-fields { display: grid; gap: 10px; }
 .pd-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .pd-field { display: grid; gap: 5px; font: 400 12px/1.4 var(--font-system); color: var(--ink-2); }

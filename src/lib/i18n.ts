@@ -560,7 +560,8 @@ const ka: typeof en = {
   closeFailed: "დახურვა ვერ მოხერხდა, სცადე თავიდან",
   resolveCase: "მოგვარდა",
   resolveFailed: "მოგვარებულად მონიშვნა ვერ მოხერხდა, სცადე თავიდან",
-  follow: "მიმაგრება",
+  // #2080: Giorgi's own word for it (board row, 20 Oct).
+  follow: "მიდევნება",
   unfollow: "მოხსნა",
   followFailed: "ვერ შეიცვალა, სცადე თავიდან",
   renameGoal: "გადარქმევა",

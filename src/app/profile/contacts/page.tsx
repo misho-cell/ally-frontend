@@ -104,6 +104,12 @@ export default function ContactsPage() {
 
   return (
     <SheetPage title={s.title} backHref="/profile" backLabel={s.back} closeLabel={s.close}>
+      {/* #6772: the update sits under the title, above the list, so it is
+          found without scrolling past every contact. The design's second
+          button, people settings, has no page yet. */}
+      <div className="nx-row" style={{ marginTop: 0 }}>
+        <Link href="/onboarding/contacts?from=profile" className="nx-btn">{s.update}</Link>
+      </div>
       {/* 16px (in .nx-field): a smaller focused field makes iOS Safari zoom the page. */}
       <label className="nx-field" style={{ marginBottom: 0 }}>
         {s.search}
@@ -137,10 +143,6 @@ export default function ContactsPage() {
         <button type="button" className="nx-btn self-center" disabled={busy} onClick={loadMore}>{s.more}</button>
       )}
 
-      {/* The design's second button, people settings, has no page yet. */}
-      <div className="nx-row">
-        <Link href="/onboarding/contacts?from=profile" className="nx-btn">{s.update}</Link>
-      </div>
     </SheetPage>
   );
 }

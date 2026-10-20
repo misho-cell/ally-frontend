@@ -666,8 +666,14 @@ function ProfileFields({
     }
   }
 
+  // #6799 (D858): the personal information folds, closed, so the setup
+  // steps, the invite and the plan are in reach without scrolling past it.
   return (
-    <Section title={s.title} small={s.profileSmall}>
+    <details className="pd-section pd-fold">
+      <summary className="pd-title">
+        <span>{s.profileSmall}</span>
+        <DzIcon name="down" size={16} />
+      </summary>
       <div className="pd-fields">
         <div className="pd-row2">
           <label className="pd-field">
@@ -714,7 +720,7 @@ function ProfileFields({
           {photo.err && <span className="pd-msg" style={{ color: "var(--danger)", marginTop: 0 }}>{photo.err}</span>}
         </div>
       )}
-    </Section>
+    </details>
   );
 }
 
@@ -1164,25 +1170,26 @@ export default function ProfilePage() {
                 under four headings, so a person who came for one thing finds
                 it without reading the rest. */}
             <h2 className="pd-group">{s.grpMine}</h2>
+            {/* #6799 (D858): below the setup steps, in this order: personal
+                information, invite friends, add contacts, current plan,
+                tokens. Everything after them keeps its old order. */}
             <ProfileFields
               profile={profile}
               photo={photo}
               onSaved={(p) => setProfile((prev) => (prev ? { ...prev, ...p } : prev))}
             />
-            {profile.assistant_name !== undefined && (
-              <AssistantNameSection
-                profile={profile}
-                onSaved={(p) => setProfile((prev) => (prev ? { ...prev, ...p } : prev))}
-              />
-            )}
+            <InviteSection code={profile.referral_code ?? null} />
 
-            <nav className="pd-nav" aria-label={s.grpMine}>
-              <Link href="/setup">{s.setupNav}<DzIcon name="right" size={16} /></Link>
-              <Link href="/profile/connector">{s.claudeNav}<DzIcon name="right" size={16} /></Link>
-              <Link href="/profile/questions">{s.questionsNav}<DzIcon name="right" size={16} /></Link>
+            <nav className="pd-nav" aria-label={s.syncNav}>
+              <Link href="/onboarding/contacts?from=profile">
+                <span>
+                  {s.syncNav}
+                  <LastImportLine />
+                </span>
+                <DzIcon name="right" size={16} />
+              </Link>
             </nav>
 
-            <h2 className="pd-group">{s.grpMoney}</h2>
             {plan && (
               <Section title={s.planTitle}>
                 <div className="pd-card pd-plan">
@@ -1217,8 +1224,20 @@ export default function ProfilePage() {
 
             <TokensSection />
 
-            <InviteSection code={profile.referral_code ?? null} />
+            {profile.assistant_name !== undefined && (
+              <AssistantNameSection
+                profile={profile}
+                onSaved={(p) => setProfile((prev) => (prev ? { ...prev, ...p } : prev))}
+              />
+            )}
 
+            <nav className="pd-nav" aria-label={s.grpMine}>
+              <Link href="/setup">{s.setupNav}<DzIcon name="right" size={16} /></Link>
+              <Link href="/profile/connector">{s.claudeNav}<DzIcon name="right" size={16} /></Link>
+              <Link href="/profile/questions">{s.questionsNav}<DzIcon name="right" size={16} /></Link>
+            </nav>
+
+            <h2 className="pd-group">{s.grpMoney}</h2>
             <nav className="pd-nav" aria-label={s.grpMoney}>
               <Link href="/profile/earnings">{s.earningsNav}<DzIcon name="right" size={16} /></Link>
             </nav>
@@ -1226,13 +1245,6 @@ export default function ProfilePage() {
             <h2 className="pd-group">{s.grpContacts}</h2>
             <nav className="pd-nav" aria-label={s.grpContacts}>
               <Link href="/profile/contacts">{s.myContacts}<DzIcon name="right" size={16} /></Link>
-              <Link href="/onboarding/contacts?from=profile">
-                <span>
-                  {s.syncNav}
-                  <LastImportLine />
-                </span>
-                <DzIcon name="right" size={16} />
-              </Link>
               <MonthlyReminderRow />
               <Link href="/profile/requests">{s.requestsNav}<DzIcon name="right" size={16} /></Link>
               <Link href="/profile/people">{s.peopleNav}<DzIcon name="right" size={16} /></Link>
