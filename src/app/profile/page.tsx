@@ -154,6 +154,7 @@ const L = {
     grpSettings: "Settings",
     questionsNav: "Questions about you",
     peopleNav: "People settings",
+    factsNav: "Facts kept about me",
     requestsNav: "My introduction requests",
     profileSmall: "Personal information",
     phoneLabel: "Phone number",
@@ -277,6 +278,7 @@ const L = {
     grpSettings: "პარამეტრები",
     questionsNav: "კითხვები შენზე",
     peopleNav: "ადამიანების პარამეტრები",
+    factsNav: "ჩემზე შენახული ფაქტები",
     requestsNav: "ჩემი თხოვნების მდგომარეობა",
     profileSmall: "პირადი ინფორმაცია",
     phoneLabel: "ტელეფონის ნომერი",
@@ -1232,6 +1234,8 @@ export default function ProfilePage() {
               <Link href="/profile/requests">{s.requestsNav}<DzIcon name="right" size={16} /></Link>
               <Link href="/profile/people">{s.peopleNav}<DzIcon name="right" size={16} /></Link>
               <Link href="/profile/blocked">{s.blocked}<DzIcon name="right" size={16} /></Link>
+              {/* 4126: linked on Misho's go-ahead of 20 Oct. */}
+              <Link href="/profile/facts">{s.factsNav}<DzIcon name="right" size={16} /></Link>
             </nav>
 
             <h2 className="pd-group">{s.grpSettings}</h2>

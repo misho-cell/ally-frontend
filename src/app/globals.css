@@ -964,6 +964,9 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
 .dz-ctx-close { width: 30px; height: 30px; border-radius: 9px; background: #FFFFFF; color: var(--accent); display: grid; place-items: center; }
 .dz-ctx-close:hover { background: var(--accent-tint); }
 .dz-ctx-card { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; background: #FFFFFF; border-radius: 16px; }
+.dz-case-desc { background: #FFFFFF; border-radius: 14px; padding: 10px 14px; }
+.dz-case-desc summary { cursor: pointer; font: 600 12px/18px var(--font-system); color: var(--ink-muted); }
+.dz-case-desc p { margin-top: 6px; font: 400 14px/20px var(--font-system); color: var(--ink); white-space: pre-line; overflow-wrap: anywhere; }
 
 /* ============ Sheet pages (FIXED2 `.nx-*`, 13 Oct) ============
    Every account page the design opens as a sheet (what happened, later,

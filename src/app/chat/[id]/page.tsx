@@ -2065,6 +2065,17 @@ export default function ThreadPage() {
               </div>
             )}
 
+            {/* #5413 on the phone (Misho's go-ahead, 20 Oct). The context
+                panel exists only on wide screens, so the case description
+                had no way onto a phone. It sits at the head of the
+                conversation, folded, under the same label as the panel. */}
+            {typeof thread?.case_description === "string" && thread.case_description.trim() && (
+              <details className="dz-case-desc xl:hidden">
+                <summary>{t("ctxDescription")}</summary>
+                <p>{thread.case_description.trim()}</p>
+              </details>
+            )}
+
             {messages.length === 0 && !loading && (
               <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
                 <span className="ally-avatar" style={{ width: 44, height: 44 }}>
