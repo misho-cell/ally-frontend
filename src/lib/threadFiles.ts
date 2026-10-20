@@ -231,6 +231,18 @@ async function fetchXlsx(
   }
 
   const blob = await res.blob();
+  // #6074 (Lika's phone: the Word file saved but would not open). Both files
+  // this fetches are zip containers, which begin with "PK". Anything else is
+  // not the file, and saving it under a .docx or .xlsx name gives exactly
+  // that report, so it is refused here and said as a failure instead.
+  try {
+    const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+    if (head.length < 2 || head[0] !== 0x50 || head[1] !== 0x4b) {
+      return { ok: false, error: fallbackError, missing: false };
+    }
+  } catch {
+    return { ok: false, error: fallbackError, missing: false };
+  }
   // The server names the file. Taken from the header when it is readable,
   // because a name we invent would be a worse one.
   const disposition = res.headers.get("Content-Disposition") ?? "";

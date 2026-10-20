@@ -165,7 +165,9 @@ export async function startRecording(maxDurationMs: number, onAutoStop: () => vo
   const startedAt = Date.now();
   let settled = false;
   recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-  recorder.start();
+  // #6205: in one-second pieces rather than one at the end, so a recorder
+  // that stops oddly (Safari on a Mac) still leaves what it heard.
+  recorder.start(1000);
 
   // The server can only enforce the length bound when we measure it, so the
   // recording stops itself rather than sending five megabytes to be refused.

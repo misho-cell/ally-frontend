@@ -231,6 +231,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   // 27 Sept: the third microphone. See lib/dictation.ts — on an iPhone the
   // browser recogniser is refused, so this one records and uploads too.
   const dictationRef = useRef<DictationHandle | null>(null);
+  // #6205: a tap while the microphone is still being asked for is ignored.
+  const dictationStartingRef = useRef(false);
   const threadsRef = useRef<Thread[]>([]);
   const loadingMoreRef = useRef(false);
   // Unread baseline (ticket 6 #13): updated_at of every thread when it was
@@ -1247,11 +1249,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       setRecording(false);
       return;
     }
+    if (dictationStartingRef.current) return;
+    dictationStartingRef.current = true;
     const handle = await beginDictation({
       language: speechLang().split("-")[0] || null,
       onText: (t) => setHomeInput((prev) => (prev.trim() ? prev + " " + t : t)),
       onNotice: (reason) => showToast(t(micNoticeKey(reason))),
     });
+    dictationStartingRef.current = false;
     if (!handle) return;
     dictationRef.current = handle;
     setRecording(true);

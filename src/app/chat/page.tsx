@@ -29,6 +29,8 @@ export default function ChatIndexPage() {
   const [micNotice, setMicNotice] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const dictationRef = useRef<DictationHandle | null>(null);
+  // #6205: a tap while the microphone is still being asked for is ignored.
+  const dictationStartingRef = useRef(false);
 
   const hasGoals = threads.some((th) =>
     taskStatusOf(th, threadStates[String(th.id)]) !== null
@@ -59,11 +61,14 @@ export default function ChatIndexPage() {
       setRecording(false);
       return;
     }
+    if (dictationStartingRef.current) return;
+    dictationStartingRef.current = true;
     const handle = await beginDictation({
       language: speechLang().split("-")[0] || null,
       onText: (t) => setInput((prev) => (prev.trim() ? prev + " " + t : t)),
       onNotice: (reason) => setMicNotice(t(micNoticeKey(reason))),
     });
+    dictationStartingRef.current = false;
     if (!handle) return;
     dictationRef.current = handle;
     setRecording(true);

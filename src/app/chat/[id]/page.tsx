@@ -415,6 +415,9 @@ export default function ThreadPage() {
   // mount, so the server render and the phone agree on what to draw.
   const [useRecorder, setUseRecorder] = useState(false);
   const recordingRef = useRef<Recording | null>(null);
+  // #6205: true while the microphone is being asked for. A second tap in
+  // that wait started a second recording and left the first stream open.
+  const startingRef = useRef(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [rateLimitedUntil, setRateLimitedUntil] = useState(0);
   const rateLimited = rateLimitedUntil > Date.now();
@@ -1200,6 +1203,16 @@ export default function ThreadPage() {
   // at "prompt" forever — and the audio goes to a recogniser that knows
   // Georgian. Every refusal says which refusal it was.
   async function startDictation() {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    try {
+      await startDictationOnce();
+    } finally {
+      startingRef.current = false;
+    }
+  }
+
+  async function startDictationOnce() {
     const limits = await speechLimits();
     if (!limits.enabled) {
       // Not a failure and not a silence: the feature is off, and a person who
