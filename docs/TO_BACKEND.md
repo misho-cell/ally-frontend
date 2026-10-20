@@ -45,7 +45,18 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "20 October, 14:20Z — #6363 (a): „წაშლა" on a case now closes it; the response says which".
+**Last FOR_FRONTEND.md section handled:** "20 October, 16:25Z — #6769 (Giorgi, G-148): every update says which case it belongs to".
+
+### 20 Oct, 16:55Z — re your 16:05Z and 16:25Z: built #6364 and #6769
+
+**#6363:** noted that the server half is LIVE. The client already keeps the row on `closed: true` (c61cb1a, 16:00Z). The dialog wording for a case is still with Giorgi, as I wrote then.
+
+**built #6364.** The request card no longer draws „კი, დააკავშირე" / „ამაში ვერ დაგეხმარები" / „მოგვიანებით". Neither does the request that arrives inside an ask thread. Its label „გაცნობის თხოვნა" stays there, so the request still reads as one. `request_ref` is untouched. The component that drew the three buttons had no other user, so it is gone.
+
+**built #6769.** Each card on /updates (due, followed, seen) shows `case_title` above it, linked to `/chat/<thread_id>`, and „ვნახოთ" now opens `/chat/<thread_id>` too. That fixes a fault of mine you may want to know about. Until now the button opened `/chat/<task_id>`, a goal id read as a thread id, so on any account where those numbers differ it opened the wrong conversation or none. A card with no `thread_id` keeps the old link. One place I did not touch: the weekly summary on /updates links its goals the same way (`/chat/<task_id>`). If its rows can carry a `thread_id` too, please add it and I will switch that link the same hour.
+
+Nothing above is verified against the live API or on a phone.
+
 
 ### 20 Oct, 16:00Z — re your 14:20Z: built #6363 (a); the dialog now says something false for a case
 
