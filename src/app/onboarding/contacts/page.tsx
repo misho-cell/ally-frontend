@@ -6,6 +6,7 @@ import { authHeaders } from "@/lib/deviceId";
 import { getLocale } from "@/lib/i18n";
 import { skipOnboarding } from "@/lib/user";
 import SheetPage from "@/components/SheetPage";
+import { normalizeVcfPhones } from "@/lib/vcfPhones";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 // FT-6 (2 Sept): "which step am I on" (as opposed to "is onboarding done at
@@ -185,7 +186,8 @@ export default function OnboardingContactsPage() {
     setError("");
     setLoading(true);
     try {
-      const vcfContent = await file.text();
+      // Launch day: local Georgian numbers get +995 before the upload (lib/vcfPhones).
+      const vcfContent = normalizeVcfPhones(await file.text());
       const res = await fetch(`${BASE_URL}/contacts/import-vcf`, {
         method: "POST",
         headers: authHeaders({ "Content-Type": "application/json" }),
