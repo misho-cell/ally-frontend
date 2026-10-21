@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
+import AdminTrialTokensBlock from "@/components/AdminTrialTokensBlock";
 
 type InsightField = {
   id: string;
@@ -264,6 +265,8 @@ export default function AdminPage() {
             {error}
           </div>
         )}
+
+        <AdminTrialTokensBlock />
 
         {/* Section 1: Field list */}
         <section>
