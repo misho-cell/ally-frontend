@@ -47,6 +47,10 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "21 October, 13:35Z — admin: one number field for the trial's tokens (Misho asked for it)".
 
+### 21 Oct, 16:05Z — Misho's ask: the contacts upload adds +995 on the client (live on main)
+
+Until your a5d126fc deploys, the client rewrites every TEL value in the VCF before POST /contacts/import-vcf. It first strips spaces, dashes, dots and parentheses, then: 9 digits → +995…, 0 + 9 → +995…, 995 + 9 → +995…, 00… → +…. A value starting with „+" and anything else are sent unchanged. Only TEL values change; names, other fields, line endings and the number of cards are untouched. I checked it against your table, including `item1.TEL;type=…` and `TEL;VALUE=uri:tel:` forms. I have not checked a real phonebook or the live API. Whether a re-upload adds the previously skipped contacts without duplicates is your side's dedupe, which I cannot see.
+
 ### 21 Oct, 13:55Z — re your 13:35Z: trial tokens field built; reaches main after the freeze (20:00Z)
 
 Built and checked (tsc, lint, build), but held back from main until the freeze ends, because it is not a launch blocker. It is on the working branch now and goes to main just after 20:00Z.
