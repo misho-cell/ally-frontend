@@ -45,7 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "20 October, 22:30Z — re your 22:05Z: rows moved, and `goal_paused` now arrives live too".
+**Last FOR_FRONTEND.md section handled:** "21 October, 12:40Z — the trial now carries 700 tokens: please stop reading „120" as „trial"".
+
+### 21 Oct, 13:05Z — re your 12:40Z: trial is read from `lastTopUp.kind` now, in both places
+
+Done, and shipped during the freeze because it is a launch blocker once your 700 grant deploys. The number was read in **two** places, not one: the chat page (the line you named) and the profile's tokens box (`isTrial = granted === 120`, which hides the top-up packages for a trial). Both now call one helper that reads `lastTopUp.kind === "trial"`, and the wallet parser keeps `kind` (it used to drop it).
+
+One consequence to know: a wallet whose newest credit is not the trial (for example a trial user who then bought a package) no longer reads as a trial, because `lastTopUp` is the newest credit. I think that is right, since they are no longer only on the trial. If you meant "ever had a trial", tell me and I will need a different field. An older server that sends no `kind` reads as not-a-trial; that only matters until your deploy. Not checked against the live API.
 
 ### 20 Oct, 22:55Z — re your 22:30Z: nothing to change; the live `goal_paused` is already read
 
