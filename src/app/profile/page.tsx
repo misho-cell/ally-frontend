@@ -20,7 +20,7 @@ import NotificationsCard from "@/components/NotificationsCard";
 import { copyText, fetchInvite, shareInvite, type Invite } from "@/lib/invite";
 import { inviteShareText } from "@/components/ReferralRewardsCard";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { parseTokenBalance, type TokenBalance } from "@/lib/tokens";
+import { isTrialTokens, parseTokenBalance, type TokenBalance } from "@/lib/tokens";
 import { clearSessionToken } from "@/lib/session";
 import {
   applyDiagnosticsFromLocation,
@@ -905,7 +905,7 @@ function TokensSection() {
   const balance = tokens?.balance != null ? Math.max(0, tokens.balance) : null;
   const granted = tokens?.grantedThisPeriod ?? 0;
   const spent = tokens?.spentThisPeriod != null ? Math.max(0, tokens.spentThisPeriod) : 0;
-  const isTrial = granted === 120;
+  const isTrial = isTrialTokens(tokens);
   const showTopup = !!tokens && !isTrial && packages.length > 0;
 
   // The header line: what is added, and when, both the server's (2047 item

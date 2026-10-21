@@ -24,6 +24,7 @@ import ContextPanel, { ContextPanelToggle } from "@/components/ContextPanel";
 import RoutesList, { useRoutes } from "@/components/RoutesBoard";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import { shortTitle } from "@/lib/titles";
+import { isTrialTokens } from "@/lib/tokens";
 import {
   useThreads,
   updateThreadState,
@@ -447,7 +448,7 @@ export default function ThreadPage() {
   const taskStatus: TaskStatus | null = thread ? taskStatusOf(thread, st) : null;
 
   const tokensEnabled = tokens?.enabled === true;
-  const isTrialWallet = tokensEnabled && tokens.grantedThisPeriod === 120;
+  const isTrialWallet = tokensEnabled && isTrialTokens(tokens);
   const granted = tokensEnabled ? tokens.grantedThisPeriod ?? 0 : 0;
   // Row 282: the balance the server actually stated, or null when it stated
   // none. Everything below that could tell somebody they are out of tokens

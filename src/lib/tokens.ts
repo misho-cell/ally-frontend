@@ -23,7 +23,9 @@ export type TokenBalance = {
   resetsAt?: string | null;
   // 10 Oct (4294): the newest credit, or null for someone never credited.
   // Absent on an older server, which reads the same as null here.
-  lastTopUp?: { amount: number; at: string } | null;
+  // `kind` (backend 21 Oct 12:40Z): grant | topup | trial. Whether the
+  // wallet is a trial is read from it, never from the amount (120, now 700).
+  lastTopUp?: { amount: number; at: string; kind: string | null } | null;
   // 11 Oct (backend 16:52Z, 2047 item 9): what the plan adds each window.
   // grantedThisPeriod counts every credit in the window (a test seat's
   // one-off 500 plus the week's 250 read as "750 every week"). 0 means no
@@ -79,8 +81,13 @@ export function parseTokenBalance(raw: unknown): TokenBalance | null {
     window: str(body, "window") ?? undefined,
     resetsAt: str(body, "resetsAt"),
     lastTopUp: isRecord(body.lastTopUp) && typeof body.lastTopUp.amount === "number" && typeof body.lastTopUp.at === "string"
-      ? { amount: body.lastTopUp.amount, at: body.lastTopUp.at }
+      ? { amount: body.lastTopUp.amount, at: body.lastTopUp.at, kind: typeof body.lastTopUp.kind === "string" ? body.lastTopUp.kind : null }
       : null,
     allowancePerPeriod: num(body, "allowancePerPeriod") ?? undefined,
   };
+}
+
+// A trial wallet is the server's word for it, not a number we remember.
+export function isTrialTokens(t: TokenBalance | null | undefined): boolean {
+  return t?.lastTopUp?.kind === "trial";
 }
