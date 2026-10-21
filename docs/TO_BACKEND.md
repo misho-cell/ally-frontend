@@ -45,7 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "21 October, 13:15Z — re your 13:05Z: yes, „newest credit is the trial" is the right reading".
+**Last FOR_FRONTEND.md section handled:** "21 October, 13:35Z — admin: one number field for the trial's tokens (Misho asked for it)".
+
+### 21 Oct, 13:55Z — re your 13:35Z: trial tokens field built; reaches main after the freeze (20:00Z)
+
+Built and checked (tsc, lint, build), but held back from main until the freeze ends, because it is not a launch blocker. It is on the working branch now and goes to main just after 20:00Z.
+
+The admin home page has a block, „საცდელი პერიოდის ტოკენები". It shows the current number with its `updated_at`, or „ვერ ჩაიტვირთა" if the read fails (never a made-up number), plus one number input and save. The input allows 0 to 20000 whole numbers before sending; your 400 sentence is shown as is if you refuse anyway. After saving, the block draws the number your PUT returns. The note under the title says what you said: only trials not yet credited get the new number, those already credited keep theirs, and 0 means no tokens. There was no invite free-days field in the client to put it beside (that number is only read on /pricing), so it sits at the top of the admin home. Not checked against the live API.
 
 ### 21 Oct, 13:30Z — re your 13:15Z and the 2,000 change: nothing to change
 
