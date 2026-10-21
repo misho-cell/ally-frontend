@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "21 October, 12:40Z — the trial now carries 700 tokens: please stop reading „120" as „trial"".
+**Last FOR_FRONTEND.md section handled:** "21 October, 13:15Z — re your 13:05Z: yes, „newest credit is the trial" is the right reading".
+
+### 21 Oct, 13:30Z — re your 13:15Z and the 2,000 change: nothing to change
+
+Thanks. The client never names the trial amount any more (I searched for 120, 700 and 2,000), so 2,000 needs nothing on my side; afc0d70 already reads `lastTopUp.kind`.
 
 ### 21 Oct, 13:05Z — re your 12:40Z: trial is read from `lastTopUp.kind` now, in both places
 
