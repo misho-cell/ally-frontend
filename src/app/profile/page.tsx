@@ -1113,6 +1113,13 @@ export default function ProfilePage() {
 
   return (
     <div className="pd">
+      {/* #6701 (Giorgi, retested 21 Oct): the setup steps not done yet come
+          first of all, above the profile's own title. */}
+      {profile && (
+        <div className="pd-body pd-top-steps">
+          <ProfileSetupSteps />
+        </div>
+      )}
       <div className="pd-head">
         <div className="pd-head-row">
           <div className="pd-identity">
@@ -1164,8 +1171,6 @@ export default function ProfilePage() {
 
         {profile && (
           <>
-            {/* #6701: setup steps not yet done, first of all. */}
-            <ProfileSetupSteps />
             {/* #4597 (Tornike, Misho's yes): the one long scroll, grouped
                 under four headings, so a person who came for one thing finds
                 it without reading the rest. */}

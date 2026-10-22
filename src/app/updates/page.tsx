@@ -280,14 +280,13 @@ export default function UpdatesPage() {
     (u) => u.kind !== WEEKLY_KIND && !dueRefs.has(u.update_ref) && !followedRefs.has(u.update_ref)
   );
   const at = (u: Update) => Date.parse(u.created_at ?? "") || 0;
-  // Pinned first, from either list, so a pinned card that is also unread
-  // keeps its snooze and its place on top.
-  const pinnedCards = [
-    ...dueRest.filter((u) => u.followed === true).map((u) => ({ u, isDue: true })),
+  // #6369 (Giorgi, 22 Oct): one order for the whole screen, each card's own
+  // date, strictly newest first. Pinned cards used to lead (#2080), and that
+  // block is what put „19, 18, 18, 19" in the middle; a pinned card now sits
+  // at its date and keeps its pin. Unread ones keep their snooze.
+  const cards = [
+    ...dueRest.map((u) => ({ u, isDue: true })),
     ...followedRest.map((u) => ({ u, isDue: false })),
-  ].sort((a, b) => at(b.u) - at(a.u));
-  const allRest = [
-    ...dueRest.filter((u) => u.followed !== true).map((u) => ({ u, isDue: true })),
     ...seenRest.map((u) => ({ u, isDue: false })),
   ].sort((a, b) => at(b.u) - at(a.u));
 
@@ -501,15 +500,14 @@ export default function UpdatesPage() {
           <span className="sk-bar" style={{ width: "80%" }} />
         ) : (
           <>
-            {/* #6369 / #6537 (Giorgi, 20 Oct): one list, every update of
-                every case, newest first. Pinned cards (#2080) still lead; the
-                weekly summary block and the separate „seen" heading are gone.
-                Unread ones keep their snooze, as before. */}
-            {pinnedCards.length === 0 && allRest.length === 0 ? (
+            {/* #6369 / #6537 (Giorgi): one list, every update of every case,
+                strictly newest first. The weekly summary block and the
+                separate „seen" heading are gone. */}
+            {cards.length === 0 ? (
               <p className="nx-empty">{s.dueEmpty}</p>
             ) : (
               <div className="flex flex-col gap-3">
-                {[...pinnedCards, ...allRest].map(({ u, isDue }, i) => card(u, i, isDue))}
+                {cards.map(({ u, isDue }, i) => card(u, i, isDue))}
               </div>
             )}
           </>

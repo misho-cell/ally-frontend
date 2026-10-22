@@ -496,6 +496,16 @@ export default function ThreadPage() {
   // new run starts streaming.
   const [revealedLen, setRevealedLen] = useState(0);
   const streamRunIdRef = useRef<string | null>(null);
+  // #6931 (Giorgi): on a phone a swipe in the case chat moved the whole
+  // page, header and input with it. While a case is open the document itself
+  // does not scroll; only the message list does, and it keeps its bounce to
+  // itself (.nx-chat-lock in globals.css).
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("nx-chat-lock");
+    return () => root.classList.remove("nx-chat-lock");
+  }, []);
+
   useEffect(() => {
     if (!streaming) {
       streamRunIdRef.current = null;
@@ -2010,7 +2020,7 @@ export default function ThreadPage() {
       </header>
 
       <div className="relative flex-1 min-h-0">
-      <div className="h-full overflow-y-auto" ref={scrollRef} onScroll={onMessagesScroll}>
+      <div className="h-full overflow-y-auto" style={{ overscrollBehavior: "contain" }} ref={scrollRef} onScroll={onMessagesScroll}>
         {showInitialLoad ? (
           loadPhase === "slow" || loadPhase === "failed" ? (
             <div className="empty h-full">

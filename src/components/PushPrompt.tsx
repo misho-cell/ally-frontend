@@ -16,9 +16,11 @@ import { ensurePushSubscription, pushState } from "@/lib/push";
 // Dismissal is remembered — being asked twice for the same thing is how a
 // person learns to dismiss without reading.
 
-const DISMISS_KEY = "push_prompt_dismissed";
+export const PUSH_PROMPT_DISMISS_KEY = "push_prompt_dismissed";
+const DISMISS_KEY = PUSH_PROMPT_DISMISS_KEY;
 
-const L = {
+// Also the words of the registration step (#6700), which asks the same thing.
+export const PUSH_WORDS = {
   en: {
     title: "Get told when something happens",
     body: "An answer to a request, or a reply from someone you asked. Without this the app can only tell you while it is open.",
@@ -42,7 +44,7 @@ const L = {
 type Shape = "hidden" | "ask" | "ios" | "busy" | "failed";
 
 export default function PushPrompt() {
-  const s = L[getLocale()];
+  const s = PUSH_WORDS[getLocale()];
   const [shape, setShape] = useState<Shape>("hidden");
   const [reason, setReason] = useState<string | null>(null);
 

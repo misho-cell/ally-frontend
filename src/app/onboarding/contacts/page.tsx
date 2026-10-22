@@ -7,6 +7,8 @@ import { getLocale } from "@/lib/i18n";
 import { skipOnboarding } from "@/lib/user";
 import SheetPage from "@/components/SheetPage";
 import { normalizeVcfPhones } from "@/lib/vcfPhones";
+import { PUSH_PROMPT_DISMISS_KEY, PUSH_WORDS } from "@/components/PushPrompt";
+import { ensurePushSubscription, pushState } from "@/lib/push";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 // FT-6 (2 Sept): "which step am I on" (as opposed to "is onboarding done at
@@ -89,6 +91,12 @@ export default function OnboardingContactsPage() {
   // from the picked contacts already has a Netai account.
   const [matchedNames, setMatchedNames] = useState<string[] | null>(null);
   const [pendingContacts, setPendingContacts] = useState<PendingContact[] | null>(null);
+  // #6700 (Giorgi): right after the contacts, one step asks for
+  // notifications. null = not shown; "ask" offers the system prompt, "ios"
+  // is an iPhone in a browser tab, where asking does nothing and the step
+  // says how to add the app instead. Words are the home card's (PushPrompt),
+  // already live, until Giorgi gives this step its own.
+  const [pushStep, setPushStep] = useState<null | "ask" | "ios" | "busy">(null);
 
   useEffect(() => {
     setHasContactsApi(
@@ -115,6 +123,33 @@ export default function OnboardingContactsPage() {
     setMatchedNames(names);
     setPendingContacts(contacts);
     try { sessionStorage.setItem(PENDING_KEY, JSON.stringify({ matchedNames: names, pendingContacts: contacts })); } catch {}
+  }
+
+  // Onboarding ends here: the notifications step when there is still
+  // something to ask, home otherwise. From the profile it is never shown.
+  function finish() {
+    if (fromProfile) {
+      router.replace("/profile");
+      return;
+    }
+    const state = pushState();
+    if (state === "unasked") setPushStep("ask");
+    else if (state === "needs-pwa") setPushStep("ios");
+    else router.replace("/chat");
+  }
+
+  function leavePushStep() {
+    // Answered here, so the home card does not ask the same thing again.
+    try { localStorage.setItem(PUSH_PROMPT_DISMISS_KEY, "1"); } catch {}
+    router.replace("/chat");
+  }
+
+  async function enablePush() {
+    setPushStep("busy");
+    // Whatever the answer (on, refused, failed), the person moves on: the
+    // profile's diagnostics still say what happened.
+    await ensurePushSubscription(true);
+    leavePushStep();
   }
 
   function forgetPending() {
@@ -214,6 +249,37 @@ export default function OnboardingContactsPage() {
     );
   const cardCls = fromProfile ? "nx-card" : "card w-full max-w-sm p-8";
 
+  if (pushStep) {
+    const p = PUSH_WORDS[getLocale()];
+    const ios = pushStep === "ios";
+    return (
+      frame(
+        <div className={`${cardCls} flex flex-col gap-5`}>
+          <div className="flex flex-col gap-1">
+            <h1 style={{ font: "500 22px/28px var(--font-bricolage)", color: "var(--ink)" }}>{ios ? p.iosTitle : p.title}</h1>
+            <p className="text-sm" style={{ color: "var(--ink-soft)" }}>{ios ? p.iosBody : p.body}</p>
+          </div>
+          <div className="flex flex-col gap-3">
+            {!ios && (
+              <button type="button" onClick={() => void enablePush()} disabled={pushStep === "busy"} className="btn-primary h-12">
+                {pushStep === "busy" ? <Spinner /> : p.enable}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={leavePushStep}
+              disabled={pushStep === "busy"}
+              className={ios ? "btn-primary h-12" : "text-sm py-2 transition-colors hover:text-[var(--ink)]"}
+              style={ios ? undefined : { color: "var(--ink-soft)" }}
+            >
+              {ios ? s.continueImport : p.later}
+            </button>
+          </div>
+        </div>
+      )
+    );
+  }
+
   if (matchedNames && pendingContacts) {
     return (
       frame(
@@ -267,7 +333,7 @@ export default function OnboardingContactsPage() {
             </p>
           </div>
           <button
-            onClick={() => router.replace(fromProfile ? "/profile" : "/chat")}
+            onClick={finish}
             className="btn-primary w-full h-12"
           >
             {fromProfile ? s.backToProfile : s.start}
@@ -345,7 +411,7 @@ export default function OnboardingContactsPage() {
               // finished onboarding long ago, and it must not write anything
               // about a step they already completed.
               if (!fromProfile) skipOnboarding();
-              router.replace(fromProfile ? "/profile" : "/chat");
+              finish();
             }}
             className="text-sm py-2 transition-colors hover:text-[var(--ink)]"
             style={{ color: "var(--ink-soft)" }}

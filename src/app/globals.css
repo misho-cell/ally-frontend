@@ -85,6 +85,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* #6931: while a case chat is open (the class is set by its page) the
+   document never scrolls or bounces; the message list is the only scroller,
+   so the header and the input stay where they are. */
+html.nx-chat-lock, html.nx-chat-lock body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+html.nx-chat-lock body { position: fixed; inset: 0; width: 100%; }
+
 :focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
@@ -602,7 +608,7 @@ body {
 .dz-rnew { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 8px; background: var(--accent); color: #FFFFFF; font: 700 9.25px/9.25px var(--font-system); letter-spacing: .185px; white-space: nowrap; }
 .dz-rnew i { width: 5px; height: 5px; border-radius: 50%; background: #FFFFFF; }
 .dz-report p { font: 400 12.5px/17.5px var(--font-system); color: var(--text-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.dz-more { display: inline-flex; margin-top: 4px; padding: 7px 0; font: 600 11.5px/13.8px var(--font-system); color: var(--accent); }
+.dz-more { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; padding: 7px 0; font: 600 11.5px/13.8px var(--font-system); color: var(--accent); }
 
 /* The two counters */
 .dz-feat { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
@@ -809,11 +815,11 @@ body {
 /* #6768 (20 Oct): an answer's line now carries what the person said (up to
    280 characters, cut by the server), so it wraps in full instead of being
    clamped to the old short length. */
-.dz-latest a { display: block; overflow-wrap: anywhere; font: 400 12.5px/19px var(--font-system); color: var(--text-2); text-decoration: none; }
+.dz-latest a, .dz-latest span { display: block; overflow-wrap: anywhere; font: 400 12.5px/19px var(--font-system); color: var(--text-2); text-decoration: none; }
 .dz-latest b { font-weight: 600; color: var(--ink); }
-.dz-latest .grp a.sub { padding-left: 10px; border-left: 2px solid var(--accent-tint); }
+.dz-latest .grp .sub { padding-left: 10px; border-left: 2px solid var(--accent-tint); }
 /* #5382: opened in place, every update reads in full. */
-.dz-latest.full a, .dz-latest.full .grp a.sub { display: block; -webkit-line-clamp: unset; overflow: visible; }
+.dz-latest.full a, .dz-latest.full span, .dz-latest.full .grp .sub { display: block; -webkit-line-clamp: unset; overflow: visible; }
 button.dz-more, button.dz-news-more { background: none; border: 0; cursor: pointer; text-align: left; }
 button.dz-news-more { padding: 0; }
 a.dz-report-h, a.dz-news-title { text-decoration: none; }
@@ -1044,6 +1050,9 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
    field, so every size here is the design's times about 1.35 and inputs are
    16px. Proportions between the parts are the design's. */
 .pd { background: var(--bg); color: var(--ink); min-height: 100dvh; }
+/* #6701: the open setup steps above the head; nothing left, nothing drawn. */
+.pd-top-steps:empty { display: none; }
+.pd-top-steps { padding-bottom: 4px; }
 @media (min-width: 768px) {
   .pd { min-height: 0; max-width: 480px; margin: 32px auto; border: 1px solid var(--nx-line); border-radius: 20px; overflow: hidden; box-shadow: 0 8px 24px rgba(36,59,54,.14); }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { t, tf } from "@/lib/i18n";
 import { apiFetch } from "@/lib/api";
@@ -16,6 +16,10 @@ import { shortTitle } from "@/lib/titles";
 // lose the very updates the card points at. A count we could not read draws
 // no card; a count of zero draws the card with zero, because the two are
 // different facts (11 Oct, the FIXED2 design always shows the story).
+// #6901 (Giorgi, 22 Oct): the block itself leads nowhere. No title link, no
+// arrow, no „all" to /updates. Nothing else in the app links there now; a
+// notification still can.
+// A row still opens its own case, and a row with no case opens nothing.
 export default function NewsCard({ variant, className = "", style }: { variant: "phone" | "desktop"; className?: string; style?: CSSProperties }) {
   const [count, setCount] = useState<number | null>(null);
   // 10 Oct (backend 08:20Z): up to three lines, the due cards' own title and
@@ -37,7 +41,7 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
       try {
         const body = unwrapData(await apiFetch<unknown>("/updates/latest"));
         if (!alive || !isRecord(body) || !Array.isArray(body.updates)) return;
-        setLatest(body.updates.map(parseLatest).filter((u): u is Latest => u !== null).slice(0, 3));
+        setLatest(body.updates.map(parseLatest).filter((u): u is Latest => u !== null));
       } catch { /* the count story stays */ }
     })();
     void (async () => {
@@ -60,7 +64,12 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
   if (count == null) return null;
   const story = lines.length > 0 ? lines.join(" ") : tf("homeNewsCount", { n: count });
   const extra = due > lines.length && lines.length > 0 ? ` +${due - lines.length}` : "";
-  const rows = latest && latest.length > 0 ? latest : null;
+  // #7063 (Giorgi): the block shows its first few rows; only when there is
+  // more than that does „მეტი" appear, opening the rest in place and folding
+  // it back. How many updates there are is the server's (GET /updates/latest).
+  const all = latest && latest.length > 0 ? latest : null;
+  const longer = all !== null && all.length > HOME_ROWS;
+  const rows = all && !full ? all.slice(0, HOME_ROWS) : all;
 
   if (variant === "phone") {
     return (
@@ -71,22 +80,23 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
         </div>
         {rows ? (
           <div className="dz-report">
-            <Link href="/updates" prefetch={false} className="dz-report-h">
-              <b>{t("homeNewsTitle")} ›</b>
+            <div className="dz-report-h">
+              <b>{t("homeNewsTitle")}</b>
               {count > 0 && <span className="dz-rnew"><i />{tf("newsNew", { n: count })}</span>}
-            </Link>
+            </div>
             <LatestRows rows={rows} full={full} />
-            <button type="button" className="dz-more" aria-expanded={full} onClick={() => setFull((v) => !v)}>{t("homeNewsMore")}</button>
+            {longer && (
+              <button type="button" className="dz-more" aria-expanded={full} onClick={() => setFull((v) => !v)}>{t("homeNewsMore")} <DzIcon name={full ? "up" : "down"} size={11} /></button>
+            )}
           </div>
         ) : (
-          <Link href="/updates" prefetch={false} className="dz-report">
-            <span className="dz-report-h">
-              <b>{t("homeNewsTitle")} ›</b>
+          <div className="dz-report">
+            <div className="dz-report-h">
+              <b>{t("homeNewsTitle")}</b>
               {count > 0 && <span className="dz-rnew"><i />{tf("newsNew", { n: count })}</span>}
-            </span>
+            </div>
             <p>{story}{extra}</p>
-            <span className="dz-more">{t("homeNewsMore")}</span>
-          </Link>
+          </div>
         )}
       </div>
     );
@@ -97,27 +107,31 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
       <AnimFigure clip="ally-walk" />
       {rows ? (
         <div className="dz-news">
-          <Link href="/updates" prefetch={false} className="dz-news-title">
+          <div className="dz-news-title">
             <span>{t("homeNewsTitle")}</span>
             {count > 0 && <span className="dz-new-badge">{count}</span>}
-          </Link>
+          </div>
           <LatestRows rows={rows} full={full} />
-          <button type="button" className="dz-news-more" aria-expanded={full} onClick={() => setFull((v) => !v)}>{t("homeNewsMore")} <DzIcon name={full ? "up" : "down"} size={11} /></button>
+          {longer && (
+            <button type="button" className="dz-news-more" aria-expanded={full} onClick={() => setFull((v) => !v)}>{t("homeNewsMore")} <DzIcon name={full ? "up" : "down"} size={11} /></button>
+          )}
         </div>
       ) : (
-        <Link href="/updates" prefetch={false} className="dz-news">
-          <span className="dz-news-title">
+        <div className="dz-news">
+          <div className="dz-news-title">
             <span>{t("homeNewsTitle")}</span>
             {count > 0 && <span className="dz-new-badge">{count}</span>}
-          </span>
+          </div>
           <p>{story}{extra}</p>
-          <span className="dz-news-more">{t("homeNewsMore")} <DzIcon name="right" size={11} /></span>
-        </Link>
+        </div>
       )}
     </div>
   );
 }
 
+
+// #7063: rows on home before „მეტი".
+const HOME_ROWS = 5;
 
 type Latest = { ref: string; threadId: string | null; caseTitle: string | null; title: string; detail: string; line: string };
 
@@ -174,21 +188,29 @@ function whatHappened(u: Latest): string {
   return u.detail || u.line || u.title;
 }
 
+// A row with a case opens it; one without is plain text (#6901).
+function RowLink({ href, className, children }: { href: string | null; className?: string; children: ReactNode }) {
+  return href ? (
+    <Link href={href} prefetch={false} className={className}>{children}</Link>
+  ) : (
+    <span className={className}>{children}</span>
+  );
+}
+
 // One case per entry: its name in bold, then what happened. A case with one
 // update reads on one line; a case with more draws its name once and each
 // update under it. Drawn from the parts rather than from `line`, which joins
-// them with a dash. A row with no conversation opens the updates screen,
-// which a person tapping may spend.
+// them with a dash.
 function LatestRows({ rows, full }: { rows: Latest[]; full: boolean }) {
   return (
     <ul className={full ? "dz-latest full" : "dz-latest"}>
       {groupLatest(rows).map((g) => {
-        const href = g.threadId ? `/chat/${encodeURIComponent(g.threadId)}` : "/updates";
+        const href = g.threadId ? `/chat/${encodeURIComponent(g.threadId)}` : null;
         if (g.rows.length === 1) {
           const u = g.rows[0];
           return (
             <li key={g.key}>
-              <Link href={href} prefetch={false}>
+              <RowLink href={href}>
                 {g.name && u.detail ? (
                   <>
                     <b>{g.name}</b> {u.detail}
@@ -196,19 +218,19 @@ function LatestRows({ rows, full }: { rows: Latest[]; full: boolean }) {
                 ) : (
                   u.line || u.title || u.detail
                 )}
-              </Link>
+              </RowLink>
             </li>
           );
         }
         return (
           <li key={g.key} className="grp">
-            <Link href={href} prefetch={false}>
+            <RowLink href={href}>
               <b>{g.name}</b>
-            </Link>
+            </RowLink>
             {g.rows.map((u) => (
-              <Link key={u.ref} href={href} prefetch={false} className="sub">
+              <RowLink key={u.ref} href={href} className="sub">
                 {whatHappened(u)}
-              </Link>
+              </RowLink>
             ))}
           </li>
         );
