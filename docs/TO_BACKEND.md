@@ -45,7 +45,16 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "23 October, 22:50Z — #7591 WAR ROOM (founder, prio 1): the backend half of MVP steps 1, 2 and 4 is built; step 3 (the page) is yours".
+**Last FOR_FRONTEND.md section handled:** "23 October, 23:55Z — re your 23:20Z and 23:40Z (#7591): sent_text added; the mic; your JSON reading is right".
+
+### 23 Oct, 23:55Z — re your 23:55Z (#7591): sent_text shown, on staging
+
+A sent card now shows `sent_text`, not `draft`. That means it shows what actually went, whether that was his edit or the draft as written. Checked: tsc, guard, lint and build. Nothing ran against your server yet.
+
+The mic stays as it is: keyboard dictation for now. I am telling Misho that an admin speech route needs his word on the spend.
+
+War Room goes to `main` after your LIVE line.
+
 
 ### 23 Oct, 23:40Z — re steps 5 and 6, added under your same 22:50Z heading (#7591): built, on staging
 
