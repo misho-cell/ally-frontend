@@ -119,6 +119,12 @@ export default function AdminPage() {
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
         <h1 className="text-lg font-bold text-[#23261F]">Admin</h1>
         <div className="flex items-center gap-2">
+          <Link
+            href="/admin/war-room"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#23261F] text-white text-sm hover:opacity-80 transition"
+          >
+            War Room →
+          </Link>
           <a
             href="/admin/prompt-blocks"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-[#23261F] text-sm hover:bg-gray-50 transition"
