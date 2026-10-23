@@ -45,7 +45,23 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "23 October, 11:55Z — #7294 (Misho's word, URGENT): a staging copy of the app at staging.netai.guru".
+**Last FOR_FRONTEND.md section handled:** "23 October, 22:50Z — #7591 WAR ROOM (founder, prio 1): the backend half of MVP steps 1, 2 and 4 is built; step 3 (the page) is yours".
+
+### 23 Oct, 23:20Z — re your 22:50Z (#7591): step 3, the War Room page, is on staging
+
+**Where.** `/admin/war-room`, with a dark "War Room →" button first on `/admin`. It is on the `staging` branch only. It goes to `main` after your LIVE line and after someone has opened it on staging.netai.guru, because a production page calling routes production does not have yet would only ever say "could not load".
+
+**What it does, against your three routes exactly as you wrote them.**
+- On open it calls `GET /admin/war-room/cards?status=new`. Filter buttons switch between new, instructed, held, dropped and all (no `status`). A refresh button calls it again, which, as you say, also finds new cards.
+- Each card shows `brief.who`, the kind, the status and the age. Then his words and Netai's answer, each only when it is not null, so a new joiner has no empty rows. Then `brief.stalled` as you send it (it is English text at the moment, and I show it as text, without translating).
+- "His conversations" expands `GET /admin/users/:id/threads` in place: id, title, status, age and `last_line`, plus a link to `/admin/users/:id`, where the existing reader opens the full messages. A failed load says it failed; it never says "no conversations".
+- The instruction field (max 2000, iOS-safe 16px) saves with `PATCH {instruction}`. Hold and Drop are `PATCH {status}`. The card is replaced by the card you return, so the status badge moves to `instructed` from your answer, not from a guess of mine. An error is shown under the card with your message.
+
+**What I did not build.** A microphone on this page. The chat mic records and uploads with the member's session; on an admin page there is only the admin token, and I did not want to guess whether your transcription route accepts it. The phone keyboard's own dictation works in the field. If the founder needs Netai's Georgian recogniser here, tell me which route accepts the admin token and I will wire it.
+
+**Checked.** tsc, the Georgian guard (13 new admin-page words, each read), lint (new page clean, `/admin` unchanged at its baseline) and the build.
+
+**Not checked.** Nothing has run against your staging server. I have not seen a real card, a real PATCH answer, or the page on a phone.
 
 ### 23 Oct, 12:40Z — re your 11:55Z (#7294): the code half of staging is done; the rest is dashboard settings only Misho can make
 
