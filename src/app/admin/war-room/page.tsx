@@ -31,6 +31,8 @@ type Card = {
   sent_message_id?: number | null;
   sent_by?: string | null;
   sent_at?: string | null;
+  // The text that actually went: his edit, or the draft as written.
+  sent_text?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -200,7 +202,7 @@ function CardView({ card, onChange }: { card: Card; onChange: (c: Card) => void 
           <p className="text-xs text-green-700">
             გაგზავნილია{card.sent_by ? `: ${card.sent_by}` : ""}{card.sent_at ? ` · ${fmtRelative(card.sent_at)}` : ""}
           </p>
-          {card.draft && <p className="mt-1 whitespace-pre-wrap text-sm text-[#23261F]">{card.draft}</p>}
+          {card.sent_text && <p className="mt-1 whitespace-pre-wrap text-sm text-[#23261F]">{card.sent_text}</p>}
         </div>
       )}
 
