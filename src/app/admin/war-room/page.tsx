@@ -7,8 +7,9 @@ import { fmtRelative } from "@/lib/date";
 
 // #7591 WAR ROOM, step 3 (founder, 23 Oct). Netai finds the people the team
 // should act on (the server builds the cards on every GET); the founder reads
-// each brief and leaves an instruction, or holds or drops the card. Drafts
-// and sending (steps 5-6) come later and only add fields to the card.
+// each brief and leaves an instruction, or holds or drops the card. Step 5
+// adds a draft (written from the chat for now), step 6 sends it on his yes,
+// as written or as he edited it (D881).
 
 type Kind = "new_joiner" | "unanswered_reply" | "stuck_goal" | "tech_error";
 type Status = "new" | "instructed" | "drafted" | "approved" | "sent" | "held" | "dropped";
@@ -24,6 +25,12 @@ type Card = {
   instruction: string | null;
   instruction_by: string | null;
   instruction_at: string | null;
+  draft?: string | null;
+  draft_by?: string | null;
+  draft_at?: string | null;
+  sent_message_id?: number | null;
+  sent_by?: string | null;
+  sent_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -54,9 +61,10 @@ const STATUS_LABEL: Record<Status, string> = {
   dropped: "მოხსნილი",
 };
 
-const FILTERS: (Status | "all")[] = ["all", "new", "instructed", "held", "dropped"];
+const FILTERS: (Status | "all")[] = ["all", "new", "instructed", "drafted", "sent", "held", "dropped"];
 
 const MAX_INSTRUCTION = 2000;
+const MAX_DRAFT = 4000;
 
 function errText(err: unknown): string {
   return err instanceof ApiError ? err.message : "შენახვა ვერ მოხერხდა";
@@ -105,6 +113,9 @@ function CardView({ card, onChange }: { card: Card; onChange: (c: Card) => void 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showThreads, setShowThreads] = useState(false);
+  // The draft as he edits it. Sending without a text sends the stored draft,
+  // so an unedited draft goes as Netai wrote it and an edit goes as his.
+  const [text, setText] = useState(card.draft ?? "");
 
   async function patch(body: { instruction?: string; status?: Status }) {
     setSaving(true);
@@ -123,7 +134,27 @@ function CardView({ card, onChange }: { card: Card; onChange: (c: Card) => void 
     }
   }
 
+  async function send() {
+    setSaving(true);
+    setError(null);
+    try {
+      const edited = text.trim() !== (card.draft ?? "").trim();
+      const res = await apiFetch<{ data: { card: Card } }>(`/admin/war-room/cards/${card.id}/send`, {
+        method: "POST",
+        body: edited ? { text: text.trim() } : {},
+        admin: true,
+      });
+      onChange(res.data.card);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "გაგზავნა ვერ მოხერხდა");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const trimmed = draft.trim();
+  const sent = card.status === "sent";
+  const hasDraft = !!card.draft;
   const unchanged = trimmed === (card.instruction ?? "").trim();
   const { brief } = card;
 
@@ -164,7 +195,39 @@ function CardView({ card, onChange }: { card: Card; onChange: (c: Card) => void 
       </button>
       {showThreads && <div className="mt-2"><UserThreads userId={card.user_id} /></div>}
 
-      <div className="mt-4 flex flex-col gap-2">
+      {sent && (
+        <div className="mt-4 rounded-xl bg-green-50 px-3 py-2">
+          <p className="text-xs text-green-700">
+            გაგზავნილია{card.sent_by ? `: ${card.sent_by}` : ""}{card.sent_at ? ` · ${fmtRelative(card.sent_at)}` : ""}
+          </p>
+          {card.draft && <p className="mt-1 whitespace-pre-wrap text-sm text-[#23261F]">{card.draft}</p>}
+        </div>
+      )}
+
+      {hasDraft && !sent && (
+        <div className="mt-4 flex flex-col gap-2 rounded-xl border border-[#3E7A56]/30 bg-[#3E7A56]/5 p-3">
+          <p className="text-xs text-gray-500">
+            მონახაზი{card.draft_by ? `: ${card.draft_by}` : ""}{card.draft_at ? ` · ${fmtRelative(card.draft_at)}` : ""}
+          </p>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            maxLength={MAX_DRAFT}
+            rows={4}
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-base outline-none focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
+          />
+          <button
+            type="button"
+            disabled={saving || text.trim().length === 0}
+            onClick={send}
+            className="self-start rounded-xl bg-[#3E7A56] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+          >
+            {text.trim() !== (card.draft ?? "").trim() ? "შესწორებულის გაგზავნა" : "დამტკიცება და გაგზავნა"}
+          </button>
+        </div>
+      )}
+
+      {!sent && <div className="mt-4 flex flex-col gap-2">
         {card.instruction && card.instruction_at && (
           <p className="text-xs text-gray-400">
             მითითება: {card.instruction_by ?? "—"} · {fmtRelative(card.instruction_at)}
@@ -211,7 +274,7 @@ function CardView({ card, onChange }: { card: Card; onChange: (c: Card) => void 
           )}
           <span className="ml-auto text-[11px] text-gray-300">{draft.length}/{MAX_INSTRUCTION}</span>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
