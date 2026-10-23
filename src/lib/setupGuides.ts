@@ -1,4 +1,5 @@
 import type { Gadget, Step } from "@/lib/setup";
+import { API_HOST } from "@/lib/hosts";
 
 // #6139 / task 1882 (backend 20 Oct 19:10Z, Misho's three cleaned zips). The
 // onboarding pictures ship with the app until the server's GET
@@ -110,7 +111,11 @@ const SETS: Record<GuideSet, readonly (readonly [string, string])[]> = {
 };
 
 export function guideShots(set: GuideSet): GuideShot[] {
-  return SETS[set].map(([file, caption]) => ({ src: `/setup-guides/${set}/${file}.webp`, caption }));
+  // The captions name the live server; a staging build names its own (#7294).
+  return SETS[set].map(([file, caption]) => ({
+    src: `/setup-guides/${set}/${file}.webp`,
+    caption: caption.replaceAll("api.netai.guru", API_HOST),
+  }));
 }
 
 // Which bundled sets a card offers, by the backend's table. More than one

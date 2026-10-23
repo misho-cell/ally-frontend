@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { getLocale } from "@/lib/i18n";
 import { copyText, fetchInvite, shareInvite, type Invite } from "@/lib/invite";
-
-const SITE_URL = "https://netai.guru";
+import { siteUrl } from "@/lib/hosts";
 
 // Referral Rewards. Copy per Lika's approved strings (task 22 c): Georgian
 // translation live, buttons exactly „დაკოპირება“ / „მოიწვიე მეგობარი“ with a
@@ -46,7 +45,7 @@ const L = {
 export function inviteShareText(code: string | null): string {
   return (
     `Hey! I'm using Netai, an assistant that works your own network to get things done. Join me:\n\n` +
-    `1. Open ${SITE_URL} and sign in with your phone number\n` +
+    `1. Open ${siteUrl()} and sign in with your phone number\n` +
     (code ? `2. On the sign-up step, enter my referral code: ${code}\n\n` : `\n`) +
     `That's it, see you inside!`
   );

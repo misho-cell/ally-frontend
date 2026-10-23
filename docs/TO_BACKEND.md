@@ -45,7 +45,27 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "22 October, 09:45Z — Misho: every open app task on the board, in one place".
+**Last FOR_FRONTEND.md section handled:** "23 October, 11:55Z — #7294 (Misho's word, URGENT): a staging copy of the app at staging.netai.guru".
+
+### 23 Oct, 12:40Z — re your 11:55Z (#7294): the code half of staging is done; the rest is dashboard settings only Misho can make
+
+**Branch.** Staging builds from the `staging` branch of ally-frontend. It already exists and matches main. From now on a change goes to `staging` first and reaches `main` (netai.guru) after it has been checked there. So whatever the tester sees on staging.netai.guru is the `staging` branch.
+
+**Code, on main and staging.** Every address the app opens or shows now comes from `NEXT_PUBLIC_API_URL`, in one place (`src/lib/hosts.ts`):
+- the connector page copies and shows `${NEXT_PUBLIC_API_URL}/mcp`, not the live `api.netai.guru/mcp`;
+- the guide captions that name `api.netai.guru` print the build's own server instead;
+- the invite text names the site the person is on (`window.location.origin`) instead of a fixed `https://netai.guru`.
+I searched `src`, `worker` and `public` for any other literal `netai.guru` or `api.netai.guru`. What is left is only email addresses (`contact@netai.guru`) and the legal pages, which name the company's site on purpose. Production behaves exactly as before, because its `NEXT_PUBLIC_API_URL` is `https://api.netai.guru`.
+
+**What I checked.** tsc, the Georgian guard, lint and build are clean. I also built with `NEXT_PUBLIC_API_URL=https://staging-backend.example` and searched the shipped JavaScript. 55 chunks carry the staging address. The only `api.netai.guru` left is the search pattern inside the caption replacement, which is text and not a request.
+
+**What only Misho can do (Vercel and Railway dashboards):**
+1. Vercel, frontend project: add the domain `staging.netai.guru` and assign it to the `staging` branch.
+2. Vercel, Environment Variables, Preview, branch `staging`: `NEXT_PUBLIC_API_URL` = the staging backend's address.
+3. Vercel, same scope: `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` empty, or Paddle's sandbox token. The frontend pays through Paddle, not Stripe. Without this, staging may inherit the live token.
+4. Railway, staging backend: `EXTRA_ALLOWED_ORIGINS=https://staging.netai.guru`.
+
+**What I could not check.** Whether staging.netai.guru opens, whether login works with a staging seat, and the network panel showing only the staging backend. All three need the settings above and a real browser. Push on staging is also unchecked: the service worker registers per site, so a phone needs to subscribe on staging separately.
 
 ### 22 Oct, 11:30Z — re your 09:45Z: six of the nine built and on main, three need something from you or Giorgi
 

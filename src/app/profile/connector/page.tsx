@@ -5,13 +5,12 @@ import SheetPage from "@/components/SheetPage";
 import { apiFetch } from "@/lib/api";
 import { getLocale } from "@/lib/i18n";
 import { isRecord, unwrapData } from "@/lib/payload";
+import { MCP_URL } from "@/lib/hosts";
 
 // 13 Oct, FIXED2: the design lists „Netai in Claude" among the account pages,
 // so the guide that was a fold-out card on the profile is a page of its own.
 // The words and the steps are the same ones the card carried. No API is
 // involved beyond the „connected" line, which only a `connected: true` draws.
-
-const MCP_URL = "https://api.netai.guru/mcp";
 
 const L = {
   en: {
