@@ -27,6 +27,13 @@ const L = {
     empty: "No contacts found",
     failed: "Could not load",
     retry: "Try again",
+    add: "Add a contact",
+    addName: "Name",
+    addPhone: "Phone number",
+    addSave: "Add",
+    added: "Added",
+    already: "Already in your contacts",
+    addFailed: "Could not add",
   },
   ka: {
     title: "ჩემი კონტაქტები",
@@ -39,8 +46,97 @@ const L = {
     empty: "კონტაქტი ვერ მოიძებნა",
     failed: "ვერ ჩაიტვირთა",
     retry: "თავიდან",
+    add: "კონტაქტის დამატება",
+    addName: "სახელი",
+    addPhone: "ტელეფონის ნომერი",
+    addSave: "დამატება",
+    added: "დაემატა",
+    already: "უკვე გაქვს კონტაქტებში",
+    addFailed: "ვერ დაემატა",
   },
 };
+
+// #374, way (3): one person typed in by hand, through the phonebook import
+// route with a single contact (backend 24 Oct 08:00Z). The server wants the
+// number with its +, as the upload sends it; a Georgian mobile typed the
+// local way (599 12 34 56) is given its +995 here.
+function normalizePhone(raw: string): string {
+  const t = raw.replace(/[\s\-().]/g, "");
+  if (t.startsWith("+")) return t;
+  if (t.startsWith("00")) return `+${t.slice(2)}`;
+  if (/^995\d{9}$/.test(t)) return `+${t}`;
+  if (/^5\d{8}$/.test(t)) return `+995${t}`;
+  return t;
+}
+
+type AddResult = "added" | "already" | "failed";
+
+function AddContact({ onAdded }: { onAdded: () => void }) {
+  const s = L[getLocale()];
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<AddResult | null>(null);
+
+  async function save() {
+    setBusy(true);
+    setResult(null);
+    try {
+      const raw = await apiFetch<unknown>("/contacts/import", {
+        method: "POST",
+        body: { contacts: [{ name: name.trim(), phones: [normalizePhone(phone)] }] },
+      });
+      const d = unwrapData(raw);
+      // imported and skipped are two different facts: new, or already there.
+      const imported = isRecord(d) && typeof d.imported === "number" ? d.imported : 0;
+      const skipped = isRecord(d) && typeof d.skipped === "number" ? d.skipped : 0;
+      if (imported > 0) {
+        setResult("added");
+        setName("");
+        setPhone("");
+        onAdded();
+      } else {
+        setResult(skipped > 0 ? "already" : "failed");
+      }
+    } catch {
+      setResult("failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return <button type="button" className="nx-btn" onClick={() => setOpen(true)}>{s.add}</button>;
+  }
+  return (
+    <div className="nx-card" style={{ width: "100%" }}>
+      <label className="nx-field">
+        {s.addName}
+        <input value={name} autoComplete="off" onChange={(e) => { setName(e.target.value); setResult(null); }} />
+      </label>
+      <label className="nx-field">
+        {s.addPhone}
+        <input type="tel" dir="ltr" inputMode="tel" value={phone} autoComplete="off" onChange={(e) => { setPhone(e.target.value); setResult(null); }} />
+      </label>
+      <div className="nx-row" style={{ marginTop: 0 }}>
+        <button
+          type="button"
+          className="nx-btn"
+          disabled={busy || !name.trim() || normalizePhone(phone).replace(/\D/g, "").length < 6}
+          onClick={save}
+        >
+          {busy ? "…" : s.addSave}
+        </button>
+        {result && (
+          <p className="nx-note" style={result === "failed" ? { color: "var(--danger)" } : undefined}>
+            {result === "added" ? s.added : result === "already" ? s.already : s.addFailed}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 type Row = { id: string; name: string | null; phone: string | null; onNetai: boolean };
 
@@ -109,6 +205,7 @@ export default function ContactsPage() {
           button, people settings, has no page yet. */}
       <div className="nx-row" style={{ marginTop: 0 }}>
         <Link href="/onboarding/contacts?from=profile" className="nx-btn">{s.update}</Link>
+        <AddContact onAdded={() => setNonce((n) => n + 1)} />
       </div>
       {/* 16px (in .nx-field): a smaller focused field makes iOS Safari zoom the page. */}
       <label className="nx-field" style={{ marginBottom: 0 }}>
