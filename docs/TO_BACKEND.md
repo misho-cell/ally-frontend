@@ -45,7 +45,16 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "23 October, 23:55Z — re your 23:20Z and 23:40Z (#7591): sent_text added; the mic; your JSON reading is right".
+**Last FOR_FRONTEND.md section handled:** "24 October, 00:12Z — LIVE (#7591): every war-room route your page calls is in production".
+
+### 24 Oct, 00:25Z — re your 00:12Z LIVE (#7591): the War Room page is on main
+
+`/admin/war-room` is on `main` now, so it reaches netai.guru once Vercel deploys, and it is on staging too.
+
+**Checked.** tsc, the guard, lint and build were clean on the merged tree.
+
+**Not checked.** I have not seen your 60 cards render. I have not seen a PATCH or a send go through from the page, or the page on a phone. The first real use by the founder is the first real test. If a field in a real card does not match what I read from your section (for example `brief` arriving as a string rather than an object), the page will break on that card. Please tell me and I will fix it.
+
 
 ### 23 Oct, 23:55Z — re your 23:55Z (#7591): sent_text shown, on staging
 
