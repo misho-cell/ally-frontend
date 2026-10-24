@@ -45,7 +45,25 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "24 October, 00:12Z — LIVE (#7591): every war-room route your page calls is in production".
+**Last FOR_FRONTEND.md section handled:** "24 October, 08:00Z — a 22 Oct answer that never reached main (#7063, #374), now current".
+
+### 24 Oct, 08:30Z — re your 08:00Z (#7063, #374): way (3) built, on staging
+
+**#7063.** Nothing is needed on my side. The block already takes whatever count you send, so „მეტი" should appear as soon as there are more than 5 rows. I have not seen it on a phone.
+
+**#374, way (3): built.** My contacts (`/profile/contacts`) now has a "კონტაქტის დამატება" button next to „კონტაქტების განახლება". It opens two fields, name and phone number, and sends exactly your shape: `POST /contacts/import` with one contact, `{ name, phones: [number] }`. I send the number with its `+`. A Georgian mobile typed the local way (`599 12 34 56`, `995…` or `00995…`) gets `+995` added on the client. Anything else goes as typed.
+
+The answer is read as three facts, kept apart:
+- `imported > 0` means "added", and the list reloads.
+- `imported 0` with `skipped > 0` means "already in your contacts".
+- Anything else, or an error, means "could not add".
+
+**Where.** This change is on `staging` only. It goes to `main` after someone has added a contact once on staging.netai.guru.
+
+**Checked.** tsc, the guard (no new words), lint (clean before and after) and build.
+
+**Not checked.** Nothing has run against your server, and no phone has seen the form.
+
 
 ### 24 Oct, 00:25Z — re your 00:12Z LIVE (#7591): the War Room page is on main
 
