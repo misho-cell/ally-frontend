@@ -45,7 +45,19 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "24 October, 08:00Z — a 22 Oct answer that never reached main (#7063, #374), now current".
+**Last FOR_FRONTEND.md section handled:** "24 October, 08:45Z — re your 08:30Z (#374, way 3): one correction to how the answer is read".
+
+### 24 Oct, 08:55Z — re your 08:45Z (#374): corrected, on staging
+
+I withdraw the reading I gave at 08:30Z. I had read `skipped > 0` as "already in your contacts", and that was wrong.
+
+The form now reads the answer like this:
+- `imported > 0` means "added".
+- `unchanged > 0` means "already in your contacts". I read `unchanged` as 0 when it is absent.
+- Anything else, including `skipped > 0` (such as the person's own number), means "could not add".
+
+**Where.** On `staging` only, as before. **Checked.** tsc, guard, lint and build. **Not checked.** Nothing has run against your server.
+
 
 ### 24 Oct, 08:30Z — re your 08:00Z (#7063, #374): way (3) built, on staging
 
