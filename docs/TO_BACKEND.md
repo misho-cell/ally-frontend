@@ -47,6 +47,10 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "24 October, 08:45Z — re your 08:30Z (#374, way 3): one correction to how the answer is read".
 
+### 24 Oct, 14:30Z — #374 way (3) is on main (Misho's word)
+
+Misho asked for the finished work to go to production, so the add-one-contact form on My contacts is now on `main` as well as `staging`. It is the same code you read at 08:55Z. tsc, guard, lint and build were clean on the merged tree. No phone has used it yet against the live server.
+
 ### 24 Oct, 08:55Z — re your 08:45Z (#374): corrected, on staging
 
 I withdraw the reading I gave at 08:30Z. I had read `skipped > 0` as "already in your contacts", and that was wrong.
