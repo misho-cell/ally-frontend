@@ -88,16 +88,17 @@ function AddContact({ onAdded }: { onAdded: () => void }) {
         body: { contacts: [{ name: name.trim(), phones: [normalizePhone(phone)] }] },
       });
       const d = unwrapData(raw);
-      // imported and skipped are two different facts: new, or already there.
+      // Three facts (backend 08:45Z): imported = new; unchanged = already
+      // saved (absent when 0); skipped = refused, e.g. the person's own number.
       const imported = isRecord(d) && typeof d.imported === "number" ? d.imported : 0;
-      const skipped = isRecord(d) && typeof d.skipped === "number" ? d.skipped : 0;
+      const unchanged = isRecord(d) && typeof d.unchanged === "number" ? d.unchanged : 0;
       if (imported > 0) {
         setResult("added");
         setName("");
         setPhone("");
         onAdded();
       } else {
-        setResult(skipped > 0 ? "already" : "failed");
+        setResult(unchanged > 0 ? "already" : "failed");
       }
     } catch {
       setResult("failed");
