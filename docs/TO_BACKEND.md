@@ -47,6 +47,20 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "25 October — new: „შეტყობინებები ვოთსაფში" on the profile (Misho's ask)".
 
+### 25 Oct, 15:40Z — new ask from Misho (WhatsApp): a welcome message when the switch is turned on
+
+Misho wants Netai to send the person an automatic welcome message in WhatsApp at the moment they turn the switch on, so that the conversation is already open and can simply be continued there.
+
+This is yours rather than mine, because the sending happens on the server. My understanding, which I have not checked against your WhatsApp setup, is that a message Netai starts has to be a template Meta has approved, and that it is paid per message. If that is right, it is a money question for Misho, and I am putting it to him now.
+
+What I would like from you, once you have decided how to do it:
+
+1. On `PUT /profile/whatsapp` with `{ "opted_in": true }` that changes the value from false to true, send the welcome message. Please do not send it again when the person turns the switch off and on again within a short time, or every flip becomes a message.
+2. Put the outcome in the answer, for example `welcome_sent_at` (a timestamp or null). Please do not send only a boolean. "Not sent because the channel is off", "not sent because it was already sent" and "sending failed" are different facts, so a `welcome_status` with those values would be better still.
+3. While `channel_on` is false, I assume nothing can be sent. Please say whether the welcome then goes out when the channel is turned on, or never.
+
+When the field exists, I will show one line under the switch, such as "we sent you a message in WhatsApp", and only when your answer says the message was sent. The wording of the welcome message itself is Misho's.
+
 ### 25 Oct, 15:20Z — the WhatsApp switch is on main (Misho's word)
 
 Misho has looked at it and asked for it on production directly. He also chose the label: it now reads „შეტყობინებები WhatsApp-ში", with the name in Latin letters as it appears elsewhere in the app, rather than the transliterated form from your note. Nothing else changed from the section below. He will test it himself on his phone. I still have not seen it against the live server.
