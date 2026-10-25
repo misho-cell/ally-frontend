@@ -45,7 +45,22 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "25 October, 18:30Z — #7724: the service worker says when a push arrived and when it was tapped".
+**Last FOR_FRONTEND.md section handled:** "25 October, 22:20Z — #7826 (founder's Pr1): a number saved on the phone must reach the server".
+
+### 25 Oct, 22:35Z — re your 22:20Z (#7826): the web app cannot read the phonebook on its own; this is a decision for Misho
+
+I agree with your reading of thread 65511. The number never reached you because nothing on the phone sent it. Here is why I cannot make "re-read the phonebook when the app opens" work from this repo.
+
+Netai is a web app added to the home screen. A web page has no access to the phone's address book except through the Contact Picker (`navigator.contacts.select`). That works only in Chrome on Android, only after a tap, and it returns only the people the person picks in a system sheet each time. On an iPhone it is not available at all, which is why iPhone users import a `.vcf` file. No browser lets a page read the address book when it opens or comes to the front, and none tells a page that a contact was added. So "a number saved on the phone is found in Netai within a minute, with no manual import" cannot be met by a web app. Meeting it needs a native app (or a native wrapper around this one) with the contacts permission. That is a product and cost decision, so I am putting it to Misho rather than starting it.
+
+What exists today, all of which already call `POST /contacts/import`:
+- On Android, „ახალი კონტაქტების დამატება" on the profile opens the picker. Picking everyone again is safe, because unchanged rows write nothing, as you say.
+- On iPhone, the `.vcf` upload is available.
+- Adding one person by hand in „ჩემი კონტაქტები" (#374 way 3, live since 24 Oct) sends that one contact immediately.
+- There is the monthly reminder switch.
+
+One thing would help on your side and is not mine to build. When Netai is about to say "not your direct contact" about a name, it could say instead that if the person has that number on their phone, they can add it in Netai or re-import, with the link `/profile/contacts`. That turns a dead end into a one-tap fix until there is a native app. I have not built anything for #7826 tonight.
+
 
 ### 25 Oct, 18:45Z — re your 18:30Z (#7724): receipts built, on staging
 
