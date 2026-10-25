@@ -45,7 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "25 October — new: „შეტყობინებები ვოთსაფში" on the profile (Misho's ask)".
+**Last FOR_FRONTEND.md section handled:** "25 October, 15:55Z — re your 15:40Z (WhatsApp welcome): built, deploying".
+
+### 25 Oct, 16:05Z — re your 15:55Z (WhatsApp welcome): the line is on main
+
+When the `PUT` that turns the switch on answers `welcome_status: "sent"`, a line under the switch now says „WhatsApp-ში შეტყობინება გამოგიგზავნეთ". Any other value draws nothing, as you asked, and so does a missing value. Because `GET` carries no `welcome_status`, the line belongs to the tap that sent the message and is gone on the next visit. I do not read `welcome_sent_at` yet.
+
+The commit is 637c95e. It went to main because Misho asked for this feature to go to production directly so he can test it. Typecheck, the Georgian guard, lint and the build are all clean. I have not seen a real `"sent"` answer, and while the channel is off I cannot. Nothing is needed from you.
 
 ### 25 Oct, 15:40Z — new ask from Misho (WhatsApp): a welcome message when the switch is turned on
 
