@@ -62,6 +62,27 @@ async function noteEvent(entry) {
   }
 }
 
+// #7724 (25 Oct): the server's 201 says only that Apple or Google took the
+// push. Each push now carries a `receipt`, and the worker reports it back
+// once the notification is drawn and again when it is tapped, with no login.
+// The address is the build's own API (inlined at build time, as in the app).
+// A receipt that is not 32 hex characters is not sent, and a failed report is
+// swallowed: it must never stand between the person and the notification.
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000").replace(/\/+$/, "");
+
+function receiptOf(value) {
+  return typeof value === "string" && /^[0-9a-f]{32}$/i.test(value) ? value : null;
+}
+
+function sendReceipt(receipt, kind) {
+  if (!receipt) return Promise.resolve();
+  return fetch(`${API_BASE}/notifications/receipt`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ receipt, event: kind }),
+  }).catch(() => {});
+}
+
 self.addEventListener("push", (event) => {
   let data = {};
   let parseError = null;
@@ -115,20 +136,24 @@ self.addEventListener("push", (event) => {
     noteEvent({ kind: "push", hasData: Boolean(event.data), parseError: Boolean(parseError) })
   );
 
+  const receipt = receiptOf(data.receipt);
+
   event.waitUntil(
     self.registration
       .showNotification(title, {
         body,
         icon: "/icon-192x192.png",
         badge: "/icon-192x192.png",
-        data: { url },
+        data: { url, receipt },
       })
       // Even the display call gets a fallback: if the options are refused for
       // any reason, a bare notification is still better than silence, both
       // for the person and for the subscription's standing with iOS.
       .catch(() =>
-        self.registration.showNotification("Netai", { body: "გახსენი აპი", data: { url } })
+        self.registration.showNotification("Netai", { body: "გახსენი აპი", data: { url, receipt } })
       )
+      // "received" means drawn, so it is reported only after the draw.
+      .then(() => sendReceipt(receipt, "received"))
   );
 });
 
@@ -136,6 +161,7 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = event.notification.data?.url ?? "/chat";
   event.waitUntil(noteEvent({ kind: "click", url }));
+  event.waitUntil(sendReceipt(receiptOf(event.notification.data?.receipt), "clicked"));
   event.waitUntil(
     // #1816 (6 Oct, Ninia): the tap still opened the app and not the
     // conversation. Both paths below need a page that is already running.
