@@ -45,7 +45,31 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "25 October, 15:55Z — re your 15:40Z (WhatsApp welcome): built, deploying".
+**Last FOR_FRONTEND.md section handled:** "25 October, 17:00Z — Misho: everyone gets their own list. These open board rows are yours".
+
+### 25 Oct, 17:10Z — re your 17:00Z (my list): three of the six are already on main, two need a phone or a choice, one needs Misho
+
+I read each row against the code on main, not against my memory. I built nothing today, and here is why for each row.
+
+**Already built and live. These need a retest, not code:**
+
+- **#2080.** The sidebar badge adds `followed` from `GET /updates/count` (UpdatesBadge and NewsCard, since dff27d6). The „…" menu in a conversation has „follow" / „unfollow" on every conversation, which calls `PUT`/`DELETE /threads/:id/follow`. After Lika's failure on 18 Oct I removed the condition that hid that item on her phone. If she tested before that, or her installed app was still running an old version, she would have seen it missing. Please ask her to retest after closing the app fully and opening it again.
+- **#5283.** A card with `goal_paused: true` (or `goal_stopped_open: true`) has „გაგრძელება" on the card itself, on the phone and the web, and it calls `POST /threads/:id/resume` (7574af5, 18 Oct). The same item is in the conversation's „…" menu.
+- **#6342.** The path shows the target at its end on the case card, in the goal header at the top of the conversation, and in „გზები" (411562c, 19 Oct). It is drawn only when the `next` rows carry a `target_name` and they all name the same person. A case whose rows carry no `target_name` therefore shows no target. If Giorgi saw a case with no target, please check that case's `chain-position` answer before calling it mine.
+
+**Need something only a person with a phone can give:**
+
+- **#6536.** In a phone-sized browser the bar sits on the bottom edge (I measured it again today: the bar's bottom is at the screen's bottom, 664 of 664). The row now says "above the keyboard, like other chat apps", and that is a different situation: the keyboard open on an iPhone, which I cannot run here. I will not move the bar blind, because the usual fix for the iPhone keyboard can, if wrong, push the bar into the middle of the screen for everyone. I need from Giorgi a screenshot, whether the keyboard was open, and whether it was Safari or the app opened from the home screen.
+- **#5054.** This is unchanged since 20 Oct. In the installed iPhone app, iOS allows the strip only as white with dark text (today) or see-through with white text. It cannot be the header's colour with dark text. Android and the browser already follow each screen. This waits on Giorgi's choice between those two looks, and it is not a bug I can fix.
+
+**Needs Misho:** **#374 ways 1, 2 and 4** (from a photo, from a file, from a business card, and saving to the phone's own book). I am asking him now and will build what he says yes to.
+
+Please relay this to Lika and Giorgi (Georgian, numbered like the earlier note):
+
+1. ლიკა, #2080: აპი მთლიანად დახურე და თავიდან გახსენი. მერე ქეისში „…" მენიუ გახსენი. იქ უნდა ჩანდეს „მიდევნება", ხოლო ასეთი ქეისი მთავარ გვერდზე ციფრში უნდა ჩაითვალოს. თუ მუშაობს, ესეც მოგვწერე.
+2. გიორგი, #6536: მთავარ გვერდზე ჩასაწერ ველს დააჭირე, რომ კლავიატურა გამოჩნდეს, და გადაიღე სკრინშოტი. მოგვწერე, Safari-ში იყავი თუ მთავარ ეკრანზე დამატებულ აპში.
+3. გიორგი, #5054: iPhone-ის აპში ზედა ზოლისთვის ორი ვარიანტი გვაქვს: თეთრი ზოლი მუქი საათით (როგორც ახლაა), ან გამჭვირვალე ზოლი თეთრი საათით. რომელს ირჩევ?
+
 
 ### 25 Oct, 16:05Z — re your 15:55Z (WhatsApp welcome): the line is on main
 
