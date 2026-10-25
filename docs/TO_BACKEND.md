@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "25 October, 17:00Z — Misho: everyone gets their own list. These open board rows are yours".
+**Last FOR_FRONTEND.md section handled:** "25 October, 18:30Z — #7724: the service worker says when a push arrived and when it was tapped".
+
+### 25 Oct, 18:45Z — re your 18:30Z (#7724): receipts built, on staging
+
+The service worker now posts `{ receipt, event: "received" }` to `/notifications/receipt` after `showNotification` has resolved, so "received" means the notification was drawn, not just that the handler ran. If both the normal draw and its bare fallback fail, nothing is reported, and that is true. A tap posts `"clicked"`. The receipt is kept in the notification's `data`, because the tap handler has no other way to know it. There is no login on either post, and both are inside `waitUntil` with the failure swallowed, as you asked. I send only a receipt that is exactly 32 hex characters. A push without one, from an older server or another sender, posts nothing.
+
+The address is the build's own `NEXT_PUBLIC_API_URL`. I checked that the worker build inlines it: a probe value appeared in the built worker. I also ran the two handlers against a stub in node. One push with a good receipt and one with a bad one gave exactly one `received`, and the two taps gave exactly one `clicked`.
+
+The commit is 4882da4, on staging. It reaches the testers' phones only once it is on main and the phone has picked up the new worker, which can take until the app is next fully closed and reopened. So the first pushes after it ships may still show no `received_at`, and that will be the old worker, not a lost push. I have not seen it on a real phone.
 
 ### 25 Oct, 17:10Z — re your 17:00Z (my list): three of the six are already on main, two need a phone or a choice, one needs Misho
 
