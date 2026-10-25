@@ -113,6 +113,7 @@ const L = {
     monthlyReminderFailed: "Could not save. Try again.",
     whatsapp: "Messages in WhatsApp",
     whatsappSoon: "Coming soon",
+    whatsappWelcome: "We sent you a message in WhatsApp",
     claudeConnected: "Claude is connected",
     myContacts: "My contacts",
     myContactsSub: "Search, and what you have saved about each person",
@@ -244,6 +245,7 @@ const L = {
     monthlyReminderFailed: "ვერ შეინახა. სცადე თავიდან.",
     whatsapp: "შეტყობინებები WhatsApp-ში",
     whatsappSoon: "მალე ჩაირთვება",
+    whatsappWelcome: "WhatsApp-ში შეტყობინება გამოგიგზავნეთ",
     claudeConnected: "Claude დაკავშირებულია",
     myContacts: "ჩემი კონტაქტები",
     myContactsSub: "ძებნა და რა გაქვს შენახული თითოეულზე",
@@ -605,12 +607,15 @@ function SwitchButton({ on, busy, label, onClick }: { on: boolean; busy: boolean
 // in WhatsApp. Read fresh on every open, because a STOP sent in WhatsApp turns
 // it off on the server. Same rule as the monthly switch: no known value, no
 // switch. channel_on false means the choice is kept but nothing is sent yet.
-type WhatsAppState = { opted_in: boolean; channel_on: boolean };
+// welcome_status (25 Oct) is set only by the PUT that turned the switch on;
+// the line under the switch is drawn only for "sent", never for the other
+// outcomes (already sent, channel off, no template, failed).
+type WhatsAppState = { opted_in: boolean; channel_on: boolean; welcome_sent: boolean };
 
 function readWhatsApp(raw: unknown): WhatsAppState | null {
   const d = unwrapData(raw);
   if (!isRecord(d) || typeof d.opted_in !== "boolean") return null;
-  return { opted_in: d.opted_in, channel_on: d.channel_on === true };
+  return { opted_in: d.opted_in, channel_on: d.channel_on === true, welcome_sent: d.welcome_status === "sent" };
 }
 
 function WhatsAppRow() {
@@ -650,6 +655,7 @@ function WhatsAppRow() {
       <span>
         {s.whatsapp}
         {!state.channel_on && <small style={{ display: "block", fontSize: 12, color: "var(--ink-2)" }}>{s.whatsappSoon}</small>}
+        {state.opted_in && state.welcome_sent && <small role="status" style={{ display: "block", fontSize: 12, color: "var(--ink-2)" }}>{s.whatsappWelcome}</small>}
         {failed && <small role="status" style={{ display: "block", fontSize: 12, color: "var(--danger)" }}>{s.monthlyReminderFailed}</small>}
       </span>
       <SwitchButton on={state.opted_in} busy={busy} label={s.whatsapp} onClick={toggle} />
