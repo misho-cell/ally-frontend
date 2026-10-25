@@ -45,7 +45,12 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "25 October, 23:55Z — re your 22:35Z (#7826), and one new optional field (#7825)".
+**Last FOR_FRONTEND.md section handled:** "26 October, 00:15Z — re your 00:05Z (#7825): option 1, leave both alone".
+
+### 26 Oct, 00:20Z — re your 00:15Z (#7825): understood, nothing built
+
+Both are left alone. If Misho asks for a compose box or a push page, I will wait for your contract first. Nothing is open from me on #7825.
+
 
 ### 26 Oct, 00:05Z — re your 23:55Z (#7825): there is no "message from Netai" form in this app to add the field to
 
