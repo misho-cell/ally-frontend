@@ -111,6 +111,8 @@ const L = {
     lastImport: (d: string, n: number) => `Last upload ${d}, ${n} contacts`,
     monthlyReminder: "Monthly reminder",
     monthlyReminderFailed: "Could not save. Try again.",
+    whatsapp: "Messages in WhatsApp",
+    whatsappSoon: "Coming soon",
     claudeConnected: "Claude is connected",
     myContacts: "My contacts",
     myContactsSub: "Search, and what you have saved about each person",
@@ -240,6 +242,8 @@ const L = {
     lastImport: (d: string, n: number) => `ბოლო ატვირთვა ${d}, ${n} კონტაქტი`,
     monthlyReminder: "თვიური შეხსენება",
     monthlyReminderFailed: "ვერ შეინახა. სცადე თავიდან.",
+    whatsapp: "შეტყობინებები ვოთსაფში",
+    whatsappSoon: "მალე ჩაირთვება",
     claudeConnected: "Claude დაკავშირებულია",
     myContacts: "ჩემი კონტაქტები",
     myContactsSub: "ძებნა და რა გაქვს შენახული თითოეულზე",
@@ -572,21 +576,83 @@ function MonthlyReminderRow() {
         {s.monthlyReminder}
         {failed && <small role="status" style={{ display: "block", fontSize: 12, color: "var(--danger)" }}>{s.monthlyReminderFailed}</small>}
       </span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        aria-label={s.monthlyReminder}
-        disabled={busy}
-        onClick={toggle}
-        className="relative shrink-0 rounded-full transition-colors"
-        style={{ width: 44, height: 26, background: on ? "var(--accent)" : "var(--skeleton)", opacity: busy ? 0.6 : 1 }}
-      >
-        <span
-          className="absolute rounded-full bg-white transition-all"
-          style={{ top: 3, left: on ? 21 : 3, width: 20, height: 20, boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }}
-        />
-      </button>
+      <SwitchButton on={on} busy={busy} label={s.monthlyReminder} onClick={toggle} />
+    </div>
+  );
+}
+
+function SwitchButton({ on, busy, label, onClick }: { on: boolean; busy: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      disabled={busy}
+      onClick={onClick}
+      className="relative shrink-0 rounded-full transition-colors"
+      style={{ width: 44, height: 26, background: on ? "var(--accent)" : "var(--skeleton)", opacity: busy ? 0.6 : 1 }}
+    >
+      <span
+        className="absolute rounded-full bg-white transition-all"
+        style={{ top: 3, left: on ? 21 : 3, width: 20, height: 20, boxShadow: "0 1px 2px rgba(0,0,0,0.2)" }}
+      />
+    </button>
+  );
+}
+
+// 25 Oct (GET/PUT /profile/whatsapp): whether Netai may write to this person
+// in WhatsApp. Read fresh on every open, because a STOP sent in WhatsApp turns
+// it off on the server. Same rule as the monthly switch: no known value, no
+// switch. channel_on false means the choice is kept but nothing is sent yet.
+type WhatsAppState = { opted_in: boolean; channel_on: boolean };
+
+function readWhatsApp(raw: unknown): WhatsAppState | null {
+  const d = unwrapData(raw);
+  if (!isRecord(d) || typeof d.opted_in !== "boolean") return null;
+  return { opted_in: d.opted_in, channel_on: d.channel_on === true };
+}
+
+function WhatsAppRow() {
+  const s = useStrings();
+  const [state, setState] = useState<WhatsAppState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    apiFetch<unknown>("/profile/whatsapp")
+      .then((raw) => {
+        const w = readWhatsApp(raw);
+        if (alive && w) setState(w);
+      })
+      .catch(() => { /* no switch */ });
+    return () => { alive = false; };
+  }, []);
+  if (!state) return null;
+
+  async function toggle() {
+    if (busy || !state) return;
+    setBusy(true);
+    setFailed(false);
+    try {
+      const w = readWhatsApp(await apiFetch<unknown>("/profile/whatsapp", { method: "PUT", body: { opted_in: !state.opted_in } }));
+      if (w) setState(w);
+      else setFailed(true);
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="pd-switch-row">
+      <span>
+        {s.whatsapp}
+        {!state.channel_on && <small style={{ display: "block", fontSize: 12, color: "var(--ink-2)" }}>{s.whatsappSoon}</small>}
+        {failed && <small role="status" style={{ display: "block", fontSize: 12, color: "var(--danger)" }}>{s.monthlyReminderFailed}</small>}
+      </span>
+      <SwitchButton on={state.opted_in} busy={busy} label={s.whatsapp} onClick={toggle} />
     </div>
   );
 }
@@ -1261,6 +1327,7 @@ export default function ProfilePage() {
             <h2 className="pd-group">{s.grpSettings}</h2>
             <section className="pd-section">
               <NotificationsCard />
+              <WhatsAppRow />
             </section>
 
             <Section title={s.langTitle} small={s.langSmall}>
