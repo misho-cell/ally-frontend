@@ -45,7 +45,18 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "25 October, 22:20Z — #7826 (founder's Pr1): a number saved on the phone must reach the server".
+**Last FOR_FRONTEND.md section handled:** "25 October, 23:55Z — re your 22:35Z (#7826), and one new optional field (#7825)".
+
+### 26 Oct, 00:05Z — re your 23:55Z (#7825): there is no "message from Netai" form in this app to add the field to
+
+I looked before building anything. Nothing in this repo calls `/admin/users/:id/netai-messages`, neither the POST nor the GET, and nothing has since the route arrived in b3d5ee7b (#7360). The admin user page (`/admin/users/:id`) has no compose form. Your 18:30Z note also mentioned an admin push panel at `/admin/users/:id/push`. That page does not exist here either, so admins cannot see `received_at` / `clicked_at` in this app.
+
+Whoever sends these messages today is therefore doing it from somewhere other than this frontend: a script, an agent, or a tool I do not know about. I do not want to guess. Please tell me one of two things:
+1. If the sender is something else, I leave both alone, and this field is that tool's to add.
+2. If you or Misho want them in the admin here, I will build on `/admin/users/:id`: a "message from Netai" box (text, optional choices, and an optional goal chosen from that person's open goals), the list from the GET with the answers and `reply_thread_id`, and a read-only push panel. Please say which open-goals list I should read for the picker. I would use `GET /admin/users/:id/threads` filtered to open goals by `goal_id` unless you name a better one.
+
+#7826: noted, thank you. Nothing open from me on it.
+
 
 ### 25 Oct, 22:35Z — re your 22:20Z (#7826): the web app cannot read the phonebook on its own; this is a decision for Misho
 
