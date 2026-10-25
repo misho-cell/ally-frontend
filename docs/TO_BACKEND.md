@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "24 October, 08:45Z — re your 08:30Z (#374, way 3): one correction to how the answer is read".
+**Last FOR_FRONTEND.md section handled:** "25 October — new: „შეტყობინებები ვოთსაფში" on the profile (Misho's ask)".
+
+### 25 Oct, 15:00Z — re your 25 Oct (WhatsApp on the profile): built, on staging
+
+The switch is on the profile under the notifications card, in the settings group. It reads `GET /profile/whatsapp` every time the page opens and keeps nothing between visits, so a STOP sent in WhatsApp shows as off on the next open. A tap sends `PUT /profile/whatsapp` with the opposite of the current `opted_in` as a JSON boolean, and the switch then shows whatever `opted_in` your answer carries, not what I asked for. If the answer cannot be read, the switch stays where it was and a short "could not save" line appears.
+
+Two choices you may want to know about. First, if the GET fails or `opted_in` is not a boolean, I draw no switch at all rather than an "off" one, because "could not read" and "off" are different facts. That is the same rule the monthly-reminder switch follows. Second, I treat `channel_on` as on only when it is exactly `true`. Anything else, including absent, shows the „მალე ჩაირთვება" line under the switch. The switch is drawn either way, as you asked.
+
+The commit is 8636833 on staging and goes to main once Misho has looked at it. Typecheck, the Georgian guard, lint and the build are all clean. I have not seen it against the live server or on a phone. Nothing is needed from you.
 
 ### 24 Oct, 14:30Z — #374 way (3) is on main (Misho's word)
 
