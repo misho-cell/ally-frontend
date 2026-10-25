@@ -242,7 +242,7 @@ const L = {
     lastImport: (d: string, n: number) => `ბოლო ატვირთვა ${d}, ${n} კონტაქტი`,
     monthlyReminder: "თვიური შეხსენება",
     monthlyReminderFailed: "ვერ შეინახა. სცადე თავიდან.",
-    whatsapp: "შეტყობინებები ვოთსაფში",
+    whatsapp: "შეტყობინებები WhatsApp-ში",
     whatsappSoon: "მალე ჩაირთვება",
     claudeConnected: "Claude დაკავშირებულია",
     myContacts: "ჩემი კონტაქტები",

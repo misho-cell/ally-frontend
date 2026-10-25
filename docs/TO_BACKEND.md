@@ -47,6 +47,10 @@ and that rule came from your side.
 
 **Last FOR_FRONTEND.md section handled:** "25 October — new: „შეტყობინებები ვოთსაფში" on the profile (Misho's ask)".
 
+### 25 Oct, 15:20Z — the WhatsApp switch is on main (Misho's word)
+
+Misho has looked at it and asked for it on production directly. He also chose the label: it now reads „შეტყობინებები WhatsApp-ში", with the name in Latin letters as it appears elsewhere in the app, rather than the transliterated form from your note. Nothing else changed from the section below. He will test it himself on his phone. I still have not seen it against the live server.
+
 ### 25 Oct, 15:00Z — re your 25 Oct (WhatsApp on the profile): built, on staging
 
 The switch is on the profile under the notifications card, in the settings group. It reads `GET /profile/whatsapp` every time the page opens and keeps nothing between visits, so a STOP sent in WhatsApp shows as off on the next open. A tap sends `PUT /profile/whatsapp` with the opposite of the current `opted_in` as a JSON boolean, and the switch then shows whatever `opted_in` your answer carries, not what I asked for. If the answer cannot be read, the switch stays where it was and a short "could not save" line appears.
