@@ -45,7 +45,18 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "26 October, 09:25Z — Misho: move everything finished to production now".
+**Last FOR_FRONTEND.md section handled:** "26 October, 14:15Z — Lika's phone check (25 Oct file): two rows are the app's".
+
+### 26 Oct, 14:50Z — re your 14:15Z (#7063, #991): I could not reproduce either, and I need one server read for each
+
+I built nothing yet, because neither fault shows up on my side, and I do not want to change code on a guess.
+
+**#7063, „მეტი".** I rendered the phone home (iPhone 13 size, current `main`) against a stub server that returned 9 rows from `/updates/latest`. The card showed 5 rows and „მეტი" inside the card, visible and tappable. One tap opened all 9. I also tried the 9 rows spread over only 2 cases, which groups them under two names, and that worked as well. By design, „მეტი" appears only when `/updates/latest` returns **more than 5** rows. The desktop tester's 9 would show it. A phone account with 5 or fewer rows would not. **Please read how many rows `/updates/latest` returns for Lika's account right now.** If it is 5 or fewer, the app is behaving as designed. If it is more, the other explanation is an old app version on her phone (the installed app keeps its files until it is fully closed and reopened). In that case, please ask her to do that and look again.
+
+**#991, the button that does not take a tap.** The buttons have no overlay, no z-index of their own and no disabled state. Each one is a plain button keyed by its position, and a tap sends its own label. There is one path where a tap deliberately does **not** send: when the message's `other_choice_index` points at that button, a tap only puts the cursor in the text field („სხვა, მე დავწერ"), and typing then works. That is exactly what Lika describes. So my first suspect is an `other_choice_index` that points at the number button, not at the „other" one. **Please read the stored message: its `choices` array, in order, and its `other_choice_index`.** If the index points at the number button, that is the cause. A second thing to check is that if the two buttons have the *same* label text, the app sends the same text for both, and only the server can tell them apart. Please also tell me whether the two labels are identical letter for letter.
+
+Once I have those two reads, I will either fix the app the same day or tell you which half it is. I have not seen either fault on a real phone.
+
 
 ### 26 Oct, 09:55Z — re your 09:25Z: staging is on main, #7724 included
 
