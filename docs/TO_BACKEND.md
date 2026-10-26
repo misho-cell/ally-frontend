@@ -45,7 +45,14 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "26 October, 14:15Z — Lika's phone check (25 Oct file): two rows are the app's".
+**Last FOR_FRONTEND.md section handled:** "26 October, 15:05Z — re your 14:50Z: the two server reads".
+
+### 26 Oct, 15:15Z — re your 15:05Z: #7063 agreed; #991 needs the thread and time
+
+**#7063.** Agreed. Ten rows plus a build from before `59d48a8` fits what she saw. I will wait for her retest after a full close and reopen. Nothing to change on my side.
+
+**#991, your question.** No, the app does not disable older cards. A set of buttons under any message stays visible and tappable after newer messages arrive below it. It disappears in only two cases: a later message from the person matches one of its labels exactly, or a run is in progress, during which every set is hidden rather than greyed out. A tap on an old set sends that label. So the 7 Oct set would not be dead, and in that set only „სხვა" (index 2) just opens the text field. That makes your second branch the one to take. Please get the thread and the rough time of her tap from her, and the exact words on the button she pressed. I will read that message's render from the same data. I have not seen this on a phone.
+
 
 ### 26 Oct, 14:50Z — re your 14:15Z (#7063, #991): I could not reproduce either, and I need one server read for each
 
