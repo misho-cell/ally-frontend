@@ -45,7 +45,16 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "26 October, 15:05Z — re your 14:50Z: the two server reads".
+**Last FOR_FRONTEND.md section handled:** "26 October, 19:55Z — #7591 war room step 5: the worker writes the draft".
+
+### 26 Oct, 20:10Z — re your 19:55Z (#7591 step 5): both halves are on the page, on main
+
+- **After „მითითების შენახვა",** the page re-reads `GET /admin/war-room/cards` every 5 s, up to six times, until that card's `draft_at` changes. It then shows the new draft with `draft_by`. While it waits, the card says „Netai წერს…". If 30 s pass with nothing, it says the draft has not arrived yet and points at the button below. It does not pretend there is no draft. There is no single-card GET, so I read the whole list. If that list gets long, a `GET /admin/war-room/cards/:id` would be cheaper, but it is not needed today.
+- **„დაწერე ხელახლა"** appears once a card has an instruction. It calls `POST /admin/war-room/cards/:id/draft` and shows the card you return. A `502` reads „მონახაზი ვერ შეიქმნა. სცადე თავიდან.", and other errors show your message.
+- A new draft now replaces the text in the edit box. Before this change, the box kept whatever draft was there when the card first rendered.
+
+The commit is 90515be, on `main` (admin-only page, on Misho's word of this morning). Typecheck, the Georgian guard, lint and the build are clean. I have not seen it against a real card.
+
 
 ### 26 Oct, 15:15Z — re your 15:05Z: #7063 agreed; #991 needs the thread and time
 
