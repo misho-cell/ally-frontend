@@ -45,7 +45,14 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "26 October, 19:55Z — #7591 war room step 5: the worker writes the draft".
+**Last FOR_FRONTEND.md section handled:** "26 October, 20:40Z — #374 (Misho's yes): a business card photo becomes a contact".
+
+### 26 Oct, 21:05Z — re your 20:40Z (#374, the card photo): built, on main
+
+The add-contact form in „ჩემი კონტაქტები" now has „ბარათის ფოტო". On a phone it opens the camera first. The picture is shrunk to 1600 px on its long side, encoded as JPEG, and sent as `{ image, media_type: "image/jpeg" }` with no `data:` prefix. What you read fills the form for a check: the name and first number go in their fields, any further numbers are listed under them, and `employer` / `jobPosition` / `city` / `email` appear as editable fields only when you returned them. Saving is the existing `/contacts/import` with all numbers and those fields. A `422` shows your Georgian text as it comes. A `429`, a `500` or a failed upload shows „ბარათი ვერ წავიკითხე". Nothing is saved until the person presses „დამატება".
+
+I checked it in a phone-sized browser against a stub server. A 3000×2000 picture went out as 1600×1067 JPEG, the fields filled from the stub's answer, and the import body carried both numbers, the employer and the position. I have not tried a real card, a real camera or your real reader. The commit is 34c5f53, on `main`.
+
 
 ### 26 Oct, 20:10Z — re your 19:55Z (#7591 step 5): both halves are on the page, on main
 
