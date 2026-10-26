@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { apiFetch, ApiError } from "@/lib/api";
 import { fmtRelative } from "@/lib/date";
@@ -110,25 +110,61 @@ function UserThreads({ userId }: { userId: number }) {
   );
 }
 
+// Step 5 (backend 26 Oct 19:55Z): saving an instruction sets a worker writing
+// the draft, which lands a few seconds later. There is no single-card read, so
+// the list is read again until this card's draft_at moves, for about half a
+// minute. Waiting that runs out says so; it never looks like "no draft".
+const DRAFT_POLL_MS = 5000;
+const DRAFT_POLL_TRIES = 6;
+
+async function readCard(id: number): Promise<Card | null> {
+  const res = await apiFetch<{ data: Card[] }>("/admin/war-room/cards", { admin: true });
+  return (res.data ?? []).find((c) => c.id === id) ?? null;
+}
+
 function CardView({ card, onChange }: { card: Card; onChange: (c: Card) => void }) {
   const [draft, setDraft] = useState(card.instruction ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showThreads, setShowThreads] = useState(false);
-  // The draft as he edits it. Sending without a text sends the stored draft,
-  // so an unedited draft goes as Netai wrote it and an edit goes as his.
-  const [text, setText] = useState(card.draft ?? "");
+  // "writing" while the worker's draft is awaited; "late" once the wait ran out.
+  const [writing, setWriting] = useState<"no" | "writing" | "late">("no");
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => { alive.current = false; };
+  }, []);
+
+  async function awaitDraft(before: string | null | undefined) {
+    setWriting("writing");
+    for (let i = 0; i < DRAFT_POLL_TRIES; i++) {
+      await new Promise((r) => setTimeout(r, DRAFT_POLL_MS));
+      if (!alive.current) return;
+      try {
+        const c = await readCard(card.id);
+        if (!alive.current) return;
+        if (c && c.draft && c.draft_at !== before) {
+          onChange(c);
+          setWriting("no");
+          return;
+        }
+      } catch { /* try again on the next tick */ }
+    }
+    if (alive.current) setWriting("late");
+  }
 
   async function patch(body: { instruction?: string; status?: Status }) {
     setSaving(true);
     setError(null);
     try {
+      const before = card.draft_at;
       const res = await apiFetch<{ data: Card }>(`/admin/war-room/cards/${card.id}`, {
         method: "PATCH",
         body,
         admin: true,
       });
       onChange(res.data);
+      if (body.instruction !== undefined) void awaitDraft(before);
     } catch (err) {
       setError(errText(err));
     } finally {
@@ -136,19 +172,20 @@ function CardView({ card, onChange }: { card: Card; onChange: (c: Card) => void 
     }
   }
 
-  async function send() {
+  async function redraft() {
     setSaving(true);
     setError(null);
+    setWriting("writing");
     try {
-      const edited = text.trim() !== (card.draft ?? "").trim();
-      const res = await apiFetch<{ data: { card: Card } }>(`/admin/war-room/cards/${card.id}/send`, {
+      const res = await apiFetch<{ data: Card }>(`/admin/war-room/cards/${card.id}/draft`, {
         method: "POST",
-        body: edited ? { text: text.trim() } : {},
         admin: true,
       });
-      onChange(res.data.card);
+      onChange(res.data);
+      setWriting("no");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "გაგზავნა ვერ მოხერხდა");
+      setWriting("no");
+      setError(err instanceof ApiError && err.status === 502 ? "მონახაზი ვერ შეიქმნა. სცადე თავიდან." : errText(err));
     } finally {
       setSaving(false);
     }
@@ -206,27 +243,14 @@ function CardView({ card, onChange }: { card: Card; onChange: (c: Card) => void 
         </div>
       )}
 
+      {/* Keyed by the draft's time, so a new draft from the worker replaces
+          the text in the box instead of leaving the old one there. */}
       {hasDraft && !sent && (
-        <div className="mt-4 flex flex-col gap-2 rounded-xl border border-[#3E7A56]/30 bg-[#3E7A56]/5 p-3">
-          <p className="text-xs text-gray-500">
-            მონახაზი{card.draft_by ? `: ${card.draft_by}` : ""}{card.draft_at ? ` · ${fmtRelative(card.draft_at)}` : ""}
-          </p>
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            maxLength={MAX_DRAFT}
-            rows={4}
-            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-base outline-none focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
-          />
-          <button
-            type="button"
-            disabled={saving || text.trim().length === 0}
-            onClick={send}
-            className="self-start rounded-xl bg-[#3E7A56] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
-          >
-            {text.trim() !== (card.draft ?? "").trim() ? "შესწორებულის გაგზავნა" : "დამტკიცება და გაგზავნა"}
-          </button>
-        </div>
+        <DraftBlock key={card.draft_at ?? card.draft ?? ""} card={card} onChange={onChange} busy={saving || writing === "writing"} />
+      )}
+      {!sent && writing === "writing" && <p className="mt-3 text-xs text-gray-500">Netai წერს…</p>}
+      {!sent && writing === "late" && (
+        <p className="mt-3 text-xs text-gray-500">{"მონახაზი ჯერ არ მოვიდა. სცადე „დაწერე ხელახლა“."}</p>
       )}
 
       {!sent && <div className="mt-4 flex flex-col gap-2">
@@ -254,6 +278,16 @@ function CardView({ card, onChange }: { card: Card; onChange: (c: Card) => void 
           >
             მითითების შენახვა
           </button>
+          {card.instruction && (
+            <button
+              type="button"
+              disabled={saving || writing === "writing"}
+              onClick={redraft}
+              className="rounded-xl border border-[#3E7A56]/40 px-4 py-2 text-sm text-[#3E7A56] hover:bg-[#3E7A56]/5 disabled:opacity-40"
+            >
+              დაწერე ხელახლა
+            </button>
+          )}
           {card.status !== "held" && (
             <button
               type="button"
@@ -277,6 +311,56 @@ function CardView({ card, onChange }: { card: Card; onChange: (c: Card) => void 
           <span className="ml-auto text-[11px] text-gray-300">{draft.length}/{MAX_INSTRUCTION}</span>
         </div>
       </div>}
+    </div>
+  );
+}
+
+// The draft as he edits it. Sending without a text sends the stored draft,
+// so an unedited draft goes as Netai wrote it and an edit goes as his.
+function DraftBlock({ card, onChange, busy }: { card: Card; onChange: (c: Card) => void; busy: boolean }) {
+  const [text, setText] = useState(card.draft ?? "");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send() {
+    setSending(true);
+    setError(null);
+    try {
+      const edited = text.trim() !== (card.draft ?? "").trim();
+      const res = await apiFetch<{ data: { card: Card } }>(`/admin/war-room/cards/${card.id}/send`, {
+        method: "POST",
+        body: edited ? { text: text.trim() } : {},
+        admin: true,
+      });
+      onChange(res.data.card);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "გაგზავნა ვერ მოხერხდა");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 flex flex-col gap-2 rounded-xl border border-[#3E7A56]/30 bg-[#3E7A56]/5 p-3">
+      <p className="text-xs text-gray-500">
+        მონახაზი{card.draft_by ? `: ${card.draft_by}` : ""}{card.draft_at ? ` · ${fmtRelative(card.draft_at)}` : ""}
+      </p>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        maxLength={MAX_DRAFT}
+        rows={4}
+        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-base outline-none focus:border-[#3E7A56] focus:ring-2 focus:ring-[#3E7A56]/10"
+      />
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      <button
+        type="button"
+        disabled={busy || sending || text.trim().length === 0}
+        onClick={send}
+        className="self-start rounded-xl bg-[#3E7A56] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
+      >
+        {text.trim() !== (card.draft ?? "").trim() ? "შესწორებულის გაგზავნა" : "დამტკიცება და გაგზავნა"}
+      </button>
     </div>
   );
 }
