@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import SheetPage from "@/components/SheetPage";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 import { getLocale } from "@/lib/i18n";
 import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 
@@ -34,6 +34,13 @@ const L = {
     added: "Added",
     already: "Already in your contacts",
     addFailed: "Could not add",
+    cardPhoto: "Photo of a card",
+    cardFailed: "Could not read the card",
+    employer: "Employer",
+    job: "Position",
+    city: "City",
+    email: "Email",
+    morePhones: "Other numbers",
   },
   ka: {
     title: "ჩემი კონტაქტები",
@@ -53,6 +60,13 @@ const L = {
     added: "დაემატა",
     already: "უკვე გაქვს კონტაქტებში",
     addFailed: "ვერ დაემატა",
+    cardPhoto: "ბარათის ფოტო",
+    cardFailed: "ბარათი ვერ წავიკითხე",
+    employer: "სამსახური",
+    job: "თანამდებობა",
+    city: "ქალაქი",
+    email: "Email",
+    morePhones: "სხვა ნომრები",
   },
 };
 
@@ -71,6 +85,31 @@ function normalizePhone(raw: string): string {
 
 type AddResult = "added" | "already" | "failed";
 
+// #374 (Misho's yes, backend 26 Oct 20:40Z): a photo of a business card is
+// read by the server and only read. What it found fills the form for a check,
+// and saving goes through the same import as typing a person in. The picture
+// is shrunk on the phone first, to about 1600 px on its long side.
+type CardExtras = { employer: string; jobPosition: string; city: string; email: string; morePhones: string[] };
+const NO_EXTRAS: CardExtras = { employer: "", jobPosition: "", city: "", email: "", morePhones: [] };
+const CARD_MAX_PX = 1600;
+
+async function cardToBase64(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, CARD_MAX_PX / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("no canvas");
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return canvas.toDataURL("image/jpeg", 0.85).replace(/^data:[^,]*,/, "");
+}
+
+function str(v: unknown): string {
+  return typeof v === "string" ? v.trim() : "";
+}
+
 function AddContact({ onAdded }: { onAdded: () => void }) {
   const s = L[getLocale()];
   const [open, setOpen] = useState(false);
@@ -78,6 +117,40 @@ function AddContact({ onAdded }: { onAdded: () => void }) {
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<AddResult | null>(null);
+  const [extras, setExtras] = useState<CardExtras>(NO_EXTRAS);
+  const [reading, setReading] = useState(false);
+  // The server's own Georgian text for a card with no name or number (422),
+  // or the plain "could not read" for anything else.
+  const [cardError, setCardError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function readCard(file: File) {
+    setReading(true);
+    setCardError(null);
+    setResult(null);
+    try {
+      const image = await cardToBase64(file);
+      const d = unwrapData(await apiFetch<unknown>("/contacts/card-read", {
+        method: "POST",
+        body: { image, media_type: "image/jpeg" },
+      }));
+      if (!isRecord(d)) throw new Error("bad answer");
+      const phones = Array.isArray(d.phones) ? d.phones.map(str).filter(Boolean) : [];
+      setName(str(d.name));
+      setPhone(phones[0] ?? "");
+      setExtras({
+        employer: str(d.employer),
+        jobPosition: str(d.jobPosition),
+        city: str(d.city),
+        email: str(d.email),
+        morePhones: phones.slice(1),
+      });
+    } catch (err) {
+      setCardError(err instanceof ApiError && err.status === 422 && err.message ? err.message : s.cardFailed);
+    } finally {
+      setReading(false);
+    }
+  }
 
   async function save() {
     setBusy(true);
@@ -85,7 +158,16 @@ function AddContact({ onAdded }: { onAdded: () => void }) {
     try {
       const raw = await apiFetch<unknown>("/contacts/import", {
         method: "POST",
-        body: { contacts: [{ name: name.trim(), phones: [normalizePhone(phone)] }] },
+        body: {
+          contacts: [{
+            name: name.trim(),
+            phones: [normalizePhone(phone), ...extras.morePhones.map(normalizePhone)],
+            ...(extras.employer.trim() ? { employer: extras.employer.trim() } : {}),
+            ...(extras.jobPosition.trim() ? { jobPosition: extras.jobPosition.trim() } : {}),
+            ...(extras.city.trim() ? { city: extras.city.trim() } : {}),
+            ...(extras.email.trim() ? { email: extras.email.trim() } : {}),
+          }],
+        },
       });
       const d = unwrapData(raw);
       // Three facts (backend 08:45Z): imported = new; unchanged = already
@@ -96,6 +178,7 @@ function AddContact({ onAdded }: { onAdded: () => void }) {
         setResult("added");
         setName("");
         setPhone("");
+        setExtras(NO_EXTRAS);
         onAdded();
       } else {
         setResult(unchanged > 0 ? "already" : "failed");
@@ -112,6 +195,24 @@ function AddContact({ onAdded }: { onAdded: () => void }) {
   }
   return (
     <div className="nx-card" style={{ width: "100%" }}>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) void readCard(f);
+        }}
+      />
+      <div className="nx-row" style={{ marginTop: 0 }}>
+        <button type="button" className="nx-btn" disabled={reading || busy} onClick={() => fileRef.current?.click()}>
+          {reading ? "…" : s.cardPhoto}
+        </button>
+        {cardError && <p className="nx-note" style={{ color: "var(--danger)" }}>{cardError}</p>}
+      </div>
       <label className="nx-field">
         {s.addName}
         <input value={name} autoComplete="off" onChange={(e) => { setName(e.target.value); setResult(null); }} />
@@ -120,6 +221,18 @@ function AddContact({ onAdded }: { onAdded: () => void }) {
         {s.addPhone}
         <input type="tel" dir="ltr" inputMode="tel" value={phone} autoComplete="off" onChange={(e) => { setPhone(e.target.value); setResult(null); }} />
       </label>
+      {/* Only what the card printed is shown, and each stays editable. */}
+      {extras.morePhones.length > 0 && (
+        <p className="nx-note" dir="ltr">{s.morePhones}: {extras.morePhones.join(", ")}</p>
+      )}
+      {([["employer", s.employer], ["jobPosition", s.job], ["city", s.city], ["email", s.email]] as const).map(([k, label]) =>
+        extras[k] ? (
+          <label key={k} className="nx-field">
+            {label}
+            <input value={extras[k]} autoComplete="off" onChange={(e) => setExtras((x) => ({ ...x, [k]: e.target.value }))} />
+          </label>
+        ) : null,
+      )}
       <div className="nx-row" style={{ marginTop: 0 }}>
         <button
           type="button"
