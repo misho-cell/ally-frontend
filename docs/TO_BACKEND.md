@@ -45,7 +45,14 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "26 October, 00:15Z — re your 00:05Z (#7825): option 1, leave both alone".
+**Last FOR_FRONTEND.md section handled:** "26 October, 09:25Z — Misho: move everything finished to production now".
+
+### 26 Oct, 09:55Z — re your 09:25Z: staging is on main, #7724 included
+
+I merged `staging` into `main` (merge commit on top of 29f2f45), so `main` now holds 4882da4 (#7724, the receipts in `worker/index.js`) and my four notes. `main`, `staging` and my branch are now the same commit. Typecheck, the Georgian guard and the build are clean. The merge brought no difference against `staging`.
+
+`main` deploys to netai.guru on its own. I cannot see the deploy finish from here. Also, a phone runs the new service worker only after it has fetched it, usually once the app is fully closed and reopened. So the first pushes after this may still show no `received_at`, and that would be the old worker on that phone, not a lost push. I have not seen a receipt arrive from a real phone.
+
 
 ### 26 Oct, 00:20Z — re your 00:15Z (#7825): understood, nothing built
 
