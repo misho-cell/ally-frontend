@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { t, tf } from "@/lib/i18n";
 import { apiFetch } from "@/lib/api";
@@ -35,6 +35,9 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
   // #5382 (Giorgi): „more" opens the same updates in full inside the card,
   // and closes them again. It no longer leaves the home screen.
   const [full, setFull] = useState(false);
+  // #7063 (27 Oct, Giorgi G-186): whether the folded rows are cut by the
+  // card's height. Only then is there anything for „მეტი" to open.
+  const [cut, setCut] = useState(false);
   useEffect(() => {
     let alive = true;
     void (async () => {
@@ -64,12 +67,12 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
   if (count == null) return null;
   const story = lines.length > 0 ? lines.join(" ") : tf("homeNewsCount", { n: count });
   const extra = due > lines.length && lines.length > 0 ? ` +${due - lines.length}` : "";
-  // #7063 (Giorgi): the block shows its first few rows; only when there is
-  // more than that does „მეტი" appear, opening the rest in place and folding
-  // it back. How many updates there are is the server's (GET /updates/latest).
-  const all = latest && latest.length > 0 ? latest : null;
-  const longer = all !== null && all.length > HOME_ROWS;
-  const rows = all && !full ? all.slice(0, HOME_ROWS) : all;
+  // #7063 (27 Oct, backend 08:10Z): the server sends the last three updates.
+  // Folded, the block is four or five lines tall; „მეტი" appears only when
+  // that cuts something off, and opens the same rows in full in place. It
+  // never fetches more. How many there are is the server's.
+  const rows = latest && latest.length > 0 ? latest : null;
+  const longer = full || cut;
 
   if (variant === "phone") {
     return (
@@ -84,7 +87,7 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
               <b>{t("homeNewsTitle")}</b>
               {count > 0 && <span className="dz-rnew"><i />{tf("newsNew", { n: count })}</span>}
             </div>
-            <LatestRows rows={rows} full={full} />
+            <LatestRows rows={rows} full={full} onCut={setCut} />
             {longer && (
               <button type="button" className="dz-more" aria-expanded={full} onClick={() => setFull((v) => !v)}>{t("homeNewsMore")} <DzIcon name={full ? "up" : "down"} size={11} /></button>
             )}
@@ -111,7 +114,7 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
             <span>{t("homeNewsTitle")}</span>
             {count > 0 && <span className="dz-new-badge">{count}</span>}
           </div>
-          <LatestRows rows={rows} full={full} />
+          <LatestRows rows={rows} full={full} onCut={setCut} />
           {longer && (
             <button type="button" className="dz-news-more" aria-expanded={full} onClick={() => setFull((v) => !v)}>{t("homeNewsMore")} <DzIcon name={full ? "up" : "down"} size={11} /></button>
           )}
@@ -130,8 +133,6 @@ export default function NewsCard({ variant, className = "", style }: { variant: 
 }
 
 
-// #7063: rows on home before „მეტი".
-const HOME_ROWS = 5;
 
 type Latest = { ref: string; threadId: string | null; caseTitle: string | null; title: string; detail: string; line: string };
 
@@ -201,9 +202,19 @@ function RowLink({ href, className, children }: { href: string | null; className
 // update reads on one line; a case with more draws its name once and each
 // update under it. Drawn from the parts rather than from `line`, which joins
 // them with a dash.
-function LatestRows({ rows, full }: { rows: Latest[]; full: boolean }) {
+function LatestRows({ rows, full, onCut }: { rows: Latest[]; full: boolean; onCut: (cut: boolean) => void }) {
+  // Measured, not guessed: the folded list is cut by its CSS height, and only
+  // the browser knows whether these words on this screen fill it.
+  const ref = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || full) return;
+    const ro = new ResizeObserver(() => onCut(el.scrollHeight > el.clientHeight + 1));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [full, rows, onCut]);
   return (
-    <ul className={full ? "dz-latest full" : "dz-latest"}>
+    <ul ref={ref} className={full ? "dz-latest full" : "dz-latest"}>
       {groupLatest(rows).map((g) => {
         const href = g.threadId ? `/chat/${encodeURIComponent(g.threadId)}` : null;
         if (g.rows.length === 1) {

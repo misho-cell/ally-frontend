@@ -817,6 +817,8 @@ html.nx-chat-lock body { position: fixed; inset: 0; width: 100%; }
    clamped to the old short length. */
 .dz-latest a, .dz-latest span { display: block; overflow-wrap: anywhere; font: 400 12.5px/19px var(--font-system); color: var(--text-2); text-decoration: none; }
 .dz-latest b { font-weight: 600; color: var(--ink); }
+/* #7063 (27 Oct): folded, the block is five lines tall at most. */
+.dz-latest:not(.full) { max-height: calc(19px * 5 + 8px); overflow: hidden; }
 .dz-latest .grp .sub { padding-left: 10px; border-left: 2px solid var(--accent-tint); }
 /* #5382: opened in place, every update reads in full. */
 .dz-latest.full a, .dz-latest.full span, .dz-latest.full .grp .sub { display: block; -webkit-line-clamp: unset; overflow: visible; }
@@ -1057,6 +1059,10 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
   .pd { min-height: 0; max-width: 480px; margin: 32px auto; border: 1px solid var(--nx-line); border-radius: 20px; overflow: hidden; box-shadow: 0 8px 24px rgba(36,59,54,.14); }
 }
 .pd-head { padding: 14px 18px 0; background: var(--bg); position: sticky; top: 0; z-index: 2; }
+.pd-close { position: sticky; top: 0; z-index: 3; height: 0; display: flex; justify-content: flex-end; padding: 0 18px; }
+.pd-close .nx-icon { margin-top: 17px; }
+/* Room for the corner X beside the first line of whatever comes first. */
+.pd-top-steps .pd-group:first-child, .pd-identity { padding-right: 44px; }
 .pd-head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--nx-line); }
 .pd-identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .pd-avatar { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; background: var(--accent-tint); color: var(--accent); font: 700 16px/1 var(--font-system); overflow: hidden; padding: 0; border: 0; cursor: pointer; }

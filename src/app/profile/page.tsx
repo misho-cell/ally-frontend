@@ -1185,6 +1185,16 @@ export default function ProfilePage() {
 
   return (
     <div className="pd">
+      {/* #7987 (Giorgi G-184, 27 Oct): the way home is the page's top corner,
+          not a part of the title row. With setup steps above the title, the
+          row and its X sat halfway down the page and read as missing. The
+          holder takes no height, so the X sits where the title row's was
+          and stays there while the page scrolls. */}
+      <div className="pd-close">
+        <Link href="/chat" className="nx-icon" aria-label={s.close} title={s.close}>
+          <DzIcon name="x" size={16} />
+        </Link>
+      </div>
       {/* #6701 (Giorgi, retested 21 Oct): the setup steps not done yet come
           first of all, above the profile's own title. */}
       {profile && (
@@ -1222,9 +1232,6 @@ export default function ProfilePage() {
               <small>{s.personal}</small>
             </span>
           </div>
-          <Link href="/chat" className="nx-icon" aria-label={s.close} title={s.close}>
-            <DzIcon name="x" size={16} />
-          </Link>
         </div>
       </div>
 
