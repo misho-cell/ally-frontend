@@ -422,6 +422,9 @@ export default function ThreadPage() {
   const balanceRef = useRef<number | null>(null);
   const anchorRef = useRef<number | null>(null);
   const loadingOlderRef = useRef(false);
+  // #8119: when this chat's last run_complete arrived, so a read that was
+  // already in flight cannot put a finished run back on screen.
+  const runCompletedAtRef = useRef(0);
   const lastIdRef = useRef<string | null>(null);
   const firstPaintRef = useRef(true);
   const msgCountRef = useRef(0);
@@ -1306,6 +1309,7 @@ export default function ThreadPage() {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const onDone = (e: Event) => {
       if (String((e as CustomEvent<{ threadId?: string }>).detail?.threadId) !== threadId) return;
+      runCompletedAtRef.current = Date.now();
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         fetchMessagePage(threadId)
@@ -1348,12 +1352,23 @@ export default function ThreadPage() {
           if (!cancelled) setLoadPhase((p) => (p === "loading" ? "slow" : p));
         }, 8000);
 
+    const askedAt = Date.now();
     fetchMessagePage(threadId)
       .then((page) => {
         if (cancelled || !page) return;
+        // #8119 (27 Oct). Coming back to a chat whose run is still going
+        // showed no working state: `loading` is set by pressing send, and the
+        // reconnect clears it on purpose (row 250.3). The server now says
+        // whether a run holds the chat. A run that ended after this read was
+        // asked for must not be revived by the read's older answer.
+        const runLive = page.runActive === true && runCompletedAtRef.current < askedAt;
         setThreadStates((prev) =>
           updateThreadState(prev, threadId, (ts) => ({
             ...ts,
+            ...(runLive && !ts.loading ? { loading: true } : null),
+            // Only a working state this read put up is taken down by it. One
+            // with a runId came from send, and its own run_complete ends it.
+            ...(page.runActive === false && ts.loading && ts.runId == null ? { loading: false, progress: null } : null),
             messages: mergeMessages(page.messages, ts.messages),
             loaded: true,
             hasMoreOlder: page.paged && page.messages.length >= PAGE_SIZE,

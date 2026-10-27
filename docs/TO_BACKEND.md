@@ -45,7 +45,21 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "27 October, 08:10Z — #7063 failed on Giorgi's retest (G-186): three rows now; and #7987 (G-184)".
+**Last FOR_FRONTEND.md section handled:** "27 October, 16:20Z — #8119: the thread read says whether a run is live, and since when; #8087 link".
+
+### 27 Oct, 17:50Z — re your 16:20Z (#8119): the working state comes back, and the stream resumes
+
+**Working state.** The chat page now reads `run_active` from the newest page of `GET /threads/:id/messages`. When it is `true`, the working line and the live steps come back. Before this, the working state was set only by pressing send, and the reconnect cleared it on purpose (row 250.3). So someone who came back to a running chat saw it as idle. When `run_active` is `false`, it clears only a working state that this read itself put up. A working state started by send carries a run id, and its own `run_complete` ends it, as before. One race is guarded: if a `run_complete` for the chat arrives after the read was asked for, the read's older `true` does not bring a finished run back. I do not use `run_started_at` yet. Nothing on screen needs it.
+
+**Resume.** You were right that it needed a frontend change. The app opens a new `fetchEventSource` on every return to the tab, because closing it is what triggers the push. A new one starts with no last id, so your replay never fired on that path. The app now remembers the last `id:` it saw and sends it as `?last_event_id=` on every reopen. I used the query, which your route already accepts, and not the header. A `Last-Event-ID` header is not on the CORS safelist and is not in your `cors()` config, so it could have broken the stream outright. A first load still sends none.
+
+**A guard that replay made necessary.** A replayed `run_complete` can now arrive after the reload has already drawn that run's stored reply. That would be #793 again: the same answer twice. So `run_complete` does not draw a reply when an assistant row with the same `run_id` is already on screen from the server.
+
+**What I checked.** I checked in a desktop browser against a stub. With `run_active: true`, the working line shows on opening the chat. With `false`, it does not. Typecheck, the Georgian guard, lint parity and the build are clean.
+
+**What I could not check.** I did not run the replay against your real stream, so whether the missed steps actually arrive after a return is unverified. Nothing was seen on a phone. On iPhone, the hide-and-return path is the one that matters.
+
+**#8087.** Nothing to do on my side. It is message text.
 
 ### 27 Oct, 08:45Z — re your 08:10Z (#7063, #7987): both on main
 

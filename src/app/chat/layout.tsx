@@ -205,6 +205,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const abortRef = useRef<AbortController | null>(null);
   const sawFirstOpenRef = useRef(false);
+  const lastEventIdRef = useRef<string | null>(null);
   // FT-8 (2 Sept): ts.runId goes back to null the instant a run completes, so
   // isStaleRun() can no longer tell a genuine new run from the SAME
   // run_complete arriving twice (a reconnect replay, or the backend resending
@@ -546,7 +547,17 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       // and this stream reconnects often; a query parameter has no preflight
       // and no failure mode. The id is a random UUID naming a browser, not a
       // secret, and it is the same one sent with the subscription.
-      fetchEventSource(`${BASE_URL}/threads/stream?device_id=${encodeURIComponent(getDeviceId())}`, {
+      //
+      // #8119 (27 Oct): every reopen is a NEW fetchEventSource, which starts
+      // with no memory of the last event id, so the server could not replay
+      // what was missed while the tab was hidden. The last id seen goes in the
+      // query (the server accepts it there; a header would need CORS). A first
+      // load sends none and gets no replay, which is right: it reads the
+      // thread from the database.
+      const resume = lastEventIdRef.current
+        ? `&last_event_id=${encodeURIComponent(lastEventIdRef.current)}`
+        : "";
+      fetchEventSource(`${BASE_URL}/threads/stream?device_id=${encodeURIComponent(getDeviceId())}${resume}`, {
         headers: { Authorization: `Bearer ${getToken()}` },
         signal: ctrl.signal,
         openWhenHidden: true,
@@ -590,6 +601,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           }
         },
         onmessage(ev) {
+          if (ev.id) lastEventIdRef.current = ev.id;
           if (!ev.data) return;
           try {
             const data = JSON.parse(ev.data);
@@ -822,9 +834,16 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                       const hasChoices = Array.isArray(data.choices) && data.choices.length > 0;
                       const hasOptions = Array.isArray(data.options) && data.options.length > 0;
                       const silent = reply.trim() === "" && !hasChoices && !hasOptions;
+                      // #8119: with replay a run_complete can arrive after the
+                      // reload already drew that run's stored reply. The run
+                      // id says it is the same answer; drawing it again would
+                      // be #793 once more.
+                      const drawn = data.runId != null && ts.messages.some(
+                        (m) => !m.pending && m.kind === "message" && m.role === "assistant" && m.runId != null && String(m.runId) === String(data.runId)
+                      );
                       return {
                         ...ts,
-                        messages: silent ? ts.messages : [
+                        messages: silent || drawn ? ts.messages : [
                           ...ts.messages,
                           {
                             id: crypto.randomUUID(),

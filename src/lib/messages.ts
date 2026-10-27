@@ -31,7 +31,15 @@ export type MessagePage = {
   // server said English" are different, and only the first one may be
   // guessed at.
   language?: string;
+  // #8119: whether a run holds this chat on the server right now. Absent when
+  // the deployment does not say, which is not the same as "no run".
+  runActive?: boolean;
 };
+
+function envelopeRun(json: unknown): { runActive?: boolean } {
+  const v = (json as { run_active?: unknown } | null)?.run_active;
+  return typeof v === "boolean" ? { runActive: v } : {};
+}
 
 function envelopeLanguage(json: unknown): string | undefined {
   const v = (json as { language?: unknown } | null)?.language;
@@ -108,7 +116,7 @@ export async function fetchMessagePage(
       // `language` rides on the envelope, next to data, not on each message.
       setServerLanguage(json?.language);
       const raw = json.data ?? json;
-      return { messages: toChatMessages(raw), paged: true, ...lastChoices(raw), language: envelopeLanguage(json) };
+      return { messages: toChatMessages(raw), paged: true, ...lastChoices(raw), language: envelopeLanguage(json), ...envelopeRun(json) };
     }
     pagingSupported = false;
   }
@@ -123,5 +131,5 @@ export async function fetchMessagePage(
   const json = await res.json();
   setServerLanguage(json?.language);
   const raw = json.data ?? json;
-  return { messages: toChatMessages(raw), paged: false, ...lastChoices(raw), language: envelopeLanguage(json) };
+  return { messages: toChatMessages(raw), paged: false, ...lastChoices(raw), language: envelopeLanguage(json), ...envelopeRun(json) };
 }
