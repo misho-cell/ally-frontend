@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getLocale } from "@/lib/i18n";
 import { clearUserScopedStorage } from "@/lib/user";
 import { readSessionToken, persistSessionToken, clearSessionToken } from "@/lib/session";
-import { rememberInviteCode } from "@/lib/invite";
+import { rememberInviteCode, rememberLinkCode, readLinkCode, forgetLinkCode } from "@/lib/invite";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -275,13 +275,16 @@ export default function LoginPage() {
   // The URL's code now lives in a ref that nothing clears. It is not a second
   // source of truth: the typed field still wins when somebody types one, and
   // this is only the fallback for the value the link brought.
+  //
+  // #8185 (27 Oct): when the URL no longer has it (a reload, a new tab, the
+  // home-screen app), the code the link left on the device stands in.
   const urlRefRef = useRef<string | null>(null);
   useEffect(() => {
-    const ref = new URLSearchParams(window.location.search).get("ref");
-    if (ref) {
-      const code = ref.trim();
-      urlRefRef.current = code || null;
-      rememberInviteCode(code);
+    const fromUrl = new URLSearchParams(window.location.search).get("ref")?.trim() || null;
+    if (fromUrl) rememberLinkCode(fromUrl);
+    const code = fromUrl ?? readLinkCode();
+    if (code) {
+      urlRefRef.current = code;
       setInviteInput(code);
       setReferralInput(code);
     }
@@ -315,6 +318,9 @@ export default function LoginPage() {
     // admin/other-account session can never resurface.
     clearToken();
     persistSessionToken(token);
+    // #8185: signed in, so the link's code has done its job here. The copy
+    // kept for invite-days (#6341) stays.
+    forgetLinkCode();
   }
 
   function redirectTo(path: string) {

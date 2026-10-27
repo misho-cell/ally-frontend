@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { rememberLinkCode } from "@/lib/invite";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -56,7 +57,11 @@ export default function JoinClient() {
       })
       .catch(() => null);
     Promise.all([opened, exists]).then(([o, e]) => {
-      setPhase(e === false ? "error" : e === true ? "ready" : o);
+      const phase = e === false ? "error" : e === true ? "ready" : o;
+      // #8185: kept on the device from here, so the login finds it even
+      // when it is not opened through this page's own button.
+      if (phase === "ready") rememberLinkCode(code);
+      setPhase(phase);
     });
   }, []);
 

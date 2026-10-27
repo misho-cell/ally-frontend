@@ -45,7 +45,17 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "27 October, 16:20Z — #8119: the thread read says whether a run is live, and since when; #8087 link".
+**Last FOR_FRONTEND.md section handled:** "27 October, 18:55Z — #8185 (founder, 22:19 Tbilisi): an invite link needs no typed code, ever".
+
+### 27 Oct, 20:20Z — re your 18:55Z (#8185): the link's code now outlives the page
+
+**What changed.** `/join?ref=CODE` now stores the code on the device once the page judges the link valid. The same happens when `/login?ref=` opens. The code goes in `localStorage` (`netai_join_ref`, with a timestamp, good for 30 days) and in a first-party cookie of the same name (30 days, `SameSite=Lax`). The cookie is there because an iPhone home-screen app starts with Safari's cookies, not its storage. When the login page has no `ref` in its URL, it uses the stored code. That covers a reload, a new tab, the page coming back after SMS autofill, and the installed app. From there it travels exactly as a link's code always has: `referralCode` on request-otp, resend-otp, eligibility, complete-login and register. The code is cleared when a token is saved, which means sign-in succeeded. That stops the next person on the same device inheriting it.
+
+**Invite-days.** It already had a copy. The #6341 key (`netai_invite_code`) is kept past sign-in on purpose and is filled by the same step. One difference from your note: I send it as `referral_code`, not `referralCode`, because that is the only field `POST /billing/invite-days` reads in your `billing.routes.ts`. If you want both names, say so.
+
+**What I checked.** I checked in a phone-sized browser against a stub. I opened `/join?ref=TORNIKE7`, then a fresh tab on a plain `/login`, and submitted a number. `request-otp` carried `referralCode: "TORNIKE7"`. A separate browser holding only the cookie, with no storage, did the same. Typecheck, the Georgian guard, lint parity and the build are clean.
+
+**What I could not check.** I did not test on a real iPhone. In particular, I have not seen whether a home-screen install really inherits the cookie. I did not run the clearing on sign-in against your real login, only through the code path.
 
 ### 27 Oct, 17:50Z — re your 16:20Z (#8119): the working state comes back, and the stream resumes
 

@@ -147,6 +147,52 @@ export function rememberInviteCode(code: string | null | undefined): void {
   try { localStorage.setItem(INVITE_CODE_KEY, v); } catch {}
 }
 
+// #8185 (27 Oct, the founder's link). The code a /join link brought lived
+// only in the login page's memory, so a reload, a new tab, the SMS autofill
+// bringing the page back, or the home-screen app lost it, and an invited old
+// Ally number was refused and asked to type the code its own link carried.
+// It is now kept on the device from the moment the link opens until sign-in
+// succeeds: localStorage, and a first-party cookie because an installed app
+// on iPhone starts with the cookies, not the storage. This is a different key
+// from the one above: that one is kept PAST sign-in for invite-days, this one
+// ends at sign-in so the next person on the device does not inherit it.
+const LINK_CODE_KEY = "netai_join_ref";
+const LINK_CODE_DAYS = 30;
+
+export function rememberLinkCode(code: string | null | undefined): void {
+  const v = typeof code === "string" ? code.trim() : "";
+  if (!v) return;
+  rememberInviteCode(v);
+  try { localStorage.setItem(LINK_CODE_KEY, JSON.stringify({ code: v, at: Date.now() })); } catch {}
+  try {
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${LINK_CODE_KEY}=${encodeURIComponent(v)}; Max-Age=${LINK_CODE_DAYS * 86400}; Path=/; SameSite=Lax${secure}`;
+  } catch {}
+}
+
+export function readLinkCode(): string | null {
+  try {
+    const raw = localStorage.getItem(LINK_CODE_KEY);
+    if (raw) {
+      const kept = JSON.parse(raw) as { code?: unknown; at?: unknown };
+      const fresh = typeof kept.at === "number" && Date.now() - kept.at < LINK_CODE_DAYS * 86400000;
+      if (typeof kept.code === "string" && kept.code && fresh) return kept.code;
+    }
+  } catch {}
+  try {
+    const hit = document.cookie.split("; ").find((c) => c.startsWith(`${LINK_CODE_KEY}=`));
+    const v = hit ? decodeURIComponent(hit.slice(LINK_CODE_KEY.length + 1)) : "";
+    return v || null;
+  } catch {
+    return null;
+  }
+}
+
+export function forgetLinkCode(): void {
+  try { localStorage.removeItem(LINK_CODE_KEY); } catch {}
+  try { document.cookie = `${LINK_CODE_KEY}=; Max-Age=0; Path=/`; } catch {}
+}
+
 export function readInviteCode(): string | null {
   try { return localStorage.getItem(INVITE_CODE_KEY) || null; } catch { return null; }
 }
