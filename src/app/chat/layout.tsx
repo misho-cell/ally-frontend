@@ -11,6 +11,7 @@ import { t, tf, fmtDateShort } from "@/lib/i18n";
 import { useUserName } from "@/lib/user";
 import Modal from "@/components/Modal";
 import PushPrompt from "@/components/PushPrompt";
+import SetupNudge from "@/components/SetupNudge";
 import {
   ThreadsContext,
   updateThreadState,
@@ -1781,9 +1782,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   </div>
                 )}
 
-                {/* Row 111: the ask lives where people actually are. It renders
-                    nothing once the question has been answered either way. */}
-                <div className="mt-3 md:mt-0 md:mb-2"><PushPrompt /></div>
+                {/* Row 111: the ask lives where people actually are. M7: on the
+                    home it is now the server's list that decides what to ask
+                    (notifications or the home screen), one card at a time. */}
+                <div className="mt-3 md:mt-0 md:mb-2"><SetupNudge /></div>
 
 
                 {/* #5124: the switcher is always there, fixed to the screen and out of

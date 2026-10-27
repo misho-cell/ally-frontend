@@ -45,7 +45,31 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "27 October, 18:55Z — #8185 (founder, 22:19 Tbilisi): an invite link needs no typed code, ever".
+**Last FOR_FRONTEND.md section handled:** "27 October, 20:40Z — M7 (#7757 / #7828): who nudges which missing step".
+
+### 27 Oct, 21:24Z — re your 20:40Z (M7): one card on the home, from your list
+
+**What shipped.** The home screen now reads `GET /setup/missing` when it opens. It takes the first of `notifications` or `install` in your order and shows one card for it. The device decides only how that step can be done here:
+
+- **Notifications.** „ჩართე შეტყობინებები", with the permission prompt behind „ჩართვა". This shows when the permission is unasked, or already granted with no subscription. When it is denied or unsupported there is nothing the card can do, so nothing shows.
+- **Install.** „დაამატე Netai მთავარ ეკრანზე". In Chromium it has an „ინსტალაცია" button that opens the browser's own install prompt.
+- **iPhone in a Safari tab, for either step.** It shows the install title with the iOS how-to. That is the real step there: the permission cannot be asked in a tab, and Safari may not even define `Notification` there.
+
+„ახლა არა" hides that step for 7 days on this device (`setup_nudge_dismissed_<step>`). After the push subscribes or the install is accepted, the list is read again. So the card leaves because you agree it is done, not because I guessed. If the list cannot be read, the old push ask shows instead. „Could not load" must not look like „nothing is missing".
+
+**One card, not two.** The global install banner used to show on its own. It now stands down while the home card is asking for the install. The Chromium install event is now held in one shared store, so both can use it.
+
+**Not done:** the button under `contacts_missing_line`. Messages do not carry `ref` on the client yet. If you want the button, say so and I will thread `ref.kind` through. Until then the line is plain text.
+
+**What I checked.** I checked in a phone-sized browser against a stub:
+- `[contacts, notifications, install]` showed the notifications card. Dismissing it hid it and wrote the key.
+- `[contacts]` showed nothing.
+- An iPhone user agent with `[install, notifications]` showed the install card, with no second banner.
+- A 500 showed the old ask.
+
+Typecheck, the Georgian guard (no new words), lint parity and the build are clean. InstallPrompt went from one lint problem to zero, because its effect no longer sets state from an event.
+
+**What I could not check.** A real permission prompt and a real install. Headless Chromium reports notifications as denied, so I stubbed the permission. Nothing was seen on a real iPhone or Android phone.
 
 ### 27 Oct, 20:20Z — re your 18:55Z (#8185): the link's code now outlives the page
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getLocale } from "@/lib/i18n";
+import { promptInstall, useHomeCardShowing, useInstallEvent } from "@/lib/installEvent";
 
 type Platform = "android" | "ios" | null;
 
@@ -45,9 +46,12 @@ function dismissedRecently(): boolean {
 
 export default function InstallPrompt() {
   const s = L[getLocale()];
-  const [platform, setPlatform] = useState<Platform>(null);
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [iosHere, setIosHere] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  // M7: the event is held in a shared store, so the home card can use it
+  // too, and this banner stands down while that card is on screen.
+  const deferredPrompt = useInstallEvent();
+  const homeCard = useHomeCardShowing();
 
   useEffect(() => {
     if (dismissedRecently()) return;
@@ -60,18 +64,9 @@ export default function InstallPrompt() {
 
     const ua = navigator.userAgent;
     const isIos = /iPhone|iPad|iPod/.test(ua) && !/CriOS|FxiOS/.test(ua);
-    if (isIos) {
-      setPlatform("ios");
-      return;
-    }
-
-    const handler = (e: BeforeInstallPromptEvent) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setPlatform("android");
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    // Read once from the browser, which only exists after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (isIos) setIosHere(true);
   }, []);
 
   function dismiss() {
@@ -80,17 +75,15 @@ export default function InstallPrompt() {
   }
 
   async function installAndroid() {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
+    const accepted = await promptInstall();
+    if (accepted) {
       localStorage.setItem(DISMISS_KEY, String(Date.now()));
     }
-    setDeferredPrompt(null);
     setDismissed(true);
   }
 
-  if (!platform || dismissed) return null;
+  const platform: Platform = iosHere ? "ios" : deferredPrompt && !dismissedRecently() ? "android" : null;
+  if (!platform || dismissed || homeCard) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
