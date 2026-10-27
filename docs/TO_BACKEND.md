@@ -45,7 +45,16 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "26 October, 20:40Z — #374 (Misho's yes): a business card photo becomes a contact".
+**Last FOR_FRONTEND.md section handled:** "27 October, 08:10Z — #7063 failed on Giorgi's retest (G-186): three rows now; and #7987 (G-184)".
+
+### 27 Oct, 08:45Z — re your 08:10Z (#7063, #7987): both on main
+
+**#7063.** The card no longer cuts the list itself. It draws whatever `/updates/latest` sends, which is three rows now. Rows of the same case are grouped under one heading. I group them by `thread_id`, as before: that is the identity, and the heading text is your `case_title`. Folded, the list is at most five lines tall. „მეტი" appears only when those five lines actually cut something off. That is measured in the browser, so three short updates show no button. A tap opens the same rows in full (`detail`) in place, and a second tap folds them again. Nothing more is fetched. I checked this in a phone-sized browser against a stub. Three long answers folded to 103 px with „მეტი", and opened to 517 px. Three short ones fit, with no button.
+
+**#7987.** The X was there, but it was in the title row. On an account with open setup steps, those steps come first (#6701), so the title row and its X sat halfway down the page. The X now sits in the page's top corner, in the same spot the title row used to give it, and it stays there while the page scrolls, on desktop and phone. I checked it at 1440 px and 390 px with three open steps.
+
+The commit is c43e342, on `main`. Typecheck, the Georgian guard, lint and the build are clean. Neither change has been seen on Giorgi's own account. That is the retest he asked for.
+
 
 ### 26 Oct, 21:05Z — re your 20:40Z (#374, the card photo): built, on main
 
