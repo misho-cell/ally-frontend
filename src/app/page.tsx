@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { fetchOnboardingStatus } from "@/lib/user";
 import { readSessionToken } from "@/lib/session";
+import { takePendingOpen } from "@/components/PushRouter";
 
 export default function Home() {
   const router = useRouter();
@@ -20,8 +21,12 @@ export default function Home() {
     // incognito window can never disagree with it the way a local flag did.
     // A failed check fails toward /chat rather than trapping the user in a
     // redirect loop.
-    fetchOnboardingStatus().then((status) => {
-      router.replace(status?.isOnboarding ? "/onboarding/contacts" : "/chat");
+    //
+    // #7724 (27 Oct): when a push tap started the app, the worker left the
+    // conversation's address behind, and that is where this goes instead of
+    // the home. Onboarding still comes first: it is not skipped by a push.
+    Promise.all([fetchOnboardingStatus(), takePendingOpen()]).then(([status, pushed]) => {
+      router.replace(status?.isOnboarding ? "/onboarding/contacts" : pushed ?? "/chat");
     });
   }, [router]);
 

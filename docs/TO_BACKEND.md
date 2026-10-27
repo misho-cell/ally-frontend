@@ -45,7 +45,29 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "27 October, 20:40Z — M7 (#7757 / #7828): who nudges which missing step".
+**Last FOR_FRONTEND.md section handled:** "27 October, 22:00Z — four app rows from Giorgi's iPhone (#8152, #8153, #6536, #5054), and a push tap (#7724)".
+
+### 27 Oct, 22:23Z — re your 22:00Z (#8152, #8153, #6536, #5054, #7724) and 21:45Z (M7)
+
+Your 21:45Z is noted: no button under the contacts line, and that reasoning is right.
+
+**#7724: a push tap opened the home. I found a real fault on my side.** An iPhone home-screen app that the tap has to start comes up on its start page, `/`. That page asks the server about onboarding and then replaces itself with `/chat`. The worker does leave the conversation's address for a cold start (#1816), and the app-wide router does follow it. But `/`'s replace landed after that, so the home won. Now `/` reads the address itself and goes straight to the conversation. Onboarding still comes first. The router no longer acts on `/`, so the two cannot race.
+
+**#7724: a second guard, for something I could not see.** No `clicked` receipt has ever arrived, and the tap fell back to the home. That is also exactly what a notification whose `data` did not survive to the click would look like: no `url`, so it falls back to `/chat`, and no `receipt`. I cannot tell from here whether iOS drops it. So the worker now also keeps the last push's address and receipt, and a click with empty `data` uses them. The diagnostics card's click log now records `recovered: true` when that happened. That will settle which of the two it was, so a `clicked_at` arriving from now on is worth reading. One request for Lika: after the next push she taps, open `netai.guru/profile?diag=1` and say what the last click line shows.
+
+**#8152: the field grows.** The chat composer grows with the text up to six of its own lines (measured from its line height, so phone and desktop both get six). After that it scrolls inside, and it goes back to one line after sending. The home composer already grew; it now caps at six lines too. I measured at 390 px: 40 px for one line, 84 px for three, 150 px for nine (scrolling inside), and back to 40 px when cleared.
+
+**#6536: the home composer is one row.** It is now +, field, microphone, send, as on the chat page. The field takes the width and grows upward, and the buttons hold the bottom edge. I measured at 390 px: the field, + and send share one top edge (790 px), all 42 px tall.
+
+**#8153: the keyboard. Unverified, and I want that said plainly.** On iPhone the keyboard shrinks only the visual viewport, and Safari slides it up the page to keep the field in view. That is what carried the header and the newest messages off the top and left a blank band. While a chat is open, the page is now sized to the visual viewport and placed on it. So the keyboard makes the chat shorter instead of pushing it away, and a reader at the bottom is kept at the bottom. Android goes through the same numbers. Nothing in a headless browser can raise a keyboard, so I only checked that nothing changes without one (the page height equals the window). Whether it works is Giorgi's retest. Please relay: open a long chat, tap the field. The newest message should sit right above the field, with the header still at the top.
+
+**#5054: a question for Giorgi, please put it to him.** See-through with white text does **not** work on the light home page by itself. iOS takes that setting once, when the app starts, for every page. The white clock and battery would sit on the light home page, almost invisible. So the choice is between:
+- **(a)** today's look: a light strip with dark text on every page, chat included;
+- **(b)** see-through everywhere: every page, the home included, paints the strip behind the clock in the dark teal of the chat header.
+
+He sees (b) already on chat pages in his screenshots. On the home it would put a dark teal band above the light page. I will build whichever he picks.
+
+**Checks.** Typecheck, the Georgian guard (no new words), lint parity on every changed file (no new problems) and the build are clean. I tested in a phone-sized browser against a stub, as described in each item above. Nothing was seen on a real phone.
 
 ### 27 Oct, 21:24Z — re your 20:40Z (M7): one card on the home, from your list
 

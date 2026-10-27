@@ -413,6 +413,21 @@ export default function ThreadPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // #8152 (27 Oct, Giorgi): the field stayed one line high and a long
+  // message scrolled out of sight inside it. It now grows with the text up
+  // to six lines, scrolls inside after that, and goes back to one line when
+  // the text is sent. Measured from its own line height, so the phone and
+  // desktop sizes both get six of their own lines.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    const cs = getComputedStyle(el);
+    const line = parseFloat(cs.lineHeight) || 22;
+    const max = line * 6 + (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
+  }, [input]);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const inputBeforeRecordingRef = useRef("");
@@ -1476,6 +1491,36 @@ export default function ThreadPage() {
     }
   }, []);
 
+  // #8153 (27 Oct, Giorgi, P1). On an iPhone the keyboard does not shrink
+  // the page; it shrinks only the visual viewport, and Safari then slides
+  // that viewport up the locked page to keep the field in view. The header
+  // and the newest messages went off the top and an empty band sat over the
+  // field. So while a case is open the locked body is sized and placed to
+  // the visual viewport itself (--vvh / --vvt, read by .nx-chat-lock): the
+  // keyboard makes the chat shorter instead of pushing it away. A reader at
+  // the bottom stays at the bottom, so the latest message sits right above
+  // the field. Android does the same through the same numbers.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    const fit = () => {
+      const follow = nearBottomRef.current;
+      root.style.setProperty("--vvh", `${vv.height}px`);
+      root.style.setProperty("--vvt", `${vv.offsetTop}px`);
+      if (follow) requestAnimationFrame(() => stickToBottom(false));
+    };
+    fit();
+    vv.addEventListener("resize", fit);
+    vv.addEventListener("scroll", fit);
+    return () => {
+      vv.removeEventListener("resize", fit);
+      vv.removeEventListener("scroll", fit);
+      root.style.removeProperty("--vvh");
+      root.style.removeProperty("--vvt");
+    };
+  }, [stickToBottom]);
+
   function updateNearBottom() {
     const el = scrollRef.current;
     if (!el) return;
@@ -2537,7 +2582,7 @@ export default function ThreadPage() {
               rows={1}
               disabled={composerBlocked}
               className="flex-1 resize-none bg-transparent outline-none disabled:opacity-60"
-              style={{ color: voiceState === "recording" ? "var(--placeholder)" : "var(--ink)", maxHeight: "120px" }}
+              style={{ color: voiceState === "recording" ? "var(--placeholder)" : "var(--ink)" }}
             />
 
             {/* #892: attach a list. Left of the mic, because it belongs with

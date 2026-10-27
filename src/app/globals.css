@@ -90,6 +90,10 @@ body {
    so the header and the input stay where they are. */
 html.nx-chat-lock, html.nx-chat-lock body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 html.nx-chat-lock body { position: fixed; inset: 0; width: 100%; }
+/* #8153: sized and placed to the visual viewport while a case is open, so the
+   keyboard shortens the chat instead of sliding it off the top. Without the
+   numbers (no visualViewport) it is exactly the rule above. */
+html.nx-chat-lock body { top: var(--vvt, 0px); bottom: auto; height: var(--vvh, 100%); }
 
 :focus-visible {
   outline: none;
@@ -750,6 +754,15 @@ html.nx-chat-lock body { position: fixed; inset: 0; width: 100%; }
    inside the card; the card's own border is the focus. */
 .dz-compose input:focus, .dz-compose input:focus-visible { outline: 0; box-shadow: none; }
 .dz-compose .row { display: flex; align-items: center; gap: 9px; }
+/* #6536 (27 Oct): one row, as the chat page's composer: + | field | mic | send.
+   The field takes the room and grows upward; the buttons hold the bottom. */
+.dz-compose { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 9px; padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); }
+.dz-compose .dz-staged { order: -1; flex-basis: 100%; }
+.dz-compose textarea { order: 1; flex: 1 1 0; min-width: 0; width: auto; padding: 10px 4px; max-height: calc(22px * 6 + 20px); }
+.dz-compose .row { display: contents; }
+.dz-compose .row .dz-rb:first-child { order: 0; }
+.dz-compose .row .dz-rb:not(:first-child) { order: 2; }
+.dz-compose .row .dz-send { order: 3; margin-left: 0; width: 42px; height: 42px; }
 .dz-rb { width: 42px; height: 42px; border-radius: 12px; background: var(--sidebar-bg); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
 .dz-rb.rec { background: var(--danger); color: #FFFFFF; }
 .dz-send { margin-left: auto; width: 48px; height: 48px; border-radius: 12px; background: var(--accent); color: #FFFFFF; display: grid; place-items: center; flex-shrink: 0; }

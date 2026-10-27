@@ -1951,20 +1951,23 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             style={{ borderColor: recording ? "var(--danger)" : undefined }}
           >
             {homeStaged && (
-              <div className="mb-2 flex w-full">
+              <div className="dz-staged flex w-full">
                 <StagedFile name={homeStaged.name} onRemove={() => setHomeStaged(null)} disabled={creating} />
               </div>
             )}
-            {/* #6536 (20 Oct): the field grows with what is written, up to a
-                few lines, and the +, microphone and send row stays along its
-                bottom edge. A one-line input scrolled sideways instead. The
-                height is set after each render, so dictated text grows it too. */}
+            {/* #6536 (20 Oct): the field grows with what is written, up to
+                six lines, and scrolls inside after that. The height is set
+                after each render, so dictated text grows it too.
+                #6536 again (27 Oct, Giorgi's home-screen app): +, the field,
+                the microphone and send now sit in ONE row, as on the chat
+                page. The buttons' own row is dissolved into the card's row by
+                CSS (.dz-compose .row), and they stay on its bottom edge. */}
             <textarea
               ref={(el) => {
                 homeInputRef.current = el;
                 if (el) {
                   el.style.height = "auto";
-                  el.style.height = `${Math.min(el.scrollHeight, 150)}px`;
+                  el.style.height = `${Math.min(el.scrollHeight, 22 * 6 + 20)}px`;
                 }
               }}
               rows={1}

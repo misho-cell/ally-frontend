@@ -36,7 +36,15 @@ export default function PushRouter() {
     // #1816 (6 Oct). When the tap had to start the app, no page was there to
     // receive the message, and the app could come up on its start page. The
     // worker leaves the address in the cache for exactly this; take it once.
+    //
+    // #7724 (27 Oct, Lika). An installed iPhone app that the tap had to
+    // start comes up on its start page, "/". That page decides between
+    // onboarding and /chat after a server round trip, and its replace landed
+    // AFTER this push, so the conversation flashed and the home won. "/" now
+    // reads the note itself and goes straight there; this one stays out of
+    // its way.
     const checkPending = () => {
+      if (window.location.pathname === "/") return;
       void takePendingOpen().then((url) => {
         if (url && url !== window.location.pathname) router.push(url);
       });
@@ -70,7 +78,7 @@ function ownPath(url: string): boolean {
 const PENDING_MAX_AGE_MS = 60_000;
 
 // Reads the note and removes it in the same step, so it is followed once.
-async function takePendingOpen(): Promise<string | null> {
+export async function takePendingOpen(): Promise<string | null> {
   try {
     if (!("caches" in window)) return null;
     const cache = await caches.open("netai-push-log");

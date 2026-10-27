@@ -137,6 +137,7 @@ self.addEventListener("push", (event) => {
   );
 
   const receipt = receiptOf(data.receipt);
+  event.waitUntil(rememberLastPush(url, receipt));
 
   event.waitUntil(
     self.registration
@@ -159,10 +160,52 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url ?? "/chat";
-  event.waitUntil(noteEvent({ kind: "click", url }));
-  event.waitUntil(sendReceipt(receiptOf(event.notification.data?.receipt), "clicked"));
-  event.waitUntil(
+  event.waitUntil(clickData(event.notification.data).then(({ url, receipt, recovered }) => Promise.all([
+    noteEvent({ kind: "click", url, recovered }),
+    sendReceipt(receiptOf(receipt), "clicked"),
+    openFor(url),
+  ])));
+});
+
+// #7724 (27 Oct). A tap opened the home, and no click receipt has ever
+// arrived from any account, while "received" receipts do. Both are what a
+// notification whose `data` did not survive to the click would look like:
+// the address falls back to /chat and the receipt is absent. Whether iOS
+// drops it is not something I could see, so the last push's address and
+// receipt are also kept in the cache, and a click with nothing on it uses
+// those. The diagnostics card records `recovered` so a phone can say which.
+const LAST_PUSH_URL = "/__push-last";
+
+async function rememberLastPush(url, receipt) {
+  try {
+    const cache = await caches.open(LOG_CACHE);
+    await cache.put(LAST_PUSH_URL, new Response(JSON.stringify({ url, receipt, at: Date.now() }), {
+      headers: { "Content-Type": "application/json" },
+    }));
+  } catch {
+    // The click then works from the notification's own data, as before.
+  }
+}
+
+async function clickData(data) {
+  if (data && typeof data.url === "string" && data.url) {
+    return { url: data.url, receipt: data.receipt, recovered: false };
+  }
+  try {
+    const cache = await caches.open(LOG_CACHE);
+    const res = await cache.match(LAST_PUSH_URL);
+    const kept = res ? await res.json() : null;
+    if (kept && typeof kept.url === "string" && kept.url) {
+      return { url: kept.url, receipt: kept.receipt, recovered: true };
+    }
+  } catch {
+    // fall through
+  }
+  return { url: "/chat", receipt: null, recovered: false };
+}
+
+function openFor(url) {
+  return (
     // #1816 (6 Oct, Ninia): the tap still opened the app and not the
     // conversation. Both paths below need a page that is already running.
     // When the app was closed, openWindow is all there is, and a standalone
@@ -220,7 +263,7 @@ self.addEventListener("notificationclick", (event) => {
         return target.focus();
       }))
   );
-});
+}
 
 const OPEN_URL = "/__push-open";
 
