@@ -88,6 +88,14 @@ body {
 /* #6931: while a case chat is open (the class is set by its page) the
    document never scrolls or bounces; the message list is the only scroller,
    so the header and the input stay where they are. */
+/* #5054 (28 Oct, Giorgi chose (b)). The home-screen app on iPhone draws its
+   status bar see-through with white text, over the page. So every page sits
+   below that strip, and the strip itself is painted in the chat header's
+   colour, the home included: white text on the light page would vanish.
+   Outside the installed app the inset is 0 and none of this shows. */
+body { padding-top: env(safe-area-inset-top); }
+body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--accent); z-index: 2147483647; pointer-events: none; }
+
 html.nx-chat-lock, html.nx-chat-lock body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 html.nx-chat-lock body { position: fixed; inset: 0; width: 100%; }
 /* #8153: sized and placed to the visual viewport while a case is open, so the
@@ -1064,7 +1072,7 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
    11px, which a phone cannot be read at and which makes iOS zoom a focused
    field, so every size here is the design's times about 1.35 and inputs are
    16px. Proportions between the parts are the design's. */
-.pd { background: var(--bg); color: var(--ink); min-height: 100dvh; }
+.pd { background: var(--bg); color: var(--ink); min-height: calc(100dvh - env(safe-area-inset-top)); }
 /* #6701: the open setup steps above the head; nothing left, nothing drawn. */
 .pd-top-steps:empty { display: none; }
 .pd-top-steps { padding-bottom: 4px; }

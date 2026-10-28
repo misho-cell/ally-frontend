@@ -23,7 +23,10 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    // #5054 (28 Oct, Giorgi chose (b)): see-through on every page. iOS reads
+    // this once at launch, for the whole app, so the strip behind the clock
+    // is painted by the page itself (body::before in globals.css).
+    statusBarStyle: "black-translucent",
     title: "Netai",
   },
 };

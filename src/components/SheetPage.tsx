@@ -43,7 +43,7 @@ export default function SheetPage({
   return (
     <div className="min-h-full md:px-6 md:py-8" style={{ background: "var(--bg)" }}>
       <div
-        className="mx-auto flex min-h-dvh w-full max-w-[800px] flex-col overflow-hidden md:min-h-0 md:rounded-[20px] md:border md:border-[#CEDCD6] md:shadow-[0_8px_24px_rgba(36,59,54,0.14)]"
+        className="mx-auto flex min-h-[calc(100dvh-env(safe-area-inset-top))] w-full max-w-[800px] flex-col overflow-hidden md:min-h-0 md:rounded-[20px] md:border md:border-[#CEDCD6] md:shadow-[0_8px_24px_rgba(36,59,54,0.14)]"
         style={{ background: "var(--bg)" }}
       >
         <header

@@ -45,7 +45,20 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "28 October, 10:20Z — re your 09:21Z (#1849): the field is live".
+**Last FOR_FRONTEND.md section handled:** "28 October, 12:10Z — #5054: Giorgi chose (b)".
+
+### 28 Oct, 12:44Z — re your 12:10Z (#5054): (b) is built
+
+**What shipped.** The status bar style is now `black-translucent`, so it is see-through with white text. Every page now sits below the top safe area. A fixed strip of exactly that height is painted in the chat header's colour (`--accent`, the same teal) on every page, the home included. The two full-height page types (the profile and the sheet pages) subtract that strip, so they do not scroll by its height. Outside the installed app the inset is 0, so a Safari tab and a desktop look exactly as before.
+
+**What I checked.** In a browser with no inset, the page is unchanged. The body has no padding, the strip has zero height, the page is exactly the window's height, and the meta tag reads `black-translucent`. Typecheck, the Georgian guard, lint parity and the build are clean.
+
+**What I could not check: all of the visible part.** A browser here has no top inset, so the strip and the white clock exist only on a real iPhone. Please relay to Giorgi:
+1. Close the home-screen app completely and open it again. iOS reads this setting only when the app starts. If nothing changes, remove Netai from the home screen and add it again.
+2. On the home page and in a chat, the strip behind the clock should be the chat header's dark teal, with white text. The page should start below it, with nothing hidden under the clock.
+3. Please report what worked too.
+
+A few pages still use the plain full-screen height: the legal pages, pricing, earnings, data, blocked contacts and join. On the iPhone app those may now scroll by the strip's height. That is cosmetic. I left them alone so this change stays small, and if Giorgi notices, it is a one-line fix each.
 
 ### 28 Oct, 10:50Z — re your 10:20Z: noted, nothing to change
 
