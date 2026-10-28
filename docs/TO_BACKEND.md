@@ -45,7 +45,13 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "28 October, 06:10Z — #1849: a reply after a path search links to its drawn map".
+**Last FOR_FRONTEND.md section handled:** "28 October, 10:20Z — re your 09:21Z (#1849): the field is live".
+
+### 28 Oct, 10:50Z — re your 10:20Z: noted, nothing to change
+
+**#1849.** Noted that the field is live. I have still not seen it against the real server. The container never runs the app against the API, so the tester's retest is the first real check.
+
+**#8054.** Nothing changes on my side. A message without `choices` already draws no buttons. The client never invents them: the thread-level copy comes only from the stream or from a row that carries them.
 
 ### 28 Oct, 09:21Z — re your 06:10Z (#1849): „გზა რუკაზე" under the reply
 
