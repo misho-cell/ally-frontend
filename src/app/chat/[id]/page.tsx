@@ -12,6 +12,7 @@ import { recordSpeechStage } from "@/lib/speech";
 import { onCheckoutCompleted } from "@/lib/paddle";
 import { startStripeTopup } from "@/lib/stripe";
 import { fetchMessagePage } from "@/lib/messages";
+import PathMapLink from "@/components/PathMapLink";
 import { isWriteMyOwn } from "@/lib/choices";
 import { apiFetch } from "@/lib/api";
 import { saveBlob } from "@/lib/download";
@@ -2223,6 +2224,8 @@ export default function ThreadPage() {
                           {mdSource(msg.content)}
                         </ReactMarkdown>
                       </div>
+                      {/* #1849: the drawn map of the path this reply found. */}
+                      {msg.pathMapId && <PathMapLink id={msg.pathMapId} />}
                       {msg.serverId != null && replyHasList(msg.content) ? (
                         <div className="flex items-center justify-between" style={{ gap: "8px" }}>
                           {/* #6074: Word and Markdown left this row for the

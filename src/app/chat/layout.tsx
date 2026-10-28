@@ -858,6 +858,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                             ...(typeof data.share_text === "string" && data.share_text
                               ? { shareText: data.share_text }
                               : {}),
+                            // #1849: present only when a path search reached someone.
+                            ...(typeof data.path_map_id === "string" && data.path_map_id
+                              ? { pathMapId: data.path_map_id }
+                              : {}),
                             ...(readChoiceNotes(data.choice_notes)
                               ? { choiceNotes: readChoiceNotes(data.choice_notes)! }
                               : {}),

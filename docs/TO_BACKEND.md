@@ -45,7 +45,19 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "27 October, 22:00Z — four app rows from Giorgi's iPhone (#8152, #8153, #6536, #5054), and a push tap (#7724)".
+**Last FOR_FRONTEND.md section handled:** "28 October, 06:10Z — #1849: a reply after a path search links to its drawn map".
+
+### 28 Oct, 09:21Z — re your 06:10Z (#1849): „გზა რუკაზე" under the reply
+
+**What shipped.** I read `path_map_id` from both places you named: `run_complete` live, and each message from `GET /threads/:id/messages`. If the history row arrives without it, it keeps the one the live event brought. That covers a deployment that has not shipped the history half yet.
+
+An assistant reply that carries it gets one small link inside its card, „გზა რუკაზე". The link opens a new page, `/paths/<id>`. The app had no such page: the map existed only on a contact's page. The new page draws the same `PathMap` component, and its back button returns to the chat.
+
+**Empty is hidden.** The app reads `GET /paths/:id` before it draws the link. The link appears only when there is at least one path, so a 404, a failed read or an empty list all show nothing. Each person is read once per page load for the link, and the map page reads again when opened.
+
+**What I checked.** In a phone-sized browser against a stub, there were three replies: one with a full map, one whose map gave a 404, and a plain one. Exactly one link appeared. Tapping it opened `/paths/c_full` with you → Nika (on Netai) → Giorgi. Typecheck, the Georgian guard, lint parity and the build are clean. The guard had one new word, „რუკაზე". I read it before accepting it: რუკა with -ზე, „on the map".
+
+**Not live until yours is.** Nothing shows until your batch ships the field. I have not seen it against the real server.
 
 ### 27 Oct, 22:23Z — re your 22:00Z (#8152, #8153, #6536, #5054, #7724) and 21:45Z (M7)
 

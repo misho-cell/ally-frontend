@@ -99,6 +99,9 @@ export type ServerMessage = {
   // Today it is always the last index; it is read as a number anyway,
   // because the server asked for that and because "last" is a coincidence.
   other_choice_index?: number | null;
+  // #1849 (28 Oct): the sealed contact id (c_…) a path search reached, on
+  // that run's reply only. Opens the drawn map at /paths/:id.
+  path_map_id?: string | null;
 };
 
 export type ChatMessage = {
@@ -158,6 +161,9 @@ export type ChatMessage = {
   choiceNotes?: Record<string, string>;
   // #68: which of `choices` opens the composer instead of answering.
   otherChoiceIndex?: number;
+  // #1849: the person this reply's path search reached, as the sealed id
+  // /paths/:id takes. A link to the drawn map hangs under the reply.
+  pathMapId?: string;
 };
 
 export type Option = { phone: string; name: string };
@@ -264,6 +270,7 @@ export function toChatMessages(raw: unknown): ChatMessage[] {
     ...(Array.isArray(m.choices) && m.choices.length > 0 ? { choices: m.choices } : {}),
     ...(typeof m.other_choice_index === "number" ? { otherChoiceIndex: m.other_choice_index } : {}),
     ...(typeof m.share_text === "string" && m.share_text ? { shareText: m.share_text } : {}),
+    ...(typeof m.path_map_id === "string" && m.path_map_id ? { pathMapId: m.path_map_id } : {}),
     ...(m.choice_notes && typeof m.choice_notes === "object"
       ? { choiceNotes: m.choice_notes }
       : {}),
@@ -333,10 +340,10 @@ export function mergeMessages(fresh: ChatMessage[], existing: ChatMessage[]): Ch
   // and the server has not confirmed; once a fetch has replaced it, the
   // server's word is the only word. An absent choices field and a cleared one
   // are the same sentence from the server, and both of them outrank ours.
-  const extras = new Map<string, { shareText?: string; choices?: string[]; choiceNotes?: Record<string, string> }>();
+  const extras = new Map<string, { shareText?: string; choices?: string[]; choiceNotes?: Record<string, string>; pathMapId?: string }>();
   for (const m of existing) {
     if (!m.pending) continue;
-    if (m.shareText || m.choices || m.choiceNotes) extras.set(contentKey(m), { shareText: m.shareText, choices: m.choices, choiceNotes: m.choiceNotes });
+    if (m.shareText || m.choices || m.choiceNotes || m.pathMapId) extras.set(contentKey(m), { shareText: m.shareText, choices: m.choices, choiceNotes: m.choiceNotes, pathMapId: m.pathMapId });
   }
   const kept = fresh.map((m) => {
     const extra = extras.get(contentKey(m));
@@ -346,6 +353,9 @@ export function mergeMessages(fresh: ChatMessage[], existing: ChatMessage[]): Ch
       ...(!m.shareText && extra.shareText ? { shareText: extra.shareText } : {}),
       ...(!m.choices && extra.choices ? { choices: extra.choices } : {}),
       ...(!m.choiceNotes && extra.choiceNotes ? { choiceNotes: extra.choiceNotes } : {}),
+      // #1849: a deployment whose history does not carry the id yet keeps
+      // the one the live event brought.
+      ...(!m.pathMapId && extra.pathMapId ? { pathMapId: extra.pathMapId } : {}),
     };
   });
 

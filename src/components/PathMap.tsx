@@ -45,7 +45,7 @@ const L = {
 type PathLink = { id: string | null; name: string | null; role: "you" | "bridge" | "target" | null; state: "next" | "not_contacted" | null; isMember: boolean };
 type Path = { links: PathLink[] };
 
-function parse(raw: unknown): Path[] {
+export function parsePaths(raw: unknown): Path[] {
   const d = unwrapData(raw);
   if (!isRecord(d)) return [];
   return recordItems(pickArray(d.paths)).map((p): Path => ({
@@ -67,7 +67,7 @@ export default function PathMap({ contactId }: { contactId: string }) {
   useEffect(() => {
     let alive = true;
     apiFetch<unknown>(`/paths/${encodeURIComponent(contactId)}`)
-      .then((raw) => { if (alive) setPaths(parse(raw)); })
+      .then((raw) => { if (alive) setPaths(parsePaths(raw)); })
       .catch((e: unknown) => { if (alive) setPaths(e instanceof ApiError && e.status === 404 ? "gone" : null); });
     return () => { alive = false; };
   }, [contactId]);
