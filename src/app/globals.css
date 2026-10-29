@@ -98,10 +98,11 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 
 html.nx-chat-lock, html.nx-chat-lock body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 html.nx-chat-lock body { position: fixed; inset: 0; width: 100%; }
-/* #8153: sized and placed to the visual viewport while a case is open, so the
-   keyboard shortens the chat instead of sliding it off the top. Without the
-   numbers (no visualViewport) it is exactly the rule above. */
-html.nx-chat-lock body { top: var(--vvt, 0px); bottom: auto; height: var(--vvh, 100%); }
+/* #8153: sized to the visual viewport while a case is open, so the keyboard
+   shortens the chat instead of sliding it off the top. #8385: no longer moved
+   to follow the viewport's offset; the page is held at the top instead (see
+   the chat page). Without the number it is exactly the rule above. */
+html.nx-chat-lock body { top: 0; bottom: auto; height: var(--vvh, 100%); }
 
 :focus-visible {
   outline: none;
@@ -965,6 +966,11 @@ a.dz-report-h, a.dz-news-title { text-decoration: none; }
   .dz-resolve.white { background: #FFFFFF; color: var(--accent); border-color: #FFFFFF; }
   .dz-resolve.white:hover { background: rgba(255, 255, 255, .9); }
 }
+/* #8384 / #8387 (Giorgi, design A, 29 Oct): „Resolved" and „Paths" read as a
+   status. Same colours, raised: a solid lip under the button, and it presses
+   down by that lip on tap. After the desktop block so it holds at all widths. */
+.dz-resolve { border-radius: 12px; box-shadow: 0 3px 0 #1b4f49, 0 6px 14px rgba(0, 0, 0, .25); transition: transform .08s ease, box-shadow .08s ease; }
+.dz-resolve:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 0 0 #1b4f49, 0 2px 6px rgba(0, 0, 0, .25); }
 
 .dz-ububble { max-width: 79%; padding: 13px 16px; border-radius: 16px 16px 6px 16px; background: var(--user-bubble-bg); color: var(--user-bubble-ink); border: 1px solid #C2D8F5; font: 400 14px/22.4px var(--font-system); }
 .dz-time { display: block; margin-top: 7px; text-align: right; font: 400 10px/16px var(--font-system); color: var(--nx-muted); white-space: nowrap; }

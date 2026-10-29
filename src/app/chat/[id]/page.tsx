@@ -1501,6 +1501,14 @@ export default function ThreadPage() {
   // keyboard makes the chat shorter instead of pushing it away. A reader at
   // the bottom stays at the bottom, so the latest message sits right above
   // the field. Android does the same through the same numbers.
+  //
+  // #8385 (29 Oct, Giorgi): the header jumped as the keyboard opened. That
+  // was this code: it moved the whole page to follow the viewport's offset on
+  // every scroll tick, and on iPhone those ticks come in steps while the
+  // keyboard animates, so the header stepped with them. Now the page is not
+  // moved at all. It is sized to the visible height, and the offset Safari
+  // adds to bring the field into view is taken back at once, so the header
+  // stays where it is and the field sits on top of the keyboard.
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
@@ -1508,7 +1516,7 @@ export default function ThreadPage() {
     const fit = () => {
       const follow = nearBottomRef.current;
       root.style.setProperty("--vvh", `${vv.height}px`);
-      root.style.setProperty("--vvt", `${vv.offsetTop}px`);
+      if (vv.offsetTop > 0 || window.scrollY !== 0) window.scrollTo(0, 0);
       if (follow) requestAnimationFrame(() => stickToBottom(false));
     };
     fit();
@@ -1518,7 +1526,6 @@ export default function ThreadPage() {
       vv.removeEventListener("resize", fit);
       vv.removeEventListener("scroll", fit);
       root.style.removeProperty("--vvh");
-      root.style.removeProperty("--vvt");
     };
   }, [stickToBottom]);
 

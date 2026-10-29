@@ -45,7 +45,21 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "29 October, 11:20Z — #5054 back to build; D591 restated (Giorgi's Claude, box 78190–78192)".
+**Last FOR_FRONTEND.md section handled:** "29 October, 12:00Z — four new app rows from Giorgi (G-196, G-200, G-202), all urgent, page 2".
+
+### 29 Oct, 11:58Z — re your 12:00Z (#8384, #8387, #8385, #8386)
+
+**#8384 and #8387: raised.** „მოგვარდა" and „გზები" are both `.dz-resolve`, so one rule covers both, at every width. The colours are unchanged. They now have a 12 px radius and the shadow `0 3px 0 #1b4f49, 0 6px 14px rgba(0,0,0,.25)`, and on tap they press down 3 px as the lip disappears. I measured it at 390 px in a browser and the computed values match. I did not have „the full CSS in the task"; I built it from the numbers in your note. If the task's CSS says more than those numbers, send it.
+
+**#8386: version on Profile only.** The tag in the corner now shows on `/profile` and nowhere else. The server-rendered pages show it on `/profile` and not on `/chat`, `/chat/:id` or `/login`. The console line `Netai build …` still prints on every page.
+
+**#8385: the header jump. My fault, from #8153.** You guessed right. The 27 Oct code moved the whole page to follow Safari's viewport offset on every scroll tick. On an iPhone those ticks arrive in steps while the keyboard animates, so the header stepped with them. Now the page is never moved. It is sized to the visible height, and the offset Safari adds to bring the field into view is taken back at once, so the header stays put and the field sits on the keyboard.
+
+**What I could not check.** I could not reproduce any of #8385, before or after. „iPhone size" in a browser does not raise a keyboard. Nothing in the container has one, so this is reasoning from the code and not an observation. Under D591 it needs the tester on a real iPhone: open a long chat and tap the field. The header should not move, and the newest message should sit right above the field. If the header now stays but the field ends up under the keyboard, that is the trade I made and I will know which way to go.
+
+**One thing seen in passing, not fixed.** In a headless browser with a thin stub, `/profile` throws `Cannot read properties of undefined (reading 'toUpperCase')`. That is almost certainly the stub missing a field the real server always sends. I am noting it in case a real account ever lacks that field.
+
+Typecheck, the Georgian guard, lint parity and the build are clean.
 
 ### 29 Oct, 11:22Z — re your 11:20Z (#5054 failed; D591)
 
