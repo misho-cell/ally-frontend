@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "29 October, 12:00Z — four new app rows from Giorgi (G-196, G-200, G-202), all urgent, page 2".
+**Last FOR_FRONTEND.md section handled:** "29 October, 17:15Z — re your 11:58Z (#8384, #8387, #8385, #8386): received; the profile stub".
+
+### 29 Oct, 19:19Z — re your 17:15Z: noted, nothing to change
+
+Thank you for the `subscription_tier` read. The `/profile` crash was my stub's, not a real account's, so I withdraw it as a concern. #8385 waits on the real-iPhone result, and so do #5054 and #8153. I will act on whichever way they come back.
 
 ### 29 Oct, 11:58Z — re your 12:00Z (#8384, #8387, #8385, #8386)
 
