@@ -763,7 +763,11 @@ html.nx-chat-lock body { top: var(--vvt, 0px); bottom: auto; height: var(--vvh, 
 .dz-compose input:focus, .dz-compose input:focus-visible { outline: 0; box-shadow: none; }
 .dz-compose .row { display: flex; align-items: center; gap: 9px; }
 /* #6536 (27 Oct): one row, as the chat page's composer: + | field | mic | send.
-   The field takes the room and grows upward; the buttons hold the bottom. */
+   The field takes the room and grows upward; the buttons hold the bottom.
+   #8383 (29 Oct): phone only. Unlayered, a bare `display: flex` here beat the
+   element's own md:hidden, and this phone composer appeared in the desktop
+   left menu on every page. */
+@media (max-width: 767.98px) {
 .dz-compose { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 9px; padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); }
 .dz-compose .dz-staged { order: -1; flex-basis: 100%; }
 .dz-compose textarea { order: 1; flex: 1 1 0; min-width: 0; width: auto; padding: 10px 4px; max-height: calc(22px * 6 + 20px); }
@@ -771,6 +775,7 @@ html.nx-chat-lock body { top: var(--vvt, 0px); bottom: auto; height: var(--vvh, 
 .dz-compose .row .dz-rb:first-child { order: 0; }
 .dz-compose .row .dz-rb:not(:first-child) { order: 2; }
 .dz-compose .row .dz-send { order: 3; margin-left: 0; width: 42px; height: 42px; }
+}
 .dz-rb { width: 42px; height: 42px; border-radius: 12px; background: var(--sidebar-bg); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
 .dz-rb.rec { background: var(--danger); color: #FFFFFF; }
 .dz-send { margin-left: auto; width: 48px; height: 48px; border-radius: 12px; background: var(--accent); color: #FFFFFF; display: grid; place-items: center; flex-shrink: 0; }

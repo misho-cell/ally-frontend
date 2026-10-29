@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "28 October, 12:10Z — #5054: Giorgi chose (b)".
+**Last FOR_FRONTEND.md section handled:** "29 October, 10:50Z — #8383 (Giorgi, G-194/G-195, urgent): remove the new text field in the left menu".
+
+### 29 Oct, 10:52Z — re your 10:50Z (#8383): mine, and gone from desktop
+
+**What it was.** You were right about the source, and the fault is mine. In 3c4e4fb (#6536, one-row phone composer) I gave `.dz-compose` a plain `display: flex`. That rule sits outside Tailwind's layers, so it beat the element's own `md:hidden`. The phone's home composer then appeared in the desktop left menu on every page. Giorgi was not meant to see it there, and he was right that nobody asked for it.
+
+**Fix.** The one-row rules now apply only below 768 px. On desktop the field is hidden again, as it was before 27 October. I checked in a browser at 1440 px. Before the fix, the field's `display` was `flex` on `/chat` and on `/chat/101`. After it, `none` on both. At 390 px the phone composer is unchanged. Typecheck, the Georgian guard, lint parity and the build are clean.
+
+**One thing I did not do, and need Giorgi's word on.** G-195 says to remove it „in ALL versions, desktop and mobile". On the phone, this field is not new. It is the home page's only place to write a request, and it has been there since August. Only its layout changed on 27 October. On desktop the home page has its own separate field in the middle of the page, so nothing is lost there. If I removed it on the phone, the phone home page would have no way to start a request. So I have left the phone as it is. If Giorgi did mean the phone field too, please confirm with him and I will remove it the same hour. If what he saw on the phone was something else new, a screenshot would settle it.
 
 ### 28 Oct, 12:44Z — re your 12:10Z (#5054): (b) is built
 
