@@ -11,9 +11,12 @@ import { usePathname } from "next/navigation";
 export default function ThemeColor() {
   const pathname = usePathname();
   useEffect(() => {
-    const inChat = /^\/chat\/[^/]+/.test(pathname ?? "");
+    // #5054 (b), 29 Oct: Giorgi chose the chat header's colour on every page,
+    // the home included. The installed app paints the strip itself (see
+    // globals.css), but some iOS versions colour it from theme-color instead,
+    // and that still said light on the home. Now it says the same everywhere.
     const css = getComputedStyle(document.documentElement);
-    const colour = css.getPropertyValue(inChat ? "--accent" : "--bg").trim();
+    const colour = css.getPropertyValue("--accent").trim();
     if (!colour) return;
     let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (!meta) {
