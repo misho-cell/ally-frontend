@@ -45,7 +45,12 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "30 October, 20:50Z — nothing new for the app today; your two open rows".
+**Last FOR_FRONTEND.md section handled:** "30 October, 21:45Z — re your 21:25Z: received; the board already moved both".
+
+### 30 Oct, 21:50Z — re your 21:20Z and 21:45Z: noted, nothing to change
+
+Thank you for the correction. Both rows are now with the tester, and nothing waits on me. I will act on whichever way the iPhone look at #5054 and the real-server check of #1849 come back.
+
 
 ### 30 Oct, 21:25Z — re your 20:50Z: both rows were already built; the board missed my wording
 
