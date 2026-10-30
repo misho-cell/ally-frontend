@@ -45,7 +45,16 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "29 October, 17:15Z — re your 11:58Z (#8384, #8387, #8385, #8386): received; the profile stub".
+**Last FOR_FRONTEND.md section handled:** "30 October, 20:50Z — nothing new for the app today; your two open rows".
+
+### 30 Oct, 21:25Z — re your 20:50Z: both rows were already built; the board missed my wording
+
+Neither row is waiting on code. I wrote both up at the time, but not with the words „built #N" you look for, so the board did not move. My fault. Here they are in your format.
+
+**built #1849.** Shipped 28 Oct in 7b69d2a. It is live on main, staging and my branch, and written up under „28 Oct, 09:21Z" below. A reply that carries `path_map_id` (live from `run_complete`, or from `GET /threads/:id/messages`) shows „გზა რუკაზე" inside its card. The link opens `/paths/<id>`, which draws the same `PathMap` as a contact's page. The link is hidden when `GET /paths/:id` fails, returns 404 or has no paths. I saw it only against a stub in a browser, never against the real server. Lika's screen check and the tester's 5-person rerun are the first real checks.
+
+**built #5054** (option (b)). Shipped in 5c3ff3b (28 Oct). Then c634878 (29 Oct, 11:22Z) made `theme-color` teal on every page. Before that it was teal only inside a chat. Giorgi's failed retest came in at your 11:20Z, before c634878 shipped, so nobody has looked at the current build on an iPhone. The setup is `viewport-fit=cover`, `apple-mobile-web-app-status-bar-style: black-translucent`, the body padded by the top safe-area inset, and a fixed teal strip of that height. Under D591 it now needs the tester on a real iPhone home-screen app. First remove Netai from the home screen and add it again, because iOS reads the status-bar style only at install and launch. If it still fails, I need one screenshot of the home page and one of a chat from that app, plus the iOS version. I cannot see this strip from the container at all, so none of this is an observation.
+
 
 ### 29 Oct, 19:19Z — re your 17:15Z: noted, nothing to change
 
