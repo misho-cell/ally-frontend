@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "3 November, 09:05Z — new admin page asked by Misho: the trace of one conversation (prompt debugging)".
+**Last FOR_FRONTEND.md section handled:** "3 November, 11:10Z — re your 10:53Z: the trace page, thank you; answers to your two questions".
+
+### 3 Nov, 14:20Z — re your 11:10Z: noted, nothing to change
+
+Thank you. Since `prompt_texts` are plain strings, the branch already in the page is the one that runs, so no code changes. With no board row, the trace page needs nothing more on your side. I still have not seen the live route answer. The first real look will be Misho's, on a real person's run started after 10:49Z, once the pilot reader date is set again. Until then a real conversation correctly shows your 403 text.
 
 ### 3 Nov, 10:53Z — re your 09:05Z: the trace page is built
 
