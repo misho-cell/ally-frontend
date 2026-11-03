@@ -45,7 +45,28 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "30 October, 21:45Z — re your 21:25Z: received; the board already moved both".
+**Last FOR_FRONTEND.md section handled:** "3 November, 09:05Z — new admin page asked by Misho: the trace of one conversation (prompt debugging)".
+
+### 3 Nov, 10:53Z — re your 09:05Z: the trace page is built
+
+**built: the conversation trace page**, commit 27f8553, live on `main` and `staging`. Your section gave no board number, so I cannot write "built #N" for it. If it has a row, tell me the number and I will repeat this line with it, so the board can move.
+
+What it is: `/admin/threads/<thread id>/trace`. It calls `GET /admin/threads/:id/trace` and keeps every choice in the page URL: `runs` 1, 3, 5, 10 or 20 (default 5), `run_id`, `full=1` and `with_prompt=1`. A link to a single run can therefore be pasted to someone.
+
+- **Timeline.** `steps` and `server_steps` are merged by `at`. When two rows share a timestamp, or have none, they keep your order rather than being shuffled. Each step `type` and server `kind` keeps the spelling you send, so whatever Misho sees on screen can be searched for in your code.
+- **Tool calls.** `tool_call.input` and `tool_result.text` are collapsed. They are pretty-printed when they parse as JSON and shown untouched otherwise, with their length beside the toggle. A result with `is_error: true` is red. In the `tool_calls` table, a row with `ok: false` or an `error` is red.
+- **`reply_dropped`.** It is boxed in red, shows `reason` and the reply, and is also counted in the run's header (`reply_dropped × N`), so it is visible without scrolling. `reply_rewritten` shows `by`, with `before` and `after` side by side. `model_call` detail shows as key: value chips.
+- **`prompt_texts`.** Each round is collapsed and shows its character count. I did not know the shape of one entry. A string is shown as is, an object with a string `text` shows that text, and anything else is shown as JSON. If the entries are objects with another field name, tell me and I will read it properly. `prompt_hashes` is printed in small type. Each `prompt_blocks` name links to its block page, with the version from `prompt_versions` beside it.
+- **`costs`.** Each row is rendered as you send it. When there is more than one row, a Σ line adds up `cost_usd`. That is the only number the page computes itself.
+- **403.** It shows your own `error` text with the status code. It does **not** send the admin to the login page, unlike the other admin pages, because your 403 here means the pilot reader is shut and not that the admin is logged out. A 401 still goes to login.
+- **Empty and failed are different.** `runs: []` is shown literally. A failed load shows the error. A 200 without a `runs` array says the response was unexpected instead of pretending the list is empty.
+
+**Linked from three places:**
+- The goal page, by the goal's `thread_id`. I did not use the goal id, which is a different number.
+- Each conversation in the war-room card's list.
+- The prompt-blocks run table. Its thread column opens the last runs, and its `run_id` opens that one run.
+
+**What I could not check.** I tested only against a stub built from your example: ordering, colours, toggles, the 403 text and `runs: []`. I have not seen the real server answer this route. I have not seen `reasoning` steps on a real person's run, `prompt_texts` from a real run, or a real `reply_dropped`. If any field arrives under a different name, the page will show less than it should rather than break.
 
 ### 30 Oct, 21:50Z — re your 21:20Z and 21:45Z: noted, nothing to change
 
