@@ -469,10 +469,14 @@ function RunsTab() {
                 <tr key={r.run_id} className="border-b border-gray-50 last:border-0">
                   <td className="whitespace-nowrap px-4 py-2.5 text-xs text-gray-500">{fmtDate(r.created_at)}</td>
                   <td className="px-4 py-2.5 font-mono text-xs text-gray-400" title={r.run_id}>
-                    {r.run_id.length > 10 ? r.run_id.slice(0, 10) + "…" : r.run_id}
+                    <a href={`/admin/threads/${r.thread_id}/trace?run_id=${encodeURIComponent(r.run_id)}`} className="hover:text-[#3E7A56] hover:underline">
+                      {r.run_id.length > 10 ? r.run_id.slice(0, 10) + "…" : r.run_id}
+                    </a>
                   </td>
                   <td className="px-4 py-2.5 text-xs">{r.user_id}</td>
-                  <td className="px-4 py-2.5 text-xs">{r.thread_id}</td>
+                  <td className="px-4 py-2.5 text-xs">
+                    <a href={`/admin/threads/${r.thread_id}/trace`} className="text-[#3E7A56] hover:underline">{r.thread_id}</a>
+                  </td>
                   <td className="px-4 py-2.5">
                     <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-mono text-gray-700">{r.mode}</span>
                   </td>

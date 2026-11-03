@@ -276,6 +276,12 @@ export default function AdminGoalDetailPage() {
                 {goal.last_activity_at && <span>ბოლო აქტ. {fmt(goal.last_activity_at)}</span>}
                 {goal.next_wake_at && <span>შემდეგი გაღვიძება {fmt(goal.next_wake_at)}</span>}
                 {goal.plan_version != null && <span>გეგმა v{goal.plan_version}</span>}
+                {goal.thread_id != null && (
+                  // thread_id, not the goal id: the trace is read per conversation.
+                  <a href={`/admin/threads/${encodeURIComponent(String(goal.thread_id))}/trace`} className="text-[#3E7A56] hover:underline">
+                    trace · thread #{goal.thread_id} →
+                  </a>
+                )}
               </div>
             </div>
 

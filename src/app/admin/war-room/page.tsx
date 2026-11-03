@@ -99,6 +99,7 @@ function UserThreads({ userId }: { userId: number }) {
             <span className="truncate text-sm font-medium text-[#23261F]">{t.title || "—"}</span>
             <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-500">{t.status}</span>
             <span className="ml-auto text-[11px] text-gray-400">{fmtRelative(t.updated_at)}</span>
+            <Link href={`/admin/threads/${t.id}/trace`} className="font-mono text-[11px] text-[#3E7A56] hover:underline">trace</Link>
           </div>
           {t.last_line && <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">{t.last_line}</p>}
         </div>
