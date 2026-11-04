@@ -98,6 +98,9 @@ const L = {
     linkExpired: "This invite link has expired.",
     notInContacts: "Netai works only between people who know each other: an invite counts once the person inviting you has your number saved.",
     rateLimited: "Too many requests. Please try again later.",
+    // #8713 part 3 (4 Nov): the opt-in line Meta asks for, shown with the box
+    // that sends it. Ticked by default; unticking it sends false.
+    whatsappOptIn: "Netai will also message you on WhatsApp. You can turn it off any time in your profile.",
     pricing: "Pricing",
     terms: "Terms",
     privacy: "Privacy",
@@ -132,6 +135,7 @@ const L = {
     linkExpired: "ამ მოწვევის ბმულს ვადა გაუვიდა.",
     notInContacts: "Netai მუშაობს მხოლოდ ნაცნობებს შორის: მოწვევა მაშინ მოქმედებს, როცა მომწვევს შენი ნომერი აქვს შენახული.",
     rateLimited: "ძალიან ბევრი მოთხოვნაა. სცადე მოგვიანებით.",
+    whatsappOptIn: "Netai შეტყობინებებს WhatsApp-შიც მოგწერს. გათიშვა ნებისმიერ დროს შეგიძლია პროფილში.",
     pricing: "ფასები",
     terms: "წესები",
     privacy: "კონფიდენციალურობა",
@@ -213,6 +217,7 @@ export default function LoginPage() {
   // (gate off included). No validation — unknown values register fine without
   // a link, and the backend ignores self-referrals.
   const [inviteInput, setInviteInput] = useState("");
+  const [whatsappOptIn, setWhatsappOptIn] = useState(true);
   const [eligibleMode, setEligibleMode] = useState<string | null>(null);
   // OTP is single-use: once verify-otp + complete-login succeed we must not
   // re-run them on retry (e.g. when the eligibility call itself failed).
@@ -614,7 +619,9 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const body: { phone: string; name: string; referralCode?: string } = { phone, name };
+      const body: { phone: string; name: string; referralCode?: string; whatsapp_opt_in: boolean } = {
+        phone, name, whatsapp_opt_in: whatsappOptIn,
+      };
       // Gate flow value wins; otherwise the optional "Invited by" field. Always
       // sent when present — this is what builds the referral chain. Since
       // 14 Oct it is a member's code only, sent as referralCode.
@@ -881,6 +888,16 @@ export default function LoginPage() {
                     />
                   </div>
                 )}
+                <label className="flex items-start gap-2.5 text-xs" style={{ color: "var(--ink-soft)" }}>
+                  <input
+                    type="checkbox"
+                    checked={whatsappOptIn}
+                    onChange={(e) => setWhatsappOptIn(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0"
+                    style={{ accentColor: "var(--ink)" }}
+                  />
+                  <span>{s.whatsappOptIn}</span>
+                </label>
                 <button
                   type="submit"
                   disabled={loading || !name.trim() || rateLimited}
