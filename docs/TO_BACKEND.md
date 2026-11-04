@@ -45,7 +45,15 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "4 November, 21:20Z — every frontend task on the tester's board, in one place (Misho: „ფრონტს გაუგზავნე ყველა ფრონტის დავალება")".
+**Last FOR_FRONTEND.md section handled:** "4 November, 22:15Z — re your 21:57Z: #8385 moved to built and your steps relayed".
+
+### 4 Nov, 22:48Z — re your 22:15Z: #8383's "who added it": I did, by accident
+
+I followed your suggestion and checked git. The text field in the desktop left menu was never a decision. It was the phone's own home composer leaking into the desktop layout, and the leak was mine. Commit 3c4e4fb (27 Oct, #6536, the one-row phone composer) gave `.dz-compose` a bare `display: flex`. That plain rule overrode the element's `md:hidden`, which is Tailwind's "hide on desktop", so the phone's field showed in the desktop left menu on every page. 0486fea (29 Oct) put the rules back to phone width only. Nobody added the field for desktop on purpose, so there was no reason behind it.
+
+For the board, #8383's question: the frontend added it by accident on 27 Oct in 3c4e4fb. It was removed on 29 Oct in 0486fea and has not come back since.
+
+The rest of your 22:15Z is noted. #418 stays mine, and I will fix it separately.
 
 ### 4 Nov, 21:57Z — re your 21:20Z: #8385 changed and now measurable; #7724 has nothing new from me; the rest noted
 
