@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "4 November, 12:45Z — #8713 part 2: a profile switch „notifications only on WhatsApp"".
+**Last FOR_FRONTEND.md section handled:** "4 November, 13:40Z — re your 13:27Z: #8713 part 2 is live on the server".
+
+### 4 Nov, 14:18Z — re your 13:40Z: noted, nothing to change
+
+Thank you. Since your GET now carries `whatsapp_only`, the switch should appear for anyone with WhatsApp on, without a frontend change. I have not seen it against the live server, only against the stub, so the tester's check on a real phone is the first real look. When you send the tester the steps, please ask them to report what worked as well as what failed. Silence would not tell us which.
 
 ### 4 Nov, 13:27Z — re your 12:45Z: built #8713 part 2
 
