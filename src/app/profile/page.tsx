@@ -114,6 +114,7 @@ const L = {
     whatsapp: "Messages in WhatsApp",
     whatsappSoon: "Coming soon",
     whatsappWelcome: "We sent you a message in WhatsApp",
+    whatsappOnly: "Notifications only in WhatsApp",
     claudeConnected: "Claude is connected",
     myContacts: "My contacts",
     myContactsSub: "Search, and what you have saved about each person",
@@ -246,6 +247,7 @@ const L = {
     whatsapp: "შეტყობინებები WhatsApp-ში",
     whatsappSoon: "მალე ჩაირთვება",
     whatsappWelcome: "WhatsApp-ში შეტყობინება გამოგიგზავნეთ",
+    whatsappOnly: "შეტყობინებები მხოლოდ WhatsApp-ში",
     claudeConnected: "Claude დაკავშირებულია",
     myContacts: "ჩემი კონტაქტები",
     myContactsSub: "ძებნა და რა გაქვს შენახული თითოეულზე",
@@ -610,12 +612,20 @@ function SwitchButton({ on, busy, label, onClick }: { on: boolean; busy: boolean
 // welcome_status (25 Oct) is set only by the PUT that turned the switch on;
 // the line under the switch is drawn only for "sent", never for the other
 // outcomes (already sent, channel off, no template, failed).
-type WhatsAppState = { opted_in: boolean; channel_on: boolean; welcome_sent: boolean };
+// #8713 part 2 (4 Nov): whatsapp_only sends every notification to WhatsApp
+// and none to the app. null means the server did not say (a build from
+// before the field), which hides the second switch rather than drawing it off.
+type WhatsAppState = { opted_in: boolean; channel_on: boolean; welcome_sent: boolean; whatsapp_only: boolean | null };
 
 function readWhatsApp(raw: unknown): WhatsAppState | null {
   const d = unwrapData(raw);
   if (!isRecord(d) || typeof d.opted_in !== "boolean") return null;
-  return { opted_in: d.opted_in, channel_on: d.channel_on === true, welcome_sent: d.welcome_status === "sent" };
+  return {
+    opted_in: d.opted_in,
+    channel_on: d.channel_on === true,
+    welcome_sent: d.welcome_status === "sent",
+    whatsapp_only: typeof d.whatsapp_only === "boolean" ? d.whatsapp_only : null,
+  };
 }
 
 function WhatsAppRow() {
@@ -623,6 +633,8 @@ function WhatsAppRow() {
   const [state, setState] = useState<WhatsAppState | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [onlyBusy, setOnlyBusy] = useState(false);
+  const [onlyFailed, setOnlyFailed] = useState(false);
   useEffect(() => {
     let alive = true;
     apiFetch<unknown>("/profile/whatsapp")
@@ -650,7 +662,31 @@ function WhatsAppRow() {
     }
   }
 
+  async function toggleOnly() {
+    if (onlyBusy || !state || state.whatsapp_only === null) return;
+    setOnlyBusy(true);
+    setOnlyFailed(false);
+    try {
+      const w = readWhatsApp(await apiFetch<unknown>("/profile/whatsapp/only", { method: "PUT", body: { whatsapp_only: !state.whatsapp_only } }));
+      if (w) setState(w);
+      else setOnlyFailed(true);
+    } catch (err) {
+      // 409: WhatsApp was turned off elsewhere (a STOP sent in WhatsApp). The
+      // page is stale, so read it again: the second switch then goes away.
+      if (err instanceof ApiError && err.status === 409) {
+        const w = readWhatsApp(await apiFetch<unknown>("/profile/whatsapp").catch(() => null));
+        if (w) setState(w);
+        else setOnlyFailed(true);
+      } else {
+        setOnlyFailed(true);
+      }
+    } finally {
+      setOnlyBusy(false);
+    }
+  }
+
   return (
+    <>
     <div className="pd-switch-row">
       <span>
         {s.whatsapp}
@@ -660,6 +696,16 @@ function WhatsAppRow() {
       </span>
       <SwitchButton on={state.opted_in} busy={busy} label={s.whatsapp} onClick={toggle} />
     </div>
+    {state.opted_in && state.whatsapp_only !== null && (
+      <div className="pd-switch-row">
+        <span>
+          {s.whatsappOnly}
+          {onlyFailed && <small role="status" style={{ display: "block", fontSize: 12, color: "var(--danger)" }}>{s.monthlyReminderFailed}</small>}
+        </span>
+        <SwitchButton on={state.whatsapp_only} busy={onlyBusy} label={s.whatsappOnly} onClick={toggleOnly} />
+      </div>
+    )}
+    </>
   );
 }
 
