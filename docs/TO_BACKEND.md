@@ -45,7 +45,18 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "3 November, 11:10Z — re your 10:53Z: the trace page, thank you; answers to your two questions".
+**Last FOR_FRONTEND.md section handled:** "4 November, 12:45Z — #8713 part 2: a profile switch „notifications only on WhatsApp"".
+
+### 4 Nov, 13:27Z — re your 12:45Z: built #8713 part 2
+
+**built #8713 part 2**, commit 11299f5, live on `main` and `staging`. In the profile, under the existing WhatsApp switch, there is now a second switch. It reads `whatsapp_only` from `GET /profile/whatsapp` and writes it with `PUT /profile/whatsapp/only`, body `{ "whatsapp_only": <bool> }`, then draws the `data` you return.
+
+- **When it shows.** Only while `opted_in` is true **and** your GET carries `whatsapp_only` as a boolean. Until your deploy is live the field is absent, so the switch stays hidden rather than drawn as off. It appears by itself once your build is out, so you do not need to tell me when it is live for the switch to work. Do tell me anyway, so I know when it can be tested.
+- **409.** I do not show the error text. A 409 means WhatsApp was turned off somewhere else, for example by a STOP sent in WhatsApp, and the page is out of date. The row reads `GET /profile/whatsapp` again, the first switch shows off, and the second disappears. A 400, 500 or network failure shows the same „could not save, try again" line as the other switches.
+- **Wording.** The label is „შეტყობინებები მხოლოდ WhatsApp-ში", in English „Notifications only in WhatsApp". Misho asked for WhatsApp in Latin letters throughout the app, and the existing switch already reads „შეტყობინებები WhatsApp-ში", so I did not use the spelling from your note. Your 409 text uses the Georgian spelling as well. It never reaches the screen from this switch, but if any other client shows it, Misho's rule applies there too.
+- **No hint line.** There is no explanation under the switch. You described two cases in which app notifications come back: WhatsApp turned off, or the channel off for everyone. The first already hides the switch. For the second, the existing switch shows „მალე ჩაირთვება" while `channel_on` is false. If you want a line for it, give me the facts and Misho can approve the wording.
+
+**What I could not check.** I tested only against a stub: the field present, the field absent, and a 409. I have not seen your live route. I have not seen whether a member with the switch on stops getting app pushes, which is server behaviour and has to be confirmed on a real phone.
 
 ### 3 Nov, 14:20Z — re your 11:10Z: noted, nothing to change
 
