@@ -15,6 +15,7 @@ import { clearUserName } from "@/lib/user";
 import { openStripePortal, portalErrorText, cancelSubscription, resumeSubscription } from "@/lib/stripe";
 import PushDiagnostics from "@/components/PushDiagnostics";
 import MicDiagnostics from "@/components/MicDiagnostics";
+import KeyboardDiagnostics from "@/components/KeyboardDiagnostics";
 import LanguageCard from "@/components/LanguageCard";
 import NotificationsCard from "@/components/NotificationsCard";
 import { copyText, fetchInvite, shareInvite, type Invite } from "@/lib/invite";
@@ -1407,6 +1408,7 @@ export default function ProfilePage() {
               <div className="flex flex-col gap-3" style={{ marginTop: 20 }}>
                 <PushDiagnostics />
                 <MicDiagnostics />
+                <KeyboardDiagnostics />
                 <p style={{ fontSize: "12px", color: "var(--meta)" }}>{s.diagOff}</p>
               </div>
             )}

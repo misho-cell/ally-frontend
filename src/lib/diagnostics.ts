@@ -64,3 +64,11 @@ export function diagnosticsSnapshot(): boolean {
 export function diagnosticsServerSnapshot(): boolean {
   return false;
 }
+
+// #8385 (4 Nov): for code outside the profile page that only needs to know,
+// at the moment it acts, whether this browser has diagnostics on. The
+// snapshot above is filled only once the profile page has run, so a chat
+// opened straight from the home screen would always read "off" from it.
+export function diagnosticsEnabled(): boolean {
+  return on || read();
+}

@@ -25,6 +25,8 @@ import ContextPanel, { ContextPanelToggle } from "@/components/ContextPanel";
 import RoutesList, { useRoutes } from "@/components/RoutesBoard";
 import { t, tf, stripEmoji, linkifyPhones, preserveLineBreaks, getLocale, fmtDateLoc } from "@/lib/i18n";
 import { shortTitle } from "@/lib/titles";
+import { saveKeyboardTrace, KB_TRACE_MAX, type KbSample } from "@/lib/keyboardTrace";
+import { diagnosticsEnabled } from "@/lib/diagnostics";
 import { isTrialTokens } from "@/lib/tokens";
 import {
   useThreads,
@@ -1509,6 +1511,14 @@ export default function ThreadPage() {
   // moved at all. It is sized to the visible height, and the offset Safari
   // adds to bring the field into view is taken back at once, so the header
   // stays where it is and the field sits on top of the keyboard.
+  //
+  // #8385 again (4 Nov): still open on the phone. Safari reports the keyboard
+  // in a few large steps, so correcting only when an event arrives leaves the
+  // frames in between uncorrected. For a little under a second after any
+  // keyboard sign (the viewport changing, the field gaining or losing focus)
+  // the same correction now runs on every frame. With diagnostics on, those
+  // frames are also recorded (lib/keyboardTrace), so the next phone check
+  // says by how many pixels the header moved instead of whether it seemed to.
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
@@ -1519,12 +1529,46 @@ export default function ThreadPage() {
       if (vv.offsetTop > 0 || window.scrollY !== 0) window.scrollTo(0, 0);
       if (follow) requestAnimationFrame(() => stickToBottom(false));
     };
+
+    let raf = 0;
+    let until = 0;
+    let trace: KbSample[] | null = null;
+    let t0 = 0;
+    const tick = () => {
+      fit();
+      if (trace && trace.length < KB_TRACE_MAX) {
+        const hd = document.querySelector(".thread-header")?.getBoundingClientRect().top ?? null;
+        trace.push({ t: Math.round(performance.now() - t0), h: vv.height, o: vv.offsetTop, sy: window.scrollY, hd });
+      }
+      if (performance.now() < until) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        raf = 0;
+        if (trace) { saveKeyboardTrace(trace); trace = null; }
+      }
+    };
+    const settle = (startTrace: boolean) => {
+      until = performance.now() + 900;
+      if (startTrace && !trace && diagnosticsEnabled()) { trace = []; t0 = performance.now(); }
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+    const onViewport = () => { fit(); settle(false); };
+    const onFocus = (e: FocusEvent) => {
+      const el = e.target;
+      if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) settle(true);
+    };
+
     fit();
-    vv.addEventListener("resize", fit);
-    vv.addEventListener("scroll", fit);
+    vv.addEventListener("resize", onViewport);
+    vv.addEventListener("scroll", onViewport);
+    document.addEventListener("focusin", onFocus);
+    document.addEventListener("focusout", onFocus);
     return () => {
-      vv.removeEventListener("resize", fit);
-      vv.removeEventListener("scroll", fit);
+      vv.removeEventListener("resize", onViewport);
+      vv.removeEventListener("scroll", onViewport);
+      document.removeEventListener("focusin", onFocus);
+      document.removeEventListener("focusout", onFocus);
+      if (raf) cancelAnimationFrame(raf);
       root.style.removeProperty("--vvh");
     };
   }, [stickToBottom]);
