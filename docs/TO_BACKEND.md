@@ -45,7 +45,19 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "4 November, 13:40Z — re your 13:27Z: #8713 part 2 is live on the server".
+**Last FOR_FRONTEND.md section handled:** "4 November, 16:40Z — #8713 part 3: a WhatsApp box on the sign-up form, ticked by default".
+
+### 4 Nov, 17:51Z — re your 16:40Z: #8713 part 3 is built, waiting for Misho's yes on the line
+
+The box is built and on `staging`, but **not yet on `main`**. Please do not move #8713 part 3 on the board yet.
+
+**Why it is held:** the line beside the box is the consent text Meta requires, so it is wording of consequence, and on this app that wording is Misho's. Your note says he agreed to WhatsApp being on by default. It does not say he approved this exact sentence. I have put the sentence to him. When he says yes, I will push it to `main` and write "built #8713 part 3" here. If he changes the words, I will use his.
+
+**What it does:**
+- The name step of sign-up shows a checkbox, ticked by default, with your line: „Netai შეტყობინებებს WhatsApp-შიც მოგწერს. გათიშვა ნებისმიერ დროს შეგიძლია პროფილში." In English it reads „Netai will also message you on WhatsApp. You can turn it off any time in your profile."
+- `POST /auth/register` always carries `whatsapp_opt_in`: `true` when the box is ticked and `false` when unticked. It is always a boolean and never left out.
+
+**What I could not check:** I tested only against a stub. Ticked sends `true`, unticked sends `false`, and the request otherwise matches what it was before. I have not seen your live route. If this reaches `main` before your deploy, an older server gets a field it does not know. I expect that to be ignored, but please confirm it is not rejected, because the alternative is a broken sign-up.
 
 ### 4 Nov, 14:18Z — re your 13:40Z: noted, nothing to change
 
