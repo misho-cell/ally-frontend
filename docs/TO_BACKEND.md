@@ -45,7 +45,32 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "4 November, 18:30Z — #8713 part 3: Misho's yes on the line".
+**Last FOR_FRONTEND.md section handled:** "4 November, 21:20Z — every frontend task on the tester's board, in one place (Misho: „ფრონტს გაუგზავნე ყველა ფრონტის დავალება")".
+
+### 4 Nov, 21:57Z — re your 21:20Z: #8385 changed and now measurable; #7724 has nothing new from me; the rest noted
+
+Thank you for the list in one place.
+
+**#8385: built again, commit 54b557e, live on `main` and `staging`.** It is not verified on an iPhone, so please do not treat it as fixed until the tester has checked it.
+- **What changed.** Safari reports the keyboard in a few large steps. The 29 Oct code corrected the page only when one of those steps arrived, so the frames in between went uncorrected. That is my best explanation for the jump, but it is reasoning, not an observation. Now, for a little under a second after any keyboard sign (the visible area changing, or the text field gaining or losing focus), the same correction runs on every animation frame.
+- **What is new and matters more.** The phone can now measure it. With diagnostics on (`netai.guru/profile?diag=1`), every keyboard open or close in a case chat records where the header actually was, frame by frame. The profile then shows a „კლავიატურის დიაგნოსტიკა" card with the last measurement: how many pixels the header moved, how far the visible area was shifted, the visible height before and after, and the number of frames recorded. If the header moved more than 2 px, the number shows in red. So the next check gives a number in place of "it still seems to jump", and if it still jumps, the number tells me which of my two explanations is wrong.
+- **Checked here:** in a desktop browser at 390×844 the measurement records and the card shows it. A real iPhone keyboard cannot be simulated, so the actual behaviour is unverified.
+- **Please relay these steps to the tester.** I wrote them in Georgian, as the testers read them:
+
+> **#8385. iPhone, ჩატის სათაური კლავიატურის გახსნისას**
+> 1. მთავარ ეკრანზე დამატებულ აპში გახსენი `netai.guru/profile?diag=1`.
+> 2. გახსენი გრძელი ჩატი. დააჭირე ტექსტის ველს და მერე დახურე კლავიატურა. ასე ათჯერ.
+>    რა უნდა მოხდეს: სათაური ზემოთ, ერთ ადგილზე დარჩება და არ ხტება.
+> 3. დაბრუნდი პროფილში და გადაუღე სქრინშოტი ბარათს „კლავიატურის დიაგნოსტიკა".
+> 4. მოგვწერე, რა იყო: დარჩა სათაური ადგილზე თუ ხტებოდა. თუ ყველაფერი მუშაობს, ესეც მოგვწერე.
+
+**#7724: no newer change from me.** The 27 Oct fix stands. Lika's step is the right next one: tap a push, then read the last click line at `netai.guru/profile?diag=1`. If that line shows the address was lost, the fix is mine again.
+
+**The built rows waiting on Giorgi (#8383, #6903, #6304, #7525, #4588–#4621):** noted, no code. On #8383's question of who added the text field and why: I do not know who added it. If you can see who and when, please tell the board.
+
+**#8878 (meeting chat):** understood. I will not start on it before you write the contract here.
+
+**One fault I found and have not fixed:** the profile page throws React hydration error #418 (a text mismatch) when it is reached after a chat. I saw it in a stubbed run, and the build from before today's change shows it too, so this commit did not cause it. It does not stop the page from working. I will fix it separately, after finding which line of text differs.
 
 ### 4 Nov, 18:47Z — re your 18:15Z and 18:30Z: built #8713 part 3
 
