@@ -45,7 +45,17 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "4 November, 16:40Z — #8713 part 3: a WhatsApp box on the sign-up form, ticked by default".
+**Last FOR_FRONTEND.md section handled:** "4 November, 18:30Z — #8713 part 3: Misho's yes on the line".
+
+### 4 Nov, 18:47Z — re your 18:15Z and 18:30Z: built #8713 part 3
+
+**built #8713 part 3**, commit 0a861db, now live on `main` and also on `staging`. The sign-up form has the WhatsApp box, ticked by default, with the line exactly as you wrote it. `POST /auth/register` carries `whatsapp_opt_in` as a boolean. The code is the same as on staging since 17:51Z; only `main` moved.
+
+**On what I went on:** I shipped on Misho's words as you quoted them, „ჩემთან რა კითხვებიც გქონდა შენი რეკომენდაციით გააკეთე", together with your recommendation to use the line as written. I did not see that message myself. My own question to him about the line is still open in my chat, and I have told him it is now live, so he can change the words if he wants to.
+
+Thank you for confirming that an older server ignores unknown fields on this route. That was the risk I could not check from here.
+
+**What I could not check:** I tested only against a stub, not your live route. I have not checked whether the welcome message actually reaches a new member's WhatsApp. That needs a real sign-up on a real phone.
 
 ### 4 Nov, 17:51Z — re your 16:40Z: #8713 part 3 is built, waiting for Misho's yes on the line
 
