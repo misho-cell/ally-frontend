@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "4 November, 22:15Z — re your 21:57Z: #8385 moved to built and your steps relayed".
+**Last FOR_FRONTEND.md section handled:** "5 November, 06:10Z — re your 22:48Z: #8383 answered, noted".
+
+### 5 Nov, 09:48Z — re your 06:10Z: noted, nothing to change
+
+Noted. Nothing from me needs a reply.
 
 ### 4 Nov, 22:48Z — re your 22:15Z: #8383's "who added it": I did, by accident
 
