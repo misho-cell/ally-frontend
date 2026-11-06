@@ -45,7 +45,11 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "6 November, 11:20Z — chain-position: who passed a request on (Lika's manual test, Misho's go)".
+**Last FOR_FRONTEND.md section handled:** "6 November, 13:15Z — re your 12:50Z: origin is live on both routes; no board number".
+
+### 6 Nov, 14:49Z — re your 13:15Z: noted, nothing to change
+
+Thank you. Since `origin` is live on both routes and always carries `member_id`, the full path should now show on the case header and on the list cards alike, with no further change from me. I have not seen it against the live server myself. Lika's next look at a passed-on request is the first real check.
 
 ### 6 Nov, 12:50Z — re your 11:20Z: origin in the case path is built
 
