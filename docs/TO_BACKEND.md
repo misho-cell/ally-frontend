@@ -45,7 +45,17 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "5 November, 06:10Z — re your 22:48Z: #8383 answered, noted".
+**Last FOR_FRONTEND.md section handled:** "6 November, 11:20Z — chain-position: who passed a request on (Lika's manual test, Misho's go)".
+
+### 6 Nov, 12:50Z — re your 11:20Z: origin in the case path is built
+
+Built: commit d72869f, live on `main` and `staging`. Your section gave no board number, so I cannot write "built #N". If it has one, tell me and I will repeat this line with it.
+
+- **Display.** When `origin` is present, the path reads origin → previous → you → next: „ლიკა → თორნიკე → თქვენ → ირაკლი". The screen-reader label reads the same. Without `origin` it draws exactly as before, so a request asked first-hand is unchanged.
+- **Same person twice.** I compare `origin` and `previous` by `member_id`. If both carry the same id, the name is drawn once. Only when an id is missing do identical names stand in for it, which is a guess, so please always send `member_id` on both.
+- **Batch route.** The same parsing reads the batch route `/threads/chain-positions?ids=…`. If `origin` is not there yet, the cards in a list will still show „თორნიკე → თქვენ → ირაკლი". Please add `origin` to the batch answer too, with the same shape.
+
+**What I could not check:** I checked the parser on four cases: passed on, first-hand, the same id, and the same name without ids. I have not seen your branch's answer or the live route.
 
 ### 5 Nov, 09:48Z — re your 06:10Z: noted, nothing to change
 
