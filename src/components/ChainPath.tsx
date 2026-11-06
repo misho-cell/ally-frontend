@@ -19,20 +19,36 @@ import { isRecord, unwrapData, pickArray, recordItems } from "@/lib/payload";
 // routes lead to, from the rows' own `target_name`, so the helpers stop
 // reading as the people sought. Drawn only when every row that names one
 // names the same person; two different targets would be a guess.
-type Chain = { previous: string | null; next: string[]; target: string | null };
+//
+// Backend 6 Nov 11:20Z (Lika's test, Giorgi's header read „Lika → you →
+// Irakli" with Tornike missing): a request passed on by someone carries
+// `origin`, the person it is for, while `previous` is the one who passed it
+// on. Drawn origin → previous → you → next. The two are told apart by
+// member_id, the identity the server gives; only when an id is missing do
+// identical names stand in for it, so nobody is drawn twice in a row.
+type Chain = { origin: string | null; previous: string | null; next: string[]; target: string | null };
+
+function person(v: unknown): { name: string; id: unknown } | null {
+  if (!isRecord(v) || typeof v.name !== "string" || !v.name.trim()) return null;
+  return { name: v.name.trim(), id: v.member_id ?? null };
+}
 
 const cache = new Map<string, Promise<Chain | null>>();
 
 function parseChain(d: unknown): Chain | null {
   if (!isRecord(d)) return null;
-  const prev = isRecord(d.previous) && typeof d.previous.name === "string" && d.previous.name.trim() ? d.previous.name.trim() : null;
+  const p = person(d.previous);
+  const o = person(d.origin);
+  const same = !!(o && p) && (o.id != null && p.id != null ? String(o.id) === String(p.id) : o.name === p.name);
+  const prev = p ? p.name : null;
+  const origin = o && !same ? o.name : null;
   const rows = recordItems(pickArray(d.next));
   const next = rows.flatMap((r) =>
     typeof r.person_name === "string" && r.person_name.trim() ? [r.person_name.trim()] : []);
   const targets = new Set(rows.flatMap((r) =>
     typeof r.target_name === "string" && r.target_name.trim() ? [r.target_name.trim()] : []));
   const only = targets.size === 1 ? [...targets][0] : null;
-  return { previous: prev, next, target: only && !next.includes(only) ? only : null };
+  return { origin, previous: prev, next, target: only && !next.includes(only) ? only : null };
 }
 
 function loadOne(threadId: string): Promise<Chain | null> {
@@ -61,7 +77,7 @@ function flush() {
         const d = unwrapData(raw);
         const positions = isRecord(d) && isRecord(d.positions) ? d.positions : null;
         if (!positions) { part.forEach((q) => q.reject()); return; }
-        part.forEach((q) => q.resolve(parseChain(positions[q.id]) ?? { previous: null, next: [], target: null }));
+        part.forEach((q) => q.resolve(parseChain(positions[q.id]) ?? { origin: null, previous: null, next: [], target: null }));
       })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.status === 404) {
@@ -143,7 +159,8 @@ export default function ChainPath({ threadId, stamp, className = "", eager = fal
   const shown = chain.next.slice(0, 2);
   const more = chain.next.length - shown.length;
   return (
-    <span className={`dz-chain ${className}`} aria-label={[chain.previous, t("chainYou"), chain.next.join(", "), chain.target].filter(Boolean).join(" → ")}>
+    <span className={`dz-chain ${className}`} aria-label={[chain.origin, chain.previous, t("chainYou"), chain.next.join(", "), chain.target].filter(Boolean).join(" → ")}>
+      {chain.origin && chain.previous && (<><span className="nm">{chain.origin}</span><span className="arr" aria-hidden="true">→</span></>)}
       {chain.previous && (<><span className="nm">{chain.previous}</span><span className="arr" aria-hidden="true">→</span></>)}
       <span className="nm me">{t("chainYou")}</span>
       {shown.length > 0 && <span className="arr" aria-hidden="true">→</span>}
