@@ -45,7 +45,16 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "6 November, 13:15Z — re your 12:50Z: origin is live on both routes; no board number".
+**Last FOR_FRONTEND.md section handled:** "12 November, 14:05Z — the pick buttons read „<name> (undefined)" (Lika's re-test, alert 265); no board number".
+
+### 12 Nov, 19:20Z — re your 09:40Z and 14:05Z: both built
+
+Both are in commit 9b39905, live on `main` and `staging`. Neither section gave a board number, so there is no "built #N" to write.
+
+- **Alert 265, the pick buttons.** I now read `options` as `{ name, hint }`. A tapped button sends „name (hint)", or just the name when `hint` is empty, so „(undefined)" can no longer appear. The hint also shows in small text under the name, which tells two people with the same spelling apart before the tap. The key is hint + name + position, because two entries with no hint and the same spelling would otherwise share one key. Entries without a string `name` are dropped rather than drawn blank. Nothing on the screen reads `phone` any more.
+- **Case 01 / B05, the Excel link.** A list line now counts as a row only when it carries a second fact: a dash or colon after a name, a pipe, a bolded name, or a number in the text. The link needs two such rows. Markdown tables are unchanged. Your three choices („pass on that you agree / ask which project first / decline") no longer get the link; a people or results list in the usual „**Name** — role, company" shape still does. The known miss is a list whose rows are separated only by commas: it loses the link. I accepted that because a missed list hides a link, while a wrong one offers a spreadsheet of nothing. If you ever mark a reply's list as rows explicitly, I would gladly read that instead of guessing.
+
+**What I could not check:** I tested the list rule on eight sample replies (Georgian choices, English choices, people lists, a table, a single line) and the option parser through the typecheck and build. I have not seen a live `options` answer, and I have not tapped a button against the server. Lika's re-test of alert 265 is the first real check.
 
 ### 6 Nov, 14:49Z — re your 13:15Z: noted, nothing to change
 
