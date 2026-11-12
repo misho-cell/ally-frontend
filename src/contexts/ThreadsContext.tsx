@@ -166,7 +166,29 @@ export type ChatMessage = {
   pathMapId?: string;
 };
 
-export type Option = { phone: string; name: string };
+// A contact the owner picks between when one name matched several people.
+// The server never sends a number to the screen: `hint` is the last four
+// digits after „…" (empty when unknown), there only to tell two people with
+// the same name apart (12 Nov contract, alert 265).
+export type Option = { name: string; hint: string };
+
+export function readOptions(raw: unknown): Option[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Option[] = [];
+  for (const o of raw) {
+    if (!o || typeof o !== "object") continue;
+    const r = o as Record<string, unknown>;
+    if (typeof r.name !== "string" || !r.name.trim()) continue;
+    out.push({ name: r.name, hint: typeof r.hint === "string" ? r.hint.trim() : "" });
+  }
+  return out;
+}
+
+// The line a tapped option sends, and shows: the name, with the hint only
+// when there is one, so an unknown hint never reads „(undefined)".
+export function optionLabel(o: Option): string {
+  return o.hint ? `${o.name} (${o.hint})` : o.name;
+}
 
 export type ThreadState = {
   messages: ChatMessage[];

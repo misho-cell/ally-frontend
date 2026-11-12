@@ -189,11 +189,29 @@ export async function fetchChatDoc(
 }
 
 // Whether a reply looks like it holds something the table route can turn
-// into rows: a Markdown table, or two or more list lines. Only decides
-// whether to offer the action; the server decides what the rows are.
+// into rows: a Markdown table, or two or more list lines that each carry
+// more than one fact. Only decides whether to offer the action; the server
+// decides what the rows are.
+//
+// Case 01 / B05 (12 Nov, Lika): a reply ending in „1. pass on that you
+// agree / 2. ask which project first / 3. decline" got the Excel link. Those
+// are choices for the reader, not rows; nothing in them is worth a column.
+// A row of people or results names something and then says something about
+// it, so a list line counts only when it has a second field: a dash or colon
+// after a name, a pipe, a bolded name, or a number in the text. Two such
+// lines are needed. A missed list only hides a link; a wrong link offers a
+// spreadsheet of nothing.
+const LIST_LINE = /^\s*(?:\d+[.)]|[-*\u2022])\s+(\S.*)$/gm;
+const SECOND_FIELD = /\s[\u2014\u2013-]\s|\S:\s|\||\*\*[^*]+\*\*|\d{2,}/;
+
 export function replyHasList(text: string): boolean {
   if (/^\s*\|.*\|\s*$/m.test(text) && /^\s*\|?\s*:?-{3,}/m.test(text)) return true;
-  return (text.match(/^\s*(?:\d+[.)]|[-*\u2022])\s+\S/gm) ?? []).length >= 2;
+  let rows = 0;
+  for (const m of text.matchAll(LIST_LINE)) {
+    if (SECOND_FIELD.test(m[1])) rows += 1;
+    if (rows >= 2) return true;
+  }
+  return false;
 }
 
 async function fetchXlsx(

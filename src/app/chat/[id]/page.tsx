@@ -37,6 +37,7 @@ import {
   prependOlder,
   PAGE_SIZE,
   DEFAULT_THREAD_STATE,
+  optionLabel,
   type ChatMessage,
   type TaskStatus,
 } from "@/contexts/ThreadsContext";
@@ -2430,11 +2431,14 @@ export default function ThreadPage() {
 
             {showOptions && (
               <div className="flex flex-col gap-2 pl-9">
-                {options.map((opt) => (
+                {options.map((opt, oi) => (
                   <button
-                    key={opt.phone}
+                    // Alert 265: the server sends no phone, so the key is
+                    // the hint and the name; the index keeps two identical
+                    // pairs (no hint, same spelling) from sharing one key.
+                    key={`${opt.hint}|${opt.name}|${oi}`}
                     type="button"
-                    onClick={() => sendMessage(`${opt.name} (${opt.phone})`)}
+                    onClick={() => sendMessage(optionLabel(opt))}
                     className="flex items-center gap-3 bg-white px-4 py-3 text-left transition-colors"
                     style={{
                       border: "1px solid var(--sidebar-border)",
@@ -2449,6 +2453,9 @@ export default function ThreadPage() {
                     </span>
                     <span className="flex flex-col">
                       <span style={{ fontWeight: 500, color: "var(--ink)", fontSize: "14px" }}>{opt.name}</span>
+                      {opt.hint && (
+                        <span style={{ color: "var(--ink-muted)", fontSize: "12px" }}>{opt.hint}</span>
+                      )}
                     </span>
                   </button>
                 ))}

@@ -26,7 +26,7 @@ import {
 import { parseTokenBalance } from "@/lib/tokens";
 import { readSessionToken } from "@/lib/session";
 import { FILE_ACCEPT, FILE_MAX_BYTES, readFileBytes, uploadFailureText, uploadThreadFile } from "@/lib/threadFiles";
-import { appendedKind } from "@/contexts/ThreadsContext";
+import { appendedKind, readOptions } from "@/contexts/ThreadsContext";
 import StagedFile from "@/components/StagedFile";
 import NewsCard from "@/components/NewsCard";
 import { OnlineDot, OnlinePill, OutageLine } from "@/components/AssistantStatus";
@@ -870,7 +870,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                               : {}),
                           },
                         ],
-                        options: Array.isArray(data.options) ? data.options : [],
+                        options: readOptions(data.options),
                         choices: Array.isArray(data.choices) ? data.choices : [],
                         choiceNotes: readChoiceNotes(data.choice_notes) ?? {},
                         // #68: which button opens the composer instead of
