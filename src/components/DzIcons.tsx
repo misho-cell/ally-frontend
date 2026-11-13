@@ -3,7 +3,7 @@
 
 export type DzIconName =
   | "flag" | "link" | "target" | "search" | "user" | "plus" | "mic" | "send" | "up"
-  | "down" | "right" | "left" | "back" | "x" | "panel" | "bell" | "check" | "people" | "spark" | "hourglass" | "pulse";
+  | "down" | "right" | "left" | "back" | "x" | "panel" | "bell" | "check" | "people" | "spark" | "hourglass" | "pulse" | "funnel";
 
 const PATHS: Record<DzIconName, React.ReactNode> = {
   flag: <><path d="M5 21V4" /><path d="M5 4h11l-2 4 2 4H5" /></>,
@@ -27,6 +27,7 @@ const PATHS: Record<DzIconName, React.ReactNode> = {
   spark: <><path d="M12 3v4M12 17v4M3 12h4M17 12h4" /><path d="m6.3 6.3 2.1 2.1M15.6 15.6l2.1 2.1M6.3 17.7l2.1-2.1M15.6 8.4l2.1-2.1" /></>,
   hourglass: <><path d="M7 3h10M7 21h10" /><path d="M8 3c0 5 8 5 8 9s-8 4-8 9" /><path d="M16 3c0 5-8 5-8 9s8 4 8 9" /></>,
   pulse: <path d="M3 12h4l2-5 4 10 2-5h6" />,
+  funnel: <path d="M4 5h16l-6 7.5V19l-4 2v-8.5L4 5Z" />,
 };
 
 export default function DzIcon({ name, size = 18, className, style }: { name: DzIconName; size?: number; className?: string; style?: React.CSSProperties }) {

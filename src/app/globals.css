@@ -596,6 +596,24 @@ html.nx-chat-lock body { top: 0; bottom: auto; height: var(--vvh, 100%); }
   .dz-search input::placeholder { color: var(--ink-muted); }
 }
 
+/* #9049: the phone's search row: the search, then the filter button. The
+   desktop hides the button and keeps the row of role buttons. */
+.dz-searchrow { display: flex; align-items: center; gap: 8px; }
+.dz-searchrow .dz-search { flex: 1; min-width: 0; }
+.dz-filter { position: relative; flex-shrink: 0; }
+.dz-filter-btn { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--header-border); background: #FFFFFF; color: var(--ink-muted); }
+.dz-filter-btn[data-active] { background: var(--accent-tint); border-color: var(--cta-border); color: var(--accent); }
+.dz-filter-dot { position: absolute; top: 8px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.dz-filter-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; min-width: 180px; padding: 4px; background: #FFFFFF; border: 1px solid var(--header-border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12); display: grid; }
+.dz-filter-menu button { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 44px; padding: 0 12px; border-radius: 8px; color: var(--ink); font: 500 14px/18px var(--font-system); text-align: left; }
+.dz-filter-menu button[aria-checked="true"] { color: var(--accent); font-weight: 600; }
+@media (min-width: 768px) {
+  .dz-filter { display: none; }
+}
+@media (max-width: 767.98px) {
+  .dz-roles { display: none !important; }
+}
+
 /* Role filter */
 .dz-roles { display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 4px; margin-top: 8px; }
 .dz-roles button { height: 44px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--header-border); background: #FFFFFF; color: var(--ink-muted); font: 500 11px/15px var(--font-system); white-space: nowrap; }

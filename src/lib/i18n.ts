@@ -211,6 +211,8 @@ const en = {
   roleAddressee: "Recipient",
   roleMediator: "Intermediary",
   roleAll: "All",
+  // #9049: the phone's filter button, read aloud only.
+  roleFilterButton: "Filter",
   // #4588 (Tornike, Misho's yes): the filters in plain words; the cards keep
   // the role names above.
   routesTitle: "Paths",
@@ -444,6 +446,8 @@ const ka: typeof en = {
   roleAddressee: "ადრესატი",
   roleMediator: "შუამავალი",
   roleAll: "ყველა",
+  // #9049: the phone's filter button, read aloud only.
+  roleFilterButton: "ფილტრი",
   routesTitle: "გზები",
   routesCount: "გზები · {n}",
   routeWaiting: "ველოდები პასუხს",

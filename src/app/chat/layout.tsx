@@ -29,6 +29,7 @@ import { FILE_ACCEPT, FILE_MAX_BYTES, readFileBytes, uploadFailureText, uploadTh
 import { appendedKind, readOptions } from "@/contexts/ThreadsContext";
 import StagedFile from "@/components/StagedFile";
 import NewsCard from "@/components/NewsCard";
+import RoleFilterMenu from "@/components/RoleFilterMenu";
 import { OnlineDot, OnlinePill, OutageLine } from "@/components/AssistantStatus";
 import DzIcon, { ROLE_ICON } from "@/components/DzIcons";
 import { previewLine, shortTitle } from "@/lib/titles";
@@ -1660,7 +1661,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               {t("newTask")}
             </button>
 
-            {/* Search over everything already loaded (E2). */}
+            {/* Search over everything already loaded (E2). #9049 (Giorgi,
+                13 Nov): on the phone the role filter is an icon button to
+                its right; the desktop keeps the row below. */}
+            <div className="dz-searchrow">
             <div className="dz-search">
               <DzIcon name="search" size={17} />
               <input
@@ -1677,6 +1681,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
                   ×
                 </button>
               )}
+            </div>
+            {hasRoles && <RoleFilterMenu value={roleFilter} onChange={setRoleFilter} />}
             </div>
 
             {hasRoles && (
