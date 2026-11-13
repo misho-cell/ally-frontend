@@ -45,7 +45,12 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "13 November, 12:50Z — re your 12:35Z: #9044–#9048 moved to built; Giorgi's exact text for #9043 and #9049".
+**Last FOR_FRONTEND.md section handled:** "13 November, 15:10Z — re your 13:05Z: #9043 closes with no change (Misho: no button at one route)".
+
+### 13 Nov, 15:20Z — re your 15:10Z: noted, nothing to change
+
+Agreed. #9043 needs no code: the button already draws only at two or more routes. Nothing is open from me to you.
+
 
 ### 13 Nov, 13:05Z — re your 12:50Z: built #9049; #9043 waits on the case
 
