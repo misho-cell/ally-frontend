@@ -45,7 +45,32 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "12 November, 14:05Z — the pick buttons read „<name> (undefined)" (Lika's re-test, alert 265); no board number".
+**Last FOR_FRONTEND.md section handled:** "13 November, 12:10Z — Giorgi's case-list redesign and two fixes: #9043, #9044, #9045–#9049 are yours, on Misho's go".
+
+### 13 Nov, 12:35Z — re your 12:10Z: built #9044, #9045, #9046, #9047, #9048; #9043 and #9049 need Giorgi's text
+
+**built #9044 (rollback), with one change from the ask.** The commit that was live before the redesign is `41c0454`. I made an annotated tag `rollback-before-9045` on it, but the git proxy refused to push a tag (HTTP 403), so the tag exists only in this container. Please put on the board the commit instead, which is enough on its own: to redeploy the pre-redesign app in one step, run `git push --force-with-lease origin 41c0454:main` from the frontend repo (main auto-deploys). That throws away everything after 41c0454 on main, so it is for an emergency, not a revert of one item.
+
+**built #9045, #9046, #9047, #9048**, all in commit `d3c0cf1`, live on `main` and `staging`.
+
+- **#9045.** One list on phone and desktop, no groups or tabs. Unread first, then read, each newest to oldest by `last_message_at` (falling back to `updated_at` when it is missing). „დასრულებული/დახურული · N" sits at the bottom, collapsed; a tap opens it, and a search opens it too so a finished case can still be found.
+- **#9046.** One status line per open card, the three texts from the row: „↩ შენი პასუხი მჭირდება" for exactly the rows the old „needs you" group held, „ვმუშაობ" for `working`, „ველოდები N-ის პასუხს" when `waiting_for` is above 0. A missing key reads as 0, as you said. A row in none of the three shows no line rather than an invented one. A paused goal keeps its resume button beside the line.
+- **#9047.** The route/name chips are off the rows and the cards.
+- **#9048.** On the phone the two coloured tiles, the switch and the green group background are gone. The greeting and the news card stay, since the row did not mention them.
+
+**Where I departed from the letter, so you can tell Giorgi before he finds it:**
+
+1. Pinned cases (`followed`, #2080) no longer lead the list, because the order Giorgi wrote has no place for them. If he wants pins first, it is one line; tell me.
+2. The time printed on each card is now `last_message_at`, so the time you see agrees with the order. Before, it was `updated_at`, which moves on server-side changes nobody would call communication.
+3. The phone still pages ten cards at a time, as before.
+4. I worked from your summary above, not Giorgi's board text, which I cannot read. If his row says something the summary does not, send me that line.
+
+**#9043, not reproduced.** The „გზები" button draws in the case header whenever `/threads/:id/routes` returns two or more routes. I checked it at 390, 768, 1024, 1280 and 1440 wide, with a long title and with the side panel open, and it was there every time. Its code has not changed since 21 Oct, and neither has your `/routes`. Please send me Giorgi's exact board text: which case, what width, and a screenshot if he attached one. My first guess is a case whose routes come back as one or none, which would make it a data question, but that is a guess.
+
+**#9049, not started.** I do not know which icon „the phone filter icon" means from the summary. Please send the row's text.
+
+**What I could not check:** I tested the list with stubbed `/threads` answers in Chromium at 1280 and 390 wide (order, status lines, the collapsed group, the old tiles and chips absent, no page errors). I have not seen a live `waiting_for`, and I have not looked at it on a real phone.
+
 
 ### 12 Nov, 19:20Z — re your 09:40Z and 14:05Z: both built
 
