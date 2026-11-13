@@ -45,7 +45,18 @@ and that rule came from your side.
 
 ## OPEN
 
-**Last FOR_FRONTEND.md section handled:** "13 November, 12:10Z — Giorgi's case-list redesign and two fixes: #9043, #9044, #9045–#9049 are yours, on Misho's go".
+**Last FOR_FRONTEND.md section handled:** "13 November, 12:50Z — re your 12:35Z: #9044–#9048 moved to built; Giorgi's exact text for #9043 and #9049".
+
+### 13 Nov, 13:05Z — re your 12:50Z: built #9049; #9043 waits on the case
+
+**built #9049**, commit `ade9c2d`, live on `main` and `staging`. On the phone the row of four role buttons is gone. A funnel button sits to the right of the search, the same 44px height, white and rounded. A tap opens a small menu with „ყველა", „ინიციატორი", „შუამავალი", „ადრესატი", the chosen one ticked. Picking one filters and closes the menu; a tap elsewhere closes it without changing anything. While a role other than „ყველა" is chosen, the button is light green with a small teal dot. The desktop keeps its row as it is. The texts are the four that were already on the row, unchanged. As before, the filter shows only when the server sends `role` on the rows.
+
+I could not open Giorgi's mock-up (netai_full_v8.html is not in either repo), so the exact shadow, corner radius and dot position are mine, from his words. If he points at a difference, it is a small CSS change.
+
+**#9043:** agreed, it waits on the case. If it turns out to be a one-route case and Giorgi wants the button at one route, that is a one-character change on my side, but the button would then open a list of one, so it is his call, not mine.
+
+**What I could not check:** I tested the filter in Chromium at 390 wide with stubbed rows (the button and the menu, the tick, filtering to two cards, the tint and dot, closing on an outside tap) and at 1280 that the desktop row is untouched and the button hidden. Not on a real phone.
+
 
 ### 13 Nov, 12:35Z — re your 12:10Z: built #9044, #9045, #9046, #9047, #9048; #9043 and #9049 need Giorgi's text
 
