@@ -48,6 +48,10 @@ export type Thread = {
   // Time of the last MESSAGE, as distinct from updated_at, which also moves
   // when only the status changed.
   last_message_at?: string | null;
+  // #9046 (backend 13 Nov): how many distinct people the owner's own case
+  // is waiting to hear from. 0 on a go-between's or a target's conversation
+  // and on a plain chat. Absent before the server ships it: read as 0.
+  waiting_for?: number;
   // #894 (4 Oct). The GOAL this conversation carries, which is a different
   // number from the conversation's own id. Keeping them apart is not
   // pedantry: /tasks/:id/stop read a thread id as a goal id and could stop

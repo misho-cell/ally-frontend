@@ -232,6 +232,9 @@ const en = {
   searchGoals: "Search my tasks",
   sideSub: "Your personal assistant",
   groupWorking: "Working",
+  // #9046 (Giorgi, 13 Nov): one status line per open card, three states.
+  cardNeedsYou: "↩ I need your answer",
+  cardWaitingFor: "Waiting to hear from {n}",
   groupResolved: "Resolved",
   doneHead: "Already resolved",
   allArrow: "All →",
@@ -460,6 +463,8 @@ const ka: typeof en = {
   searchGoals: "მოძებნე ჩემი დავალებები",
   sideSub: "შენი პირადი ასისტენტი",
   groupWorking: "ვმუშაობ",
+  cardNeedsYou: "↩ შენი პასუხი მჭირდება",
+  cardWaitingFor: "ველოდები {n}-ის პასუხს",
   // #6770 (Giorgi, 20 Oct): the tab's new name, his exact text.
   groupResolved: "დასრულებული/დახურული",
   doneHead: "უკვე მოვაგვარე",
